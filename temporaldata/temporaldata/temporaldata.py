@@ -1263,17 +1263,32 @@ class RegularTimeSeries(ArrayDict):
 
     def slice(self, start: float, end: float, reset_origin: bool = True):
         r"""Returns a new :obj:`RegularTimeSeries` object that contains the data between
-        the start and end times.
-        """
-        # TODO update domain
-        # TODO come up with the right slicing heuristic
+        the start (inclusive) and end (exclusive) times.
 
-        start_id = int(np.ceil((start - self.domain.start[0]) * self.sampling_rate))
-        end_id = int(np.floor((end - self.domain.start[0]) * self.sampling_rate))
+        When slicing, the start and end times are rounded to the nearest timestamp.
+
+        Args:
+            start: Start time.
+            end: End time.
+            reset_origin: If :obj:`True`, all time attributes will be updated to be
+                relative to the new start time. Defaults to :obj:`True`.
+        """
+        # we allow the start and end to be outside the domain of the time series
+        if start < self.domain.start[0]:
+            start_id = 0
+        else:
+            start_id = int(
+                np.round((start - self.domain.start[0]) * self.sampling_rate)
+            )
+
+        if end > self.domain.end[0]:
+            end_id = len(self) + 1
+        else:
+            end_id = int(np.round((end - self.domain.start[0]) * self.sampling_rate))
 
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
-        out._domain = self._domain  # arithmetics go here
+        out._domain = copy.deepcopy(self._domain)
         if reset_origin:
             out._domain.start, out._domain.end = (
                 out._domain.start - start,
@@ -1308,7 +1323,22 @@ class RegularTimeSeries(ArrayDict):
 
         mask_array = np.zeros_like(self.timestamps, dtype=bool)
         for start, end in zip(interval.start, interval.end):
-            mask_array |= (self.timestamps >= start) & (self.timestamps < end)
+            if start < self.domain.start[0]:
+                start_id = 0
+            else:
+                start_id = int(
+                    np.round((start - self.domain.start[0]) * self.sampling_rate)
+                )
+
+            if end > self.domain.end[0]:
+                end_id = len(self) + 1
+            else:
+                end_id = int(
+                    np.round((end - self.domain.start[0]) * self.sampling_rate)
+                )
+
+            assert not np.any(mask_array[start_id:end_id])
+            mask_array[start_id:end_id] = True
 
         setattr(self, f"{name}_mask", mask_array)
 
