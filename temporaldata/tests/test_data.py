@@ -1122,6 +1122,47 @@ def test_lazy_data_copy(test_filepath):
         assert data.spikes.unit_index[0] == 0
 
 
+def test_data_absolute_start(test_filepath):
+    data = Data(
+        session_id="session_0",
+        domain=Interval.from_list([(0, 3)]),
+        some_numpy_array=np.array([1, 2, 3]),
+        spikes=IrregularTimeSeries(
+            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
+            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            waveforms=np.zeros((6, 48)),
+            domain="auto",
+        ),
+        lfp=RegularTimeSeries(
+            raw=np.zeros((1000, 3)),
+            sampling_rate=250.0,
+            domain="auto",
+        ),
+        units=ArrayDict(
+            id=np.array(["unit_0", "unit_1", "unit_2"]),
+            brain_region=np.array(["M1", "M1", "PMd"]),
+        ),
+        trials=Interval(
+            start=np.array([0, 1, 2]),
+            end=np.array([1, 2, 3]),
+            go_cue_time=np.array([0.5, 1.5, 2.5]),
+            drifting_gratings_dir=np.array([0, 45, 90]),
+        ),
+        drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
+    )
+
+    data = data.slice(1.0, 3.0)
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    del data
+
+    with h5py.File(test_filepath, "r") as f:
+        data = Data.from_hdf5(f, lazy=True)
+        assert data.absolute_start == 1.0
+
+
 def test_timeless_data(test_filepath):
     # when defining a Data object that has no time-based attributes, we do no need to
     # specify a domain
