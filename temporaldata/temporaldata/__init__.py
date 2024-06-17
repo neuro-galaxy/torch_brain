@@ -13,4 +13,4 @@ from .temporaldata import (
 )
 from .concat import concat
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
