@@ -575,7 +575,7 @@ def test_regulartimeseries():
     # try slicing with skewed start and end
     # the sampling frequency is 10
     data_slice = data.slice(2.03, 8.09)
-    assert np.allclose(data_slice.lfp, data.lfp[20:81])
+    assert np.allclose(data_slice.lfp, data.lfp[21:80])
 
     data_slice = data.slice(4.051, 12.0)
     assert np.allclose(data_slice.lfp, data.lfp[41:])
@@ -598,7 +598,7 @@ def test_regulartimeseries():
     # try slicing with skewed start and end
     # the sampling frequency is 10
     data_slice = data.slice(3.03, 9.09)
-    assert np.allclose(data_slice.lfp, data.lfp[20:81])
+    assert np.allclose(data_slice.lfp, data.lfp[21:80])
 
     data_slice = data.slice(5.051, 13.0)
     assert np.allclose(data_slice.lfp, data.lfp[41:])
