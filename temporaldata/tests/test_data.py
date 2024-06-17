@@ -580,6 +580,29 @@ def test_regulartimeseries():
     data_slice = data.slice(4.051, 12.0)
     assert np.allclose(data_slice.lfp, data.lfp[41:])
 
+    data = RegularTimeSeries(
+        lfp=np.random.random((100, 48)),
+        sampling_rate=10,
+        domain="auto",
+        domain_start=1.0,
+    )
+
+    assert len(data) == 100
+
+    assert data.domain.start[0] == 1.0
+    assert data.domain.end[0] == 10.9
+
+    data_slice = data.slice(3.0, 9.0)
+    assert np.allclose(data_slice.lfp, data.lfp[20:80])
+
+    # try slicing with skewed start and end
+    # the sampling frequency is 10
+    data_slice = data.slice(3.03, 9.09)
+    assert np.allclose(data_slice.lfp, data.lfp[20:81])
+
+    data_slice = data.slice(5.051, 13.0)
+    assert np.allclose(data_slice.lfp, data.lfp[41:])
+
 
 def test_lazy_regular_timeseries(test_filepath):
     raw = np.random.random((1000, 128))
