@@ -606,6 +606,8 @@ class IrregularTimeSeries(ArrayDict):
         if name == "timestamps":
             assert value.ndim == 1, "timestamps must be 1D."
             assert ~np.any(np.isnan(value)), f"timestamps cannot contain NaNs."
+            if value.dtype != np.float64:
+                logging.warning(f"{name} is of type {value.dtype} not of type float64.")
             # timestamps has been updated, we no longer know whether it is sorted or not
             self._sorted = None
 
@@ -621,17 +623,17 @@ class IrregularTimeSeries(ArrayDict):
         r"""Returns the start time of the time series. If the time series is not sorted,
         the start time is the minimum timestamp."""
         if self.is_sorted():
-            return self.timestamps[0]
+            return np.float64(self.timestamps[0])
         else:
-            return np.min(self.timestamps)
+            return np.float64(np.min(self.timestamps))
 
     def _maybe_end(self) -> float:
         r"""Returns the end time of the time series. If the time series is not sorted,
         the end time is the maximum timestamp."""
         if self.is_sorted():
-            return self.timestamps[-1]
+            return np.float64(self.timestamps[-1])
         else:
-            return np.max(self.timestamps)
+            return np.float64(np.max(self.timestamps))
 
     def sort(self):
         r"""Sorts the timestamps, and reorders the other attributes accordingly.
@@ -820,7 +822,10 @@ class IrregularTimeSeries(ArrayDict):
         # irregularly sampled timestamps
         # we use a 1 second resolution
         grid_timestamps = np.arange(
-            self.domain.start[0], self.domain.end[-1] + 1.0, 1.0
+            self.domain.start[0],
+            self.domain.end[-1] + 1.0,
+            1.0,
+            dtype=np.float64,
         )
         file.create_dataset(
             "timestamp_indices_1s",
@@ -1353,7 +1358,10 @@ class RegularTimeSeries(ArrayDict):
     @property
     def timestamps(self):
         r"""Returns the timestamps of the time series."""
-        return self.domain.start[0] + np.arange(len(self)) / self.sampling_rate
+        return (
+            self.domain.start[0]
+            + np.arange(len(self), dtype=np.float64) / self.sampling_rate
+        )
 
     def to_hdf5(self, file):
         r"""Saves the data object to an HDF5 file.
@@ -1653,6 +1661,8 @@ class Interval(ArrayDict):
         if name == "start" or name == "end":
             assert value.ndim == 1, f"{name} must be 1D."
             assert ~np.any(np.isnan(value)), f"{name} cannot contain NaNs."
+            if value.dtype != np.float64:
+                logging.warning(f"{name} is of type {value.dtype} not of type float64.")
             # start or end have been updated, we no longer know whether it is sorted
             # or not
             self._sorted = None
@@ -2009,7 +2019,7 @@ class Interval(ArrayDict):
                 end=[100]
                 )
         """
-        timestamps = np.linspace(start, end, steps + 1)
+        timestamps = np.linspace(start, end, steps + 1, dtype=np.float64)
         return cls(
             start=timestamps[:-1],
             end=timestamps[1:],
@@ -2029,7 +2039,9 @@ class Interval(ArrayDict):
             include_end: Whether to include a partial interval at the end.
         """
         whole_steps = np.floor((end - start) / step).astype(int)
-        timestamps = np.linspace(start, start + whole_steps * step, whole_steps + 1)
+        timestamps = np.linspace(
+            start, start + whole_steps * step, whole_steps + 1, dtype=np.float64
+        )
 
         if include_end and timestamps[-1] < end:
             timestamps = np.append(timestamps, end)

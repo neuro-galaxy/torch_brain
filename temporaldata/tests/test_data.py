@@ -5,6 +5,7 @@ import h5py
 import numpy as np
 import pandas as pd
 import tempfile
+import logging
 from temporaldata import (
     ArrayDict,
     LazyArrayDict,
@@ -1155,3 +1156,44 @@ def test_timeless_data(test_filepath):
             data.spikes.timestamps, np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3])
         )
         assert np.allclose(data.spikes.unit_index, np.array([0, 0, 1, 0, 1, 2]))
+
+
+def test_precision(caplog):
+    with caplog.at_level(logging.WARNING):
+        spikes = IrregularTimeSeries(
+            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3], dtype=np.float64),
+            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            waveforms=np.zeros((6, 48)),
+            domain="auto",
+        )
+    assert caplog.text == ""
+
+    with caplog.at_level(logging.WARNING):
+        spikes = IrregularTimeSeries(
+            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3], dtype=np.float16),
+            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            waveforms=np.zeros((6, 48)),
+            domain="auto",
+        )
+    assert (
+        f"timestamps is of type {spikes.timestamps.dtype} not of type float64."
+        in caplog.text
+    )
+
+    with caplog.at_level(logging.WARNING):
+        trials = Interval(
+            start=np.array([0, 1, 2]),
+            end=np.array([1, 2, 3]),
+            go_cue_time=np.array([0.5, 1.5, 2.5]),
+            drifting_gratings_dir=np.array([0, 45, 90]),
+        )
+        assert (
+            f"start is of type {trials.start.dtype} not of type float64." in caplog.text
+        )
+
+    lfp = RegularTimeSeries(
+        raw=np.zeros((1000, 3)),
+        sampling_rate=250.0,
+        domain="auto",
+    )
+    assert lfp.timestamps.dtype == np.float64
