@@ -12,3 +12,5 @@ from .temporaldata import (
     LazyInterval,
 )
 from .concat import concat
+
+__version__ = "0.1.0"
