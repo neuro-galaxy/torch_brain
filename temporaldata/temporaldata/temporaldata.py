@@ -1236,16 +1236,21 @@ class RegularTimeSeries(ArrayDict):
         *,
         sampling_rate: float,  # in Hz
         domain: Interval = None,
+        domain_start=0.0,
         **kwargs: Dict[str, np.ndarray],
     ):
         super().__init__(**kwargs)
 
         self._sampling_rate = sampling_rate
 
-        # TODO add a start argument to simplify domain
         if domain == "auto":
+            if not isinstance(domain_start, (int, float)):
+                raise ValueError(
+                    f"domain_start must be a number, got {type(domain_start)}."
+                )
             domain = Interval(
-                start=np.array([0.0]), end=np.array([(len(self) - 1) / sampling_rate])
+                start=np.array([domain_start]),
+                end=np.array([domain_start + (len(self) - 1) / sampling_rate]),
             )
         self._domain = domain
 
