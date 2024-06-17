@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="temporaldata",
-    version="0.1.0",
+    version="0.1.1",
     author="Mehdi Azabou",
     author_email="mehdiazabou@gmail.com",
     description="A utility package for complex temporal data manipulation",
