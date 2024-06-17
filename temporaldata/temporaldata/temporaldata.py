@@ -1293,14 +1293,12 @@ class RegularTimeSeries(ArrayDict):
         if start < self.domain.start[0]:
             start_id = 0
         else:
-            start_id = int(
-                np.round((start - self.domain.start[0]) * self.sampling_rate)
-            )
+            start_id = int(np.ceil((start - self.domain.start[0]) * self.sampling_rate))
 
         if end > self.domain.end[0]:
             end_id = len(self) + 1
         else:
-            end_id = int(np.round((end - self.domain.start[0]) * self.sampling_rate))
+            end_id = int(np.floor((end - self.domain.start[0]) * self.sampling_rate))
 
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
@@ -1343,14 +1341,14 @@ class RegularTimeSeries(ArrayDict):
                 start_id = 0
             else:
                 start_id = int(
-                    np.round((start - self.domain.start[0]) * self.sampling_rate)
+                    np.ceil((start - self.domain.start[0]) * self.sampling_rate)
                 )
 
             if end > self.domain.end[0]:
                 end_id = len(self) + 1
             else:
                 end_id = int(
-                    np.round((end - self.domain.start[0]) * self.sampling_rate)
+                    np.floor((end - self.domain.start[0]) * self.sampling_rate)
                 )
 
             assert not np.any(mask_array[start_id:end_id])

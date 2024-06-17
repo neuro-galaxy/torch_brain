@@ -48,6 +48,6 @@ def test_regulartimeseries():
     data.add_split_mask("valid", valid_domain)
     data.add_split_mask("test", test_domain)
 
-    assert data.train_mask.sum() == 61
-    assert data.valid_mask.sum() == 19
+    assert data.train_mask.sum() == 60
+    assert data.valid_mask.sum() == 18
     assert data.test_mask.sum() == 20
