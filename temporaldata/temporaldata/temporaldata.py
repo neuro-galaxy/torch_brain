@@ -2681,7 +2681,18 @@ class Data(object):
         **kwargs: Dict[str, Union[str, float, int, np.ndarray, ArrayDict]],
     ):
         if domain == "auto":
-            domain = ...  # TODO: join all existing domains
+            # the domain is the union of the domains of the attributes
+            domain = Interval(np.array([]), np.array([]))
+            for key, value in kwargs.items():
+                if isinstance(value, (IrregularTimeSeries, RegularTimeSeries)):
+                    domain = domain | value.domain
+                if isinstance(value, Interval):
+                    domain = domain | value
+                if isinstance(value, Data) and value.domain is not None:
+                    domain = domain | value.domain
+
+        if domain is not None and not isinstance(domain, Interval):
+            raise ValueError("domain must be an Interval object.")
 
         self._domain = domain
 
