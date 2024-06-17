@@ -2892,13 +2892,12 @@ class Data(object):
                 # there is no partial I/O; the entire attribute must be read
                 file.attrs[key] = value
 
-        # TODO save _absolute_start
-
         if self._domain is not None:
             grp = file.create_group("domain")
             self._domain.to_hdf5(grp)
 
         file.attrs["object"] = self.__class__.__name__
+        file.attrs["absolute_start"] = self._absolute_start
 
     @classmethod
     def from_hdf5(cls, file, lazy=True):
@@ -2941,11 +2940,15 @@ class Data(object):
                 data[key] = value[:]
 
         for key, value in file.attrs.items():
-            if key == "object":
+            if key == "object" or key == "absolute_start":
                 continue
             data[key] = value
 
         obj = cls(**data)
+
+        # restore the absolute start time
+        obj._absolute_start = file.attrs["absolute_start"]
+
         return obj
 
     def add_split_mask(
