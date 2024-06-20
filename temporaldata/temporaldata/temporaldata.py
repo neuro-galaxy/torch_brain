@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping, Sequence
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Type
+import collections
 import logging
 import warnings
 
@@ -2681,6 +2682,7 @@ class Data(object):
     """
 
     _absolute_start = 0.0
+    _domain = None
 
     def __init__(
         self,
@@ -2857,7 +2859,7 @@ class Data(object):
         r"""Returns a dictionary of stored key/value pairs."""
         return copy.deepcopy(self.__dict__)
 
-    def to_hdf5(self, file):
+    def to_hdf5(self, file, serialize_fn_map=None):
         r"""Saves the data object to an HDF5 file. This method will also call the
         `to_hdf5` method of all contained data objects, so that the entire data object
         is saved to the HDF5 file, i.e. no need to call `to_hdf5` for each contained
@@ -2888,6 +2890,7 @@ class Data(object):
             elif value is not None:
                 # each attribute should be small (generally < 64k)
                 # there is no partial I/O; the entire attribute must be read
+                value = serialize(value, serialize_fn_map=serialize_fn_map)
                 file.attrs[key] = value
 
         if self._domain is not None:
@@ -3092,3 +3095,40 @@ def size_repr(key: Any, value: Any, indent: int = 0) -> str:
         out = str(value)
     key = str(key).replace("'", "")
     return f"{pad}{key}={out}"
+
+
+def serialize(
+    elem,
+    serialize_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+):
+    r"""
+    General serialization function that handles object types that are not supported
+    by hdf5. The function also opens function registry to deal with specific element
+    types through `serialize_fn_map`. This function will automatically be applied to
+    elements in a nested sequence structure.
+
+    Args:
+        elem: a single element to be serialized.
+        serialize_fn_map: Optional dictionary mapping from element type to the
+            corresponding serialize function. If the element type isn't present in this
+            dictionary, it will be skipped and the element will be returned as is.
+    """
+    elem_type = type(elem)
+
+    if serialize_fn_map is not None:
+        if elem_type in serialize_fn_map:
+            return serialize_fn_map[elem_type](elem, serialize_fn_map=serialize_fn_map)
+
+        for object_type in serialize_fn_map:
+            if isinstance(elem, object_type):
+                return serialize_fn_map[object_type](
+                    elem, serialize_fn_map=serialize_fn_map
+                )
+
+    if isinstance(elem, (list, tuple)):
+        return elem_type(
+            [serialize(e, serialize_fn_map=serialize_fn_map) for e in elem]
+        )
+
+    # element does not need to be seralized, or type not supported
+    return elem
