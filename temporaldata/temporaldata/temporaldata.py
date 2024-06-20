@@ -2882,7 +2882,10 @@ class Data(object):
             value = getattr(self, key)
             if isinstance(value, (Data, ArrayDict)):
                 grp = file.create_group(key)
-                value.to_hdf5(grp)
+                if isinstance(value, Data):
+                    value.to_hdf5(grp, serialize_fn_map=serialize_fn_map)
+                else:
+                    value.to_hdf5(grp)
             elif isinstance(value, np.ndarray):
                 # todo add warning if array is too large
                 # recommend using ArrayDict
