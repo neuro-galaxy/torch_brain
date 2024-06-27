@@ -1,8 +1,9 @@
-"""Load data, processes it, save it."""
-
 import argparse
 import datetime
 import logging
+import os
+import h5py
+
 
 import numpy as np
 from pynwb import NWBHDF5IO
@@ -16,14 +17,18 @@ from temporaldata import (
     ArrayDict,
 )
 
-
-from brainsets_utils import DatasetBuilder, find_files_by_extension
+from brainsets_utils.taxonomy import (
+    BrainsetDescription,
+    SessionDescription,
+    DeviceDescription,
+)
 from brainsets_utils.dandi_utils import (
     extract_spikes_from_nwbfile,
     extract_subject_from_nwb,
 )
 from brainsets_utils.taxonomy import RecordingTech, Task
 from brainsets_utils.taxonomy.task import REACHING
+from brainsets_utils import serialize_fn_map
 
 
 logging.basicConfig(level=logging.INFO)
@@ -112,17 +117,14 @@ def extract_behavior(nwbfile, trials):
 def main():
     # use argparse to get arguments from the command line
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_dir", type=str, default="./raw")
+    parser.add_argument("--input_file", type=str)
     parser.add_argument("--output_dir", type=str, default="./processed")
 
     args = parser.parse_args()
 
     # intiantiate a DatasetBuilder which provides utilities for processing data
-    db = DatasetBuilder(
-        raw_folder_path=args.input_dir,
-        processed_folder_path=args.output_dir,
-        # metadata for the dataset
-        experiment_name="mc_maze_small",
+    brainset_description = BrainsetDescription(
+        id="mc_maze_small",
         origin_version="dandi/000140/0.220113.0408",
         derived_version="1.0.0",
         source="https://dandiarchive.org/dandiset/000140",
@@ -132,96 +134,84 @@ def main():
         " resulting in a variety of straight and curved reaches.",
     )
 
-    # iterate over the .nwb files and extract the data from each
-    for file_path in find_files_by_extension(db.raw_folder_path, ".nwb"):
-        if "test" in file_path:
-            # test file does not have behavior, skipping
-            continue
+    logging.info(f"Processing file: {args.input_file}")
 
-        logging.info(f"Processing file: {file_path}")
+    # open file
+    io = NWBHDF5IO(args.input_file, "r")
+    nwbfile = io.read()
 
-        # each file contains data from one session. a session is unique and has one
-        # associated subject and one associated sortset.
-        with db.new_session() as session:
-            # open file
-            io = NWBHDF5IO(file_path, "r")
-            nwbfile = io.read()
+    # extract subject metadata
+    # this dataset is from dandi, which has structured subject metadata, so we
+    # can use the helper function extract_subject_from_nwb
+    subject = extract_subject_from_nwb(nwbfile)
 
-            # extract subject metadata
-            # this dataset is from dandi, which has structured subject metadata, so we
-            # can use the helper function extract_subject_from_nwb
-            subject = extract_subject_from_nwb(nwbfile)
-            session.register_subject(subject)
+    # extract experiment metadata
+    recording_date = nwbfile.session_start_time.strftime("%Y%m%d")
+    device_id = f"{subject.id}_{recording_date}"
+    session_id = f"{subject.id}_maze"
 
-            # extract experiment metadata
-            recording_date = nwbfile.session_start_time.strftime("%Y%m%d")
-            subject_id = subject.id
-            sortset_id = f"{subject_id}_{recording_date}"
-            session_id = f"{sortset_id}_maze"
+    # register session
+    session_description = SessionDescription(
+        id=session_id,
+        recording_date=datetime.datetime.strptime(recording_date, "%Y%m%d"),
+        task=Task.REACHING,
+    )
 
-            # register session
-            session.register_session(
-                id=session_id,
-                recording_date=datetime.datetime.strptime(recording_date, "%Y%m%d"),
-                task=Task.REACHING,
-            )
+    # register device
+    device_description = DeviceDescription(
+        id=device_id,
+        recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
+    )
 
-            # extract spiking activity
-            # this data is from dandi, we can use our helper function
-            spikes, units = extract_spikes_from_nwbfile(
-                nwbfile,
-                recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
-            )
+    # extract spiking activity
+    # this data is from dandi, we can use our helper function
+    spikes, units = extract_spikes_from_nwbfile(
+        nwbfile,
+        recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
+    )
 
-            # register sortset
-            session.register_sortset(
-                id=sortset_id,
-                units=units,
-            )
+    # extract data about trial structure
+    trials = extract_trials(nwbfile)
 
-            # extract data about trial structure
-            trials = extract_trials(nwbfile)
+    data = Data(
+        # neural activity
+        spikes=spikes,
+        units=units,
+        # stimuli and behavior
+        trials=trials,
+        # domain
+        domain="auto",
+    )
 
-            # extract behavior
-            behavior = extract_behavior(nwbfile, trials)
+    if not "test" in args.input_file:
+        # extract behavior
+        behavior = extract_behavior(nwbfile, trials)
 
-            # close file
-            io.close()
+        # register session
+        session_start, session_end = (
+            behavior.timestamps[0].item(),
+            behavior.timestamps[-1].item(),
+        )
 
-            # register session
-            session_start, session_end = (
-                behavior.timestamps[0].item(),
-                behavior.timestamps[-1].item(),
-            )
+        data.behavior = behavior
 
-            data = Data(
-                # neural activity
-                spikes=spikes,
-                units=units,
-                # stimuli and behavior
-                trials=trials,
-                behavior=behavior,
-                # domain
-                domain=Interval(session_start, session_end),
-            )
+        # split and register trials into train, validation and test
+        train_trials, valid_trials = trials.select_by_mask(trials.train_mask_nwb).split(
+            [0.8, 0.2], shuffle=True, random_seed=42
+        )
+        test_trials = trials.select_by_mask(trials.test_mask_nwb)
 
-            session.register_data(data)
+        data.train_domain = train_trials
+        data.valid_domain = valid_trials
+        data.test_domain = test_trials
 
-            # split and register trials into train, validation and test
-            train_trials, valid_trials = trials.select_by_mask(
-                trials.train_mask_nwb
-            ).split([0.8, 0.2], shuffle=True, random_seed=42)
-            test_trials = trials.select_by_mask(trials.test_mask_nwb)
+    # close file
+    io.close()
 
-            session.register_split("train", train_trials)
-            session.register_split("valid", valid_trials)
-            session.register_split("test", test_trials)
-
-            # save data to disk
-            session.save_to_disk()
-
-    # all sessions added, finish by generating a description file for the entire dataset
-    db.finish()
+    # save data to disk
+    path = os.path.join(args.output_dir, f"{session_id}.h5")
+    with h5py.File(path, "w") as file:
+        data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
 
 
 if __name__ == "__main__":

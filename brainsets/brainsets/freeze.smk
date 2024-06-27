@@ -1,3 +1,23 @@
+def aggregate_input(wildcards):
+    with checkpoints.download_data.get(**wildcards).output[0].open() as manifest:
+        files = [line.strip() for line in manifest]
+    return expand(f"{PROCESSED_DIR}/{DATASET}/tmp/{{file}}.txt", file=files)
+
+rule merge_manifests:
+    input:
+        aggregate_input
+    output:
+        f"{PROCESSED_DIR}/{DATASET}/manifest.txt"
+    shell:
+        f"""
+        find {PROCESSED_DIR}/{DATASET}/ -type f -name "*.h5" | sed "s|^{PROCESSED_DIR}/{DATASET}//||" > {{output}}        
+        """
+
+rule all:
+    input:
+        f"{PROCESSED_DIR}/{DATASET}/manifest.txt"
+
+
 COMPRESSED_DIR = config["COMPRESSED_DIR"]
 UNCOMPRESSED_DIR = config["UNCOMPRESSED_DIR"]
 
