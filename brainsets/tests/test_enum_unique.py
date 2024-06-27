@@ -1,5 +1,5 @@
 import pytest
-from brainsets_utils.taxonomy import Decoder
+from brainsets.taxonomy import Decoder
 
 
 def find_duplicates(enum):
