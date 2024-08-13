@@ -1,12 +1,6 @@
-import pickle
 
-old_unpickler = pickle.Unpickler  # Unfortunate hack to fix a bug in Lightning.
-# https://github.com/Lightning-AI/lightning/issues/18152
-# Will likely be fixed by 2.1.0.
 import lightning
 import logging
-
-pickle.Unpickler = old_unpickler
 
 from collections import OrderedDict
 import copy
