@@ -23,7 +23,7 @@ setup(
         "torch-optimizer==0.3.0",
         "tensorboard~=2.13",
         "hydra-core~=1.3.2",
-        "lightning==2.0.8",
+        "lightning==2.3.3",
         "wandb~=0.15",
         # "tabulate~=0.9",
         "torchtyping~=0.1",
