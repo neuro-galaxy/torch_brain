@@ -37,10 +37,6 @@ jobs:
         pip install flake8 pytest
     - name: Install plugin
       run: pip install pytest-github-actions-annotate-failures
-    - name: Download sample dataset
-      run: |
-        pip install dandi==0.61.2
-        snakemake --cores 4 mc_maze_small
     - name: Test with pytest
       run: |
         export WANDB_MODE=dryrun
