@@ -130,14 +130,22 @@ def test_dataset_selection(dummy_data):
     ds = Dataset(
         dummy_data,
         split=None,
-        include=[{"selection": [{"brainset": "allen_neuropixels_mock", "subject": "alice"}]}],
+        include=[
+            {"selection": [{"brainset": "allen_neuropixels_mock", "subject": "alice"}]}
+        ],
     )
     assert len(ds.session_dict) == 1
 
     ds = Dataset(
         dummy_data,
         split=None,
-        include=[{"selection": [{"brainset": "allen_neuropixels_mock", "session": "20100102_1"}]}],
+        include=[
+            {
+                "selection": [
+                    {"brainset": "allen_neuropixels_mock", "session": "20100102_1"}
+                ]
+            }
+        ],
     )
     assert len(ds.session_dict) == 1
 

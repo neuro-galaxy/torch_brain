@@ -51,9 +51,7 @@ def calculate_zscales(dataset: Dataset) -> Dict[str, Tuple[float, float]]:
     chunk_metrics = {}
     print("[blue] calculating normalization scales")
     for session_id in tqdm(dataset.session_ids):
-        task_readouts = dataset.session_dict[session_id]["config"][
-            "multitask_readout"
-        ]
+        task_readouts = dataset.session_dict[session_id]["config"]["multitask_readout"]
         # get a data object that is sliced according to the training sample intervals
         this_session_data = dataset.get_session_data(session_id)
         for task_readout in task_readouts:

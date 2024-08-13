@@ -213,7 +213,7 @@ class Dataset(torch.utils.data.Dataset):
 
                 # Now we get the session-level information
                 config = selection_list.get("config", {})
-                
+
                 for session_id in session_ids:
                     full_session_id = subselection["brainset"] + "/" + session_id
 
@@ -287,9 +287,9 @@ class Dataset(torch.utils.data.Dataset):
         interval_dict = {}
         for session_id in self.session_dict.keys():
             intervals = getattr(self._data_objects[session_id], f"{self.split}_domain")
-            sampling_intervals_modifier_code = self.session_dict[session_id]["config"].get(
-                "sampling_intervals_modifier", None
-            )
+            sampling_intervals_modifier_code = self.session_dict[session_id][
+                "config"
+            ].get("sampling_intervals_modifier", None)
             if sampling_intervals_modifier_code is None:
                 interval_dict[session_id] = list(zip(intervals.start, intervals.end))
             else:

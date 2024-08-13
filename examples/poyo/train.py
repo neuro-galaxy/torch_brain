@@ -1,4 +1,3 @@
-
 import lightning
 import logging
 
@@ -19,7 +18,10 @@ from torch.utils.data import DataLoader
 from torch_optimizer import Lamb
 
 from torch_brain.data import Dataset, collate
-from torch_brain.data.sampler import RandomFixedWindowSampler, SequentialFixedWindowSampler
+from torch_brain.data.sampler import (
+    RandomFixedWindowSampler,
+    SequentialFixedWindowSampler,
+)
 from torch_brain.taxonomy import decoder_registry
 from torch_brain.transforms import Compose
 from torch_brain.utils import seed_everything, train_wrapper
