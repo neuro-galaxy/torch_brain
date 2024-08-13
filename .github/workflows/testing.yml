@@ -36,6 +36,7 @@ jobs:
         source venv/bin/activate
     - name: Install dependencies
       run: |
+        source venv/bin/activate
         python -m pip install --upgrade pip 
         pip install -e ".[dev]" 
         pip install flake8 pytest
@@ -43,5 +44,6 @@ jobs:
       run: pip install pytest-github-actions-annotate-failures
     - name: Test with pytest
       run: |
+        source venv/bin/activate
         export WANDB_MODE=dryrun
         pytest tests/
