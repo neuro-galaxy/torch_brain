@@ -10,19 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    runs-on: self-hosted
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-    - run: pip install black==24.2.0
-    - run: black --check .
-
-  test:
+  testing:
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v3
@@ -41,7 +29,9 @@ jobs:
         pip install -e ".[dev]" 
         pip install flake8 pytest
     - name: Install plugin
-      run: pip install pytest-github-actions-annotate-failures
+      run: |
+        source venv/bin/activate
+        pip install pytest-github-actions-annotate-failures
     - name: Test with pytest
       run: |
         source venv/bin/activate
