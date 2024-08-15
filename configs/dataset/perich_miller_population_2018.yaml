@@ -1,6 +1,6 @@
 # Center-out reaching 
 - selection:
-  - dandiset: perich_miller_population_2018
+  - brainset: perich_miller_population_2018
     sortsets:
       - c_20131003
       - c_20131022
@@ -97,7 +97,7 @@
 
 # Random target reaching
 - selection:
-  - dandiset: perich_miller_population_2018
+  - brainset: perich_miller_population_2018
     sortsets:
     - c_20131009
     - c_20131010

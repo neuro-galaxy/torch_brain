@@ -14,7 +14,7 @@ import logging
 
 from torch_brain.data.sampler import DistributedSamplerWrapper
 from torch_brain.nn import compute_loss_or_metric
-from torch_brain.taxonomy import Decoder, OutputType, Task
+from brainsets.taxonomy import Decoder, OutputType, Task
 from rich import print as rprint
 
 

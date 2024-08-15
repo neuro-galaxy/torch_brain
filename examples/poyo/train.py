@@ -22,7 +22,7 @@ from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )
-from torch_brain.taxonomy import decoder_registry
+from brainsets.taxonomy import decoder_registry
 from torch_brain.transforms import Compose
 from torch_brain.utils import seed_everything, train_wrapper
 from torch_brain.models import POYOPlusTokenizer

@@ -319,6 +319,17 @@ class Dataset(torch.utils.data.Dataset):
                 )
         return interval_dict
 
+    def get_unit_ids(self):
+        r"""Returns all unit ids in the dataset."""
+        unit_ids = []
+        for session_id in self.session_dict.keys():
+            unit_ids.extend(self._data_objects[session_id].unit_ids)
+        return unit_ids
+
+    def get_session_ids(self):
+        r"""Returns all session ids in the dataset."""
+        return list(self.session_dict.keys())
+
     def disable_data_leakage_check(self):
         r"""Disables the data leakage check.
 
