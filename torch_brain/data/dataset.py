@@ -323,7 +323,7 @@ class Dataset(torch.utils.data.Dataset):
         r"""Returns all unit ids in the dataset."""
         unit_ids = []
         for session_id in self.session_dict.keys():
-            unit_ids.extend(self._data_objects[session_id].unit_ids)
+            unit_ids.extend(self._data_objects[session_id].units.id)
         return unit_ids
 
     def get_session_ids(self):
