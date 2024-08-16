@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import copy
 
+import numpy as np
 import h5py
 import torch
 from temporaldata import Data, Interval
@@ -246,6 +247,10 @@ class Dataset(torch.utils.data.Dataset):
         # note there should be no issues as long as the self._data_objects stay lazy
         sample = data.slice(start, end)
 
+        sample.units.id = np.core.defchararray.add(
+            f"{sample.brainset}/{sample.session}/", sample.units.id
+        )
+
         if self._check_for_data_leakage_flag:
             sample._check_for_data_leakage(self.split)
 
@@ -275,6 +280,10 @@ class Dataset(torch.utils.data.Dataset):
                 data._check_for_data_leakage(self.split)
         else:
             data = copy.deepcopy(data)
+
+        data.units.id = np.core.defchararray.add(
+            f"{data.brainset}/{data.session}/", data.units.id
+        )
         return data
 
     def get_sampling_intervals(self):
@@ -321,10 +330,16 @@ class Dataset(torch.utils.data.Dataset):
 
     def get_unit_ids(self):
         r"""Returns all unit ids in the dataset."""
-        unit_ids = []
+        unit_ids_list = []
         for session_id in self.session_dict.keys():
-            unit_ids.extend(self._data_objects[session_id].units.id)
-        return unit_ids
+            data = self._data_objects[session_id]
+            unit_ids = data.units.id
+            unit_ids = np.core.defchararray.add(
+                f"{data.brainset}/{data.session}/",
+                unit_ids,
+            )
+            unit_ids_list.extend(unit_ids)
+        return unit_ids_list
 
     def get_session_ids(self):
         r"""Returns all session ids in the dataset."""
