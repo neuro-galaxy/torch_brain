@@ -216,7 +216,7 @@ class CustomValidator(Callback):
             disable=(trainer.local_rank != 0),
         ):
             for taskname in session_gt_output[session_id]:
-                decoders = self.loader.dataset.session_info_dict[session_id]["config"][
+                decoders = self.loader.dataset.session_dict[session_id]["config"][
                     "multitask_readout"
                 ]
 
