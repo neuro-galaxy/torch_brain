@@ -248,7 +248,7 @@ class Dataset(torch.utils.data.Dataset):
         sample = data.slice(start, end)
 
         sample.units.id = np.core.defchararray.add(
-            f"{sample.brainset}/{sample.session}/", sample.units.id
+            f"{sample.brainset}/{sample.session}/", sample.units.id.astype(str)
         )
 
         if self._check_for_data_leakage_flag:
@@ -282,7 +282,7 @@ class Dataset(torch.utils.data.Dataset):
             data = copy.deepcopy(data)
 
         data.units.id = np.core.defchararray.add(
-            f"{data.brainset}/{data.session}/", data.units.id
+            f"{data.brainset}/{data.session}/", data.units.id.astype(str)
         )
         return data
 
@@ -336,7 +336,7 @@ class Dataset(torch.utils.data.Dataset):
             unit_ids = data.units.id
             unit_ids = np.core.defchararray.add(
                 f"{data.brainset}/{data.session}/",
-                unit_ids,
+                unit_ids.astype(str),
             )
             unit_ids_list.extend(unit_ids)
         return unit_ids_list
