@@ -2900,7 +2900,7 @@ class Data(object):
             grp = file.create_group("domain")
             self._domain.to_hdf5(grp)
 
-        file.attrs["object"] = self.__class__.__name__
+        file.attrs["object"] = "Data"
         file.attrs["absolute_start"] = self._absolute_start
 
     @classmethod
