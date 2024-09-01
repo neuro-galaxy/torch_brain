@@ -11,7 +11,7 @@ setup(
     packages=find_packages() + find_namespace_packages(include=["hydra_plugins.*"]),
     include_package_data=True,
     install_requires=[
-        "temporaldata @ git+https://github.com/neuro-galaxy/temporaldata@mehdi/fixes#egg=temporaldata",
+        "temporaldata @ git+https://github.com/neuro-galaxy/temporaldata@main#egg=temporaldata",
         "brainsets @ git+https://github.com/neuro-galaxy/brainsets@main#egg=brainsets",
         "torch==2.2.0",
         "einops~=0.6.0",
