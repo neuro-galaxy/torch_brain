@@ -554,13 +554,15 @@ class IrregularTimeSeries(ArrayDict):
         self,
         timestamps: np.ndarray,
         *,
-        timekeys: List[str] = ["timestamps"],
+        timekeys: List[str] = None,
         domain: Union[Interval, str],
         **kwargs: Dict[str, np.ndarray],
     ):
         super().__init__(timestamps=timestamps, **kwargs)
 
         # timekeys
+        if timekeys is None:
+            timekeys = []
         if "timestamps" not in timekeys:
             timekeys.append("timestamps")
 
@@ -606,6 +608,13 @@ class IrregularTimeSeries(ArrayDict):
     def timekeys(self):
         r"""List of all time-based attributes."""
         return self._timekeys
+
+    def register_timekey(self, timekey: str):
+        r"""Register a new time-based attribute."""
+        if timekey not in self.keys:
+            raise ValueError(f"'{timekey}' cannot be found in \n {self}.")
+        if timekey not in self._timekeys:
+            self._timekeys.append(timekey)
 
     def __setattr__(self, name, value):
         super(IrregularTimeSeries, self).__setattr__(name, value)
@@ -1637,7 +1646,7 @@ class Interval(ArrayDict):
         start: Union[float, np.ndarray],
         end: Union[float, np.ndarray],
         *,
-        timekeys=["start", "end"],
+        timekeys=None,
         **kwargs,
     ):
         # we allow for scalar start and end, since it is common to have a single
@@ -1651,6 +1660,8 @@ class Interval(ArrayDict):
         super().__init__(start=start, end=end, **kwargs)
 
         # time keys
+        if timekeys is None:
+            timekeys = []
         if "start" not in timekeys:
             timekeys.append("start")
         if "end" not in timekeys:
@@ -1664,6 +1675,13 @@ class Interval(ArrayDict):
     def timekeys(self):
         r"""List of all time-based attributes."""
         return self._timekeys
+
+    def register_timekey(self, timekey: str):
+        r"""Register a new time-based attribute."""
+        if timekey not in self.keys:
+            raise ValueError(f"'{timekey}' cannot be found in \n {self}.")
+        if timekey not in self._timekeys:
+            self._timekeys.append(timekey)
 
     def __setattr__(self, name, value):
         super(Interval, self).__setattr__(name, value)
@@ -2062,7 +2080,7 @@ class Interval(ArrayDict):
         )
 
     @classmethod
-    def from_dataframe(cls, df: pd.DataFrame, unsigned_to_long: bool = True):
+    def from_dataframe(cls, df: pd.DataFrame, unsigned_to_long: bool = True, **kwargs):
         r"""Create an :obj:`Interval` object from a pandas DataFrame. The dataframe
         must have a start time and end time columns. The names of these columns need
         to be "start" and "end" (use `pd.Dataframe.rename` if needed).
@@ -2081,6 +2099,7 @@ class Interval(ArrayDict):
         return super().from_dataframe(
             df,
             unsigned_to_long=unsigned_to_long,
+            **kwargs,
         )
 
     @classmethod
