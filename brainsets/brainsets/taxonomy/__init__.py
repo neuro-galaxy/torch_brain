@@ -17,7 +17,7 @@ from .multitask_readout import (
 )
 from .drifting_gratings import Orientation_8_Classes
 from .macaque import Macaque
-from .mice import Cre_line, Depth_classes
+from .mice import Cre_line
 
 from .recording_tech import (
     RecordingTech,

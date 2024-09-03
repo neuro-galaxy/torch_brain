@@ -25,6 +25,8 @@ class RecordingTech(StringIntEnum):
     ECOG_ARRAY_ECOGS = 29
     MICRO_ECOG_ARRAY_ECOGS = 30
 
+    TWO_PHOTON_IMAGING = 40
+
 
 class Hemisphere(StringIntEnum):
     UNKNOWN = 0

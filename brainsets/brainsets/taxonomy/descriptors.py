@@ -28,8 +28,6 @@ class SubjectDescription(temporaldata.Data):
     sex: Sex = Sex.UNKNOWN
     genotype: str = "unknown"  # no idea how many there will be for now.
     cre_line: Optional[Cre_line] = None
-    target_area: Optional[Vis_areas] = None
-    depth_class: Optional[Depth_classes] = None
 
 
 @dataclass
@@ -49,3 +47,6 @@ class DeviceDescription(temporaldata.Data):
     chronic: bool = False
     start_date: Optional[datetime.datetime] = None
     end_date: Optional[datetime.datetime] = None
+    # Ophys
+    imaging_depth: Optional[float] = None  # in um
+    target_area: Optional[BrainRegion] = None

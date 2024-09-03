@@ -5,12 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
-- Add package version to `BrainsetDescription`.
+- Added package version to `BrainsetDescription`.
+- Added pipeline for allen_visual_coding_ophys_2016 ([#4](https://github.com/neuro-galaxy/brainsets/pull/4)).
+- Added split functions to split variable number of epochs in train/validation/test ([#4](https://github.com/neuro-galaxy/brainsets/pull/4)).
+- Added allen-related taxonomy. ([#4](https://github.com/neuro-galaxy/brainsets/pull/4)).
 
 ### Removed
 - Removed the dataset_builder class. Validation can be done through other means.
 
 ### Changed
+- Fixed issue in snakemake where checkpoints are global variables  ([#4](https://github.com/neuro-galaxy/brainsets/pull/4)).
 - Renamed `dandiset` to `brainset`.
 - Replaced `sortset` with `device`.
 - Updated snakemake pipeline to process one file at a time.
