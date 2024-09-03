@@ -5,7 +5,13 @@ from dateutil import parser
 import numpy as np
 import h5py
 
-from temporaldata import Data, IrregularTimeSeries, Interval, RegularTimeSeries
+from temporaldata import (
+    Data,
+    IrregularTimeSeries,
+    Interval,
+    RegularTimeSeries,
+    ArrayDict,
+)
 from torch_brain.data import Dataset
 from brainsets.taxonomy import (
     BrainsetDescription,
@@ -62,6 +68,7 @@ def dummy_data(tmp_path):
             pos_2d=np.random.normal(GABOR_POS_2D_MEAN, GABOR_POS_2D_STD, (1000, 2)),
             domain="auto",
         ),
+        units=ArrayDict(id=np.array(["unit1", "unit2", "unit3"])),
     )
 
     filename = tmp_path / dummy_data.brainset.id / f"{dummy_data.session.id}.h5"
@@ -130,14 +137,22 @@ def test_dataset_selection(dummy_data):
     ds = Dataset(
         dummy_data,
         split=None,
-        include=[{"selection": [{"brainset": "allen_neuropixels_mock", "subject": "alice"}]}],
+        include=[
+            {"selection": [{"brainset": "allen_neuropixels_mock", "subject": "alice"}]}
+        ],
     )
     assert len(ds.session_dict) == 1
 
     ds = Dataset(
         dummy_data,
         split=None,
-        include=[{"selection": [{"brainset": "allen_neuropixels_mock", "session": "20100102_1"}]}],
+        include=[
+            {
+                "selection": [
+                    {"brainset": "allen_neuropixels_mock", "session": "20100102_1"}
+                ]
+            }
+        ],
     )
     assert len(ds.session_dict) == 1
 

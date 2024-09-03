@@ -11,7 +11,7 @@ setup(
     packages=find_packages() + find_namespace_packages(include=["hydra_plugins.*"]),
     include_package_data=True,
     install_requires=[
-        "temporaldata @ git+https://github.com/neuro-galaxy/temporaldata@mehdi/fixes#egg=temporaldata",
+        "temporaldata @ git+https://github.com/neuro-galaxy/temporaldata@main#egg=temporaldata",
         "brainsets @ git+https://github.com/neuro-galaxy/brainsets@main#egg=brainsets",
         "torch==2.2.0",
         "einops~=0.6.0",
@@ -23,7 +23,7 @@ setup(
         "torch-optimizer==0.3.0",
         "tensorboard~=2.13",
         "hydra-core~=1.3.2",
-        "lightning==2.0.8",
+        "lightning==2.3.3",
         "wandb~=0.15",
         # "tabulate~=0.9",
         "torchtyping~=0.1",

@@ -1,4 +1,4 @@
-_target_: kirby.models.perceiver_rotary.PerceiverNM
+_target_: torch_brain.models.POYOPlus
 dim: 1024
 dim_head: 64
 num_latents: 128

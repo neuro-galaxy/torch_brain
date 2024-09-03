@@ -1,0 +1,39 @@
+name: Testing
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "*" ]
+
+permissions:
+  contents: read
+
+jobs:
+  testing:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.9"
+    - name: Setup virtual environment
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+    - name: Install dependencies
+      run: |
+        source venv/bin/activate
+        python -m pip install --upgrade pip 
+        pip install -e ".[dev]" 
+        pip install flake8 pytest
+    - name: Install plugin
+      run: |
+        source venv/bin/activate
+        pip install pytest-github-actions-annotate-failures
+    - name: Test with pytest
+      run: |
+        source venv/bin/activate
+        export WANDB_MODE=dryrun
+        pytest tests/

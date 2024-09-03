@@ -1,0 +1,23 @@
+name: Linting
+
+on:
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "*" ]
+
+permissions:
+  contents: read
+
+jobs:
+  linting:
+    runs-on: self-hosted
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - run: pip install black==24.2.0
+    - run: black --check .

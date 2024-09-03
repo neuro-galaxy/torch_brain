@@ -1,4 +1,4 @@
-_target_: kirby.models.POYOPlus
+_target_: torch_brain.models.POYOPlus
 dim: 128
 dim_head: 64
 num_latents: 32

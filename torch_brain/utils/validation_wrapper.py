@@ -14,7 +14,7 @@ import logging
 
 from torch_brain.data.sampler import DistributedSamplerWrapper
 from torch_brain.nn import compute_loss_or_metric
-from torch_brain.taxonomy import Decoder, OutputType, Task
+from brainsets.taxonomy import Decoder, OutputType, Task
 from rich import print as rprint
 
 
@@ -216,7 +216,7 @@ class CustomValidator(Callback):
             disable=(trainer.local_rank != 0),
         ):
             for taskname in session_gt_output[session_id]:
-                decoders = self.loader.dataset.session_info_dict[session_id]["config"][
+                decoders = self.loader.dataset.session_dict[session_id]["config"][
                     "multitask_readout"
                 ]
 

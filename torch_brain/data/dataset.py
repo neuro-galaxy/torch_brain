@@ -8,6 +8,7 @@ import copy
 import numpy as np
 
 
+import numpy as np
 import h5py
 import torch
 from temporaldata import Data, Interval
@@ -215,7 +216,7 @@ class Dataset(torch.utils.data.Dataset):
 
                 # Now we get the session-level information
                 config = selection_list.get("config", {})
-                
+
                 for session_id in session_ids:
                     full_session_id = subselection["brainset"] + "/" + session_id
 
@@ -248,6 +249,10 @@ class Dataset(torch.utils.data.Dataset):
         # note there should be no issues as long as the self._data_objects stay lazy
         sample = data.slice(start, end)
 
+        sample.units.id = np.core.defchararray.add(
+            f"{sample.brainset}/{sample.session}/", sample.units.id.astype(str)
+        )
+
         if self._check_for_data_leakage_flag:
             sample._check_for_data_leakage(self.split)
 
@@ -277,6 +282,10 @@ class Dataset(torch.utils.data.Dataset):
                 data._check_for_data_leakage(self.split)
         else:
             data = copy.deepcopy(data)
+
+        data.units.id = np.core.defchararray.add(
+            f"{data.brainset}/{data.session}/", data.units.id.astype(str)
+        )
         return data
 
     def get_sampling_intervals(self):
@@ -289,9 +298,9 @@ class Dataset(torch.utils.data.Dataset):
         interval_dict = {}
         for session_id in self.session_dict.keys():
             intervals = getattr(self._data_objects[session_id], f"{self.split}_domain")
-            sampling_intervals_modifier_code = self.session_dict[session_id]["config"].get(
-                "sampling_intervals_modifier", None
-            )
+            sampling_intervals_modifier_code = self.session_dict[session_id][
+                "config"
+            ].get("sampling_intervals_modifier", None)
             if sampling_intervals_modifier_code is None:
                 interval_dict[session_id] = list(zip(intervals.start, intervals.end))
             else:
@@ -342,6 +351,23 @@ class Dataset(torch.utils.data.Dataset):
             
         unit_ids = sorted(list(set(unit_ids)))
         return unit_ids
+
+    def get_unit_ids(self):
+        r"""Returns all unit ids in the dataset."""
+        unit_ids_list = []
+        for session_id in self.session_dict.keys():
+            data = self._data_objects[session_id]
+            unit_ids = data.units.id
+            unit_ids = np.core.defchararray.add(
+                f"{data.brainset}/{data.session}/",
+                unit_ids.astype(str),
+            )
+            unit_ids_list.extend(unit_ids)
+        return unit_ids_list
+
+    def get_session_ids(self):
+        r"""Returns all session ids in the dataset."""
+        return list(self.session_dict.keys())
 
     def disable_data_leakage_check(self):
         r"""Disables the data leakage check.

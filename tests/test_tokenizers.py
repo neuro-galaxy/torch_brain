@@ -1,6 +1,9 @@
 import numpy as np
 
-from torch_brain.utils import create_linspace_latent_tokens, create_start_end_unit_tokens
+from torch_brain.utils import (
+    create_linspace_latent_tokens,
+    create_start_end_unit_tokens,
+)
 
 
 def test_create_linspace_latent_tokens():

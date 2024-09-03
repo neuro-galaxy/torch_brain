@@ -1,12 +1,5 @@
-import pickle
-
-old_unpickler = pickle.Unpickler  # Unfortunate hack to fix a bug in Lightning.
-# https://github.com/Lightning-AI/lightning/issues/18152
-# Will likely be fixed by 2.1.0.
 import lightning
 import logging
-
-pickle.Unpickler = old_unpickler
 
 from collections import OrderedDict
 import copy
@@ -25,8 +18,11 @@ from torch.utils.data import DataLoader
 from torch_optimizer import Lamb
 
 from torch_brain.data import Dataset, collate
-from torch_brain.data.sampler import RandomFixedWindowSampler, SequentialFixedWindowSampler
-from torch_brain.taxonomy import decoder_registry
+from torch_brain.data.sampler import (
+    RandomFixedWindowSampler,
+    SequentialFixedWindowSampler,
+)
+from brainsets.taxonomy import decoder_registry
 from torch_brain.transforms import Compose
 from torch_brain.utils import seed_everything, train_wrapper
 from torch_brain.models import POYOPlusTokenizer
@@ -91,8 +87,8 @@ def run_training(cfg: DictConfig):
 
     if not cfg.finetune:
         # Register units and sessions
-        model.unit_emb.initialize_vocab(train_dataset.unit_ids)
-        model.session_emb.initialize_vocab(train_dataset.session_ids)
+        model.unit_emb.initialize_vocab(train_dataset.get_unit_ids())
+        model.session_emb.initialize_vocab(train_dataset.get_session_ids())
     else:
         assert (
             cfg.ckpt_path is not None
@@ -115,8 +111,8 @@ def run_training(cfg: DictConfig):
             log.info(f"Froze perceiver")
 
         # Register new units and sessions, and delete old ones
-        model.unit_emb.extend_vocab(train_dataset.unit_ids, exist_ok=False)
-        model.unit_emb.subset_vocab(train_dataset.unit_ids)
+        model.unit_emb.extend_vocab(train_dataset.get_unit_ids(), exist_ok=False)
+        model.unit_emb.subset_vocab(train_dataset.get_unit_ids())
 
         model.session_emb.extend_vocab(train_dataset.session_ids, exist_ok=False)
         model.session_emb.subset_vocab(train_dataset.session_ids)
@@ -142,8 +138,8 @@ def run_training(cfg: DictConfig):
     )
 
     log.info(f"Training on {len(train_sampler)} samples")
-    log.info(f"Training on {len(train_dataset.unit_ids)} units")
-    log.info(f"Training on {len(train_dataset.session_ids)} sessions")
+    log.info(f"Training on {len(train_dataset.get_unit_ids())} units")
+    log.info(f"Training on {len(train_dataset.get_session_ids())} sessions")
 
     val_sampler = SequentialFixedWindowSampler(
         interval_dict=val_dataset.get_sampling_intervals(),
