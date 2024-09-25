@@ -27,7 +27,7 @@ config["UNCOMPRESSED_DIR"] = expand_path(f"{config['uncompressed_dir']}/uncompre
 module allen_visual_coding_ophys_2016_module:
     snakefile: "pipelines/allen_visual_coding_ophys_2016/Snakefile"
     config: config
-# use rule * from allen_visual_coding_ophys_2016_module as allen_visual_coding_ophys_2016_*
+use rule * from allen_visual_coding_ophys_2016_module as allen_visual_coding_ophys_2016_*
 use rule all from allen_visual_coding_ophys_2016_module as allen_visual_coding_ophys_2016
 
 # module allen_natural_movie_calcium_module:

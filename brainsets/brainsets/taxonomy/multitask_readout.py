@@ -30,20 +30,27 @@ class Decoder(StringIntEnum):
     CURSORVELOCITY2D = 9
 
     # Allen data
-    DRIFTING_GRATINGS = 13
-    DRIFTING_GRATINGS_TEMP_FREQ = 23
-    STATIC_GRATINGS = 17
+    DRIFTING_GRATINGS_ORIENTATION = 13
+    DRIFTING_GRATINGS_TEMPORAL_FREQUENCY = 23
+    STATIC_GRATINGS_ORIENTATION = 17
+    STATIC_GRATINGS_SPATIAL_FREQUENCY = 18
+    STATIC_GRATINGS_PHASE = 19
+
     RUNNING_SPEED = 24
     PUPIL_SIZE_2D = 25
     GAZE_POS_2D = 26
     GABOR_ORIENTATION = 21  #
     GABOR_POS_2D = 27
     NATURAL_SCENES = 28
-    NATURAL_MOVIE_FRAME = 30
+    NATURAL_MOVIE_ONE_FRAME = 30
+    NATURAL_MOVIE_TWO_FRAME = 31
+    NATURAL_MOVIE_THREE_FRAME = 32
+    LOCALLY_SPARSE_NOISE_FRAME = 33
 
     # Openscope calcium
     UNEXPECTED_OR_NOT = 20  #
     PUPIL_MOVEMENT_REGRESSION = 22
+    PUPIL_LOCATION = 34
 
     # speech
     SPEAKING_CVSYLLABLE = 14
@@ -110,40 +117,85 @@ decoder_registry = {
     #     value_key="stimuli_segments.letters",
     #     loss_fn="bce",
     # ),
-    str(Decoder.DRIFTING_GRATINGS): DecoderSpec(
+    str(Decoder.DRIFTING_GRATINGS_ORIENTATION): DecoderSpec(
         dim=8,
         target_dim=1,
         target_dtype="long",
         type=OutputType.MULTINOMIAL,
         timestamp_key="drifting_gratings.timestamps",
-        value_key="drifting_gratings.orientation",
+        value_key="drifting_gratings.orientation_id",
         loss_fn="bce",
     ),
-    str(Decoder.DRIFTING_GRATINGS_TEMP_FREQ): DecoderSpec(
+    str(Decoder.DRIFTING_GRATINGS_TEMPORAL_FREQUENCY): DecoderSpec(
         dim=5,  # [1,2,4,8,15]
         target_dim=1,
         target_dtype="long",
         type=OutputType.MULTINOMIAL,
         timestamp_key="drifting_gratings.timestamps",
-        value_key="drifting_gratings.temp_freq",
+        value_key="drifting_gratings.temporal_frequency_id",
         loss_fn="bce",
     ),
-    str(Decoder.NATURAL_MOVIE_FRAME): DecoderSpec(  # For direct Cebra comparasion
+    str(Decoder.NATURAL_MOVIE_ONE_FRAME): DecoderSpec(
         dim=900,
         target_dim=1,
         target_dtype="long",
         type=OutputType.MULTINOMIAL,
         timestamp_key="natural_movie_one.timestamps",
-        value_key="natural_movie_one.frame_number",
+        value_key="natural_movie_one.frame",
         loss_fn="bce",
     ),
-    str(Decoder.STATIC_GRATINGS): DecoderSpec(
+    str(Decoder.NATURAL_MOVIE_TWO_FRAME): DecoderSpec(
+        dim=900,
+        target_dim=1,
+        target_dtype="long",
+        type=OutputType.MULTINOMIAL,
+        timestamp_key="natural_movie_two.timestamps",
+        value_key="natural_movie_two.frame",
+        loss_fn="bce",
+    ),
+    str(Decoder.NATURAL_MOVIE_THREE_FRAME): DecoderSpec(
+        dim=3600,
+        target_dim=1,
+        target_dtype="long",
+        type=OutputType.MULTINOMIAL,
+        timestamp_key="natural_movie_three.timestamps",
+        value_key="natural_movie_three.frame",
+        loss_fn="bce",
+    ),
+    str(Decoder.LOCALLY_SPARSE_NOISE_FRAME): DecoderSpec(
+        dim=8000,
+        target_dim=1,
+        target_dtype="long",
+        type=OutputType.MULTINOMIAL,
+        timestamp_key="locally_sparse_noise.timestamps",
+        value_key="locally_sparse_noise.frame",
+        loss_fn="bce",
+    ),
+    str(Decoder.STATIC_GRATINGS_ORIENTATION): DecoderSpec(
         dim=6,
         target_dim=1,
         target_dtype="long",
         type=OutputType.MULTINOMIAL,
         timestamp_key="static_gratings.timestamps",
-        value_key="static_gratings.orientation",
+        value_key="static_gratings.orientation_id",
+        loss_fn="bce",
+    ),
+    str(Decoder.STATIC_GRATINGS_SPATIAL_FREQUENCY): DecoderSpec(
+        dim=5,
+        target_dim=1,
+        target_dtype="long",
+        type=OutputType.MULTINOMIAL,
+        timestamp_key="static_gratings.timestamps",
+        value_key="static_gratings.spatial_frequency_id",
+        loss_fn="bce",
+    ),
+    str(Decoder.STATIC_GRATINGS_PHASE): DecoderSpec(
+        dim=5,
+        target_dim=1,
+        target_dtype="long",
+        type=OutputType.MULTINOMIAL,
+        timestamp_key="static_gratings.timestamps",
+        value_key="static_gratings.phase_id",
         loss_fn="bce",
     ),
     # str(Decoder.SPEAKING_CVSYLLABLE): DecoderSpec(
@@ -185,8 +237,8 @@ decoder_registry = {
         dim=1,
         target_dim=1,
         type=OutputType.CONTINUOUS,
-        timestamp_key="running_speed.timestamps",
-        value_key="running_speed.running_speed",
+        timestamp_key="running.timestamps",
+        value_key="running.running_speed",
         loss_fn="mse",
     ),
     str(Decoder.GAZE_POS_2D): DecoderSpec(
@@ -195,6 +247,14 @@ decoder_registry = {
         type=OutputType.CONTINUOUS,
         timestamp_key="gaze.timestamps",
         value_key="gaze.pos_2d",
+        loss_fn="mse",
+    ),
+    str(Decoder.PUPIL_LOCATION): DecoderSpec(
+        dim=2,
+        target_dim=2,
+        type=OutputType.CONTINUOUS,
+        timestamp_key="pupil.timestamps",
+        value_key="pupil.location",
         loss_fn="mse",
     ),
     str(Decoder.PUPIL_SIZE_2D): DecoderSpec(
