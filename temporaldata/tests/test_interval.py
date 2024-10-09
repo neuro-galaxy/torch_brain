@@ -333,3 +333,54 @@ def test_dilate():
     assert np.allclose(result.start, expected.start) and np.allclose(
         result.end, expected.end
     )
+
+
+def test_is_dijoint_is_sorted():
+    # Test sorted and disjoint interval
+    sorted_disjoint = Interval(np.array([1.0, 3.0, 5.0]), np.array([2.0, 4.0, 6.0]))
+    assert sorted_disjoint.is_disjoint() == True
+    assert sorted_disjoint.is_sorted() == True
+
+    # Test not sorted but disjoint interval
+    unsorted_disjoint = Interval(np.array([3.0, 1.0, 5.0]), np.array([4.0, 2.0, 6.0]))
+    assert unsorted_disjoint.is_disjoint() == True
+    assert unsorted_disjoint.is_sorted() == False
+
+    # Test not sorted and not disjoint interval
+    unsorted_overlapping = Interval(
+        np.array([3.0, 1.0, 2.0]), np.array([5.0, 4.0, 6.0])
+    )
+    assert unsorted_overlapping.is_disjoint() == False
+    assert unsorted_overlapping.is_sorted() == False
+
+    # Test sorted but not disjoint interval
+    sorted_overlapping = Interval(np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0]))
+    assert sorted_overlapping.is_disjoint() == False
+    assert sorted_overlapping.is_sorted() == True
+
+    # Test edge case: interval of one point
+    point_interval = Interval(np.array([1.0, 1.0, 3.0]), np.array([1.0, 3.0, 3.0]))
+    assert point_interval.is_disjoint() == True
+    assert point_interval.is_sorted() == True
+
+    # Test edge case: mixed point and non-point intervals
+    mixed_interval = Interval(
+        np.array([1.0, 2.0, 3.0, 4.0]), np.array([1.0, 2.5, 3.0, 5.0])
+    )
+    assert mixed_interval.is_disjoint() == True
+    assert mixed_interval.is_sorted() == True
+
+    # Test edge case: adjacent intervals
+    adjacent_interval = Interval(np.array([1.0, 2.0, 3.0]), np.array([2.0, 3.0, 4.0]))
+    assert adjacent_interval.is_disjoint() == True
+    assert adjacent_interval.is_sorted() == True
+
+    # Test interval object with one interval
+    single_interval = Interval(np.array([1.0]), np.array([2.0]))
+    assert single_interval.is_disjoint() == True
+    assert single_interval.is_sorted() == True
+
+    # Test empty interval
+    empty_interval = Interval(np.array([]), np.array([]))
+    assert empty_interval.is_disjoint() == True
+    assert empty_interval.is_sorted() == True

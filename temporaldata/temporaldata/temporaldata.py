@@ -1701,7 +1701,15 @@ class Interval(ArrayDict):
         # check if we already know that the sequence is sorted
         # if lazy loading, we'll have to skip this check
         if not self.is_sorted():
-            return copy.deepcopy(self).sort().is_disjoint()
+            # make a copy and sorted it
+            tmp_copy = copy.deepcopy(self)
+            # attempt to sort it, this will fail if interval is not disjoint
+            try:
+                tmp_copy.sort()
+            except ValueError:
+                # ValueError is returned if intervals are not disjoint
+                return False
+            return tmp_copy.is_disjoint()
         return np.all(self.end[:-1] <= self.start[1:])
 
     def is_sorted(self):
@@ -1730,6 +1738,7 @@ class Interval(ArrayDict):
 
         if not self.is_disjoint():
             raise ValueError("Intervals must be disjoint.")
+        return self
 
     def slice(self, start: float, end: float, reset_origin: bool = True):
         r"""Returns a new :obj:`Interval` object that contains the data between the
