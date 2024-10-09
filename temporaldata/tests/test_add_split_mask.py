@@ -51,3 +51,20 @@ def test_regulartimeseries():
     assert data.train_mask.sum() == 60
     assert data.valid_mask.sum() == 18
     assert data.test_mask.sum() == 20
+
+
+def test_set_split_domain():
+    data = Data(
+        lfp=RegularTimeSeries(
+            lfp=np.random.random((100, 48)), sampling_rate=10, domain="auto"
+        ),
+        domain="auto",
+    )
+
+    data.set_train_domain(Interval(0.0, 6.0))
+    data.set_valid_domain(Interval(6.0, 8.0))
+    data.set_test_domain(Interval(8.0, 10.0))
+
+    assert data.lfp.train_mask.sum() == 60
+    assert data.lfp.valid_mask.sum() == 20
+    assert data.lfp.test_mask.sum() == 20

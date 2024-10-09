@@ -2983,6 +2983,21 @@ class Data(object):
 
         return obj
 
+    def set_train_domain(self, interval: Interval):
+        """Set the train domain for all attributes."""
+        self.train_domain = interval
+        self.add_split_mask("train", interval)
+
+    def set_valid_domain(self, interval: Interval):
+        """Set the valid domain for all attributes."""
+        self.valid_domain = interval
+        self.add_split_mask("valid", interval)
+
+    def set_test_domain(self, interval: Interval):
+        """Set the test domain for all attributes."""
+        self.test_domain = interval
+        self.add_split_mask("test", interval)
+
     def add_split_mask(
         self,
         name: str,
