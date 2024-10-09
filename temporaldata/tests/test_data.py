@@ -41,7 +41,7 @@ def test_array_dict():
         waveform_mean=np.random.random((2, 48)),
     )
 
-    assert data.keys == ["unit_id", "brain_region", "waveform_mean"]
+    assert data.keys() == ["unit_id", "brain_region", "waveform_mean"]
     assert len(data) == 2
     assert "unit_id" in data
     assert "brain_region" in data
@@ -114,7 +114,7 @@ def test_lazy_array_dict(test_filepath):
         assert len(data) == 4
 
         # make sure that nothing is loaded yet
-        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys)
+        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys())
 
         # try loading one attribute
         unit_id = data.unit_id
@@ -128,7 +128,7 @@ def test_lazy_array_dict(test_filepath):
         assert isinstance(data.__dict__["unit_id"], np.ndarray)
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
-            for key in data.keys
+            for key in data.keys()
             if key != "unit_id"
         )
 
@@ -155,7 +155,7 @@ def test_lazy_array_dict(test_filepath):
         assert isinstance(data.__dict__["brain_region"], np.ndarray)
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
-            for key in data.keys
+            for key in data.keys()
             if key != "brain_region"
         )
 
@@ -243,7 +243,7 @@ def test_irregular_timeseries():
         domain="auto",
     )
 
-    assert data.keys == ["timestamps", "unit_index", "waveforms"]
+    assert data.keys() == ["timestamps", "unit_index", "waveforms"]
     assert len(data) == 6
 
     assert np.allclose(data.domain.start, np.array([0.1]))
@@ -449,7 +449,7 @@ def test_lazy_irregular_timeseries(test_filepath):
         assert len(data) == 6
 
         # make sure that nothing is loaded yet
-        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys)
+        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys())
 
         # try loading one attribute
         unit_index = data.unit_index
@@ -461,7 +461,7 @@ def test_lazy_irregular_timeseries(test_filepath):
         assert isinstance(data.__dict__["unit_index"], np.ndarray)
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
-            for key in data.keys
+            for key in data.keys()
             if key != "unit_index"
         )
 
@@ -488,7 +488,7 @@ def test_lazy_irregular_timeseries(test_filepath):
         assert isinstance(data.__dict__["unit_index"], np.ndarray)
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
-            for key in data.keys
+            for key in data.keys()
             if key != "unit_index"
         )
 
@@ -532,7 +532,7 @@ def test_lazy_irregular_timeseries(test_filepath):
 
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
-            for key in data.keys
+            for key in data.keys()
             if key != "timestamps"
         )
 
@@ -627,7 +627,7 @@ def test_lazy_regular_timeseries(test_filepath):
         assert data.sampling_rate == 250.0
 
         # make sure that nothing is loaded yet
-        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys)
+        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys())
 
         # make sure that the attribute is loaded
         assert isinstance(data.gamma, np.ndarray)
@@ -637,7 +637,7 @@ def test_lazy_regular_timeseries(test_filepath):
         assert isinstance(data.__dict__["gamma"], np.ndarray)
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
-            for key in data.keys
+            for key in data.keys()
             if key != "gamma"
         )
 
@@ -657,7 +657,7 @@ def test_lazy_regular_timeseries(test_filepath):
 
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
-            for key in data.keys
+            for key in data.keys()
             if key != "gamma"
         )
 
@@ -727,7 +727,7 @@ def test_interval():
         timekeys=["start", "end", "go_cue_time"],
     )
 
-    assert data.keys == ["start", "end", "go_cue_time", "drifting_gratings_dir"]
+    assert data.keys() == ["start", "end", "go_cue_time", "drifting_gratings_dir"]
     assert len(data) == 3
 
     assert data.is_sorted()
@@ -833,7 +833,7 @@ def test_lazy_interval(test_filepath):
         assert len(data) == 9
 
         # make sure that nothing is loaded yet
-        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys)
+        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys())
 
         # try loading one attribute
         start = data.start
@@ -845,7 +845,7 @@ def test_lazy_interval(test_filepath):
         assert isinstance(data.__dict__["start"], np.ndarray)
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
-            for key in data.keys
+            for key in data.keys()
             if key != "start"
         )
 
@@ -872,7 +872,7 @@ def test_lazy_interval(test_filepath):
         assert isinstance(data.__dict__["drifting_gratings_dir"], np.ndarray)
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
-            for key in data.keys
+            for key in data.keys()
             if key != "drifting_gratings_dir"
         )
 
@@ -916,7 +916,7 @@ def test_lazy_interval(test_filepath):
 
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
-            for key in data.keys
+            for key in data.keys()
             if key not in ["start", "end"]
         )
 
@@ -972,7 +972,7 @@ def test_data():
         drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
     )
 
-    assert data.keys == [
+    assert data.keys() == [
         "session_id",
         "spikes",
         "lfp",

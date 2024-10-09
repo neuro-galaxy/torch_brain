@@ -41,7 +41,7 @@ class ArrayDict(object):
         len(units)
         >>> 2
 
-        units.keys
+        units.keys()
         >>> ['unit_id', 'brain_region', 'waveform_mean']
 
         'waveform_mean' in units
@@ -51,25 +51,24 @@ class ArrayDict(object):
     .. note::
         Private attributes (starting with an underscore) do not need to be arrays,
         or have the same first dimension as the other attributes. They will not be
-        listed in :obj:`keys`.
+        listed in :method:`keys()`.
     """
 
     def __init__(self, **kwargs: Dict[str, np.ndarray]):
         for key, value in kwargs.items():
             self.__setattr__(key, value)
 
-    @property
     def keys(self) -> List[str]:
-        r"""List of all array attribute names."""
+        r"""Returns a list of all array attribute names."""
         return [x for x in self.__dict__.keys() if not x.startswith("_")]
 
     def _maybe_first_dim(self):
         # If self has at least one attribute, returns the first dimension of
         # the first attribute. Otherwise, returns :obj:`None`.
-        if len(self.keys) == 0:
+        if len(self.keys()) == 0:
             return None
         else:
-            return self.__dict__[self.keys[0]].shape[0]
+            return self.__dict__[self.keys()[0]].shape[0]
 
     def __len__(self):
         r"""Returns the first dimension shared by all attributes."""
@@ -104,14 +103,14 @@ class ArrayDict(object):
 
     def __contains__(self, key: str) -> bool:
         r"""Returns :obj:`True` if the attribute :obj:`key` is present in the data."""
-        return key in self.keys
+        return key in self.keys()
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
         hidden_keys = ["train_mask", "valid_mask", "test_mask"]
         info = [
             size_repr(k, self.__dict__[k], indent=2)
-            for k in self.keys
+            for k in self.keys()
             if k not in hidden_keys
         ]
         info = ",\n".join(info)
@@ -158,7 +157,7 @@ class ArrayDict(object):
         # kwargs are other private attributes
         # TODO automatically add private attributes
         return self.__class__(
-            **{k: getattr(self, k)[mask].copy() for k in self.keys}, **kwargs
+            **{k: getattr(self, k)[mask].copy() for k in self.keys()}, **kwargs
         )
 
     @classmethod
@@ -257,7 +256,7 @@ class ArrayDict(object):
 
         # save attributes
         _unicode_keys = []
-        for key in self.keys:
+        for key in self.keys():
             value = getattr(self, key)
 
             if value.dtype.kind == "U":  # if its a unicode string type
@@ -338,7 +337,7 @@ class ArrayDict(object):
     def materialize(self):
         r"""Materializes the data object, i.e., loads into memory all of the data that
         is still referenced in the HDF5 file."""
-        for key in self.keys:
+        for key in self.keys():
             # simply access all attributes to trigger the lazy loading
             getattr(self, key)
 
@@ -358,10 +357,10 @@ class LazyArrayDict(ArrayDict):
     _unicode_keys = []
 
     def _maybe_first_dim(self):
-        if len(self.keys) == 0:
+        if len(self.keys()) == 0:
             return None
         else:
-            for key in self.keys:
+            for key in self.keys():
                 value = self.__dict__[key]
                 # check if an array is already loaded, return its first dimension
                 if isinstance(value, np.ndarray):
@@ -372,19 +371,19 @@ class LazyArrayDict(ArrayDict):
                 return self._lazy_ops["mask"].sum()
 
             # otherwise nothing was loaded, return the first dim of the h5py dataset
-            return self.__dict__[self.keys[0]].shape[0]
+            return self.__dict__[self.keys()[0]].shape[0]
 
     def load(self):
         r"""Loads all the data from the HDF5 file into memory."""
         # simply access all attributes to trigger the lazy loading
-        for key in self.keys:
+        for key in self.keys():
             getattr(self, key)
 
     def __getattribute__(self, name):
         if not name in ["__dict__", "keys"]:
             # intercept attribute calls. this is where data that is not loaded is loaded
             # and when any lazy operations are applied
-            if name in self.keys:
+            if name in self.keys():
                 out = self.__dict__[name]
 
                 if isinstance(out, h5py.Dataset):
@@ -403,7 +402,7 @@ class LazyArrayDict(ArrayDict):
 
                 # if all attributes are loaded, we can remove the lazy flag
                 all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys
+                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
                 )
                 if all_loaded:
                     self.__class__ = ArrayDict
@@ -431,7 +430,7 @@ class LazyArrayDict(ArrayDict):
         out._lazy_ops = {}
 
         # array attributes
-        for key in self.keys:
+        for key in self.keys():
             value = self.__dict__[key]
             if isinstance(value, h5py.Dataset):
                 # the mask will be applied when the getattr is called for this key
@@ -526,7 +525,7 @@ class IrregularTimeSeries(ArrayDict):
         spikes.domain.start, spikes.domain.end
         >>> (array([0.1]), array([0.6]))
 
-        spikes.keys
+        spikes.keys()
         >>> ['unit_index', 'timestamps', 'waveforms']
 
         spikes.is_sorted()
@@ -567,7 +566,7 @@ class IrregularTimeSeries(ArrayDict):
             timekeys.append("timestamps")
 
         for key in timekeys:
-            assert key in self.keys, f"Time attribute {key} does not exist."
+            assert key in self.keys(), f"Time attribute {key} does not exist."
 
         self._timekeys = timekeys
 
@@ -604,14 +603,13 @@ class IrregularTimeSeries(ArrayDict):
             raise ValueError(f"domain must be an Interval object, got {type(value)}.")
         self._domain = value
 
-    @property
     def timekeys(self):
-        r"""List of all time-based attributes."""
+        r"""Returns a list of all time-based attributes."""
         return self._timekeys
 
     def register_timekey(self, timekey: str):
         r"""Register a new time-based attribute."""
-        if timekey not in self.keys:
+        if timekey not in self.keys():
             raise ValueError(f"'{timekey}' cannot be found in \n {self}.")
         if timekey not in self._timekeys:
             self._timekeys.append(timekey)
@@ -656,7 +654,7 @@ class IrregularTimeSeries(ArrayDict):
         This method is applied in place."""
         if not self.is_sorted():
             sorted_indices = np.argsort(self.timestamps)
-            for key in self.keys:
+            for key in self.keys():
                 self.__dict__[key] = self.__dict__[key][sorted_indices]
         self._sorted = True
 
@@ -695,7 +693,7 @@ class IrregularTimeSeries(ArrayDict):
             out._domain.end = out._domain.end - start
 
         # array attributes
-        for key in self.keys:
+        for key in self.keys():
             out.__dict__[key] = self.__dict__[key][idx_l:idx_r].copy()
 
         if reset_origin:
@@ -817,7 +815,7 @@ class IrregularTimeSeries(ArrayDict):
             self.sort()
 
         _unicode_keys = []
-        for key in self.keys:
+        for key in self.keys():
             value = getattr(self, key)
 
             if value.dtype.kind == "U":  # if its a unicode string type
@@ -919,7 +917,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
     _unicode_keys = []
 
     def _maybe_first_dim(self):
-        if len(self.keys) == 0:
+        if len(self.keys()) == 0:
             return None
         else:
             # if slice is waiting to be resolved, we need to resolve it now to get the
@@ -929,7 +927,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
 
             # if slicing already took place, than some attribute would have already
             # been loaded. look for any numpy array
-            for key in self.keys:
+            for key in self.keys():
                 value = self.__dict__[key]
                 if isinstance(value, np.ndarray):
                     return value.shape[0]
@@ -939,18 +937,18 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                 return self._lazy_ops["mask"].sum()
 
             # otherwise nothing was loaded, return the first dim of the h5py dataset
-            return self.__dict__[self.keys[0]].shape[0]
+            return self.__dict__[self.keys()[0]].shape[0]
 
     def load(self):
         r"""Loads all the data from the HDF5 file into memory."""
         # simply access all attributes to trigger the lazy loading
-        for key in self.keys:
+        for key in self.keys():
             getattr(self, key)
 
     def __getattribute__(self, name):
         if not name in ["__dict__", "keys"]:
             # intercept attribute calls
-            if name in self.keys:
+            if name in self.keys():
                 # out could either be a numpy array or a reference to a h5py dataset
                 # if is not loaded, now is the time to load it and apply any outstanding
                 # slicing or masking.
@@ -994,7 +992,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
 
                 # if all attributes are loaded, we can remove the lazy flag
                 all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys
+                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
                 )
                 if all_loaded:
                     # simply change classes
@@ -1025,7 +1023,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         out._domain = self._domain
         out._lazy_ops = {}
 
-        for key in self.keys:
+        for key in self.keys():
             value = self.__dict__[key]
             if isinstance(value, h5py.Dataset):
                 out.__dict__[key] = value
@@ -1142,7 +1140,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                     self._lazy_ops["slice"][3] + origin_translation,
                 )
 
-        for key in self.keys:
+        for key in self.keys():
             if key != "timestamps":
                 value = self.__dict__[key]
                 if isinstance(value, h5py.Dataset):
@@ -1279,9 +1277,8 @@ class RegularTimeSeries(ArrayDict):
         r"""Returns the domain of the time series."""
         return self._domain
 
-    @property
     def timekeys(self):
-        r"""List of all time-based attributes."""
+        r"""Returns a list of all time-based attributes."""
         return self._timekeys
 
     def select_by_mask(self, mask: np.ndarray):
@@ -1319,7 +1316,7 @@ class RegularTimeSeries(ArrayDict):
                 out._domain.end - start,
             )
 
-        for key in self.keys:
+        for key in self.keys():
             out.__dict__[key] = self.__dict__[key][start_id:end_id].copy()
 
         return out
@@ -1370,7 +1367,7 @@ class RegularTimeSeries(ArrayDict):
         r"""Converts the time series to an irregular time series."""
         return IrregularTimeSeries(
             timestamps=self.timestamps,
-            **{k: getattr(self, k) for k in self.keys},
+            **{k: getattr(self, k) for k in self.keys()},
             domain=self.domain,
         )
 
@@ -1402,7 +1399,7 @@ class RegularTimeSeries(ArrayDict):
                 with h5py.File("data.h5", "w") as f:
                     data.to_hdf5(f)
         """
-        for key in self.keys:
+        for key in self.keys():
             value = getattr(self, key)
             file.create_dataset(key, data=value)
 
@@ -1460,11 +1457,11 @@ class LazyRegularTimeSeries(RegularTimeSeries):
     _lazy_ops = dict()
 
     def _maybe_first_dim(self):
-        if len(self.keys) == 0:
+        if len(self.keys()) == 0:
             return None
         else:
             # todo check _lazy_ops
-            for key in self.keys:
+            for key in self.keys():
                 value = self.__dict__[key]
                 if isinstance(value, np.ndarray):
                     return value.shape[0]
@@ -1483,12 +1480,12 @@ class LazyRegularTimeSeries(RegularTimeSeries):
                 )
 
             # otherwise nothing was loaded, return the first dim of the h5py dataset
-            return self.__dict__[self.keys[0]].shape[0]
+            return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
         if not name in ["__dict__", "keys"]:
             # intercept attribute calls
-            if name in self.keys:
+            if name in self.keys():
                 out = self.__dict__[name]
 
                 if isinstance(out, h5py.Dataset):
@@ -1504,7 +1501,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
 
                 # If all attributes are loaded, we can remove the lazy flag
                 all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys
+                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
                 )
                 if all_loaded:
                     self.__class__ = RegularTimeSeries
@@ -1529,7 +1526,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         else:
             out._domain = self._domain & Interval(start=start, end=end)
 
-        for key in self.keys:
+        for key in self.keys():
             if isinstance(self.__dict__[key], h5py.Dataset):
                 out.__dict__[key] = self.__dict__[key]
             else:
@@ -1612,7 +1609,7 @@ class Interval(ArrayDict):
             drifting_gratings_dir=[3]
         )
 
-        intervals.keys
+        intervals.keys()
         >>> ['start', 'end', 'go_cue_time', 'drifting_gratings_dir']
 
         intervals.is_sorted()
@@ -1667,13 +1664,12 @@ class Interval(ArrayDict):
         if "end" not in timekeys:
             timekeys.append("end")
         for key in timekeys:
-            assert key in self.keys, f"Time attribute {key} not found in data."
+            assert key in self.keys(), f"Time attribute {key} not found in data."
 
         self._timekeys = timekeys
 
-    @property
     def timekeys(self):
-        r"""List of all time-based attributes."""
+        r"""Returns a list of all time-based attributes."""
         return self._timekeys
 
     def register_timekey(self, timekey: str):
@@ -1732,7 +1728,7 @@ class Interval(ArrayDict):
         """
         if not self.is_sorted():
             sorted_indices = np.argsort(self.start)
-            for key in self.keys:
+            for key in self.keys():
                 self.__dict__[key] = self.__dict__[key][sorted_indices]
         self._sorted = True
 
@@ -1770,7 +1766,7 @@ class Interval(ArrayDict):
         out = self.__class__.__new__(self.__class__)
         out._timekeys = self._timekeys
 
-        for key in self.keys:
+        for key in self.keys():
             out.__dict__[key] = self.__dict__[key][idx_l:idx_r].copy()
 
         if reset_origin:
@@ -2013,7 +2009,7 @@ class Interval(ArrayDict):
             name: name of the split, e.g. "train", "valid", "test".
             interval: a set of intervals defining the split domain.
         """
-        assert f"{name}_mask" not in self.keys, (
+        assert f"{name}_mask" not in self.keys(), (
             f"Attribute {name}_mask already exists. Use another mask name, or rename "
             f"the existing attribute."
         )
@@ -2157,7 +2153,7 @@ class Interval(ArrayDict):
                     interval.to_hdf5(f)
         """
         _unicode_keys = []
-        for key in self.keys:
+        for key in self.keys():
             value = getattr(self, key)
 
             if value.dtype.kind == "U":  # if its a unicode string type
@@ -2351,7 +2347,7 @@ class LazyInterval(Interval):
     def __getattribute__(self, name):
         if not name in ["__dict__", "keys"]:
             # intercept attribute calls
-            if name in self.keys:
+            if name in self.keys():
                 out = self.__dict__[name]
 
                 if isinstance(out, h5py.Dataset):
@@ -2379,7 +2375,7 @@ class LazyInterval(Interval):
 
                 # If all attributes are loaded, we can remove the lazy flag
                 all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys
+                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
                 )
                 if all_loaded:
                     self.__class__ = Interval
@@ -2405,7 +2401,7 @@ class LazyInterval(Interval):
         out._timekeys = self._timekeys
         out._lazy_ops = {}
 
-        for key in self.keys:
+        for key in self.keys():
             value = self.__dict__[key]
             if isinstance(value, h5py.Dataset):
                 out.__dict__[key] = value
@@ -2494,7 +2490,7 @@ class LazyInterval(Interval):
                     self._lazy_ops["slice"][3] + origin_translation,
                 )
 
-        for key in self.keys:
+        for key in self.keys():
             value = self.__dict__[key]
             if isinstance(value, h5py.Dataset):
                 out.__dict__[key] = value
@@ -2906,7 +2902,7 @@ class Data(object):
                 with h5py.File("data.h5", "w") as f:
                     data.to_hdf5(f)
         """
-        for key in self.keys:
+        for key in self.keys():
             value = getattr(self, key)
             if isinstance(value, (Data, ArrayDict)):
                 grp = file.create_group(key)
@@ -3006,7 +3002,7 @@ class Data(object):
         """Create split masks for all Data, Interval & IrregularTimeSeries objects
         contained within this Data object.
         """
-        for key in self.keys:
+        for key in self.keys():
             if key.endswith("_domain"):
                 # domains are not split
                 assert isinstance(getattr(self, key), Interval)
@@ -3017,7 +3013,7 @@ class Data(object):
 
     def _check_for_data_leakage(self, name):
         """Ensure that split masks are all True"""
-        for key in self.keys:
+        for key in self.keys():
             if key.endswith("_domain"):
                 continue
             if key == "trials":
@@ -3049,15 +3045,14 @@ class Data(object):
             if isinstance(obj, Data):
                 obj._check_for_data_leakage(name)
 
-    @property
     def keys(self) -> List[str]:
-        r"""List of all attribute names."""
+        r"""Returns a list of all attribute names."""
         return [x for x in self.__dict__.keys() if not x.startswith("_")]
 
     def __contains__(self, key: str) -> bool:
         r"""Returns :obj:`True` if the attribute :obj:`key` is present in the
         data."""
-        return key in self.keys
+        return key in self.keys()
 
     def get_nested_attribute(self, path: str) -> Any:
         r"""Returns the attribute specified by the path. The path can be nested using
@@ -3111,7 +3106,7 @@ class Data(object):
     def materialize(self):
         r"""Materializes the data object, i.e., loads into memory all of the data that
         is still referenced in the HDF5 file."""
-        for key in self.keys:
+        for key in self.keys():
             # simply access all attributes to trigger the lazy loading
             if isinstance(getattr(self, key), (Data, ArrayDict)):
                 getattr(self, key).materialize()

@@ -17,19 +17,19 @@ def concat(objs, sort=True):
     if obj_type == IrregularTimeSeries:
         domain = reduce(lambda x, y: x | y, [obj.domain for obj in objs])
 
-        keys = objs[0].keys
-        timekeys = objs[0].timekeys
+        keys = objs[0].keys()
+        timekeys = objs[0].timekeys()
         for obj in objs:
-            if set(obj.keys) != set(keys):
+            if set(obj.keys()) != set(keys):
                 raise ValueError(
                     "All objects must have the same keys, got {} and {}".format(
-                        keys, obj.keys
+                        keys, obj.keys()
                     )
                 )
-            if set(obj.timekeys) != set(timekeys):
+            if set(obj.timekeys()) != set(timekeys):
                 raise ValueError(
                     "All objects must have the same timekeys, got {} and {}".format(
-                        timekeys, obj.timekeys
+                        timekeys, obj.timekeys()
                     )
                 )
 
