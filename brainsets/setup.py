@@ -10,7 +10,7 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(),
     install_requires=[
-        "temporaldata @ git+https://github.com/neuro-galaxy/temporaldata@main#egg=temporaldata",
+        "temporaldata @ git+https://github.com/neuro-galaxy/temporaldata@0df3d0844a1a65324d9232c885eba53058b2f593#egg=temporaldata",
         "scipy~=1.10.1",
         "pynwb~=2.2.0",
         "setuptools~=60.2.0",

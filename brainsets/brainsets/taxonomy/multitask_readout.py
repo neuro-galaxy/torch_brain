@@ -213,7 +213,7 @@ decoder_registry = {
         target_dtype="long",
         type=OutputType.MULTINOMIAL,
         timestamp_key="natural_scenes.timestamps",
-        value_key="natural_scenes.image_ids",
+        value_key="natural_scenes.frame",
         loss_fn="bce",
     ),
     str(Decoder.GABOR_ORIENTATION): DecoderSpec(
