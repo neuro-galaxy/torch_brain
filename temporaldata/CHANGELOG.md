@@ -4,9 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Added `set_train_domain`, `set_valid_domain`, and `set_test_domain` methods to `Data` to set the domain and split masks at once. ([#21](https://github.com/neuro-galaxy/temporaldata/pull/21))
+
 ### Fixed
 - Fixed a bug where a `LazyData` object is instanitated, but the class does not exist, and `Data` should be used instead. ([#17](https://github.com/neuro-galaxy/temporaldata/pull/17))
 - Fixed a bug where `is_dijoint` calls `sort` incorrectly causing an error when evaluating unsorted intervals. ([#20](https://github.com/neuro-galaxy/temporaldata/pull/20))
+
 
 
 ## [0.1.1] - 2024-06-17
