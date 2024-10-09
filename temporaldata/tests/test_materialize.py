@@ -67,18 +67,18 @@ def test_materialize(test_filepath):
         # check that the data is lazy loaded
         assert all(
             isinstance(data.spikes.__dict__[key], h5py.Dataset)
-            for key in data.spikes.keys
+            for key in data.spikes.keys()
         )
         assert all(
-            isinstance(data.lfp.__dict__[key], h5py.Dataset) for key in data.lfp.keys
+            isinstance(data.lfp.__dict__[key], h5py.Dataset) for key in data.lfp.keys()
         )
         assert all(
             isinstance(data.units.__dict__[key], h5py.Dataset)
-            for key in data.units.keys
+            for key in data.units.keys()
         )
         assert all(
             isinstance(data.trials.__dict__[key], h5py.Dataset)
-            for key in data.trials.keys
+            for key in data.trials.keys()
         )
 
         # materialize the data
@@ -87,15 +87,16 @@ def test_materialize(test_filepath):
         # check that the data is now materialized
         assert all(
             isinstance(data.spikes.__dict__[key], np.ndarray)
-            for key in data.spikes.keys
+            for key in data.spikes.keys()
         )
         assert all(
-            isinstance(data.lfp.__dict__[key], np.ndarray) for key in data.lfp.keys
+            isinstance(data.lfp.__dict__[key], np.ndarray) for key in data.lfp.keys()
         )
         assert all(
-            isinstance(data.units.__dict__[key], np.ndarray) for key in data.units.keys
+            isinstance(data.units.__dict__[key], np.ndarray)
+            for key in data.units.keys()
         )
         assert all(
             isinstance(data.trials.__dict__[key], np.ndarray)
-            for key in data.trials.keys
+            for key in data.trials.keys()
         )

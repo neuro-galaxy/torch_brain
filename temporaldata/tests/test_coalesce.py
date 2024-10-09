@@ -15,7 +15,7 @@ def test_interval_coalesce():
     coalesced_data = data.coalesce()
     assert len(coalesced_data) == 1
     # only keep start and end
-    assert len(coalesced_data.keys) == 2
+    assert len(coalesced_data.keys()) == 2
     assert np.allclose(coalesced_data.start, np.array([0.0]))
     assert np.allclose(coalesced_data.end, np.array([3.0]))
 
