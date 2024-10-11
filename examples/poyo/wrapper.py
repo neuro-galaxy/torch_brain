@@ -74,30 +74,17 @@ class POYOTrainWrapper(L.LightningModule):
 
         # Log batch statistics
         for name in batch["output_values"].keys():
-            output_predictions = torch.cat(
-                [pred[name] for pred in output if name in pred], dim=0
-            )
-            self.log(
-                f"predictions/mean_{name}", output_predictions.mean(), prog_bar=False
-            )
-            self.log(
-                f"predictions/std_{name}", output_predictions.std(), prog_bar=False
-            )
-            self.log(
-                f"targets/mean_{name}",
-                batch["output_values"][name].to(torch.float).mean(),
-                prog_bar=False,
-            )
-            self.log(
-                f"targets/std_{name}",
-                batch["output_values"][name].to(torch.float).std(),
-                prog_bar=False,
-            )
+            preds = torch.cat([pred[name] for pred in output if name in pred])
+            self.log(f"predictions/mean_{name}", preds.mean())
+            self.log(f"predictions/std_{name}", preds.std())
 
-        if "unit_index" in batch:
-            s = batch["unit_index"].to(torch.float)
-            self.log("inputs/mean_unit_index", s.mean(), prog_bar=False)
-            self.log("inputs/std_unit_index", s.std(), prog_bar=False)
+            targets = batch["output_values"][name].float()
+            self.log(f"targets/mean_{name}", targets.mean())
+            self.log(f"targets/std_{name}", targets.std())
+
+        unit_index = batch["spike_unit_index"].float()
+        self.log("inputs/mean_unit_index", unit_index.mean())
+        self.log("inputs/std_unit_index", unit_index.std())
 
         return loss
 
