@@ -74,6 +74,8 @@ def run_training(cfg: DictConfig):
         include=OmegaConf.to_container(cfg.dataset),  # converts to native list[dicts]
         transform=transform,
     )
+    train_dataset.disable_data_leakage_check()
+
     # In Lightning, testing only happens once, at the end of training. To get the
     # intended behavior, we need to specify a validation set instead.
     val_tokenizer = copy.copy(tokenizer)
@@ -84,6 +86,7 @@ def run_training(cfg: DictConfig):
         include=OmegaConf.to_container(cfg.dataset),  # converts to native list[dicts]
         transform=val_tokenizer,
     )
+    val_dataset.disable_data_leakage_check()
 
     if not cfg.finetune:
         # Register units and sessions

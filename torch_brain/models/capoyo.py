@@ -7,7 +7,7 @@ from torchtyping import TensorType
 from einops import rearrange, repeat
 
 from brainsets.taxonomy import DecoderSpec, Decoder
-from brainsets.taxonomy.mice import Cre_line, Depth_classes
+from brainsets.taxonomy.mice import Cre_line
 from torch_brain.nn import (
     Embedding,
     InfiniteVocabEmbedding,
