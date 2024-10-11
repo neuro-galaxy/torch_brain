@@ -221,7 +221,6 @@ def run_training(cfg: DictConfig):
             save_on_train_epoch_end=True,
             every_n_epochs=cfg.eval_epochs,
         ),
-        # train_wrapper.CustomValidator(val_loader),
         LearningRateMonitor(
             logging_interval="step"
         ),  # Create a callback to log the learning rate.
@@ -233,9 +232,6 @@ def run_training(cfg: DictConfig):
     if cfg.finetune:
         if cfg.freeze_perceiver_until_epoch > 0:
             raise NotImplementedError("This functionality isn't properly implemented.")
-            # callbacks.append(
-            #    train_wrapper.UnfreezeAtEpoch(cfg.freeze_perceiver_until_epoch)
-            # )
 
     trainer = lightning.Trainer(
         logger=[tb, wandb],
