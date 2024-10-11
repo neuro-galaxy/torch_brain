@@ -200,10 +200,6 @@ def run_training(cfg: DictConfig):
         dataset_config_dict=train_dataset.get_session_config_dict(),
     )
 
-    tb = lightning.pytorch.loggers.tensorboard.TensorBoardLogger(
-        save_dir=cfg.log_dir,
-    )
-
     wandb = lightning.pytorch.loggers.WandbLogger(
         save_dir=cfg.log_dir,
         entity=cfg.get("wandb_entity", None),
@@ -216,7 +212,6 @@ def run_training(cfg: DictConfig):
     callbacks = [
         ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
         ModelCheckpoint(
-            dirpath=f"logs/lightning_logs/{wandb.version}",
             save_last=True,
             save_on_train_epoch_end=True,
             every_n_epochs=cfg.eval_epochs,
@@ -234,7 +229,7 @@ def run_training(cfg: DictConfig):
             raise NotImplementedError("This functionality isn't properly implemented.")
 
     trainer = lightning.Trainer(
-        logger=[tb, wandb],
+        logger=wandb,
         default_root_dir=cfg.log_dir,
         check_val_every_n_epoch=cfg.eval_epochs,
         max_epochs=epochs,
