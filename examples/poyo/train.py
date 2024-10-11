@@ -24,8 +24,11 @@ from torch_brain.data.sampler import (
 )
 from brainsets.taxonomy import decoder_registry
 from torch_brain.transforms import Compose
-from torch_brain.utils import seed_everything, train_wrapper
+from torch_brain.utils import seed_everything
+from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.models import POYOPlusTokenizer
+
+from wrapper import POYOTrainWrapper
 
 
 def run_training(cfg: DictConfig):
@@ -190,7 +193,7 @@ def run_training(cfg: DictConfig):
 
     # Now we create the model wrapper. It's a simple shim that contains the train and
     # test code.
-    wrapper = train_wrapper.TrainWrapper(
+    wrapper = POYOTrainWrapper(
         model=model,
         optimizer=optimizer,
         scheduler=scheduler,
@@ -217,17 +220,21 @@ def run_training(cfg: DictConfig):
             save_on_train_epoch_end=True,
             every_n_epochs=cfg.eval_epochs,
         ),
-        train_wrapper.CustomValidator(val_loader),
+        # train_wrapper.CustomValidator(val_loader),
         LearningRateMonitor(
             logging_interval="step"
         ),  # Create a callback to log the learning rate.
+        tbrain_callbacks.MemInfo(),
+        tbrain_callbacks.EpochTimeLogger(),
+        tbrain_callbacks.ModelWeightStatsLogger(),
     ]
 
     if cfg.finetune:
         if cfg.freeze_perceiver_until_epoch > 0:
-            callbacks.append(
-                train_wrapper.UnfreezeAtEpoch(cfg.freeze_perceiver_until_epoch)
-            )
+            raise NotImplementedError("This functionality isn't properly implemented.")
+            # callbacks.append(
+            #    train_wrapper.UnfreezeAtEpoch(cfg.freeze_perceiver_until_epoch)
+            # )
 
     trainer = lightning.Trainer(
         logger=[tb, wandb],
