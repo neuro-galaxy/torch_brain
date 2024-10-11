@@ -78,7 +78,7 @@ class POYOTrainWrapper(L.LightningModule):
         return loss
 
     def on_validation_epoch_start(self):
-        # Dictionary to store the prediction and other information for all
+        # Create dictionaries to store the prediction and other information for all
         # validation data samples. All dictionaries follow this heirarchy:
         # {
         #   "<session_id 1>": {
@@ -250,7 +250,16 @@ class POYOTrainWrapper(L.LightningModule):
 
         rprint(metrics_df)
 
-        return metrics_df
+        del self.timestamps
+        del self.subtask_index
+        del self.ground_truth
+        del self.pred
+
+    def on_test_epoch_start(self):
+        self.on_validation_epoch_start()
 
     def test_step(self, data, data_idx):
-        pass
+        self.validation_step()
+
+    def on_test_epoch_end(self):
+        self.on_validation_epoch_end(prefix="test")
