@@ -164,13 +164,16 @@ class POYOTrainWrapper(L.LightningModule):
             decoders = self.dataset_config_dict[session_id]["multitask_readout"]
 
             for taskname in self.val_data["ground_truth"][session_id]:
+
+                # Find the decoder and metrics for this task
                 decoder = None
                 for decoder_ in decoders:
                     if decoder_["decoder_id"] == taskname:
                         decoder = decoder_
-
                 assert decoder is not None, f"Decoder not found for {taskname}"
                 metrics_spec = decoder["metrics"]
+
+                # Compute metrics for the task
                 for metric in metrics_spec:
                     gt = self.val_data["ground_truth"][session_id][taskname]
                     pred = self.val_data["pred"][session_id][taskname]
@@ -185,7 +188,7 @@ class POYOTrainWrapper(L.LightningModule):
                         pred = pred[mask]
                         timestamps = timestamps[mask]
 
-                    # pool
+                    # Pool data wherever timestamps overlap
                     output_type = self.model.readout.decoder_specs[taskname].type
                     if output_type == OutputType.CONTINUOUS:
                         pred = avg_pool(timestamps, pred)
@@ -208,9 +211,9 @@ class POYOTrainWrapper(L.LightningModule):
                     ).item()
 
         # Add average of all metrics
-        # TODO: Clean this up so we get average-metric per task-type
         metrics[f"average_{prefix}_metric"] = np.array(list(metrics.values())).mean()
 
+        # Logging
         self.log_dict(metrics)
         logging.info(f"Logged {len(metrics)} {prefix} metrics.")
 
