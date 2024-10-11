@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 from typing import Optional
+from omegaconf import DictConfig, OmegaConf
 
 from tqdm import tqdm
 import numpy as np
@@ -10,6 +11,7 @@ import torch
 import torch.nn as nn
 import torch.distributed as dist
 import lightning as L
+from torch_optimizer import Lamb
 import wandb
 
 from brainsets.taxonomy import Decoder, OutputType, Task
@@ -26,54 +28,63 @@ log = logging.getLogger(__name__)
 class POYOTrainWrapper(L.LightningModule):
     def __init__(
         self,
+        cfg: DictConfig,
         model: nn.Module,
         dataset_config_dict: dict = None,
-        optimizer: Optional[torch.optim.Optimizer] = None,
-        scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
     ):
         super().__init__()
 
+        self.cfg = cfg
         self.model = model
-        self.optimizer = optimizer
-        self.scheduler = scheduler
-
         self.dataset_config_dict = dataset_config_dict
+        self.save_hyperparameters(OmegaConf.to_container(cfg))
 
     def configure_optimizers(self):
-        return [self.optimizer], [{"scheduler": self.scheduler, "interval": "step"}]
+        max_lr = self.cfg.base_lr * self.cfg.batch_size  # linear scaling rule
+
+        optimizer = Lamb(
+            self.model.parameters(),
+            lr=max_lr,
+            weight_decay=self.cfg.weight_decay,
+        )
+
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=max_lr,
+            epochs=self.cfg.epochs,
+            steps_per_epoch=self.cfg.steps_per_epoch,
+            pct_start=self.cfg.pct_start,
+            anneal_strategy="cos",
+            div_factor=1,
+        )
+
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",
+            },
+        }
 
     def training_step(self, batch, batch_idx):
         output, loss, taskwise_loss = self.model(**batch)
 
-        # Compute the mean and std of the output.
-        for name in batch["output_values"].keys():
-            output_predictions = torch.cat(
-                [pred[name] for pred in output if name in pred], dim=0
-            )
-            self.log(
-                f"predictions/mean_{name}", output_predictions.mean(), prog_bar=False
-            )
-            self.log(
-                f"predictions/std_{name}", output_predictions.std(), prog_bar=False
-            )
-            self.log(
-                f"targets/mean_{name}",
-                batch["output_values"][name].to(torch.float).mean(),
-                prog_bar=False,
-            )
-            self.log(
-                f"targets/std_{name}",
-                batch["output_values"][name].to(torch.float).std(),
-                prog_bar=False,
-            )
-
-        if "unit_index" in batch:
-            s = batch["unit_index"].to(torch.float)
-            self.log("inputs/mean_unit_index", s.mean(), prog_bar=False)
-            self.log("inputs/std_unit_index", s.std(), prog_bar=False)
-
         self.log("train_loss", loss, prog_bar=True)
         self.log_dict({f"losses/{k}": v for k, v in taskwise_loss.items()})
+
+        # Log batch statistics
+        for name in batch["output_values"].keys():
+            preds = torch.cat([pred[name] for pred in output if name in pred])
+            self.log(f"predictions/mean_{name}", preds.mean())
+            self.log(f"predictions/std_{name}", preds.std())
+
+            targets = batch["output_values"][name].float()
+            self.log(f"targets/mean_{name}", targets.mean())
+            self.log(f"targets/std_{name}", targets.std())
+
+        unit_index = batch["spike_unit_index"].float()
+        self.log("inputs/mean_unit_index", unit_index.mean())
+        self.log("inputs/std_unit_index", unit_index.std())
 
         return loss
 
@@ -164,13 +175,16 @@ class POYOTrainWrapper(L.LightningModule):
             decoders = self.dataset_config_dict[session_id]["multitask_readout"]
 
             for taskname in self.val_data["ground_truth"][session_id]:
+
+                # Find the decoder and metrics for this task
                 decoder = None
                 for decoder_ in decoders:
                     if decoder_["decoder_id"] == taskname:
                         decoder = decoder_
-
                 assert decoder is not None, f"Decoder not found for {taskname}"
                 metrics_spec = decoder["metrics"]
+
+                # Compute metrics for the task
                 for metric in metrics_spec:
                     gt = self.val_data["ground_truth"][session_id][taskname]
                     pred = self.val_data["pred"][session_id][taskname]
@@ -185,7 +199,7 @@ class POYOTrainWrapper(L.LightningModule):
                         pred = pred[mask]
                         timestamps = timestamps[mask]
 
-                    # pool
+                    # Pool data wherever timestamps overlap
                     output_type = self.model.readout.decoder_specs[taskname].type
                     if output_type == OutputType.CONTINUOUS:
                         pred = avg_pool(timestamps, pred)
@@ -208,9 +222,9 @@ class POYOTrainWrapper(L.LightningModule):
                     ).item()
 
         # Add average of all metrics
-        # TODO: Clean this up so we get average-metric per task-type
         metrics[f"average_{prefix}_metric"] = np.array(list(metrics.values())).mean()
 
+        # Logging
         self.log_dict(metrics)
         logging.info(f"Logged {len(metrics)} {prefix} metrics.")
 
