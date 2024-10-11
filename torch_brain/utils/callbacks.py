@@ -1,4 +1,6 @@
 import time
+import subprocess
+import logging
 import lightning as L
 
 
@@ -64,3 +66,28 @@ class ModelWeightStatsLogger(L.Callback):
                         value.grad.mean(),
                         sync_dist=True,
                     )
+
+
+class MemInfo(L.Callback):
+    r"""Lightning callback to print the memory information of the system at the
+    beginning of the training. This uses the `cat /proc/meminfo` command to get the
+    memory information.
+    """
+
+    def on_train_start(self, trainer, pl_module):
+        # Log the output of `cat /proc/meminfo` using a shell script.
+        try:
+            # Execute the command and capture its output
+            result = subprocess.run(
+                ["cat", "/proc/meminfo"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            result = result.stdout
+        except subprocess.CalledProcessError as e:
+            print(f"Command failed with error: {e}")
+            result = ""
+
+        # Log the output
+        logging.info(f"Memory info: \n{result}")
