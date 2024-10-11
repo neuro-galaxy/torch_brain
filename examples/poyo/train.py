@@ -13,7 +13,7 @@ from lightning.pytorch.callbacks import (
 )
 
 # Flags are absorbed by Hydra.
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 from torch.utils.data import DataLoader
 from torch_optimizer import Lamb
 
@@ -163,40 +163,23 @@ def run_training(cfg: DictConfig):
         num_workers=2,
     )
 
-    # No need to explicitly use DDP with the model, lightning does this for us.
-    max_lr = cfg.base_lr * cfg.batch_size
+    # Update config with dynamic data
+    with open_dict(cfg):
+        cfg.steps_per_epoch = len(train_loader)
 
     if cfg.epochs > 0 and cfg.steps == 0:
-        epochs = cfg.epochs
+        cfg.epochs = cfg.epochs
     elif cfg.steps > 0 and cfg.epochs == 0:
-        epochs = cfg.steps // len(train_loader) + 1
+        cfg.epochs = cfg.steps // cfg.steps_per_epoch + 1
+        cfg.steps = 0
+        log.info(f"Setting epochs to {cfg.epochs} using cfg.steps = {cfg.steps}")
     else:
         raise ValueError("Must specify either epochs or steps")
 
-    log.info(f"Epochs: {epochs}")
-
-    optimizer = Lamb(
-        model.parameters(),  # filter(lambda p: p.requires_grad, model.parameters()),
-        lr=max_lr,
-        weight_decay=cfg.weight_decay,
-    )
-
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optimizer,
-        max_lr=max_lr,
-        epochs=epochs,
-        steps_per_epoch=len(train_loader),
-        pct_start=cfg.pct_start,
-        anneal_strategy="cos",
-        div_factor=1,
-    )
-
-    # Now we create the model wrapper. It's a simple shim that contains the train and
-    # test code.
+    # Lightning train wrapper
     wrapper = POYOTrainWrapper(
+        cfg=cfg,
         model=model,
-        optimizer=optimizer,
-        scheduler=scheduler,
         dataset_config_dict=train_dataset.get_session_config_dict(),
     )
 
@@ -237,7 +220,7 @@ def run_training(cfg: DictConfig):
         logger=[tb, wandb],
         default_root_dir=cfg.log_dir,
         check_val_every_n_epoch=cfg.eval_epochs,
-        max_epochs=epochs,
+        max_epochs=cfg.epochs,
         log_every_n_steps=1,
         strategy=(
             "ddp_find_unused_parameters_true" if torch.cuda.is_available() else "auto"
@@ -252,22 +235,17 @@ def run_training(cfg: DictConfig):
     )
 
     log.info(
-        f"Local rank/node rank/world size/num nodes: {trainer.local_rank}/{trainer.node_rank}/{trainer.world_size}/{trainer.num_nodes}"
+        f"Local rank/node rank/world size/num nodes: "
+        f"{trainer.local_rank}/{trainer.node_rank}/{trainer.world_size}/{trainer.num_nodes}"
     )
 
-    for logger in trainer.loggers:
-        # OmegaConf.to_container converts the config object to a dictionary.
-        logger.log_hyperparams(OmegaConf.to_container(cfg))
-
-    # To resume from a checkpoint rather than training from scratch,
-    # set ckpt_path on the command line.
+    # Train
     trainer.fit(
         wrapper,
         train_loader,
         val_loader,
         ckpt_path=cfg.ckpt_path if not cfg.finetune else None,
     )
-    # [0] is a hack to force the validation callback to be called.
 
 
 # This loads the config file using Hydra, similar to Flags, but composable.

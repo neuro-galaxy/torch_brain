@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 from typing import Optional
+from omegaconf import DictConfig, OmegaConf
 
 from tqdm import tqdm
 import numpy as np
@@ -10,6 +11,7 @@ import torch
 import torch.nn as nn
 import torch.distributed as dist
 import lightning as L
+from torch_optimizer import Lamb
 import wandb
 
 from brainsets.taxonomy import Decoder, OutputType, Task
@@ -26,26 +28,51 @@ log = logging.getLogger(__name__)
 class POYOTrainWrapper(L.LightningModule):
     def __init__(
         self,
+        cfg: DictConfig,
         model: nn.Module,
         dataset_config_dict: dict = None,
-        optimizer: Optional[torch.optim.Optimizer] = None,
-        scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
     ):
         super().__init__()
 
+        self.cfg = cfg
         self.model = model
-        self.optimizer = optimizer
-        self.scheduler = scheduler
-
         self.dataset_config_dict = dataset_config_dict
+        self.save_hyperparameters(OmegaConf.to_container(cfg))
 
     def configure_optimizers(self):
-        return [self.optimizer], [{"scheduler": self.scheduler, "interval": "step"}]
+        max_lr = self.cfg.base_lr * self.cfg.batch_size  # linear scaling rule
+
+        optimizer = Lamb(
+            self.model.parameters(),
+            lr=max_lr,
+            weight_decay=self.cfg.weight_decay,
+        )
+
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=max_lr,
+            epochs=self.cfg.epochs,
+            steps_per_epoch=self.cfg.steps_per_epoch,
+            pct_start=self.cfg.pct_start,
+            anneal_strategy="cos",
+            div_factor=1,
+        )
+
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",
+            },
+        }
 
     def training_step(self, batch, batch_idx):
         output, loss, taskwise_loss = self.model(**batch)
 
-        # Compute the mean and std of the output.
+        self.log("train_loss", loss, prog_bar=True)
+        self.log_dict({f"losses/{k}": v for k, v in taskwise_loss.items()})
+
+        # Log batch statistics
         for name in batch["output_values"].keys():
             output_predictions = torch.cat(
                 [pred[name] for pred in output if name in pred], dim=0
@@ -71,9 +98,6 @@ class POYOTrainWrapper(L.LightningModule):
             s = batch["unit_index"].to(torch.float)
             self.log("inputs/mean_unit_index", s.mean(), prog_bar=False)
             self.log("inputs/std_unit_index", s.std(), prog_bar=False)
-
-        self.log("train_loss", loss, prog_bar=True)
-        self.log_dict({f"losses/{k}": v for k, v in taskwise_loss.items()})
 
         return loss
 
