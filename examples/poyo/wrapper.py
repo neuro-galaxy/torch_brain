@@ -97,67 +97,41 @@ class POYOTrainWrapper(L.LightningModule):
         absolute_starts = batch.pop("absolute_start")
         session_ids = batch.pop("session_id")
         output_subtask_index = batch.pop("output_subtask_index")
-        batch_format = None
-        if "input_mask" in batch:
-            batch_format = "padded"
-        elif "input_seqlen" in batch:
-            batch_format = "chained"
-        else:
-            raise ValueError("Invalid batch format.")
 
         # forward pass
         output, loss, taskwise_loss = self.model(**batch)
 
-        # we need to get the timestamps, the ground truth values, the task ids as well
-        # as the subtask ids. since the batch is padded and chained, this is a bit tricky
-        # tldr: this extracts the ground truth in the same format as the model output
-        batch_size = len(output)
-        # get gt_output and timestamps to be in the same format as pred_output
-        timestamps = [{} for _ in range(batch_size)]
-        subtask_index = [{} for _ in range(batch_size)]
-        gt_output = [{} for _ in range(batch_size)]
-
-        for taskname, spec in self.model.readout.decoder_specs.items():
-            # get the mask of tokens that belong to this task
-            taskid = Decoder.from_string(taskname).value
-            mask = batch["output_decoder_index"] == taskid
-
-            # there is not a single token for this task, so we skip
-            if not mask.any():
-                continue
-
-            if batch_format == "padded":
-                token_batch = torch.where(mask)[0]
-            elif batch_format == "chained":
-                token_batch = batch["output_batch_index"][mask]
-
-            batch_i, token_batch = torch.unique(token_batch, return_inverse=True)
-            for i in range(len(batch_i)):
-                timestamps[batch_i[i]][taskname] = (
-                    batch["output_timestamps"][mask][token_batch == i]
-                    + absolute_starts[batch_i[i]]
-                )
-                subtask_index[batch_i[i]][taskname] = output_subtask_index[taskname][
-                    (token_batch == i).detach().cpu()
-                ]
-                gt_output[batch_i[i]][taskname] = batch["output_values"][taskname][
-                    token_batch == i
-                ]
-
         # register all the data
-        for i in range(batch_size):
-            session_id = session_ids[i]
+        for task_index in torch.unique(batch["output_decoder_index"]):
+            mask = batch["output_decoder_index"] == task_index
+            taskname = Decoder(task_index.item()).name
 
-            for taskname, pred_value in output[i].items():
-                self.pred[session_id][taskname].append(pred_value.detach().cpu())
-                self.ground_truth[session_id][taskname].append(
-                    gt_output[i][taskname].detach().cpu()
+            # token_sample_idx is the sample index that each token in the batch belongs to
+            if "input_mask" in batch:  # => padded batch format
+                token_sample_idx = torch.where(mask)[0]
+            elif "input_seqlen" in batch:  # => chained batch format
+                token_sample_idx = batch["output_batch_index"][mask]
+            else:
+                raise ValueError("Invalid batch format.")
+
+            for i in torch.unique(token_sample_idx):
+                session_id = session_ids[i]
+
+                pred = output[i][taskname]
+                self.pred[session_id][taskname].append(pred.detach().cpu())
+
+                timestamps = (
+                    batch["output_timestamps"][mask][token_sample_idx == i]
+                    + absolute_starts[i]
                 )
-                self.timestamps[session_id][taskname].append(
-                    timestamps[i][taskname].detach().cpu()
-                )
+                self.timestamps[session_id][taskname].append(timestamps.detach().cpu())
+
+                gt = batch["output_values"][taskname][token_sample_idx == i]
+                self.ground_truth[session_id][taskname].append(gt.detach().cpu())
+
+                subtask_idx = output_subtask_index[taskname][token_sample_idx == i]
                 self.subtask_index[session_id][taskname].append(
-                    subtask_index[i][taskname].detach().cpu()
+                    subtask_idx.detach().cpu()
                 )
 
     def on_validation_epoch_end(self, prefix="val"):
@@ -181,9 +155,9 @@ class POYOTrainWrapper(L.LightningModule):
             desc=f"Compiling metrics @ Epoch {self.current_epoch}",
             disable=(self.local_rank != 0),
         ):
-            for taskname in self.ground_truth[session_id]:
-                decoders = self.dataset_config_dict[session_id]["multitask_readout"]
+            decoders = self.dataset_config_dict[session_id]["multitask_readout"]
 
+            for taskname in self.ground_truth[session_id]:
                 decoder = None
                 for decoder_ in decoders:
                     if decoder_["decoder_id"] == taskname:
@@ -217,6 +191,8 @@ class POYOTrainWrapper(L.LightningModule):
                     ]:
                         gt = gt_pool(timestamps, gt)
                         pred = avg_pool(timestamps, pred)
+                    else:
+                        raise NotImplementedError
 
                     # Resolve the appropriate loss function.
                     metrics[
