@@ -100,12 +100,12 @@ class TrainWrapper(LightningModule):
 
     def on_train_epoch_end(self):
         for tag, value in self.model.named_parameters():
-            self.log(f"weights/mean_{tag}", value.cpu().mean(), sync_dist=True)
-            self.log(f"weights/std_{tag}", value.cpu().std(), sync_dist=True)
+            self.log(f"weights/mean_{tag}", value.mean(), sync_dist=True)
+            self.log(f"weights/std_{tag}", value.std(), sync_dist=True)
             if value.grad is not None:
                 self.log(
                     f"grads/mean_{tag}",
-                    value.grad.cpu().mean(),
+                    value.grad.mean(),
                     sync_dist=True,
                 )
 
