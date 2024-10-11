@@ -197,6 +197,7 @@ def run_training(cfg: DictConfig):
         model=model,
         optimizer=optimizer,
         scheduler=scheduler,
+        dataset_config_dict=train_dataset.get_session_config_dict(),
     )
 
     tb = lightning.pytorch.loggers.tensorboard.TensorBoardLogger(
@@ -267,7 +268,7 @@ def run_training(cfg: DictConfig):
     trainer.fit(
         wrapper,
         train_loader,
-        [0],
+        val_loader,
         ckpt_path=cfg.ckpt_path if not cfg.finetune else None,
     )
     # [0] is a hack to force the validation callback to be called.

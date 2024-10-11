@@ -329,11 +329,18 @@ class Dataset(torch.utils.data.Dataset):
                     zip(sampling_intervals.start, sampling_intervals.end)
                 )
         return interval_dict
-    
+
+    def get_session_config_dict(self):
+        r"""Returns configs for each session in the dataset as a dictionary."""
+        ans = {}
+        for session_id in self.session_dict.keys():
+            ans[session_id] = self.session_dict[session_id]["config"]
+        return ans
+
     def get_session_ids(self):
         r"""Returns the session ids of the dataset."""
         return sorted(list(self.session_dict.keys()))
-    
+
     def get_unit_ids(self):
         r"""Returns the unit ids of the dataset."""
         unit_ids = []
@@ -341,14 +348,28 @@ class Dataset(torch.utils.data.Dataset):
             data = copy.copy(self._data_objects[session_id])
 
             supported_formats = ["brainset/session/unit", "brainset/device/unit"]
-            unit_ids_format = self.session_dict[session_id]["config"].get("unit_ids_format", "brainset/session/unit")
+            unit_ids_format = self.session_dict[session_id]["config"].get(
+                "unit_ids_format", "brainset/session/unit"
+            )
             if unit_ids_format == "brainset/session/unit":
-                unit_ids.extend([f"{data.brainset.id}/{data.session.id}/{unit_id}" for unit_id in data.units.id])
+                unit_ids.extend(
+                    [
+                        f"{data.brainset.id}/{data.session.id}/{unit_id}"
+                        for unit_id in data.units.id
+                    ]
+                )
             elif unit_ids_format == "brainset/device/unit":
-                unit_ids.extend([f"{data.brainset.id}/{data.device.id}/{unit_id}" for unit_id in data.units.id])
+                unit_ids.extend(
+                    [
+                        f"{data.brainset.id}/{data.device.id}/{unit_id}"
+                        for unit_id in data.units.id
+                    ]
+                )
             else:
-                raise ValueError(f"unit_ids_format {unit_ids_format} is not supported. Supported formats are: {supported_formats}")
-            
+                raise ValueError(
+                    f"unit_ids_format {unit_ids_format} is not supported. Supported formats are: {supported_formats}"
+                )
+
         unit_ids = sorted(list(set(unit_ids)))
         return unit_ids
 
