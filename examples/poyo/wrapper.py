@@ -79,7 +79,7 @@ class POYOTrainWrapper(L.LightningModule):
 
     def on_validation_epoch_start(self):
         # Create dictionaries to store the prediction and other information for all
-        # validation data samples. All dictionaries follow this heirarchy:
+        # validation data samples. All data dictionaries follow this heirarchy:
         # {
         #   "<session_id 1>": {
         #       "<taskname 1>": [tensor from sample 1, tensor from sample 2, ...],
@@ -87,10 +87,12 @@ class POYOTrainWrapper(L.LightningModule):
         #   }
         #   "<session_id 2>": {...}
         # }
-        self.timestamps = defaultdict(lambda: defaultdict(list))
-        self.subtask_index = defaultdict(lambda: defaultdict(list))
-        self.ground_truth = defaultdict(lambda: defaultdict(list))
-        self.pred = defaultdict(lambda: defaultdict(list))
+        self.val_data = {
+            "timestamps": defaultdict(lambda: defaultdict(list)),
+            "subtask_index": defaultdict(lambda: defaultdict(list)),
+            "ground_truth": defaultdict(lambda: defaultdict(list)),
+            "pred": defaultdict(lambda: defaultdict(list)),
+        }
 
     def validation_step(self, batch, batch_idx):
 
@@ -118,46 +120,50 @@ class POYOTrainWrapper(L.LightningModule):
                 session_id = session_ids[i]
 
                 pred = output[i][taskname]
-                self.pred[session_id][taskname].append(pred.detach().cpu())
+                self.val_data["pred"][session_id][taskname].append(pred.detach().cpu())
 
                 timestamps = (
                     batch["output_timestamps"][mask][token_sample_idx == i]
                     + absolute_starts[i]
                 )
-                self.timestamps[session_id][taskname].append(timestamps.detach().cpu())
+                self.val_data["timestamps"][session_id][taskname].append(
+                    timestamps.detach().cpu()
+                )
 
                 gt = batch["output_values"][taskname][token_sample_idx == i]
-                self.ground_truth[session_id][taskname].append(gt.detach().cpu())
+                self.val_data["ground_truth"][session_id][taskname].append(
+                    gt.detach().cpu()
+                )
 
                 subtask_idx = output_subtask_index[taskname][token_sample_idx == i]
-                self.subtask_index[session_id][taskname].append(
+                self.val_data["subtask_index"][session_id][taskname].append(
                     subtask_idx.detach().cpu()
                 )
 
     def on_validation_epoch_end(self, prefix="val"):
         # Aggregate all data
-        for dict_obj in [
-            self.timestamps,
-            self.subtask_index,
-            self.ground_truth,
-            self.pred,
-        ]:
-            for session_id, task_dict in dict_obj.items():
+        for key, data_dict in self.val_data.items():
+            # concatenate tensors
+            for session_id, task_dict in data_dict.items():
+                data_dict[session_id] = task_dict = dict(task_dict)
                 for taskname, tensor_list in task_dict.items():
-                    dict_obj[session_id][taskname] = torch.cat(tensor_list)
+                    data_dict[session_id][taskname] = torch.cat(tensor_list)
 
+            # all-gather across all processes
             if self.trainer.world_size > 1:
-                dict_obj = all_gather_dict_of_dict_of_tensor(dict_obj)
+                self.val_data[key] = all_gather_dict_of_dict_of_tensor(dict(data_dict))
 
+        # Compute metrics
         metrics = dict()
+        session_ids = list(self.val_data["ground_truth"].keys())
         for session_id in tqdm(
-            self.ground_truth,
+            session_ids,
             desc=f"Compiling metrics @ Epoch {self.current_epoch}",
             disable=(self.local_rank != 0),
         ):
             decoders = self.dataset_config_dict[session_id]["multitask_readout"]
 
-            for taskname in self.ground_truth[session_id]:
+            for taskname in self.val_data["ground_truth"][session_id]:
                 decoder = None
                 for decoder_ in decoders:
                     if decoder_["decoder_id"] == taskname:
@@ -166,10 +172,10 @@ class POYOTrainWrapper(L.LightningModule):
                 assert decoder is not None, f"Decoder not found for {taskname}"
                 metrics_spec = decoder["metrics"]
                 for metric in metrics_spec:
-                    gt = self.ground_truth[session_id][taskname]
-                    pred = self.pred[session_id][taskname]
-                    timestamps = self.timestamps[session_id][taskname]
-                    subtask_index = self.subtask_index[session_id][taskname]
+                    gt = self.val_data["ground_truth"][session_id][taskname]
+                    pred = self.val_data["pred"][session_id][taskname]
+                    timestamps = self.val_data["timestamps"][session_id][taskname]
+                    subtask_index = self.val_data["subtask_index"][session_id][taskname]
 
                     metric_subtask = metric.get("subtask", None)
                     if metric_subtask is not None:
@@ -226,10 +232,8 @@ class POYOTrainWrapper(L.LightningModule):
 
         rprint(metrics_df)
 
-        del self.timestamps
-        del self.subtask_index
-        del self.ground_truth
-        del self.pred
+        # Reset the validation data
+        self.val_data = None
 
     def on_test_epoch_start(self):
         self.on_validation_epoch_start()
