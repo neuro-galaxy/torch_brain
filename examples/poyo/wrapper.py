@@ -238,8 +238,8 @@ class POYOTrainWrapper(L.LightningModule):
     def on_test_epoch_start(self):
         self.on_validation_epoch_start()
 
-    def test_step(self, data, data_idx):
-        self.validation_step()
+    def test_step(self, batch, batch_idx):
+        self.validation_step(batch, batch_idx)
 
     def on_test_epoch_end(self):
         self.on_validation_epoch_end(prefix="test")
