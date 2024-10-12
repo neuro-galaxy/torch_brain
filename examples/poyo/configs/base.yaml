@@ -1,0 +1,43 @@
+# Base config for training poyo_plus
+
+data_root: ./data/processed/
+log_dir: ./logs
+seed: 42
+
+batch_size: 128
+eval_batch_size: null  # if null, will use batch_size
+num_workers: 4
+
+epochs: 1000  # if -1, will use steps
+steps: -1  # if -1, will use epochs. Epochs take precedence.
+eval_epochs: 1
+
+optim:
+  base_lr: 3.125e-5  # scaled linearly by batch size
+  weight_decay: 1e-4
+  lr_decay_start: 0.5  # fraction of epochs before starting LR decay
+
+wandb:
+  enable: true
+  entity: null
+  project: poyo
+  run_name: null
+  log_model: false
+
+backend_config: gpu_fp32
+precision: 32
+nodes: 1
+gpus: 1
+
+# Where to resume/finetune from. Could be null (yaml for None, meaning train from
+# scratch) or a fully qualified path to the .ckpt file.
+ckpt_path: null
+
+# Finetuning configuration:
+finetune: false
+# Num of epochs to freeze perceiver network while finetuning
+# -1 => Keep frozen, i.e. perform Unit-identification
+#  0 => Train everything
+# >0 => Only train unit/session embeddings for first few epochs,
+#       and then train everything
+freeze_perceiver_until_epoch: 0

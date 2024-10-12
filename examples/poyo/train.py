@@ -157,9 +157,7 @@ def run_training(cfg: DictConfig):
         val_dataset,
         sampler=val_sampler,
         collate_fn=collate,
-        batch_size=cfg.get(
-            "eval_batch_size", cfg.batch_size
-        ),  # Default to training batch size, but allow override in config.
+        batch_size=cfg.eval_batch_size or cfg.batch_size,
         num_workers=2,
     )
 
@@ -167,9 +165,9 @@ def run_training(cfg: DictConfig):
     with open_dict(cfg):
         cfg.steps_per_epoch = len(train_loader)
 
-    if cfg.epochs > 0 and cfg.steps == 0:
+    if cfg.epochs > 0:
         cfg.epochs = cfg.epochs
-    elif cfg.steps > 0 and cfg.epochs == 0:
+    elif cfg.steps > 0:
         cfg.epochs = cfg.steps // cfg.steps_per_epoch + 1
         cfg.steps = 0
         log.info(f"Setting epochs to {cfg.epochs} using cfg.steps = {cfg.steps}")
@@ -183,14 +181,15 @@ def run_training(cfg: DictConfig):
         dataset_config_dict=train_dataset.get_session_config_dict(),
     )
 
-    wandb = lightning.pytorch.loggers.WandbLogger(
-        save_dir=cfg.log_dir,
-        entity=cfg.get("wandb_entity", None),
-        name=cfg.name,
-        project=cfg.get("wandb_project", "poyo"),
-        log_model=cfg.get("wandb_log_model", False),
-    )
-    print(f"Wandb ID: {wandb.version}")
+    wandb_logger = None
+    if cfg.wandb.enable:
+        wandb_logger = lightning.pytorch.loggers.WandbLogger(
+            save_dir=cfg.log_dir,
+            entity=cfg.wandb.entity,
+            name=cfg.wandb.run_name,
+            project=cfg.wandb.project,
+            log_model=cfg.wandb.log_model,
+        )
 
     callbacks = [
         ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
@@ -212,7 +211,7 @@ def run_training(cfg: DictConfig):
             raise NotImplementedError("This functionality isn't properly implemented.")
 
     trainer = lightning.Trainer(
-        logger=wandb,
+        logger=wandb_logger,
         default_root_dir=cfg.log_dir,
         check_val_every_n_epoch=cfg.eval_epochs,
         max_epochs=cfg.epochs,
