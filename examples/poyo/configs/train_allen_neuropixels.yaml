@@ -1,8 +1,8 @@
-# Path: configs/train.yaml
 defaults:
-  - _self_
+  - base.yaml
   - model: poyo_single_session.yaml
   - dataset: allen_neuropixels.yaml
+  - _self_
 
 hydra:
   searchpath:
@@ -18,31 +18,16 @@ train_transforms:
     crop_len: 1.0
 
 data_root: /kirby/processed/allen_all/
-seed: 42
+
 batch_size: 128
 eval_epochs: 10
-steps: 0  # Note we either specify epochs or steps, not both.
-epochs: 1000
-base_lr: 1.5625e-5
-weight_decay: 0.0001
-# Fraction of epochs to warmup for.
-pct_start: 0.5
-num_workers: 4
-log_dir: ./logs
-name: allen_neuropixels
+
+optim:
+  base_lr: 1.5625e-5
+  weight_decay: 0.0001
+
+wandb:
+  run_name: allen_neuropixels
+
 backend_config: gpu_fp16
 precision: bf16-mixed
-nodes: 1
-gpus: 1
-# Where to resume/finetune from. Could be null (yaml for None, meaning train from
-# scratch) or a fully qualified path to the .ckpt file.
-ckpt_path: null
-
-# Finetuning configuration:
-finetune: false
-# Num of epochs to freeze perceiver network while finetuning
-# -1 => Keep frozen, i.e. perform Unit-identification
-#  0 => Train everything
-# >0 => Only train unit/session embeddings for first few epochs,
-#       and then train everything
-freeze_perceiver_until_epoch: 0

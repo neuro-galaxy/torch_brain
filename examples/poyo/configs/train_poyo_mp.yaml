@@ -1,8 +1,8 @@
-# Path: configs/train.yaml
 defaults:
-  - _self_
+  - base.yaml
   - model: poyo_single_session.yaml
   - dataset: perich_miller_population_2018.yaml
+  - _self_
 
 train_transforms:
   - _target_: torch_brain.transforms.UnitDropout
@@ -11,32 +11,5 @@ train_transforms:
     mode_units: 300
     peak: 4
 
-data_root: ./data/processed/
-seed: 42
-batch_size: 128
-eval_epochs: 1
-epochs: 1000
-steps: 0  # Note we either specify epochs or steps, not both.
-base_lr: 3.125e-5
-weight_decay: 1e-4
-# Fraction of epochs to warmup for.
-pct_start: 0.5
-num_workers: 4
-log_dir: ./logs
-name: poyo_mp_mini
-backend_config: gpu_fp32
-precision: 32
-nodes: 1
-gpus: 1
-# Where to resume/finetune from. Could be null (yaml for None, meaning train from
-# scratch) or a fully qualified path to the .ckpt file.
-ckpt_path: null
-
-# Finetuning configuration:
-finetune: false
-# Num of epochs to freeze perceiver network while finetuning
-# -1 => Keep frozen, i.e. perform Unit-identification
-#  0 => Train everything
-# >0 => Only train unit/session embeddings for first few epochs,
-#       and then train everything
-freeze_perceiver_until_epoch: 0
+wandb:
+  run_name: poyo_mp_mini

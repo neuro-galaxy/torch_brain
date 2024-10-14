@@ -40,12 +40,12 @@ class POYOTrainWrapper(L.LightningModule):
         self.save_hyperparameters(OmegaConf.to_container(cfg))
 
     def configure_optimizers(self):
-        max_lr = self.cfg.base_lr * self.cfg.batch_size  # linear scaling rule
+        max_lr = self.cfg.optim.base_lr * self.cfg.batch_size  # linear scaling rule
 
         optimizer = Lamb(
             self.model.parameters(),
             lr=max_lr,
-            weight_decay=self.cfg.weight_decay,
+            weight_decay=self.cfg.optim.weight_decay,
         )
 
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
@@ -53,7 +53,7 @@ class POYOTrainWrapper(L.LightningModule):
             max_lr=max_lr,
             epochs=self.cfg.epochs,
             steps_per_epoch=self.cfg.steps_per_epoch,
-            pct_start=self.cfg.pct_start,
+            pct_start=self.cfg.optim.lr_decay_start,
             anneal_strategy="cos",
             div_factor=1,
         )
