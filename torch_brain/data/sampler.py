@@ -1,7 +1,6 @@
-import math
 import logging
-from typing import List, Dict, Tuple, Optional, TypeVar, Iterator
 from functools import cached_property
+from typing import Dict, Iterator, List, Optional, Tuple, TypeVar
 
 import torch
 import torch.distributed as dist
@@ -183,7 +182,9 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
         for session_name, sampling_intervals in self.sampling_intervals.items():
             for start, end in zip(sampling_intervals.start, sampling_intervals.end):
                 interval_length = end - start
-                if interval_length < self.window_length:
+                if interval_length < self.window_length and not math.isclose(
+                    interval_length, self.window_length, abs_tol=1e-9
+                ):
                     if self.drop_short:
                         total_short_dropped += interval_length
                         continue
