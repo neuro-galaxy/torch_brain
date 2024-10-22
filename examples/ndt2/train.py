@@ -1,35 +1,36 @@
 import logging
+
+import hydra
+import lightning as L
 import numpy as np
 import torch
 import torch.nn as nn
-from torch import optim
-from torch.utils.data import DataLoader
-import lightning as L
 from lightning.pytorch.callbacks import (
-    ModelSummary,
     LearningRateMonitor,
     ModelCheckpoint,
+    ModelSummary,
 )
 from lightning.pytorch.utilities import CombinedLoader
-
-from omegaconf import OmegaConf, open_dict
-import hydra
-
-from kirby.data import Dataset, collate
-from kirby.data.sampler import RandomFixedWindowSampler, SequentialFixedWindowSampler
-from kirby.taxonomy import decoder_registry
-
-from torchmetrics import R2Score
-from sklearn.metrics import balanced_accuracy_score
-from kirby.utils.validation_wrapper import avg_pool, gt_pool
-
-from tokenizer import NDT2Tokenizer
 from model import (
     NDT2_Patchifier,
-    NDT2_TransformerEncoder,
     NDT2_Predictor,
     NDT2_TransformerDecoder,
+    NDT2_TransformerEncoder,
 )
+from omegaconf import OmegaConf, open_dict
+from sklearn.metrics import balanced_accuracy_score
+from tokenizer import NDT2Tokenizer
+from torch import optim
+from torch.utils.data import DataLoader
+from torchmetrics import R2Score
+
+from brainsets.taxonomy import decoder_registry
+from torch_brain.data import Dataset, collate
+from torch_brain.data.sampler import (
+    RandomFixedWindowSampler,
+    SequentialFixedWindowSampler,
+)
+from torch_brain.utils.validation import avg_pool, gt_pool
 
 log = logging.getLogger(__name__)
 

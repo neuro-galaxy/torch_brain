@@ -1,15 +1,15 @@
 import math
-import torch
-from torch import Tensor
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.distributed as dist
-from einops import rearrange, einsum, repeat
-from kirby.nn import InfiniteVocabEmbedding
-
 from typing import Optional
 
+import torch
+import torch.distributed as dist
+import torch.nn as nn
+import torch.nn.functional as F
 from attention import FFN, CrossAttention, SelfAttention, SelfAttentionBlock
+from einops import einsum, rearrange, repeat
+from torch import Tensor
+
+from torch_brain.nn import InfiniteVocabEmbedding
 
 
 class AllReduceSum(torch.autograd.Function):

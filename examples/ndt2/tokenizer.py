@@ -3,9 +3,9 @@ import torch
 import torch.nn.functional as F
 from einops import rearrange, repeat
 
-from kirby.data import chain
-from kirby.nn import prepare_for_multitask_readout
-from kirby.utils.binning import bin_spikes
+from torch_brain.data import chain
+from torch_brain.nn import prepare_for_multitask_readout
+from torch_brain.utils.binning import bin_spikes
 
 
 def float_modulo_test(x, y, eps=1e-6):
