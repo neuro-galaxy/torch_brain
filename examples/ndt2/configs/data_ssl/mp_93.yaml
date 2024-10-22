@@ -1,0 +1,13 @@
+# 93 MP sessions
+- selection:
+  - dandiset: perich_miller_population_2018
+    subject: "c"
+    exclude_sessions:
+      - c_20161021_center_out_reaching  # holding out for testing
+      - c_20161013_center_out_reaching  # holding out for testing
+
+- selection:
+  - dandiset: perich_miller_population_2018
+    subject: "m"
+    exclude_sessions:
+      - m_20150512_center_out_reaching # has empty trials

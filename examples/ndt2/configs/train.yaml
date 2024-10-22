@@ -1,0 +1,77 @@
+defaults:
+  - data_ssl: mp.yaml
+  - data_superv: chewie_one_co.yaml
+  - _self_
+
+subtask_idx: 2
+data_root: /kirby/processed
+
+ctx_time: 1.0
+bin_time: 0.02
+patch_size: [4, 1]
+pad_val: 16
+
+model:
+  dim: 256
+  max_time_patches: 256
+  max_space_patches: 256
+  patchifier: {}
+  encoder:
+    depth: 6
+    heads: 4
+    ffn_mult: 1 
+    dropout: 0.1
+  predictor:
+    depth: 6
+    heads: 4
+    ffn_mult: 1 
+    dropout: 0.1
+  bhv_decoder:
+    dim_out: 2
+    loss_type: "regression"
+    depth: 2
+    heads: 4
+    ffn_mult: 1 
+    ctx_pos_emb: false
+    dropout: 0.1
+
+mask_ratio: 0.5
+
+fast_dev_run: false
+num_sanity_val_steps: 0
+
+seed: 42
+batch_size: 6
+superv_batch_size: null  # defaults to batch_size
+eval_batch_size: 128
+epochs: 2500
+eval_epochs: 1
+
+precision: bf16-mixed
+num_workers: 4
+
+optimizer:
+  lr: 0.0005          # matched to NDT2 codebase
+  warmup_epochs: 100  # matched to NDT2 codebase, want to do warmup for ~100k steps
+  start_factor: 0.1   # matched to NDT2 codebase
+  lr_min: 1e-6        # matched to NDT2 codebase
+  weight_decay: 0.01  # matched to NDT2 codebase
+
+log_dir: ./logs
+log_every_n_steps: 10
+
+wandb:
+  enable: true
+  entity: null  # chooses default username
+  project: ndt2-reimpl
+  run_name: null
+
+ssl_only: false
+superv_only: false
+encoder_finetune: false
+
+checkpoint:
+  enable: true
+  every_n_steps: 1000
+  every_n_epochs: null
+  save_all: true

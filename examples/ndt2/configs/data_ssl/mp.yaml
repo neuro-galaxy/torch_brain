@@ -1,0 +1,4 @@
+- selection:
+  - dandiset: perich_miller_population_2018
+    exclude_sessions:
+      - m_20150512_center_out_reaching  # has empty trials
