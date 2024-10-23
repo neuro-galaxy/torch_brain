@@ -3,7 +3,14 @@ import torch.nn.functional as F
 
 from torchmetrics import R2Score
 
-from brainsets.taxonomy import OutputType
+from brainsets.taxonomy import StringIntEnum
+
+
+class OutputType(StringIntEnum):
+    CONTINUOUS = 0
+    BINARY = 1
+    MULTILABEL = 2
+    MULTINOMIAL = 3
 
 
 def compute_loss_or_metric(

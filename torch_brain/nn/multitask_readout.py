@@ -7,19 +7,11 @@ from torchtyping import TensorType
 
 from brainsets.taxonomy import StringIntEnum, Task
 from torch_brain.data.collate import collate, chain, track_batch
-from torch_brain.nn import compute_loss_or_metric
-
+from torch_brain.nn import compute_loss_or_metric, OutputType
 
 from typing import Dict, List, Tuple, Optional, Union, Any
 
 from pydantic.dataclasses import dataclass
-
-
-class OutputType(StringIntEnum):
-    CONTINUOUS = 0
-    BINARY = 1
-    MULTILABEL = 2
-    MULTINOMIAL = 3
 
 
 class Decoder(StringIntEnum):
