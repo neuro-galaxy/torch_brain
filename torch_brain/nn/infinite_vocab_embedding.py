@@ -98,7 +98,9 @@ class InfiniteVocabEmbedding(nn.Module):
         if isinstance(vocab, str):
             raise ValueError("vocab cannot be a single string")
         elif isinstance(vocab, Iterable):
-            # OmegaConf wraps the list in omageconf.listconfig.ListConfig
+            # check that all words are unique
+            if len(vocab) != len(set(vocab)):
+                raise ValueError("Vocabulary contains duplicate words")
             self.vocab = OrderedDict(zip(vocab, range(1, len(vocab) + 1)))
             assert "NA" not in self.vocab, "NA is a reserved word"
             self.vocab["NA"] = 0
@@ -211,6 +213,10 @@ class InfiniteVocabEmbedding(nn.Module):
             raise ValueError("No vocabulary was initialized. Use initialize_vocab()")
 
         assert len(vocab) > 0, "Vocabulary must contain at least one word."
+
+        # check that all words are unique
+        if len(vocab) != len(set(vocab)):
+            raise ValueError("Vocabulary contains duplicate words")
 
         # find intersection and difference between key sets
         word_indices = [0]  # NA will be added
