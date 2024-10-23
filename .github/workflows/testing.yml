@@ -22,15 +22,12 @@ jobs:
       run: |
         python -m venv venv
         source venv/bin/activate
-    - name: Install temporaldata and brainsets
+    - name: Install brainsets
       env:
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |
         python -m pip install --no-user --upgrade pip
-        pip install --no-user "temporaldata @ git+https://${GITHUB_TOKEN}@github.com/neuro-galaxy/temporaldata.git@main#egg=temporaldata-0.1.1"
-        pip install --no-user "brainsets @ git+https://${GITHUB_TOKEN}@github.com/neuro-galaxy/brainsets.git@main#egg=brainsets-0.1.0" \
-          --no-deps
-        pip install --no-user "brainsets @ git+https://${GITHUB_TOKEN}@github.com/neuro-galaxy/brainsets.git@main#egg=brainsets-0.1.0"
+        pip install --no-user "brainsets @ git+https://${GITHUB_TOKEN}@github.com/neuro-galaxy/brainsets.git@main#egg=brainsets-0.1.0[all]"
     - name: Install dependencies
       run: |
         source venv/bin/activate
