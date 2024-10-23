@@ -5,9 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
-- Added multitask decoder taxonomy. ([#36](https://github.com/neuro-galaxy/torch_brain/pull/36))
+- Added multitask decoder taxonomy. ([#8](https://github.com/neuro-galaxy/torch_brain/pull/8))
 
 ### Changed
-- Update workflow to use ubuntu-latest instances from github actions. ([#36](httpps://github.com/neuro-galaxy/torch_brain/pull/36))
+- Update workflow to use ubuntu-latest instances from github actions. ([#8](httpps://github.com/neuro-galaxy/torch_brain/pull/8))
 
 ### Fixed
