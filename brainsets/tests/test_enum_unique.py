@@ -1,5 +1,7 @@
 import pytest
-from brainsets.taxonomy import Decoder
+import inspect
+from brainsets.taxonomy import StringIntEnum
+import brainsets.taxonomy
 
 
 def find_duplicates(enum):
@@ -15,12 +17,30 @@ def find_duplicates(enum):
             value_to_names[value] = [name]
 
     # Filter out entries with only one name, leaving only duplicates
-    duplicates = {
-        value: names for value, names in value_to_names.items() if len(names) > 1
-    }
+    duplicates = {}
+    for value, names in value_to_names.items():
+        if len(names) > 1:
+            # Check if names are allowed aliases (e.g., A = SOME_ALIAS = 0)
+            if len(set(getattr(enum, name) for name in names)) > 1:
+                duplicates[value] = names
+
     return duplicates
 
 
-def test_decoder_enum_has_no_duplicate_ids():
-    duplicates = find_duplicates(Decoder)
-    assert len(duplicates) == 0, f"Duplicate IDs found in Decoder enum: {duplicates}"
+def get_all_stringintenum_subclasses():
+    classes = []
+    for module_name, module in inspect.getmembers(brainsets.taxonomy, inspect.ismodule):
+        for name, obj in inspect.getmembers(module):
+            if (
+                inspect.isclass(obj)
+                and issubclass(obj, StringIntEnum)
+                and obj != StringIntEnum
+            ):
+                classes.append((name, obj))
+    return classes
+
+
+def test_all_stringintenum_classes_have_no_duplicate_ids():
+    for name, cls in get_all_stringintenum_subclasses():
+        duplicates = find_duplicates(cls)
+        assert len(duplicates) == 0, f"Duplicate IDs found in {name} enum: {duplicates}"
