@@ -26,8 +26,9 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |
+        git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
         python -m pip install --no-user --upgrade pip
-        pip install --no-user "brainsets @ git+https://${GITHUB_TOKEN}@github.com/neuro-galaxy/brainsets.git@main#egg=brainsets-0.1.0[all]"
+        pip install --no-user "brainsets @ git+https://github.com/neuro-galaxy/brainsets.git@main#egg=brainsets-0.1.0[all]"
     - name: Install dependencies
       run: |
         source venv/bin/activate
