@@ -1,5 +1,5 @@
 defaults:
-  - data_ssl: mp.yaml
+  - data_ssl: odoherty.yaml
   - data_superv: chewie_one_co.yaml
   - _self_
 
@@ -62,8 +62,8 @@ log_every_n_steps: 10
 
 wandb:
   enable: true
-  entity: null  # chooses default username
-  project: ndt2-reimpl
+  entity: aandre8-gatech  # chooses default username
+  project: reproduce_NDT2
   run_name: null
 
 ssl_only: false

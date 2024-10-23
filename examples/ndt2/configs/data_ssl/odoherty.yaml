@@ -1,0 +1,18 @@
+# Entirety of O'doherty/Makin dataset
+
+include:
+  - selection:
+    - brainset: odoherty_sabes_nonhuman_2017
+      subject: indy
+      exclude_sessions:
+        # These sessions were held-out in NDT2. We'll use them for finetuning evaluation.
+        - indy_20160407_02
+        - indy_20160627_01
+        - indy_20161005_06
+        - indy_20170131_02
+        - indy_20161026_03
+    config:
+    # TODO change them
+      # sampling_intervals_modifier: |
+      #   from src.utils.splits import mae_split
+      #   train_intervals, val_intervals = mae_split(data, sampling_intervals)
