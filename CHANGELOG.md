@@ -11,3 +11,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Update workflow to use ubuntu-latest instances from github actions. ([#8](httpps://github.com/neuro-galaxy/torch_brain/pull/8))
 
 ### Fixed
+- Fixed a bug in `InfiniteVocabEmbedding` where duplicate words cause the model to fail silently. ([#9](https://github.com/neuro-galaxy/torch_brain/pull/9))
