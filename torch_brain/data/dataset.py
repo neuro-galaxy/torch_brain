@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import copy
 import numpy as np
-
+import omegaconf
 
 import numpy as np
 import h5py
@@ -26,14 +26,13 @@ class DatasetIndex:
 class Dataset(torch.utils.data.Dataset):
     r"""This class abstracts a collection of lazily-loaded Data objects. Each of these
     Data objects corresponds to a session and lives on the disk until it is requested.
-    The `include` argument guides which sessions are included in this Dataset.
     To request a piece of a included session's data, you can use the `get` method,
     or index the Dataset with a `DatasetIndex` object (see `__getitem__`).
 
     This definition is a deviation from the standard PyTorch Dataset definition, which
     generally presents the dataset directly as samples. In this case, the Dataset
     by itself does not provide you with samples, but rather the means to flexibly work
-    and accesss complete sessions.
+    and access complete sessions.
     Within this framework, it is the job of the sampler to provide the
     DatasetIndex indices to slice the dataset into samples (see `kirby.data.sampler`).
 
@@ -41,12 +40,12 @@ class Dataset(torch.utils.data.Dataset):
 
     Args:
         root: The root directory of the dataset.
+        config: The configuration file specifying the sessions to include.
+        brainset: The brainset to include. This is used to specify a single brainset, and can only be used if config is not provided.
+        session: The session to include. This is used to specify a single session, and can only be used if config is not provided.
         split: The split of the dataset. This is used to determine the sampling intervals
-            for each session.
-        include: A list of dictionaries specifying the datasets to include. Each dictionary
-            should have the following keys:
-            - brainset: The brainset to include.
-            - selection: A dictionary specifying the selection criteria for the dataset.
+            for each session. The split is optional, and is used to load a subset of the data
+            in a session based on a predefined split.
         transform: A transform to apply to the data. This transform should be a callable
             that takes a Data object and returns a Data object.
     """
@@ -58,21 +57,45 @@ class Dataset(torch.utils.data.Dataset):
     def __init__(
         self,
         root: str,
-        split: str,
-        include: List[Dict[str, Any]],
+        *,
+        config: str = None,
+        brainset: str = None,
+        session: str = None,
+        split: str = None,
         transform=None,
     ):
         super().__init__()
         self.root = root
+        self.config = config
         self.split = split
-
-        if include is None:
-            raise ValueError("Please specify the datasets to include")
-
-        self.include = include
         self.transform = transform
 
-        self.session_dict = self._look_for_files()
+        if config is not None:
+            assert (
+                brainset is None and session is None
+            ), "Cannot specify brainset or session when using config."
+
+            if Path(config).is_file():
+                config = omegaconf.OmegaConf.load(config)
+            else:
+                raise ValueError(f"Config source '{config}' not found.")
+
+            self.session_dict = self._look_for_files(config)
+
+        elif brainset is not None or session is not None:
+            assert (
+                brainset is not None and session is not None
+            ), "Please specify both brainset and session."
+            self.session_dict = {
+                f"{brainset}/{session}": {
+                    "filename": Path(self.root) / brainset / (session + ".h5"),
+                    "config": {},
+                }
+            }
+        else:
+            raise ValueError(
+                "Please either specify a config file or a brainset and session."
+            )
 
         self._open_files = {
             session_id: h5py.File(session_info["filename"], "r")
@@ -98,10 +121,10 @@ class Dataset(torch.utils.data.Dataset):
     def __del__(self):
         self._close_open_files()
 
-    def _look_for_files(self) -> Dict[str, Dict]:
+    def _look_for_files(self, config: omegaconf.DictConfig) -> Dict[str, Dict]:
         session_dict = {}
 
-        for i, selection_list in enumerate(self.include):
+        for i, selection_list in enumerate(config):
             selection = selection_list["selection"]
 
             # parse selection
@@ -121,7 +144,10 @@ class Dataset(torch.utils.data.Dataset):
 
                 if len(session_ids) == 0:
                     raise ValueError(
-                        f"No files found in {brainset_dir}. Please check the path."
+                        f"No files found in {brainset_dir}. This is either a problem "
+                        "with the provided path or the dataset has not been downloaded "
+                        "and/or processed. For supported brainsets, please refer to "
+                        "https://github.com/neuro-galaxy/brainsets"
                     )
 
                 # Perform selection. Right now, we are limiting ourselves to session,
@@ -253,7 +279,7 @@ class Dataset(torch.utils.data.Dataset):
             f"{sample.brainset}/{sample.session}/", sample.units.id.astype(str)
         )
 
-        if self._check_for_data_leakage_flag:
+        if self._check_for_data_leakage_flag and self.split is not None:
             sample._check_for_data_leakage(self.split)
 
         sample.session = session_id
@@ -417,3 +443,6 @@ class Dataset(torch.utils.data.Dataset):
 
     def __iter__(self):
         raise NotImplementedError("Iteration over dataset is not defined")
+
+    def __repr__(self):
+        return f"Dataset(root={self.root}, config={self.config}, split={self.split})"
