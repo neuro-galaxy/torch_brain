@@ -315,21 +315,22 @@ class Dataset(torch.utils.data.Dataset):
         return data
 
     def get_sampling_intervals(self):
-        r"""Returns a dictionary of interval-list for each session.
-        Each interval-list is a list of tuples (start, end) for each interval. This
-        represents the intervals that can be sampled from each session.
+        r"""Returns a dictionary of sampling intervals for each session.
+        This represents the intervals that can be sampled from each session.
 
-        Note that these intervals will change depending on the split.
+        Note that these intervals will change depending on the split. If no split is
+        provided, the full domain of the data is used.
         """
-        interval_dict = {}
+        sampling_intervals_dict = {}
         for session_id in self.session_dict.keys():
-            intervals = getattr(self._data_objects[session_id], f"{self.split}_domain")
+            sampling_domain = (
+                f"{self.split}_domain" if self.split is not None else "domain"
+            )
+            intervals = getattr(self._data_objects[session_id], sampling_domain)
             sampling_intervals_modifier_code = self.session_dict[session_id][
                 "config"
             ].get("sampling_intervals_modifier", None)
-            if sampling_intervals_modifier_code is None:
-                interval_dict[session_id] = list(zip(intervals.start, intervals.end))
-            else:
+            if sampling_intervals_modifier_code is not None:
                 local_vars = {
                     "data": copy.deepcopy(self._data_objects[session_id]),
                     "sampling_intervals": intervals,
@@ -351,10 +352,8 @@ class Dataset(torch.utils.data.Dataset):
                     raise type(e)(error_message) from e
 
                 sampling_intervals = local_vars.get("sampling_intervals")
-                interval_dict[session_id] = list(
-                    zip(sampling_intervals.start, sampling_intervals.end)
-                )
-        return interval_dict
+            sampling_intervals_dict[session_id] = sampling_intervals
+        return sampling_intervals_dict
 
     def get_session_config_dict(self):
         r"""Returns configs for each session in the dataset as a dictionary."""
