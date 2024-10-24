@@ -4,6 +4,8 @@ import pytest
 from dateutil import parser
 import numpy as np
 import h5py
+import yaml
+import tempfile
 
 from temporaldata import (
     Data,
@@ -124,44 +126,60 @@ def dummy_data(tmp_path):
 
 
 def test_dataset_selection(dummy_data):
-    ds = Dataset(
-        dummy_data,
-        split=None,
-        include=[{"selection": [{"brainset": "allen_neuropixels_mock"}]}],
-    )
-    assert len(ds.session_dict) == 2
-    assert ds.session_dict["allen_neuropixels_mock/20100102_1"]["filename"] == (
-        dummy_data / "allen_neuropixels_mock" / "20100102_1.h5"
-    )
+    include_config_1 = [{"selection": [{"brainset": "allen_neuropixels_mock"}]}]
+    include_config_2 = [
+        {"selection": [{"brainset": "allen_neuropixels_mock", "subject": "alice"}]}
+    ]
+    include_config_3 = [
+        {"selection": [{"brainset": "allen_neuropixels_mock", "session": "20100102_1"}]}
+    ]
 
-    ds = Dataset(
-        dummy_data,
-        split=None,
-        include=[
-            {"selection": [{"brainset": "allen_neuropixels_mock", "subject": "alice"}]}
-        ],
-    )
-    assert len(ds.session_dict) == 1
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".yaml") as temp_config_file:
+        yaml.dump(
+            include_config_1, temp_config_file, encoding="utf-8", allow_unicode=True
+        )
+        temp_config_file.flush()
+        ds = Dataset(
+            str(dummy_data),
+            split=None,
+            config=temp_config_file.name,
+        )
+        assert len(ds.session_dict) == 2
+        assert ds.session_dict["allen_neuropixels_mock/20100102_1"]["filename"] == (
+            dummy_data / "allen_neuropixels_mock" / "20100102_1.h5"
+        )
 
-    ds = Dataset(
-        dummy_data,
-        split=None,
-        include=[
-            {
-                "selection": [
-                    {"brainset": "allen_neuropixels_mock", "session": "20100102_1"}
-                ]
-            }
-        ],
-    )
-    assert len(ds.session_dict) == 1
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".yaml") as temp_config_file:
+        yaml.dump(
+            include_config_2, temp_config_file, encoding="utf-8", allow_unicode=True
+        )
+        temp_config_file.flush()
+        ds = Dataset(
+            str(dummy_data),
+            split=None,
+            config=temp_config_file.name,
+        )
+        assert len(ds.session_dict) == 1
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".yaml") as temp_config_file:
+        yaml.dump(
+            include_config_3, temp_config_file, encoding="utf-8", allow_unicode=True
+        )
+        temp_config_file.flush()
+        ds = Dataset(
+            str(dummy_data),
+            split=None,
+            config=temp_config_file.name,
+        )
+        assert len(ds.session_dict) == 1
 
 
 def test_get_session_data(dummy_data):
     ds = Dataset(
         dummy_data,
         split=None,
-        include=[{"selection": [{"brainset": "allen_neuropixels_mock"}]}],
+        brainset="allen_neuropixels_mock",
+        session="20100102_1",
     )
 
     data = ds.get_session_data("allen_neuropixels_mock/20100102_1")
