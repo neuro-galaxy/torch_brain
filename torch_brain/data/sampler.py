@@ -4,6 +4,8 @@ from typing import List, Dict, Tuple, Optional
 from functools import cached_property
 
 import torch
+from temporaldata import Interval
+
 
 from torch_brain.data.dataset import DatasetIndex
 
@@ -33,7 +35,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
     def __init__(
         self,
         *,
-        interval_dict: Dict[str, List[Tuple[float, float]]],
+        interval_dict: Dict[str, Interval],
         window_length: float,
         generator: Optional[torch.Generator],
         drop_short: bool = True,
@@ -49,7 +51,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
         total_short_dropped = 0.0
 
         for session_name, sampling_intervals in self.interval_dict.items():
-            for start, end in sampling_intervals:
+            for start, end in zip(sampling_intervals.start, sampling_intervals.end):
                 interval_length = end - start
                 if interval_length < self.window_length:
                     if self.drop_short:
@@ -81,7 +83,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
 
         indices = []
         for session_name, sampling_intervals in self.interval_dict.items():
-            for start, end in sampling_intervals:
+            for start, end in zip(sampling_intervals.start, sampling_intervals.end):
                 interval_length = end - start
                 if interval_length < self.window_length:
                     if self.drop_short:
@@ -177,7 +179,7 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
         total_short_dropped = 0.0
 
         for session_name, sampling_intervals in self.interval_dict.items():
-            for start, end in sampling_intervals:
+            for start, end in zip(sampling_intervals.start, sampling_intervals.end):
                 interval_length = end - start
                 if interval_length < self.window_length:
                     if self.drop_short:
@@ -252,7 +254,7 @@ class TrialSampler(torch.utils.data.Sampler):
         all_intervals = [
             (session_id, start, end)
             for session_id, intervals in self.interval_dict.items()
-            for start, end in intervals
+            for start, end in zip(intervals.start, intervals.end)
         ]
 
         indices = [
