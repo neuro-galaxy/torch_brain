@@ -1,18 +1,21 @@
-- selection:
-    - dandiset: odoherty_sabes_nonhuman_2017
+# Entirety of O'doherty/Makin dataset
+
+include:
+  - selection:
+    - brainset: odoherty_sabes_nonhuman_2017
       sessions:
         - indy_20161011_03
-  config:
-    multitask_readout:
-      - decoder_id: CURSORVELOCITY2D
-        subtask_weights:
-          REACHING.RANDOM: 1.0
-          REACHING.HOLD: 1.0
-          REACHING.REACH: 5.0
-          REACHING.RETURN: 1.0
-          REACHING.INVALID: 1.0
-          REACHING.OUTLIER: 0.1
-        metrics:
-          - metric: r2
-            task: RANDOM
-            subtask: REACHING.RANDOM
+    config:
+      multitask_readout:
+        - decoder_id: CURSORVELOCITY2D
+          subtask_weights:
+            REACHING.RANDOM: 1.0
+            REACHING.HOLD: 1.0
+            REACHING.REACH: 5.0
+            REACHING.RETURN: 1.0
+            REACHING.INVALID: 1.0
+            REACHING.OUTLIER: 0.1
+          metrics:
+            - metric: r2
+              task: RANDOM
+              subtask: REACHING.RANDOM

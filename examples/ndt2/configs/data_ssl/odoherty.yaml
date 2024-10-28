@@ -13,6 +13,6 @@ include:
         - indy_20161026_03
     config:
     # TODO change them
-      # sampling_intervals_modifier: |
-      #   from src.utils.splits import mae_split
-      #   train_intervals, val_intervals = mae_split(data, sampling_intervals)
+      sampling_intervals_modifier: |
+        # from src.utils.splits import mae_split
+        # train_intervals, val_intervals = mae_split(data, sampling_intervals)
