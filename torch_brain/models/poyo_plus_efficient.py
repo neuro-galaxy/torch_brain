@@ -5,6 +5,12 @@ import torch
 import torch.nn as nn
 from torchtyping import TensorType
 
+try:
+    import xformers.ops as xops
+except ImportError:
+    xops = None
+
+
 from brainsets.taxonomy import DecoderSpec, Decoder
 from torch_brain.nn import (
     Embedding,
@@ -15,14 +21,14 @@ from torch_brain.nn import (
     MultitaskReadout,
     prepare_for_multitask_readout,
 )
-from torch_brain.data import pad, chain, track_mask
+from torch_brain.data import chain, track_batch
 from torch_brain.utils import (
     create_start_end_unit_tokens,
     create_linspace_latent_tokens,
 )
 
 
-class POYOPlus(nn.Module):
+class POYOPlusE(nn.Module):
     def __init__(
         self,
         *,
@@ -40,6 +46,13 @@ class POYOPlus(nn.Module):
     ):
         super().__init__()
 
+        if xops is None:
+            raise ImportError(
+                "xformers not installed, please install `xformers` to use the efficient "
+                "version of POYO+, otherwise use the default version."
+            )
+
+        # embeddings
         self.unit_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.session_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.token_type_emb = Embedding(4, dim, init_scale=emb_init_scale)
@@ -104,18 +117,20 @@ class POYOPlus(nn.Module):
         self,
         *,
         # input sequence
-        input_unit_index,  # (B, N_in) or (total_N_in,)
-        input_timestamps,  # (B, N_in) or (total_N_in,)
-        input_token_type,  # (B, N_in) or (total_N_in,)
-        input_mask=None,  # (B, N_in)
+        input_unit_index,  # (total_N_in,)
+        input_timestamps,  # (total_N_in,)
+        input_token_type,  # (total_N_in,)
+        input_seqlen,  # (B,)
         # latent sequence
         latent_index,  # (B, N_latent)
         latent_timestamps,  # (B, N_latent)
+        latent_seqlen,
         # output sequence
         session_index,  # (B,)
         output_timestamps,  # (B, N_out)
         output_decoder_index,  # (B, N_out)
-        output_batch_index=None,
+        output_seqlen,
+        output_batch_index,
         output_values: Optional[Dict[str, torch.Tensor]] = None,
         output_weights: Optional[Dict[str, torch.Tensor]] = None,
     ) -> Tuple[
@@ -139,26 +154,39 @@ class POYOPlus(nn.Module):
         output_timestamp_emb = self.rotary_emb(output_timestamps)
 
         # encode
-        latents = latents + self.enc_atn(
+        latents = latents + self.enc_atn.forward_varlen(
             latents,
             inputs,
             latent_timestamp_emb,
             input_timestamp_emb,
-            input_mask,
+            query_seqlen=latent_seqlen,
+            context_seqlen=input_seqlen,
         )
         latents = latents + self.enc_ffn(latents)
+
+        # reshape latents and latent timestamp embeddings
+        latents = latents.view(len(latent_seqlen), latent_seqlen[0], self.dim)
+        latent_timestamp_emb = latent_timestamp_emb.view(
+            len(latent_seqlen), latent_seqlen[0], self.dim
+        )
 
         # process
         for self_attn, self_ff in self.proc_layers:
             latents = latents + self.dropout(self_attn(latents, latent_timestamp_emb))
             latents = latents + self.dropout(self_ff(latents))
 
+        # reshape latents again
+        latents = latents.view(-1, self.dim)
+        latent_timestamp_emb = latent_timestamp_emb.view(-1, self.dim)
+
         # decode
-        output_queries = output_queries + self.dec_atn(
+        output_queries = output_queries + self.dec_atn.forward_varlen(
             output_queries,
             latents,
             output_timestamp_emb,
             latent_timestamp_emb,
+            query_seqlen=output_seqlen,
+            context_seqlen=latent_seqlen,
         )
         output_latents = output_queries + self.dec_ffn(output_queries)
 
@@ -174,7 +202,7 @@ class POYOPlus(nn.Module):
         return output, loss, losses_taskwise
 
 
-class POYOPlusTokenizer:
+class POYOPlusETokenizer:
     r"""Tokenizer used to tokenize Data for the POYO1 model.
 
     This tokenizer can be called as a transform. If you are applying multiple
@@ -196,6 +224,7 @@ class POYOPlusTokenizer:
         decoder_registry,
         latent_step,
         num_latents_per_step,
+        batch_type,
         eval=False,
     ):
         self.unit_tokenizer = unit_tokenizer
@@ -206,6 +235,7 @@ class POYOPlusTokenizer:
         self.latent_step = latent_step
         self.num_latents_per_step = num_latents_per_step
 
+        self.batch_type = batch_type
         self.eval = eval
 
     def __call__(self, data):
@@ -262,17 +292,20 @@ class POYOPlusTokenizer:
 
         batch = {
             # input sequence
-            "spike_unit_index": pad(spike_unit_index),
-            "spike_timestamps": pad(spike_timestamps),
-            "spike_type": pad(spike_token_type_index),
-            "input_mask": track_mask(spike_unit_index),
+            "spike_unit_index": chain(spike_unit_index),
+            "spike_timestamps": chain(spike_timestamps),
+            "spike_type": chain(spike_token_type_index),
+            "input_seqlen": len(spike_unit_index),
             # latent sequence
-            "latent_index": latent_index,
-            "latent_timestamps": latent_timestamps,
+            "latent_index": chain(latent_index),
+            "latent_timestamps": chain(latent_timestamps),
+            "latent_seqlen": len(latent_index),
             # output sequence
-            "session_index": pad(session_index),
-            "output_timestamps": pad(output_timestamps),
-            "output_decoder_index": pad(output_task_index),
+            "session_index": chain(session_index),
+            "output_timestamps": chain(output_timestamps),
+            "output_decoder_index": chain(output_task_index),
+            "output_seqlen": len(output_timestamps),
+            "output_batch_index": track_batch(output_timestamps),
             "output_values": chain(output_values, allow_missing_keys=True),
             "output_weights": chain(output_weights, allow_missing_keys=True),
         }
