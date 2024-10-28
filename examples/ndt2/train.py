@@ -2,14 +2,8 @@ import logging
 
 import hydra
 import lightning as L
-import numpy as np
 import torch
-import torch.nn as nn
-from lightning.pytorch.callbacks import (
-    LearningRateMonitor,
-    ModelCheckpoint,
-    ModelSummary,
-)
+from data_loader_generator import DataLoaderGenerator
 from lightning.pytorch.utilities import CombinedLoader
 from model import (
     NDT2_Patchifier,
@@ -18,18 +12,12 @@ from model import (
     NDT2_TransformerEncoder,
 )
 from omegaconf import OmegaConf, open_dict
-from sklearn.metrics import balanced_accuracy_score
-from tokenizer import NDT2Tokenizer
 from torch import optim
-from torch.utils.data import DataLoader
 from torchmetrics import R2Score
 
-from brainsets.taxonomy import decoder_registry
-from torch_brain.data import Dataset, collate
-from torch_brain.data.sampler import (
-    RandomFixedWindowSampler,
-    SequentialFixedWindowSampler,
-)
+# from sklearn.metrics import balanced_accuracy_score
+from utils import balanced_accuracy_score, set_callbacks, wandb_set_up
+
 from torch_brain.utils.validation import avg_pool, gt_pool
 
 log = logging.getLogger(__name__)
@@ -70,7 +58,6 @@ class TrainWrapper(L.LightningModule):
         )
 
         self.mae_loss_fn = torch.nn.PoissonNLLLoss(log_input=True)
-        # self.mae_loss_fn = torch.nn.MSELoss()
         self.bhv_loss_fn = torch.nn.MSELoss()
 
         self.save_hyperparameters(OmegaConf.to_container(cfg, resolve=True))
@@ -88,7 +75,6 @@ class TrainWrapper(L.LightningModule):
         return loss
 
     def mae_step(self, batch, batch_idx, log=True):
-
         # patchify input
         x = self.patchifier(
             x=batch["spike_tokens"].clone(),
@@ -128,7 +114,7 @@ class TrainWrapper(L.LightningModule):
         loss = self.mae_loss_fn(preds, targets.float())
 
         if log:
-            self.log("mae_loss", loss, prog_bar=True)
+            self.log("train_loss", loss, prog_bar=True, on_step=True)
 
         return loss
 
@@ -180,29 +166,31 @@ class TrainWrapper(L.LightningModule):
     def configure_optimizers(self):
         cfg = self.cfg
 
-        optimizer = optim.Adam(
+        optimizer = torch.optim.AdamW(
             self.parameters(),
             lr=cfg.optimizer.lr,
             weight_decay=cfg.optimizer.weight_decay,
         )
-        scheduler = optim.lr_scheduler.ChainedScheduler(
-            [
-                optim.lr_scheduler.LinearLR(
-                    optimizer,
-                    start_factor=cfg.optimizer.start_factor,
-                    total_iters=cfg.optimizer.warmup_epochs,
-                ),
-                optim.lr_scheduler.CosineAnnealingLR(
-                    optimizer, T_max=cfg.epochs, eta_min=cfg.optimizer.lr_min
-                ),
-            ]
+
+        linearLR = optim.lr_scheduler.LinearLR(
+            optimizer,
+            start_factor=cfg.optimizer.start_factor,
+            total_iters=cfg.optimizer.warmup_steps,
         )
-        out = {
+        cosineAnnealingLR = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer,
+            T_max=cfg.optimizer.decay_steps,
+            eta_min=cfg.optimizer.lr_min,
+        )
+        scheduler = optim.lr_scheduler.ChainedScheduler([linearLR, cosineAnnealingLR])
+        return {
             "optimizer": optimizer,
-            "lr_scheduler": scheduler,
-            "interval": "epoch",
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",
+                "frequency": 1,
+            },
         }
-        return out
 
     def on_validation_epoch_start(self):
         self.val_mae_losses = []
@@ -273,7 +261,6 @@ class TrainWrapper(L.LightningModule):
 
 
 def run_training(cfg):
-
     L.seed_everything(cfg.seed)
 
     if cfg.fast_dev_run:
@@ -293,133 +280,50 @@ def run_training(cfg):
         log.info(f"Batch size per GPU: {cfg.batch_size_per_gpu}")
         log.info(f"Superv batch size per GPU: {cfg.superv_batch_size_per_gpu}")
 
-    wandb_logger = None
-    if cfg.wandb.enable:
-        wandb_logger = L.pytorch.loggers.WandbLogger(
-            entity=cfg.wandb.entity,
-            project=cfg.wandb.project,
-            name=cfg.wandb.run_name,
-            save_dir=cfg.log_dir,
-            log_model=False,
-        )
-        # wandb_logger.watch(model, log_freq=100, log_graph=False)
-        log.info(f"Using wandb logger: {wandb_logger.version}")
+    wandb_logger = wandb_set_up(cfg, log)
 
     # Train wrapper
     train_wrapper = TrainWrapper(cfg)
 
-    # Dataloaders
-    def create_data_stuff(cfg, include_cfg, split, ssl):
-        tokenizer = NDT2Tokenizer(
-            ctx_time=cfg.ctx_time,
-            bin_time=cfg.bin_time,
-            patch_size=cfg.patch_size,
-            decoder_registry=decoder_registry,
-            mask_ratio=cfg.mask_ratio,
-            pad_val=cfg.pad_val,
-            sess_emb_space_idx=cfg.model.max_space_patches - 1,
-            sess_emb_time_idx=cfg.model.max_time_patches - 1,
-            session_tokenizer=train_wrapper.patchifier.sess_emb.tokenizer,
-            inc_behavior=not ssl,
-            inc_mask=ssl,
-        )
-        dataset = Dataset(
-            root=cfg.data_root,
-            split=split,
-            include=include_cfg,
-            transform=tokenizer,
-        )
-        if split == "train":
-            sampler = RandomFixedWindowSampler(
-                interval_dict=dataset.get_sampling_intervals(),
-                window_length=cfg.ctx_time,
-                generator=torch.Generator().manual_seed(cfg.seed),
-                drop_short=True,
-            )
-        else:
-            sampler = SequentialFixedWindowSampler(
-                interval_dict=dataset.get_sampling_intervals(),
-                window_length=cfg.ctx_time,
-                step=cfg.ctx_time * 0.5,
-                drop_short=True,
-            )
-        loader = DataLoader(
-            dataset=dataset,
-            batch_size=cfg.batch_size_per_gpu if ssl else cfg.superv_batch_size_per_gpu,
-            sampler=sampler,
-            collate_fn=collate,
-            num_workers=cfg.num_workers,
-            drop_last=split == "train",
-        )
-        return tokenizer, dataset, sampler, loader
-
     # ssl
-    ssl_train_tokenizer, ssl_train_dataset, ssl_train_sampler, ssl_train_loader = (
-        create_data_stuff(cfg, OmegaConf.to_container(cfg.data_ssl), "train", True)
-    )
-
-    ssl_val_tokenizer, ssl_val_dataset, ssl_val_sampler, ssl_val_loader = (
-        create_data_stuff(cfg, OmegaConf.to_container(cfg.data_ssl), "valid", True)
-    )
+    ssl_cfg = OmegaConf.to_container(cfg.data_ssl.include)
+    ssl_loader_generator = DataLoaderGenerator(cfg, ssl_cfg, train_wrapper, True)
+    ssl_train_loader = ssl_loader_generator("train")
+    ssl_val_loader = ssl_loader_generator("valid")
 
     # superv
-    (
-        superv_train_tokenizer,
-        superv_train_dataset,
-        superv_train_sampler,
-        superv_train_loader,
-    ) = create_data_stuff(cfg, OmegaConf.to_container(cfg.data_superv), "train", False)
-
-    superv_val_tokenizer, superv_val_dataset, superv_val_sampler, superv_val_loader = (
-        create_data_stuff(cfg, OmegaConf.to_container(cfg.data_superv), "valid", False)
-    )
+    superv_cfg = OmegaConf.to_container(cfg.data_superv.include)
+    superv_loader_generator = DataLoaderGenerator(cfg, superv_cfg, train_wrapper, True)
+    superv_train_loader = superv_loader_generator("train")
+    superv_val_loader = superv_loader_generator("valid")
 
     # combine loaders
-    train_loader_dict = {}
+    train_loader_dict, val_loader_dict = {}, {}
     if cfg.doing_ssl:
         train_loader_dict["ssl"] = ssl_train_loader
-    if cfg.doing_superv:
-        train_loader_dict["superv"] = superv_train_loader
-    train_loader = CombinedLoader(train_loader_dict, mode="max_size_cycle")
-
-    val_loader_dict = {}
-    if cfg.doing_ssl:
         val_loader_dict["ssl"] = ssl_val_loader
     if cfg.doing_superv:
+        train_loader_dict["superv"] = superv_train_loader
         val_loader_dict["superv"] = superv_val_loader
+    train_loader = CombinedLoader(train_loader_dict, mode="max_size_cycle")
     val_loader = CombinedLoader(val_loader_dict, mode="max_size")
 
     # Set up vocab
-    sess_ids = ssl_train_dataset.get_session_ids()
-    train_wrapper.patchifier.sess_emb.initialize_vocab(sess_ids)
-
-    superv_sess_ids = superv_train_dataset.get_session_ids()
+    sess_ids = ssl_loader_generator.get_session_ids()
+    superv_sess_ids = superv_loader_generator.get_session_ids()
+    sess_emb = train_wrapper.patchifier.sess_emb
+    sess_emb.initialize_vocab(sess_ids)
     if cfg.doing_superv and cfg.encoder_finetune:
-        train_wrapper.patchifier.sess_emb.extend_vocab(
-            vocab=superv_sess_ids, exist_ok=True
-        )
+        sess_emb.extend_vocab(vocab=superv_sess_ids, exist_ok=True)
     if cfg.superv_only:
-        train_wrapper.patchifier.sess_emb.subset_vocab(vocab=superv_sess_ids)
+        sess_emb.subset_vocab(vocab=superv_sess_ids)
 
     log.info(f"SSL sessions: {len(sess_ids)}")
     log.info(f"Superv sessions: {len(superv_sess_ids)}")
     log.info(f"Vocab size: {len(train_wrapper.patchifier.sess_emb.vocab)}")
 
     # Callbacks
-    callbacks = [
-        ModelSummary(max_depth=3),
-        LearningRateMonitor(logging_interval="epoch"),
-    ]
-
-    if cfg.checkpoint.enable:
-        callbacks += [
-            ModelCheckpoint(
-                save_last=True,  # saves a checkpoint for the last epoch
-                every_n_train_steps=cfg.checkpoint.every_n_steps,
-                every_n_epochs=cfg.checkpoint.every_n_epochs,
-                save_top_k=-1 if cfg.checkpoint.save_all else 1,
-            ),
-        ]
+    callbacks = set_callbacks(cfg)
 
     # Set up trainer
     trainer = L.Trainer(
@@ -437,7 +341,7 @@ def run_training(cfg):
     )
 
     if wandb_logger is not None:
-        wandb_logger.watch(train_wrapper, log="all", log_freq=cfg.log_every_n_steps)
+        wandb_logger.watch(train_wrapper, log="all", log_freq=1)
 
     # Train model
     trainer.fit(train_wrapper, train_loader, val_loader)
