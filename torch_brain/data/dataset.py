@@ -16,7 +16,7 @@ from temporaldata import Data, Interval
 
 @dataclass
 class DatasetIndex:
-    """Accessing the dataset is done by specifying a recording id and a time interval."""
+    r"""The dataset can be indexed by specifying a recording id and a start and end time."""
 
     recording_id: str
     start: float
@@ -24,25 +24,35 @@ class DatasetIndex:
 
 
 class Dataset(torch.utils.data.Dataset):
-    r"""This class abstracts a collection of lazily-loaded Data objects. Each of these
-    Data objects corresponds to a session and lives on the disk until it is requested.
-    To request a piece of a included session's data, you can use the `get` method,
-    or index the Dataset with a `DatasetIndex` object (see `__getitem__`).
+    r"""This class abstracts a collection of lazily-loaded Data objects. Each data object
+    corresponds to a full recording. It is never fully loaded into memory, but rather
+    lazy-loaded on-the-fly from disk.
 
-    This definition is a deviation from the standard PyTorch Dataset definition, which
-    generally presents the dataset directly as samples. In this case, the Dataset
-    by itself does not provide you with samples, but rather the means to flexibly work
-    and access complete sessions.
-    Within this framework, it is the job of the sampler to provide the
-    DatasetIndex indices to slice the dataset into samples (see `kirby.data.sampler`).
+    The dataset can be indexed by a recording id and a start and end time using the `get`
+    method, or by a DatasetIndex object. This definition is a deviation from the standard
+    PyTorch Dataset definition, which generally presents the dataset directly as samples.
+    In this case, the Dataset by itself does not provide you with samples, but rather the
+    means to flexibly work and access complete sessions.
+    Within this framework, it is the job of the sampler to provide a list of
+    DatasetIndex objects that are used to slice the dataset into samples (see
+    `torch_brain.data.sampler`).
 
-    Files will be opened, and only closed when the Dataset object is deleted.
+    The lazy loading is done both in:
+    - time: only the requested time interval is loaded, without having to load the entire
+      recording into memory, and
+    - attributes: attributes are not loaded until they are requested, this is useful when
+      only a small subset of the attributes are actually needed.
+
+    References to the underlying hdf5 files will be opened, and will only be closed when
+    the Dataset object is destroyed.
 
     Args:
         root: The root directory of the dataset.
         config: The configuration file specifying the sessions to include.
-        brainset: The brainset to include. This is used to specify a single brainset, and can only be used if config is not provided.
-        session: The session to include. This is used to specify a single session, and can only be used if config is not provided.
+        brainset: The brainset to include. This is used to specify a single brainset,
+            and can only be used if config is not provided.
+        session: The session to include. This is used to specify a single session, and
+            can only be used if config is not provided.
         split: The split of the dataset. This is used to determine the sampling intervals
             for each session. The split is optional, and is used to load a subset of the data
             in a session based on a predefined split.
@@ -59,8 +69,7 @@ class Dataset(torch.utils.data.Dataset):
         root: str,
         *,
         config: str = None,
-        brainset: str = None,
-        session: str = None,
+        recording_id: str = None,
         split: str = None,
         transform=None,
     ):
@@ -72,30 +81,25 @@ class Dataset(torch.utils.data.Dataset):
 
         if config is not None:
             assert (
-                brainset is None and session is None
-            ), "Cannot specify brainset or session when using config."
+                recording_id is None
+            ), "Cannot specify recording_id when using config."
 
             if Path(config).is_file():
                 config = omegaconf.OmegaConf.load(config)
             else:
-                raise ValueError(f"Config source '{config}' not found.")
+                raise ValueError(f"Could not open configuration file: '{config}'")
 
             self.recording_dict = self._look_for_files(config)
 
-        elif brainset is not None or session is not None:
-            assert (
-                brainset is not None and session is not None
-            ), "Please specify both brainset and session."
+        elif recording_id is not None:
             self.recording_dict = {
-                f"{brainset}/{session}": {
-                    "filename": Path(self.root) / brainset / (session + ".h5"),
+                recording_id: {
+                    "filename": Path(self.root) / (recording_id + ".h5"),
                     "config": {},
                 }
             }
         else:
-            raise ValueError(
-                "Please either specify a config file or a brainset and session."
-            )
+            raise ValueError("Please either specify a config file or a recording_id.")
 
         self._open_files = {
             recording_id: h5py.File(recording_info["filename"], "r")
@@ -246,7 +250,7 @@ class Dataset(torch.utils.data.Dataset):
                 for session_id in session_ids:
                     recording_id = subselection["brainset"] + "/" + session_id
 
-                    if session_id in recording_dict:
+                    if recording_id in recording_dict:
                         raise ValueError(
                             f"Recording {recording_id} is already included in the dataset."
                             "Please verify that it is only selected once."
@@ -260,8 +264,8 @@ class Dataset(torch.utils.data.Dataset):
         return recording_dict
 
     def get(self, recording_id: str, start: float, end: float):
-        r"""This is the main method to extract a slice from a session. It returns a
-        Data object that contains all data for session :obj:`recording_id` between
+        r"""This is the main method to extract a slice from a recording. It returns a
+        Data object that contains all data for recording :obj:`recording_id` between
         times :obj:`start` and :obj:`end`.
 
         Args:

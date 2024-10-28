@@ -144,8 +144,8 @@ def test_dataset_selection(dummy_data):
             split=None,
             config=temp_config_file.name,
         )
-        assert len(ds.session_dict) == 2
-        assert ds.session_dict["allen_neuropixels_mock/20100102_1"]["filename"] == (
+        assert len(ds.recording_dict) == 2
+        assert ds.recording_dict["allen_neuropixels_mock/20100102_1"]["filename"] == (
             dummy_data / "allen_neuropixels_mock" / "20100102_1.h5"
         )
 
@@ -159,7 +159,7 @@ def test_dataset_selection(dummy_data):
             split=None,
             config=temp_config_file.name,
         )
-        assert len(ds.session_dict) == 1
+        assert len(ds.recording_dict) == 1
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".yaml") as temp_config_file:
         yaml.dump(
@@ -171,18 +171,17 @@ def test_dataset_selection(dummy_data):
             split=None,
             config=temp_config_file.name,
         )
-        assert len(ds.session_dict) == 1
+        assert len(ds.recording_dict) == 1
 
 
-def test_get_session_data(dummy_data):
+def test_get_recording_data(dummy_data):
     ds = Dataset(
         dummy_data,
         split=None,
-        brainset="allen_neuropixels_mock",
-        session="20100102_1",
+        recording_id="allen_neuropixels_mock/20100102_1",
     )
 
-    data = ds.get_session_data("allen_neuropixels_mock/20100102_1")
+    data = ds.get_recording_data("allen_neuropixels_mock/20100102_1")
 
     assert len(data.spikes) == 1000
     assert len(data.gabors) == 1000
