@@ -11,6 +11,7 @@ from torch_brain.nn import prepare_for_multitask_readout
 from torch_brain.utils.binning import bin_spikes
 
 
+# TODO rename
 class DropUnit:
     r"""Drops units whose ids end with `type` ("unsorted" or "sorted")"""
 
@@ -23,15 +24,17 @@ class DropUnit:
         unit_ids = data.units.id
         num_units = len(unit_ids)
 
-        unit_mask = np.char.find(unit_ids, "unsorted") == -1
+        sorted_unit_mask = np.char.find(unit_ids, "unsorted") == -1
         if self.keyword == "sorted":
-            unit_mask = ~unit_mask
-        if unit_mask.all():
+            keep_unit_mask = ~sorted_unit_mask
+        else:
+            keep_unit_mask = sorted_unit_mask
+        if keep_unit_mask.all():
             # Nothing to drop
             return data
 
-        keep_indices = np.where(unit_mask)[0]
-        data.units = data.units.select_by_mask(unit_mask)
+        keep_indices = np.where(keep_unit_mask)[0]
+        data.units = data.units.select_by_mask(keep_unit_mask)
 
         nested_attr = self.field.split(".")
         target_obj = getattr(data, nested_attr[0])
@@ -45,7 +48,7 @@ class DropUnit:
             setattr(data, self.field, target_obj.select_by_mask(spike_mask))
 
             relabel_map = np.zeros(num_units, dtype=int)
-            relabel_map[unit_mask] = np.arange(unit_mask.sum())
+            relabel_map[keep_unit_mask] = np.arange(keep_unit_mask.sum())
 
             target_obj = getattr(data, self.field)
             target_obj.unit_index = relabel_map[target_obj.unit_index]
@@ -54,7 +57,7 @@ class DropUnit:
             setattr(
                 target_obj,
                 nested_attr[1],
-                getattr(target_obj, nested_attr[1])[:, unit_mask],
+                getattr(target_obj, nested_attr[1])[:, keep_unit_mask],
             )
         else:
             raise ValueError(f"Unsupported type for {self.field}: {type(target_obj)}")
@@ -170,6 +173,8 @@ class NDT2Tokenizer:
         # -- Mask
         mask_data = {}
         if self.mask_ratio is not None and self.inc_mask:
+            # shuffle = torch.randperm(spikes.size(1), device=spikes.device)
+            # encoder_frac = int((1 - mask_ratio) * spikes.size(1))
             mask_indicator = torch.rand(len(spike_tokens)) < self.mask_ratio
             mask_indicator[-1] = False  # don't mask the session token
             num_masked = mask_indicator.sum().int()
