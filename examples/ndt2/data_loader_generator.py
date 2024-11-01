@@ -23,7 +23,7 @@ class DataLoaderGenerator:
 
         session_tokenizer = self.train_wrapper.patchifier.sess_emb.tokenizer
 
-        drop_sorted_unit = DropUnit(keyword="sorted")
+        drop_unit = DropUnit(keyword="sorted")
         tokenizer = NDT2Tokenizer(
             ctx_time=cfg.ctx_time,
             bin_time=cfg.bin_time,
@@ -37,11 +37,11 @@ class DataLoaderGenerator:
             inc_behavior=not self.is_ssl,
             inc_mask=self.is_ssl,
         )
-        transforms = Compose([drop_sorted_unit, tokenizer])
+        transforms = Compose([drop_unit, tokenizer])
 
         self.dataset = Dataset(
             root=cfg.data_root,
-            split="full",
+            split="train",
             include=self.dataset_cfg,
             transform=transforms,
         )
@@ -59,6 +59,7 @@ class DataLoaderGenerator:
             train_intervals = self.train_intervals
         else:
             train_intervals = self.eval_intervals
+
         sampler = SequentialFixedWindowSampler(
             interval_dict=train_intervals,
             window_length=cfg.ctx_time,

@@ -4,7 +4,6 @@ from typing import List, Optional
 import numpy as np
 import pytorch_lightning as pl
 import torch
-import wandb
 from lightning.pytorch.callbacks import (
     Callback,
     LearningRateMonitor,
@@ -83,7 +82,7 @@ def custom_sampling_intervals(dataset: Dataset, ctx_time=1.0, train_ratio=0.8, s
     tv_cut = int(train_ratio * len(ses_keys))
     train_keys, val_keys = ses_keys[:tv_cut], ses_keys[tv_cut:]
 
-    def get_dict(keys, session_cache):
+    def get_dict(keys):
         d = defaultdict(list)
         for k in keys:
             ses_id, trial = k.split("-")

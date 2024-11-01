@@ -59,6 +59,17 @@ class NDT2_Patchifier(nn.Module):
         self.space_emb = nn.Embedding(max_space_patches, dim)
         self.sess_emb = InfiniteVocabEmbedding(dim, init_scale=1.0)
 
+    #     self.ses_raw_emb = nn.Embedding(len(self.data_attrs.context.session), dim)
+    #     self.ses_flag = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
+    #     self.subj_raw_emb = nn.Embedding(len(self.data_attrs.context.session), dim)
+    #     self.subj_flag = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
+
+    # def session_emb(self, session: torch.Tensor) -> torch.Tensor:
+    #     return self.ses_raw_emb(session) + self.ses_flag
+
+    # def subject_emb(self, subject: torch.Tensor) -> torch.Tensor:
+    #     return self.subj_raw_emb(subject) + self.subj_flag
+
     def forward(self, x, time_idx, space_idx, session_token_idx=None, session_idx=None):
         """
         Args:
