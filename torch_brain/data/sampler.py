@@ -1,7 +1,7 @@
-import math
 import logging
-from typing import List, Dict, Tuple, Optional
+import math
 from functools import cached_property
+from typing import Dict, List, Optional, Tuple
 
 import torch
 
@@ -13,7 +13,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
     :obj:`interval_dict` parameter. :obj:`interval_dict` is a dictionary where the keys
     are the session ids and the values are lists of tuples representing the
     start and end of the intervals from which to sample. The samples are shuffled, and
-    random temporal jitter is applied.
+    random temporal jitter is applied by default.
 
 
     In one epoch, the number of samples that is generated from a given sampling interval
@@ -37,11 +37,13 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
         window_length: float,
         generator: Optional[torch.Generator],
         drop_short: bool = True,
+        enable_jitter: bool = True,
     ):
         self.interval_dict = interval_dict
         self.window_length = window_length
         self.generator = generator
         self.drop_short = drop_short
+        self.enable_jitter = enable_jitter
 
     @cached_property
     def _estimated_len(self):
@@ -92,10 +94,13 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
                             f"Minimum length is {self.window_length}."
                         )
 
-                # sample a random offset
-                left_offset = (
-                    torch.rand(1, generator=self.generator).item() * self.window_length
-                )
+                left_offset = 0
+                if self.enable_jitter:
+                    # sample a random offset
+                    left_offset = (
+                        torch.rand(1, generator=self.generator).item()
+                        * self.window_length
+                    )
 
                 indices_ = [
                     DatasetIndex(
