@@ -1,5 +1,5 @@
 import math
-from typing import Optional
+from typing import Dict, Optional
 
 import torch
 import torch.distributed as dist
@@ -38,6 +38,26 @@ def sincos_position_embeddings(num_pos, dim, max_num_pos=10000):
     return pe
 
 
+class NDT2_MaskManager(nn.Module):
+    def __init__(self, mask_ratio):
+        super().__init__()
+        self.mask_ratio = mask_ratio
+        self.inc_mask = True
+
+    def forward(self, batch: Dict[str, torch.Tensor]):
+        # -- Mask
+        if self.mask_ratio is not None and self.inc_mask:
+            spikes = batch["spike_tokens"]
+            shuffle = torch.randperm(spikes.size(1), device=spikes.device)
+            encoder_frac = int((1 - self.mask_ratio) * spikes.size(1))
+            for key in ["spike_tokens", "time_idx", "space_idx"]:
+                t = batch[key].transpose(1, 0)[shuffle].transpose(1, 0)
+                batch[key] = t[:, :encoder_frac]
+                batch[f"target_{key}"] = t[:, encoder_frac:]
+
+        return batch
+
+
 class NDT2_Patchifier(nn.Module):
     def __init__(
         self,
@@ -54,43 +74,50 @@ class NDT2_Patchifier(nn.Module):
             max_space_patches (Int): Maximum number of space patches
         """
         super().__init__()
+        spike_embed_dim = round(dim / patch_size[0])
+        max_neuron_count = 21
+        pad = 5
+        self.readin = nn.Embedding(max_neuron_count, spike_embed_dim, padding_idx=pad)
         self.net = nn.Linear(patch_size[0] * patch_size[1], dim)
+
         self.time_emb = nn.Embedding(max_time_patches, dim)
         self.space_emb = nn.Embedding(max_space_patches, dim)
-        self.sess_emb = InfiniteVocabEmbedding(dim, init_scale=1.0)
 
-    #     self.ses_raw_emb = nn.Embedding(len(self.data_attrs.context.session), dim)
-    #     self.ses_flag = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
-    #     self.subj_raw_emb = nn.Embedding(len(self.data_attrs.context.session), dim)
-    #     self.subj_flag = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
+        self.ses_emb = InfiniteVocabEmbedding(dim, init_scale=1.0)
+        self.ses_flag = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
+        self.subj_emb = InfiniteVocabEmbedding(dim, init_scale=1.0)
+        self.subj_flag = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
 
-    # def session_emb(self, session: torch.Tensor) -> torch.Tensor:
-    #     return self.ses_raw_emb(session) + self.ses_flag
+    def session_emb(self, session: torch.Tensor) -> torch.Tensor:
+        return self.ses_emb(session) + self.ses_flag
 
-    # def subject_emb(self, subject: torch.Tensor) -> torch.Tensor:
-    #     return self.subj_raw_emb(subject) + self.subj_flag
+    def subject_emb(self, subject: torch.Tensor) -> torch.Tensor:
+        return self.subj_emb(subject) + self.subj_flag
 
-    def forward(self, x, time_idx, space_idx, session_token_idx=None, session_idx=None):
+    def forward(self, spikes, time_idx, space_idx, session_idx=None, subject_idx=None):
         """
         Args:
-            x (torch.Tensor): Binned spikes (NxT, patch_size[0], patch_size[1])
-            time_idx (torch.Tensor): Time index for all tokens (NxT,)
-            space_idx (torch.Tensor): Space index for all tokens (NxT,)
-            session_token_idx (torch.LongTensor): A list of indices which
-                correspond to the session token in the `x` sequence. 1-d tensor
-                with length equal to the batch size.
-            session_idx (torch.LongTensor): Global session index for all samples
-                in the batch. 1-d tensor with length equal to the batch size.
+            x (torch.Tensor): Binned spikes (bs, T, patch_size[0], patch_size[1])
+            session_idx (torch.LongTensor):  session index (bs,)
+            subject_idx (torch.LongTensor):  subject index (bs,)
         Returns: (NxT, D)
         """
-        x = rearrange(x, "NxT Pn Pt -> NxT (Pn Pt)")
-        x = self.net(x.float())
-
-        if session_token_idx is not None:
-            x[session_token_idx] = self.sess_emb(session_idx).to(x.dtype)
-            # session token has special time_idx and space_idx
-
+        x = rearrange(spikes, "bs T Pn Pt -> bs T (Pn Pt)")
+        # x = self.net(x.float())
+        x = self.readin(x).flatten(-2, -1)
         x = x + self.time_emb(time_idx) + self.space_emb(space_idx)
+
+        context_embs = []
+        if session_idx is not None:
+            context_embs.append(self.session_emb(session_idx).to(x.dtype))
+
+        if subject_idx is not None:
+            context_embs.append(self.subject_emb(subject_idx).to(x.dtype))
+
+        if len(context_embs) > 0:
+            context_embs = torch.stack(context_embs, dim=1)
+            x = torch.cat([x, context_embs], dim=1)
+
         return x
 
 

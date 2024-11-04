@@ -6,6 +6,7 @@ import torch
 from data_loader_generator import DataLoaderGenerator
 from lightning.pytorch.utilities import CombinedLoader
 from model import (
+    NDT2_MaskManager,
     NDT2_Patchifier,
     NDT2_Predictor,
     NDT2_TransformerDecoder,
@@ -28,6 +29,8 @@ class TrainWrapper(L.LightningModule):
         super().__init__()
 
         self.cfg = cfg
+
+        self.mask_manager = NDT2_MaskManager(cfg.mask_ratio)
 
         self.patchifier = NDT2_Patchifier(
             dim=cfg.model.dim,
@@ -75,6 +78,8 @@ class TrainWrapper(L.LightningModule):
         return loss
 
     def mae_step(self, batch, batch_idx, log=True):
+        batch = self.mask_manager(batch)
+
         # patchify input
         x = self.patchifier(
             x=batch["spike_tokens"].clone(),
@@ -183,6 +188,7 @@ class TrainWrapper(L.LightningModule):
             eta_min=cfg.optimizer.lr_min,
         )
         scheduler = optim.lr_scheduler.ChainedScheduler([linearLR, cosineAnnealingLR])
+
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
@@ -287,13 +293,13 @@ def run_training(cfg):
 
     # ssl
     ssl_cfg = OmegaConf.to_container(cfg.data_ssl.include)
-    ssl_loader_generator = DataLoaderGenerator(cfg, ssl_cfg, train_wrapper, True)
+    ssl_loader_generator = DataLoaderGenerator(cfg, ssl_cfg, train_wrapper)
     ssl_train_loader = ssl_loader_generator("train")
     ssl_val_loader = ssl_loader_generator("valid")
 
     # superv
     superv_cfg = OmegaConf.to_container(cfg.data_superv.include)
-    superv_loader_generator = DataLoaderGenerator(cfg, superv_cfg, train_wrapper, True)
+    superv_loader_generator = DataLoaderGenerator(cfg, superv_cfg, train_wrapper, False)
     superv_train_loader = superv_loader_generator("train")
     superv_val_loader = superv_loader_generator("valid")
 
@@ -309,18 +315,26 @@ def run_training(cfg):
     val_loader = CombinedLoader(val_loader_dict, mode="max_size")
 
     # Set up vocab
-    sess_ids = ssl_loader_generator.get_session_ids()
-    superv_sess_ids = superv_loader_generator.get_session_ids()
-    sess_emb = train_wrapper.patchifier.sess_emb
-    sess_emb.initialize_vocab(sess_ids)
-    if cfg.doing_superv and cfg.encoder_finetune:
-        sess_emb.extend_vocab(vocab=superv_sess_ids, exist_ok=True)
-    if cfg.superv_only:
-        sess_emb.subset_vocab(vocab=superv_sess_ids)
+    ses_ids = ssl_loader_generator.session_ids
+    superv_ses_ids = superv_loader_generator.session_ids
+    ses_emb = train_wrapper.patchifier.ses_emb
+    ses_emb.initialize_vocab(ses_ids)
+    subjet_ids = ssl_loader_generator.subjet_ids
+    superv_subjet_ids = superv_loader_generator.subjet_ids
+    subj_emb = train_wrapper.patchifier.subj_emb
+    subj_emb.initialize_vocab(subjet_ids)
 
-    log.info(f"SSL sessions: {len(sess_ids)}")
-    log.info(f"Superv sessions: {len(superv_sess_ids)}")
-    log.info(f"Vocab size: {len(train_wrapper.patchifier.sess_emb.vocab)}")
+    if cfg.doing_superv and cfg.encoder_finetune:
+        ses_emb.extend_vocab(vocab=superv_ses_ids, exist_ok=True)
+        subj_emb.extend_vocab(vocab=superv_subjet_ids, exist_ok=True)
+
+    if cfg.superv_only:
+        ses_emb.subset_vocab(vocab=superv_ses_ids)
+        subj_emb.subset_vocab(vocab=superv_subjet_ids)
+
+    log.info(f"SSL sessions: {len(ses_ids)}")
+    log.info(f"Superv sessions: {len(superv_ses_ids)}")
+    log.info(f"Vocab size: {len(train_wrapper.patchifier.ses_emb.vocab)}")
 
     # Callbacks
     callbacks = set_callbacks(cfg)

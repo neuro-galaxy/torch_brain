@@ -12,23 +12,26 @@ from torch_brain.utils.binning import bin_spikes
 
 
 # TODO rename
-class DropUnit:
-    r"""Drops units whose ids end with `type` ("unsorted" or "sorted")"""
+class FilterUnit:
+    r"""Drop (or keep) units whose ids has ("unsorted" or "sorted"),
+    by default drop but can keep is `keep` is set to True"""
 
-    def __init__(self, keyword: str = "sorted", field="spikes"):
+    def __init__(self, keyword: str = "unsorted", field="spikes", keep: bool = False):
         self.keyword = keyword
         self.field = field
+        self.keep = keep
 
     def __call__(self, data: Data) -> Data:
         # get units from data
         unit_ids = data.units.id
         num_units = len(unit_ids)
 
-        sorted_unit_mask = np.char.find(unit_ids, "unsorted") == -1
-        if self.keyword == "sorted":
-            keep_unit_mask = ~sorted_unit_mask
+        no_keywork_unit = np.char.find(unit_ids, self.keyword) == -1
+        if self.keep == True:
+            keep_unit_mask = ~no_keywork_unit
         else:
-            keep_unit_mask = sorted_unit_mask
+            keep_unit_mask = no_keywork_unit
+
         if keep_unit_mask.all():
             # Nothing to drop
             return data
@@ -38,7 +41,6 @@ class DropUnit:
 
         nested_attr = self.field.split(".")
         target_obj = getattr(data, nested_attr[0])
-
         if isinstance(target_obj, IrregularTimeSeries):
             # make a mask to select spikes that are from the units we want to keep
             spike_mask = np.isin(target_obj.unit_index, keep_indices)
@@ -79,8 +81,7 @@ class NDT2Tokenizer:
         decoder_registry=None,
         mask_ratio=None,
         session_tokenizer=None,
-        sess_emb_time_idx=255,
-        sess_emb_space_idx=255,
+        subject_tokenizer=None,
         inc_behavior=False,
         inc_mask=False,
     ):
@@ -91,12 +92,12 @@ class NDT2Tokenizer:
         assert float_modulo_test(self.ctx_time, self.bin_time)
 
         self.pad_val = pad_val
-        self.sess_emb_time_idx = sess_emb_time_idx
-        self.sess_emb_space_idx = sess_emb_space_idx
 
         self.mask_ratio = mask_ratio
         self.decoder_registry = decoder_registry
+
         self.session_tokenizer = session_tokenizer
+        self.subjet_tokenizer = subject_tokenizer
 
         self.inc_behavior = inc_behavior
         self.inc_mask = inc_mask
@@ -134,15 +135,7 @@ class NDT2Tokenizer:
         time_idx = repeat(time_idx, "t -> (n t)", n=num_spatial_patches)
         space_idx = torch.arange(num_spatial_patches, dtype=torch.int32)
         space_idx = repeat(space_idx, "n -> (n t)", t=num_temporal_patches)
-        return spike_tokens, time_idx, space_idx
 
-    def pad_for_ses_token(self, spike_tokens, time_idx, space_idx):
-        # appended to end of spike tokens
-        spike_tokens = F.pad(spike_tokens, (0, 0, 0, 0, 0, 1), value=self.pad_val)
-        assert (time_idx != self.sess_emb_time_idx).any()
-        assert (space_idx != self.sess_emb_space_idx).any()
-        time_idx = F.pad(time_idx, (0, 1), value=self.sess_emb_time_idx)
-        space_idx = F.pad(space_idx, (0, 1), value=self.sess_emb_space_idx)
         return spike_tokens, time_idx, space_idx
 
     def __call__(self, data: Data) -> Dict:
@@ -154,34 +147,21 @@ class NDT2Tokenizer:
         t_binned = self.pad_spikes(t_binned)
 
         # patch neurons
-        spike_tokens, time_idx, space_idx = self.patchify(t_binned)
+        spikes, time_idx, space_idx = self.patchify(t_binned)
 
         # -- Session token
         session_idx = self.session_tokenizer(data.session)
-        spike_tokens, time_idx, space_idx = self.pad_for_ses_token(
-            spike_tokens, time_idx, space_idx
-        )
+
+        # -- Subject token
+        subject_idx = self.subjet_tokenizer(data.subject.id)
 
         spike_data = {
-            "spike_tokens": chain(spike_tokens),
-            "time_idx": chain(time_idx),
-            "space_idx": chain(space_idx),
-            "spike_tokens_seqlen": chain(len(spike_tokens)),
-            "session_idx": chain(session_idx),
+            "spike_tokens": spikes,
+            "time_idx": time_idx,
+            "space_idx": space_idx,
+            "session_idx": session_idx,
+            "subject_idx": subject_idx,
         }
-
-        # -- Mask
-        mask_data = {}
-        if self.mask_ratio is not None and self.inc_mask:
-            # shuffle = torch.randperm(spikes.size(1), device=spikes.device)
-            # encoder_frac = int((1 - mask_ratio) * spikes.size(1))
-            mask_indicator = torch.rand(len(spike_tokens)) < self.mask_ratio
-            mask_indicator[-1] = False  # don't mask the session token
-            num_masked = mask_indicator.sum().int()
-            mask_data = {
-                "mask": chain(mask_indicator),
-                "mask_seqlen": num_masked,
-            }
 
         behavior_data = {}
         if self.inc_behavior:
@@ -217,5 +197,5 @@ class NDT2Tokenizer:
             }
 
         # Final
-        batch = spike_data | mask_data | behavior_data
+        batch = spike_data | behavior_data
         return batch
