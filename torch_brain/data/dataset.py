@@ -1,16 +1,14 @@
-import os
-import logging
 import copy
+import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-import copy
-import numpy as np
 
-
-import numpy as np
 import h5py
+import numpy as np
 import torch
+
 from temporaldata import Data, Interval
 
 
@@ -389,6 +387,14 @@ class Dataset(torch.utils.data.Dataset):
     def get_session_ids(self):
         r"""Returns all session ids in the dataset."""
         return list(self.session_dict.keys())
+
+    def get_subject_ids(self):
+        r"""Returns all subject ids in the dataset."""
+        subject_ids = []
+        for session_id in self.session_dict.keys():
+            data = self._data_objects[session_id]
+            subject_ids.append(f"{data.brainset.id}/{data.subject.id}")
+        return sorted(list(set(subject_ids)))
 
     def disable_data_leakage_check(self):
         r"""Disables the data leakage check.
