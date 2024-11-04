@@ -16,7 +16,7 @@ from torch_brain.data.dataset import DatasetIndex
 # helper
 def compare_slice_indices(a, b):
     return (
-        (a.session_id == b.session_id)
+        (a.recording_id == b.recording_id)
         and np.isclose(a.start, b.start)
         and np.isclose(a.end, b.end)
     )
@@ -25,8 +25,8 @@ def compare_slice_indices(a, b):
 # helper
 def samples_in_interval_dict(samples, interval_dict):
     for s in samples:
-        assert s.session_id in interval_dict
-        allowed_intervals = interval_dict[s.session_id]
+        assert s.recording_id in interval_dict
+        allowed_intervals = interval_dict[s.recording_id]
         if not (
             sum(
                 [

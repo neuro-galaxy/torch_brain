@@ -178,7 +178,7 @@ def run_training(cfg: DictConfig):
     wrapper = POYOTrainWrapper(
         cfg=cfg,
         model=model,
-        dataset_config_dict=train_dataset.get_session_config_dict(),
+        dataset_config_dict=train_dataset.get_recording_config_dict(),
     )
 
     wandb_logger = None
