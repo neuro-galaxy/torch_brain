@@ -41,7 +41,7 @@ fast_dev_run: false
 num_sanity_val_steps: 0
 
 seed: 0
-batch_size: 6
+batch_size: 512
 superv_batch_size: null  # defaults to batch_size
 eval_batch_size: 128
 epochs: 2500
