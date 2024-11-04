@@ -369,37 +369,37 @@ class Dataset(torch.utils.data.Dataset):
         r"""Returns the session ids of the dataset."""
         return sorted(list(self.recording_dict.keys()))
 
-    def get_unit_ids(self):
-        r"""Returns the unit ids of the dataset."""
-        unit_ids = []
-        for recording_id in self._data_objects.keys():
-            data = copy.copy(self._data_objects[recording_id])
+    # def get_unit_ids(self):
+    #     r"""Returns the unit ids of the dataset."""
+    #     unit_ids = []
+    #     for recording_id in self._data_objects.keys():
+    #         data = copy.copy(self._data_objects[recording_id])
 
-            supported_formats = ["brainset/session/unit", "brainset/device/unit"]
-            unit_ids_format = self.recording_dict[recording_id]["config"].get(
-                "unit_ids_format", "brainset/session/unit"
-            )
-            if unit_ids_format == "brainset/session/unit":
-                unit_ids.extend(
-                    [
-                        f"{data.brainset.id}/{data.session.id}/{unit_id}"
-                        for unit_id in data.units.id
-                    ]
-                )
-            elif unit_ids_format == "brainset/device/unit":
-                unit_ids.extend(
-                    [
-                        f"{data.brainset.id}/{data.device.id}/{unit_id}"
-                        for unit_id in data.units.id
-                    ]
-                )
-            else:
-                raise ValueError(
-                    f"unit_ids_format {unit_ids_format} is not supported. Supported formats are: {supported_formats}"
-                )
+    #         supported_formats = ["brainset/session/unit", "brainset/device/unit"]
+    #         unit_ids_format = self.recording_dict[recording_id]["config"].get(
+    #             "unit_ids_format", "brainset/session/unit"
+    #         )
+    #         if unit_ids_format == "brainset/session/unit":
+    #             unit_ids.extend(
+    #                 [
+    #                     f"{data.brainset.id}/{data.session.id}/{unit_id}"
+    #                     for unit_id in data.units.id
+    #                 ]
+    #             )
+    #         elif unit_ids_format == "brainset/device/unit":
+    #             unit_ids.extend(
+    #                 [
+    #                     f"{data.brainset.id}/{data.device.id}/{unit_id}"
+    #                     for unit_id in data.units.id
+    #                 ]
+    #             )
+    #         else:
+    #             raise ValueError(
+    #                 f"unit_ids_format {unit_ids_format} is not supported. Supported formats are: {supported_formats}"
+    #             )
 
-        unit_ids = sorted(list(set(unit_ids)))
-        return unit_ids
+    #     unit_ids = sorted(list(set(unit_ids)))
+    #     return unit_ids
 
     def get_unit_ids(self):
         r"""Returns all unit ids in the dataset."""
