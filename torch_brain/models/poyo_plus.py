@@ -1,28 +1,67 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torchtyping import TensorType
 
-from brainsets.taxonomy import DecoderSpec, Decoder
+from torch_brain.data import chain, pad, track_mask
 from torch_brain.nn import (
     Embedding,
+    FeedForward,
     InfiniteVocabEmbedding,
+    MultitaskReadout,
     RotaryCrossAttention,
     RotarySelfAttention,
-    FeedForward,
-    MultitaskReadout,
+    RotaryEmbedding,
     prepare_for_multitask_readout,
 )
-from torch_brain.data import pad, chain, track_mask
+from torch_brain.nn.multitask_readout import Decoder, DecoderSpec
+
 from torch_brain.utils import (
-    create_start_end_unit_tokens,
     create_linspace_latent_tokens,
+    create_start_end_unit_tokens,
 )
 
 
 class POYOPlus(nn.Module):
+    """POYO+ model from `"Multi-session, multi-task neural decoding from distinct
+    cell-types and brain regions" <https://arxiv.org/abs/2409.15666>`_.
+
+    POYO+ is a transformer-based model for neural decoding from population recordings.
+    It extends the POYO architecture with multiple task-specific decoders.
+
+    The model processes neural spike sequences through the following steps:
+
+    1. Input tokens are constructed by combining unit embeddings, token type embeddings,
+        and time embeddings for each spike in the sequence.
+    2. The input sequence is compressed using cross-attention, where learnable latent
+        tokens (each with an associated timestamp) attend to the input tokens.
+    3. The compressed latent token representations undergo further refinement through
+        multiple self-attention processing layers.
+    4. Query tokens are constructed for the desired outputs by combining task embeddings,
+        session embeddings, and output timestamps.
+    5. These query tokens attend to the processed latent representations through
+        cross-attention, producing outputs in the model's dimensional space (dim).
+    6. Finally, task-specific linear layers map the outputs from the model dimension
+        to the appropriate output dimension required by each task.
+
+    Args:
+        dim: Dimension of all embeddings
+        dim_head: Dimension of each attention head
+        num_latents: Number of unique latent tokens
+        depth: Number of processing layers
+        cross_heads: Number of attention heads used in a cross-attention layer
+        self_heads: Number of attention heads used in a self-attention layer
+        ffn_dropout: Dropout rate for feed-forward networks
+        lin_dropout: Dropout rate for linear layers
+        atn_dropout: Dropout rate for attention
+        emb_init_scale: Scale for embedding initialization
+        t_min: Minimum timestamp resolution for rotary embeddings
+        t_max: Maximum timestamp resolution for rotary embeddings
+        task_specs: Specifications for each prediction task
+    """
+
     def __init__(
         self,
         *,
@@ -36,10 +75,13 @@ class POYOPlus(nn.Module):
         lin_dropout=0.4,
         atn_dropout=0.0,
         emb_init_scale=0.02,
+        t_min=1e-4,
+        t_max=4.0,
         task_specs: Dict[str, DecoderSpec],
     ):
         super().__init__()
 
+        # embeddings
         self.unit_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.session_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.token_type_emb = Embedding(4, dim, init_scale=emb_init_scale)
@@ -47,6 +89,9 @@ class POYOPlus(nn.Module):
             Decoder.max_value() + 1, dim, init_scale=emb_init_scale
         )
         self.latent_emb = Embedding(num_latents, dim, init_scale=emb_init_scale)
+        self.rotary_emb = RotaryEmbedding(dim_head, t_min, t_max)
+
+        self.dropout = nn.Dropout(p=lin_dropout)
 
         # encoder layer
         self.enc_atn = RotaryCrossAttention(
@@ -95,7 +140,6 @@ class POYOPlus(nn.Module):
         self.readout = MultitaskReadout(
             latent_dim=dim,
             decoder_specs=task_specs,
-            batch_type=self.batch_type[2],
         )
 
         self.dim = dim
@@ -104,25 +148,67 @@ class POYOPlus(nn.Module):
         self,
         *,
         # input sequence
-        input_unit_index,  # (B, N_in) or (total_N_in,)
-        input_timestamps,  # (B, N_in) or (total_N_in,)
-        input_token_type,  # (B, N_in) or (total_N_in,)
-        input_mask=None,  # (B, N_in)
+        input_unit_index: TensorType["batch", "n_in", int],
+        input_timestamps: TensorType["batch", "n_in", float],
+        input_token_type: TensorType["batch", "n_in", int],
+        input_mask: Optional[TensorType["batch", "n_in", bool]] = None,
         # latent sequence
-        latent_index,  # (B, N_latent)
-        latent_timestamps,  # (B, N_latent)
+        latent_index: TensorType["batch", "n_latent", int],
+        latent_timestamps: TensorType["batch", "n_latent", float],
         # output sequence
-        session_index,  # (B,)
-        output_timestamps,  # (B, N_out)
-        output_decoder_index,  # (B, N_out)
-        output_batch_index=None,
-        output_values: Optional[Dict[str, torch.Tensor]] = None,
-        output_weights: Optional[Dict[str, torch.Tensor]] = None,
+        output_session_index: TensorType["batch", "n_out", int],
+        output_timestamps: TensorType["batch", "n_out", float],
+        output_decoder_index: TensorType["batch", "n_out", int],
+        # target sequences
+        target_values: Optional[
+            Dict[str, TensorType["batch", "*nqueries", "*nchannelsout"]]
+        ] = None,
+        target_weights: Optional[
+            Dict[str, TensorType["batch", "*nqueries", float]]
+        ] = None,
     ) -> Tuple[
-        Dict[str, TensorType["batch", "*nqueries", "*nchannelsout"]],
+        List[Dict[str, TensorType["*nqueries", "*nchannelsout"]]],
         torch.Tensor,
         Dict[str, torch.Tensor],
     ]:
+        """Forward pass of the POYO+ model.
+
+        The model processes input spike sequences through its encoder-processor-decoder
+        architecture to generate task-specific predictions.
+
+        Args:
+            input_unit_index: Indices of input units
+            input_timestamps: Timestamps of input spikes
+            input_token_type: Type of input tokens
+            input_mask: Mask for input sequence
+            latent_index: Indices for latent tokens
+            latent_timestamps: Timestamps for latent tokens
+            session_index: Index of the recording session
+            output_timestamps: Timestamps for output predictions
+            output_decoder_index: Indices indicating which decoder to use
+            output_batch_index: Optional batch indices for outputs
+            output_values: Ground truth values for supervised training
+            output_weights: Optional weights for loss computation
+
+        Returns:
+            Tuple containing:
+            - A list of dictionaries, each containing the predicted outputs for a
+                given task
+            - Total loss value
+            - Dictionary of per-task losses
+        """
+
+        if self.unit_emb.is_lazy():
+            raise ValueError(
+                "Unit vocabulary has not been initialized, please use "
+                "`model.unit_emb.initialize_vocab(unit_ids)`"
+            )
+
+        if self.session_emb.is_lazy():
+            raise ValueError(
+                "Session vocabulary has not been initialized, please use "
+                "`model.session_emb.initialize_vocab(session_ids)`"
+            )
 
         # input
         inputs = self.unit_emb(input_unit_index) + self.token_type_emb(input_token_type)
@@ -133,7 +219,9 @@ class POYOPlus(nn.Module):
         latent_timestamp_emb = self.rotary_emb(latent_timestamps)
 
         # outputs
-        output_queries = self.session_emb(session_index) + self.task_emb(
+        print(self.session_emb(output_session_index).shape)
+        print(self.task_emb(output_decoder_index).shape)
+        output_queries = self.session_emb(output_session_index) + self.task_emb(
             output_decoder_index
         )
         output_timestamp_emb = self.rotary_emb(output_timestamps)
@@ -166,9 +254,8 @@ class POYOPlus(nn.Module):
         output, loss, losses_taskwise = self.readout(
             output_latents=output_latents,
             output_decoder_index=output_decoder_index,
-            output_batch_index=output_batch_index,
-            output_values=output_values,
-            output_weights=output_weights,
+            output_values=target_values,
+            output_weights=target_weights,
         )
 
         return output, loss, losses_taskwise
@@ -196,6 +283,7 @@ class POYOPlusTokenizer:
         decoder_registry,
         latent_step,
         num_latents_per_step,
+        sequence_length=1.0,
         eval=False,
     ):
         self.unit_tokenizer = unit_tokenizer
@@ -205,12 +293,13 @@ class POYOPlusTokenizer:
 
         self.latent_step = latent_step
         self.num_latents_per_step = num_latents_per_step
+        self.sequence_length = sequence_length
 
         self.eval = eval
 
     def __call__(self, data):
         # context window
-        start, end = 0, 1.0  # data.domain, data.end
+        start, end = 0, self.sequence_length
 
         ### prepare input
         unit_ids = data.units.id
@@ -262,19 +351,20 @@ class POYOPlusTokenizer:
 
         batch = {
             # input sequence
-            "spike_unit_index": pad(spike_unit_index),
-            "spike_timestamps": pad(spike_timestamps),
-            "spike_type": pad(spike_token_type_index),
+            "input_unit_index": pad(spike_unit_index),
+            "input_timestamps": pad(spike_timestamps),
+            "input_token_type": pad(spike_token_type_index),
             "input_mask": track_mask(spike_unit_index),
             # latent sequence
             "latent_index": latent_index,
             "latent_timestamps": latent_timestamps,
             # output sequence
-            "session_index": pad(session_index),
+            "output_session_index": pad(session_index),
             "output_timestamps": pad(output_timestamps),
             "output_decoder_index": pad(output_task_index),
-            "output_values": chain(output_values, allow_missing_keys=True),
-            "output_weights": chain(output_weights, allow_missing_keys=True),
+            # ground truth targets
+            "target_values": chain(output_values, allow_missing_keys=True),
+            "target_weights": chain(output_weights, allow_missing_keys=True),
         }
 
         if self.eval:
