@@ -5,29 +5,28 @@ from unittest.mock import Mock
 from temporaldata import Data, IrregularTimeSeries, Interval, ArrayDict
 
 from torch_brain.data import collate
-from torch_brain.nn import OutputType
+from torch_brain.registry import DataType, register_modality
 from torch_brain.models.poyo_plus import POYOPlus, POYOPlusTokenizer
-from torch_brain.nn.multitask_readout import Decoder, DecoderSpec
+
+
+def setup_module():
+    """Register test modalities before running tests"""
+
+    register_modality(
+        "custom_gaze_pos_2d",
+        dim=2,
+        type=DataType.CONTINUOUS,
+        loss_fn="mse",
+        timestamp_key="gaze.timestamps",
+        value_key="gaze.position",
+    )
 
 
 @pytest.fixture
 def task_specs():
-    return {
-        str(Decoder.CURSORVELOCITY2D): DecoderSpec(
-            dim=2,
-            type=OutputType.CONTINUOUS,
-            loss_fn="mse",
-            timestamp_key="cursor.timestamps",
-            value_key="cursor.vel",
-        ),
-        "GAZE_POS_2D": DecoderSpec(
-            dim=2,
-            type=OutputType.CONTINUOUS,
-            loss_fn="mse",
-            timestamp_key="gaze.timestamps",
-            value_key="gaze.position",
-        ),
-    }
+    from torch_brain.registry import MODALITIY_REGISTRY
+
+    return MODALITIY_REGISTRY
 
 
 @pytest.fixture
@@ -37,7 +36,7 @@ def model(task_specs):
         dim_head=16,
         num_latents=8,
         depth=2,
-        task_specs=task_specs,
+        readout_specs=task_specs,
     )
 
     # initialize unit vocab with 100 units labeled 0-99
@@ -65,30 +64,19 @@ def test_poyo_plus_forward(model):
         "output_session_index": torch.zeros(batch_size, n_out, dtype=torch.long),
         "output_timestamps": torch.rand(batch_size, n_out),
         "output_decoder_index": torch.zeros(batch_size, n_out, dtype=torch.long),
-        "target_values": [
-            {
-                str(Decoder.CURSORVELOCITY2D): torch.randn(n_out, 2),
-                "GAZE_POS_2D": torch.randn(n_out, 2),
-            }
-            for _ in range(batch_size)
-        ],
-        "target_weights": [
-            {
-                str(Decoder.CURSORVELOCITY2D): torch.ones(n_out),
-                "GAZE_POS_2D": torch.ones(n_out),
-            }
-            for _ in range(batch_size)
-        ],
     }
 
     # Forward pass
-    outputs, loss, losses_taskwise = model(**inputs)
+    outputs = model(**inputs)
+    assert isinstance(outputs, dict)
+    print(outputs.keys())
+    assert outputs["cursor_velocity_2d"].shape == (batch_size * n_out, 2)
 
-    # Basic shape checks
+    # Try with unpack_output=True
+    outputs = model(**inputs, unpack_output=True)
     assert isinstance(outputs, list)
-    assert isinstance(loss, torch.Tensor)
-    assert isinstance(losses_taskwise, dict)
-    assert loss.shape == torch.Size([])
+    assert len(outputs) == batch_size
+    assert outputs[0]["cursor_velocity_2d"].shape == (n_out, 2)
 
 
 def test_poyo_plus_tokenizer(task_specs):
@@ -116,7 +104,7 @@ def test_poyo_plus_tokenizer(task_specs):
         config={
             "multitask_readout": [
                 {
-                    "decoder_id": "CURSORVELOCITY2D",
+                    "readout_id": "cursor_velocity_2d",
                     "metrics": [
                         {
                             "metric": "r2",
@@ -192,7 +180,7 @@ def test_poyo_plus_tokenizer_to_model(task_specs, model):
         config={
             "multitask_readout": [
                 {
-                    "decoder_id": "CURSORVELOCITY2D",
+                    "readout_id": "cursor_velocity_2d",
                     "subtask_weights": {
                         "REACHING.RANDOM": 1.0,
                         "REACHING.HOLD": 0.1,
@@ -235,15 +223,10 @@ def test_poyo_plus_tokenizer_to_model(task_specs, model):
     # Use collate to properly batch the inputs
     model_inputs = collate(batch_list)
 
+    model_inputs.pop("target_values")
+    model_inputs.pop("target_weights")
     # Forward pass through model
-    outputs, loss, losses_taskwise = model(**model_inputs)
+    outputs = model(**model_inputs)
 
     # Basic checks
-    assert isinstance(outputs, list)
-    assert isinstance(loss, torch.Tensor)
-    assert isinstance(losses_taskwise, dict)
-    assert loss.shape == torch.Size([])
-
-    # Check outputs structure matches task_specs
-    assert len(outputs) == 1  # batch size of 1
-    assert set(outputs[0].keys()).issubset(set(task_specs.keys()))
+    assert isinstance(outputs, dict)
