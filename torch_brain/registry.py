@@ -5,13 +5,13 @@ from pydantic.dataclasses import dataclass
 
 
 class DataType(Enum):
-    """Enum defining the possible data types for model outputs.
+    """Enum defining the possible data types.
 
     Attributes:
-        CONTINUOUS: For continuous-valued outputs like velocities or positions
-        BINARY: For binary classification outputs
-        MULTINOMIAL: For multi-class classification outputs
-        MULTILABEL: For multi-label classification outputs
+        CONTINUOUS: For continuous-valued variables
+        BINARY: For binary variables
+        MULTINOMIAL: For multi-class variables
+        MULTILABEL: For multi-label variables
     """
 
     CONTINUOUS = 0
@@ -22,11 +22,11 @@ class DataType(Enum):
 
 @dataclass
 class ModalitySpec:
-    """Specification for a modality that can be registered for model outputs.
+    """Specification for a modality.
 
     Attributes:
         dim: Dimension for this modality
-        type: DataType enum specifying the output type
+        type: DataType enum specifying the data type
         loss_fn: Name of loss function to use for this modality
         timestamp_key: Key to access timestamps in the data object
         value_key: Key to access values in the data object

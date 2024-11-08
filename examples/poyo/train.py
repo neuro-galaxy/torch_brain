@@ -1,7 +1,6 @@
 import lightning
 import logging
 
-from collections import OrderedDict
 import copy
 
 import hydra
@@ -15,14 +14,13 @@ from lightning.pytorch.callbacks import (
 # Flags are absorbed by Hydra.
 from omegaconf import DictConfig, OmegaConf, open_dict
 from torch.utils.data import DataLoader
-from torch_optimizer import Lamb
 
 from torch_brain.data import Dataset, collate
 from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )
-from brainsets.taxonomy import decoder_registry
+from torch_brain.registry import MODALITIY_REGISTRY
 from torch_brain.transforms import Compose
 from torch_brain.utils import seed_everything
 from torch_brain.utils import callbacks as tbrain_callbacks
@@ -45,8 +43,7 @@ def run_training(cfg: DictConfig):
     # make model
     model = hydra.utils.instantiate(
         cfg.model,
-        task_specs=decoder_registry,
-        backend_config=cfg.backend_config,
+        readout_specs=MODALITIY_REGISTRY,
         _convert_="object",
     )
 
@@ -62,19 +59,19 @@ def run_training(cfg: DictConfig):
     tokenizer = POYOPlusTokenizer(
         model.unit_emb.tokenizer,
         model.session_emb.tokenizer,
-        decoder_registry=decoder_registry,
+        decoder_registry=MODALITIY_REGISTRY,
         latent_step=1 / 8,
         num_latents_per_step=cfg.model.num_latents,
-        batch_type=model.batch_type,
     )
 
     transform = Compose([*transforms, tokenizer])
 
     log.info("Data root: {}".format(cfg.data_root))
+
     train_dataset = Dataset(
-        cfg.data_root,
-        "train",
-        include=OmegaConf.to_container(cfg.dataset),  # converts to native list[dicts]
+        root=cfg.data_root,
+        config=cfg.dataset,
+        split="train",
         transform=transform,
     )
     train_dataset.disable_data_leakage_check()
@@ -84,9 +81,9 @@ def run_training(cfg: DictConfig):
     val_tokenizer = copy.copy(tokenizer)
     val_tokenizer.eval = True
     val_dataset = Dataset(
-        cfg.data_root,
-        "test",
-        include=OmegaConf.to_container(cfg.dataset),  # converts to native list[dicts]
+        root=cfg.data_root,
+        config=cfg.dataset,
+        split="test",
         transform=val_tokenizer,
     )
     val_dataset.disable_data_leakage_check()
@@ -222,8 +219,7 @@ def run_training(cfg: DictConfig):
         callbacks=callbacks,
         num_sanity_val_steps=0,
         precision=cfg.precision,
-        reload_dataloaders_every_n_epochs=5,
-        accelerator="gpu",
+        accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=cfg.gpus,
         num_nodes=cfg.nodes,
     )
