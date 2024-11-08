@@ -82,7 +82,7 @@
       - m_20150626_center_out_reaching
   config:
     multitask_readout:
-      - decoder_id: CURSORVELOCITY2D
+      - readout_id: cursor_velocity_2d
         subtask_weights:
           REACHING.RANDOM: 1.0
           REACHING.HOLD: 0.1
@@ -122,7 +122,7 @@
     - m_20140224_random_target_reaching
   config:
     multitask_readout:
-      - decoder_id: CURSORVELOCITY2D
+      - readout_id: cursor_velocity_2d
         subtask_weights:
           REACHING.RANDOM: 1.0
           REACHING.HOLD: 0.1

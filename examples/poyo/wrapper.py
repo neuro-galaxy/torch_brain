@@ -14,7 +14,7 @@ import lightning as L
 from torch_optimizer import Lamb
 import wandb
 
-from brainsets.taxonomy import Decoder, OutputType, Task
+
 from torch_brain.nn import compute_loss_or_metric
 from torch_brain.utils.validation import (
     all_gather_dict_of_dict_of_tensor,
@@ -67,22 +67,49 @@ class POYOTrainWrapper(L.LightningModule):
         }
 
     def training_step(self, batch, batch_idx):
-        output, loss, taskwise_loss = self.model(**batch)
+        target_values = batch.pop("target_values")
+        target_weights = batch.pop("target_weights")
+
+        # forward pass
+        output_values = self.model(**batch, unpack_output=False)
+
+        # compute loss
+        loss = torch.tensor(0, device=self.device, dtype=torch.float32)
+        taskwise_loss = {}
+        for readout_id in output_values.keys():
+            output = output_values[readout_id]
+            target = target_values[readout_id]
+
+            spec = self.model.readout.readout_specs[readout_id]
+
+            weights = 1.0
+            if readout_id in target_weights and target_weights[readout_id] is not None:
+                weights = target_weights[readout_id]
+
+            taskwise_loss[readout_id] = compute_loss_or_metric(
+                spec.loss_fn, spec.type, output, target, weights
+            )
+
+            loss = loss + taskwise_loss[readout_id] * len(target)
+
+        batch_size = batch["input_unit_index"].shape[0]
+        # TODO change batch_size when POYOPlusEfficient is used
+        loss = loss / batch_size
 
         self.log("train_loss", loss, prog_bar=True)
         self.log_dict({f"losses/{k}": v for k, v in taskwise_loss.items()})
 
         # Log batch statistics
-        for name in batch["output_values"].keys():
-            preds = torch.cat([pred[name] for pred in output if name in pred])
-            self.log(f"predictions/mean_{name}", preds.mean())
-            self.log(f"predictions/std_{name}", preds.std())
+        # for name in target_values.keys():
+        #     preds = torch.cat([pred[name] for pred in output if name in pred])
+        #     self.log(f"predictions/mean_{name}", preds.mean())
+        #     self.log(f"predictions/std_{name}", preds.std())
 
-            targets = batch["output_values"][name].float()
-            self.log(f"targets/mean_{name}", targets.mean())
-            self.log(f"targets/std_{name}", targets.std())
+        #     targets = target_values[name].float()
+        #     self.log(f"targets/mean_{name}", targets.mean())
+        #     self.log(f"targets/std_{name}", targets.std())
 
-        unit_index = batch["spike_unit_index"].float()
+        unit_index = batch["input_unit_index"].float()
         self.log("inputs/mean_unit_index", unit_index.mean())
         self.log("inputs/std_unit_index", unit_index.std())
 

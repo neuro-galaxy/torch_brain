@@ -84,7 +84,9 @@ class Dataset(torch.utils.data.Dataset):
                 recording_id is None
             ), "Cannot specify recording_id when using config."
 
-            if Path(config).is_file():
+            if isinstance(config, omegaconf.listconfig.ListConfig):
+                config = omegaconf.OmegaConf.to_container(config)
+            elif Path(config).is_file():
                 config = omegaconf.OmegaConf.load(config)
             else:
                 raise ValueError(f"Could not open configuration file: '{config}'")
@@ -329,14 +331,16 @@ class Dataset(torch.utils.data.Dataset):
             sampling_domain = (
                 f"{self.split}_domain" if self.split is not None else "domain"
             )
-            intervals = getattr(self._data_objects[recording_id], sampling_domain)
+            sampling_intervals = getattr(
+                self._data_objects[recording_id], sampling_domain
+            )
             sampling_intervals_modifier_code = self.recording_dict[recording_id][
                 "config"
             ].get("sampling_intervals_modifier", None)
             if sampling_intervals_modifier_code is not None:
                 local_vars = {
                     "data": copy.deepcopy(self._data_objects[recording_id]),
-                    "sampling_intervals": intervals,
+                    "sampling_intervals": sampling_intervals,
                     "split": self.split,
                 }
                 try:

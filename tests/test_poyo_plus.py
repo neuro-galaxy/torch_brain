@@ -69,7 +69,6 @@ def test_poyo_plus_forward(model):
     # Forward pass
     outputs = model(**inputs)
     assert isinstance(outputs, dict)
-    print(outputs.keys())
     assert outputs["cursor_velocity_2d"].shape == (batch_size * n_out, 2)
 
     # Try with unpack_output=True

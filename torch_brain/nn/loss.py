@@ -1,21 +1,13 @@
 import torch
 import torch.nn.functional as F
-
 from torchmetrics import R2Score
 
-from brainsets.taxonomy import StringIntEnum
-
-
-class OutputType(StringIntEnum):
-    CONTINUOUS = 0
-    BINARY = 1
-    MULTILABEL = 2
-    MULTINOMIAL = 3
+from torch_brain.registry import DataType
 
 
 def compute_loss_or_metric(
     loss_or_metric: str,
-    output_type: OutputType,
+    output_type: DataType,
     output: torch.Tensor,
     target: torch.Tensor,
     weights: torch.Tensor,
@@ -27,12 +19,12 @@ def compute_loss_or_metric(
 
     Args:
         loss_or_metric: The name of the metric to compute.
-        output_type: The nature of the output. One of the values from OutputType.
+        output_type: The nature of the output. One of the values from DataType.
         output: The output tensor.
         target: The target tensor.
         weights: The sample-wise weights for the loss computation.
     """
-    if output_type == OutputType.CONTINUOUS:
+    if output_type == DataType.CONTINUOUS:
         if loss_or_metric == "mse":
             # TODO mse could be used as a loss or as a metric. Currently it fails when
             # called as a metric
@@ -56,9 +48,9 @@ def compute_loss_or_metric(
             )
 
     if output_type in [
-        OutputType.BINARY,
-        OutputType.MULTINOMIAL,
-        OutputType.MULTILABEL,
+        DataType.BINARY,
+        DataType.MULTINOMIAL,
+        DataType.MULTILABEL,
     ]:
         if loss_or_metric == "bce":
             target = target.to(torch.long).squeeze()
