@@ -12,5 +12,4 @@ from .loss import compute_loss_or_metric, OutputType
 from .multitask_readout import (
     MultitaskReadout,
     prepare_for_multitask_readout,
-    Decoder,
 )

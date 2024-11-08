@@ -1,7 +1,6 @@
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-import torch
 import torch.nn as nn
 from torchtyping import TensorType
 
@@ -16,7 +15,7 @@ from torch_brain.nn import (
     RotaryEmbedding,
     prepare_for_multitask_readout,
 )
-from torch_brain.nn.multitask_readout import Decoder, DecoderSpec
+from torch_brain.registry import ModalitySpec
 
 from torch_brain.utils import (
     create_linspace_latent_tokens,
@@ -59,7 +58,7 @@ class POYOPlus(nn.Module):
         emb_init_scale: Scale for embedding initialization
         t_min: Minimum timestamp resolution for rotary embeddings
         t_max: Maximum timestamp resolution for rotary embeddings
-        task_specs: Specifications for each prediction task
+        readout_specs: Specifications for each prediction task
     """
 
     def __init__(
@@ -77,7 +76,7 @@ class POYOPlus(nn.Module):
         emb_init_scale=0.02,
         t_min=1e-4,
         t_max=4.0,
-        task_specs: Dict[str, DecoderSpec],
+        readout_specs: Dict[str, ModalitySpec],
     ):
         super().__init__()
 
@@ -85,9 +84,7 @@ class POYOPlus(nn.Module):
         self.unit_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.session_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.token_type_emb = Embedding(4, dim, init_scale=emb_init_scale)
-        self.task_emb = Embedding(
-            Decoder.max_value() + 1, dim, init_scale=emb_init_scale
-        )
+        self.task_emb = Embedding(len(readout_specs), dim, init_scale=emb_init_scale)
         self.latent_emb = Embedding(num_latents, dim, init_scale=emb_init_scale)
         self.rotary_emb = RotaryEmbedding(dim_head, t_min, t_max)
 
@@ -138,8 +135,8 @@ class POYOPlus(nn.Module):
 
         # Output projections + loss
         self.readout = MultitaskReadout(
-            latent_dim=dim,
-            decoder_specs=task_specs,
+            dim=dim,
+            readout_specs=readout_specs,
         )
 
         self.dim = dim
@@ -159,18 +156,8 @@ class POYOPlus(nn.Module):
         output_session_index: TensorType["batch", "n_out", int],
         output_timestamps: TensorType["batch", "n_out", float],
         output_decoder_index: TensorType["batch", "n_out", int],
-        # target sequences
-        target_values: Optional[
-            Dict[str, TensorType["batch", "*nqueries", "*nchannelsout"]]
-        ] = None,
-        target_weights: Optional[
-            Dict[str, TensorType["batch", "*nqueries", float]]
-        ] = None,
-    ) -> Tuple[
-        List[Dict[str, TensorType["*nqueries", "*nchannelsout"]]],
-        torch.Tensor,
-        Dict[str, torch.Tensor],
-    ]:
+        unpack_output: bool = False,
+    ) -> Tuple[List[Dict[str, TensorType["*nqueries", "*nchannelsout"]]]]:
         """Forward pass of the POYO+ model.
 
         The model processes input spike sequences through its encoder-processor-decoder
@@ -219,8 +206,6 @@ class POYOPlus(nn.Module):
         latent_timestamp_emb = self.rotary_emb(latent_timestamps)
 
         # outputs
-        print(self.session_emb(output_session_index).shape)
-        print(self.task_emb(output_decoder_index).shape)
         output_queries = self.session_emb(output_session_index) + self.task_emb(
             output_decoder_index
         )
@@ -251,14 +236,13 @@ class POYOPlus(nn.Module):
         output_latents = output_queries + self.dec_ffn(output_queries)
 
         # multitask readout layer, each task has a seperate linear readout layer
-        output, loss, losses_taskwise = self.readout(
-            output_latents=output_latents,
-            output_decoder_index=output_decoder_index,
-            output_values=target_values,
-            output_weights=target_weights,
+        output = self.readout(
+            output_embs=output_latents,
+            output_readout_index=output_decoder_index,
+            unpack_output=unpack_output,
         )
 
-        return output, loss, losses_taskwise
+        return output
 
 
 class POYOPlusTokenizer:
