@@ -1,42 +1,47 @@
 Getting Started
-------------
+===============
 
 **temporaldata** is a Python package for working with temporal data. In particular it is
 designed for complex, multi-modal, multi-resolution data. 
 
 When to use temporaldata
-********
+------------------------
 
-Let's consider a timeseries A with 10000 points. When training a machine learning model,
-we will want to sample small windows of time to train our models with. We can do something
-like this:
+Working with temporal data in real-world applications presents several challenges:
+
+- **Multi-resolution data**: Different sensors often record at different frequencies (e.g., 1000Hz accelerometer data alongside 30Hz video)
+- **Missing or irregular data**: Gaps in recordings, manual measurements, or variable sampling rates
+- **Complex relationships**: Multiple data streams that need to be aligned and analyzed together
+- **Large datasets**: Efficient access and processing of temporal segments
+
+Traditional approaches using simple array operations become cumbersome when dealing with these challenges. For example:
 
 .. code-block:: python
     :linenos:
 
+    # Traditional approach has limitations
     import numpy as np
+    
+    # Need separate arrays for different sensors
+    accelerometer = np.random.randn(1000000)  # 1000Hz
+    video = np.random.randn(30000)  # 30Hz
+    manual_readings = np.random.randn(10)  # Sporadic
+    
+    # Difficult to align and slice across different timescales
+    # How do we get corresponding data for a 5-second window?
 
-    A = np.random.randn(10000)
-    window_size = 100
-    # randomly sample start
-    start = np.random.randint(0, 10000 - window_size)
-    window = A[start:start+window_size]
+temporaldata provides a solution by:
 
-This is fine for simple timeseries data, but what if we have multiple timeseries that are
-sampled at different rates? What if we had a timeseries with missing data, or multiple timeseries
-that are not recorded at the same time. 
+1. Offering flexible data structures that handle multi-resolution and irregular data naturally
+2. Providing efficient temporal indexing across all data streams
+3. Maintaining temporal relationships between different data sources
+4. Enabling fast, on-the-fly access to temporal segments without preprocessing
 
-One solution is to preprocess the data so that we determine the small window of time, but this is 
-rigid and requires changing the data each time we want to change the window size for example.
-
-We want to be able to slice the data on the fly without having a slow process.
-
-For this purpose we introduce various data objects to represent various sturctures of temporal data, as 
-well as a suite of methods to manipulate and work with this data. 
+The package is particularly useful for researchers and engineers working with sensor data, time series analysis, or any application involving complex temporal data structures.
 
 
 :obj:`ArrayDict`
-********
+----------------
 
 The :obj:`ArrayDict` class is designed to manage a collection of arrays that all share the same
 first dimension. Arrays can have a different number of dimensions, and different data
@@ -53,7 +58,6 @@ arrays for longitude and latitude.
 
 .. list-table:: Example Table
    :header-rows: 1
-   :align: center
 
    * - Country
      - Longitude
@@ -263,38 +267,34 @@ There are many ways to create an Interval object:
 Use cases
 +++++++++
 
-Audio Transcripts: Suppose you have an audio recordings and their transcripts. You can use an Interval 
-object to store the start and end times of each audio segment, along with the 
-corresponding transcript. This allows you to easily access the transcript for a 
-specific time interval.
+.. tab:: Generic
 
-.. code-block:: python
+    .. code-block:: python
   
-      import numpy as np
-      from temporaldata import Interval
-  
-      trials = Interval(
-          start=np.array([0.2, 10.3, 30.7]),
-          end=np.array([7.1, 20.5, 35.2]),
-          transcript=np.array(["Hello, how are you?", "I'm good, thanks.", "What's new?"]),
-          speaker=np.array(["Alice", "Bob", "Alice"]),
-      )
+          import numpy as np
+          from temporaldata import Interval
+      
+          trials = Interval(
+              start=np.array([0.2, 10.3, 30.7]),
+              end=np.array([7.1, 20.5, 35.2]),
+              transcript=np.array(["Hello, how are you?", "I'm good, thanks.", "What's new?"]),
+              speaker=np.array(["Alice", "Bob", "Alice"]),
+          )
 
-Image stimuli: Suppose you have a set of images that are displayed to participants in an experiment.
-You can use an Interval object to store the start and end times of each image presentation, along with the
-corresponding image data. This allows you to easily access the image for a specific time interval.
+.. tab:: Neuroscience
 
-.. code-block:: python
+    .. code-block:: python
   
-      import numpy as np
-      from temporaldata import Interval
-  
-      images = Interval(
-          start=np.array([0., 2., 4.]),
-          end=np.array([1., 3., 5.]),
-          image_data=np.array([image1, image2, image3]),
-          category=np.array(["cat", "dog", "bird"]),
-      )
+          import numpy as np
+          from temporaldata import Interval
+      
+          neural_events = Interval(
+              start=np.array([0.2, 10.3, 30.7]),
+              end=np.array([7.1, 20.5, 35.2]),
+              spike_rate=np.array([45.2, 32.1, 67.8]),  # spikes/sec
+              brain_state=np.array(["rest", "active", "rest"]),
+              cell_type=np.array(["pyramidal", "interneuron", "pyramidal"]),
+          )
 
 :obj:`IrregularTimeSeries`
 **************************

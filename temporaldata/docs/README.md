@@ -3,7 +3,7 @@
 
 Install requirements:
 ```bash
-pip install sphinx myst-parser sphinx-autodoc-typehints sphinx-inline-tabs sphinx-rtd-theme
+pip install furo sphinx myst-parser sphinx-autodoc-typehints sphinx-inline-tabs sphinx-rtd-theme sphinx-tabs sphinx-design
 ```
 
 
