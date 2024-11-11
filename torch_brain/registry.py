@@ -44,6 +44,7 @@ class ModalitySpec:
 
 
 MODALITIY_REGISTRY: Dict[str, ModalitySpec] = {}
+_ID_TO_MODALITY: Dict[int, str] = {}
 
 
 def register_modality(name: str, **kwargs: Any) -> int:
@@ -66,15 +67,33 @@ def register_modality(name: str, **kwargs: Any) -> int:
         raise ValueError(f"Modality {name} already exists in registry")
 
     # Get next available ID
-    next_id = len(MODALITIY_REGISTRY)
+    next_id = len(MODALITIY_REGISTRY) + 1
 
     # Create DecoderSpec from kwargs and set ID
     decoder_spec = ModalitySpec(**kwargs, id=next_id)
 
-    # Add to registry
+    # Add to registries
     MODALITIY_REGISTRY[name] = decoder_spec
+    _ID_TO_MODALITY[next_id] = name
 
     return next_id
+
+
+def get_modality_by_id(modality_id: int) -> ModalitySpec:
+    """Get a modality specification by its ID.
+
+    Args:
+        modality_id: The numeric ID of the modality to retrieve
+
+    Returns:
+        ModalitySpec: The modality specification
+
+    Raises:
+        KeyError: If no modality exists with the given ID
+    """
+    if modality_id not in _ID_TO_MODALITY:
+        raise KeyError(f"No modality found with ID {modality_id}")
+    return _ID_TO_MODALITY[modality_id]
 
 
 register_modality(
