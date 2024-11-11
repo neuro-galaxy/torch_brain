@@ -456,7 +456,9 @@ class DistributedStitchingFixedWindowBatchSampler(torch.utils.data.BatchSampler)
         # shuffle indices for this rank
         indices_list = [indices_list[i] for i in torch.randperm(len(indices_list))]
         indices = [item for sublist in indices_list for item in sublist]
-        sequence_index = [i for i, sublist in enumerate(indices_list) for _ in sublist]
+        sequence_index = torch.tensor(
+            [i for i, sublist in enumerate(indices_list) for _ in sublist]
+        )
 
         return indices, sequence_index
 

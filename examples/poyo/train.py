@@ -1,186 +1,157 @@
-import lightning
 import logging
 
-import copy
-
 import hydra
+import lightning as L
 import torch
+import torch.nn as nn
+from torch_optimizer import Lamb
 from lightning.pytorch.callbacks import (
     LearningRateMonitor,
     ModelCheckpoint,
     ModelSummary,
 )
+from omegaconf import DictConfig, OmegaConf
 
-# Flags are absorbed by Hydra.
-from omegaconf import DictConfig, OmegaConf, open_dict
-from torch.utils.data import DataLoader
-
-from torch_brain.data import Dataset, collate
-from torch_brain.data.sampler import (
-    RandomFixedWindowSampler,
-    SequentialFixedWindowSampler,
-)
+from torch_brain.nn import compute_loss_or_metric
 from torch_brain.registry import MODALITIY_REGISTRY
-from torch_brain.transforms import Compose
-from torch_brain.utils import seed_everything
 from torch_brain.utils import callbacks as tbrain_callbacks
-from torch_brain.models import POYOPlusTokenizer
+from torch_brain.utils import seed_everything, DataModule
+from torch_brain.utils.stitcher import StitchEvaluator
 
-from wrapper import POYOTrainWrapper
+# higher speed on machines with tensor cores
+torch.set_float32_matmul_precision("medium")
 
 
-def run_training(cfg: DictConfig):
-    # Fix random seed, skipped if cfg.seed is None
+class POYOTrainWrapper(L.LightningModule):
+    def __init__(
+        self,
+        cfg: DictConfig,
+        model: nn.Module,
+        dataset_config_dict: dict = None,
+        steps_per_epoch: int = None,
+    ):
+        super().__init__()
+
+        self.cfg = cfg
+        self.model = model
+        self.dataset_config_dict = dataset_config_dict
+        self.steps_per_epoch = steps_per_epoch
+        self.save_hyperparameters(OmegaConf.to_container(cfg))
+
+    def configure_optimizers(self):
+        max_lr = self.cfg.optim.base_lr * self.cfg.batch_size  # linear scaling rule
+
+        optimizer = Lamb(
+            self.model.parameters(),
+            lr=max_lr,
+            weight_decay=self.cfg.optim.weight_decay,
+        )
+
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer,
+            max_lr=max_lr,
+            epochs=self.cfg.epochs,
+            steps_per_epoch=self.steps_per_epoch,
+            pct_start=self.cfg.optim.lr_decay_start,
+            anneal_strategy="cos",
+            div_factor=1,
+        )
+
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",
+            },
+        }
+
+    def training_step(self, batch, batch_idx):
+        target_values = batch.pop("target_values")
+        target_weights = batch.pop("target_weights")
+
+        # forward pass
+        output_values = self.model(**batch, unpack_output=False)
+
+        # compute loss
+        loss = torch.tensor(0, device=self.device, dtype=torch.float32)
+        taskwise_loss = {}
+        for readout_id in output_values.keys():
+            output = output_values[readout_id]
+            target = target_values[readout_id]
+
+            spec = self.model.readout.readout_specs[readout_id]
+
+            weights = 1.0
+            if readout_id in target_weights and target_weights[readout_id] is not None:
+                weights = target_weights[readout_id]
+
+            taskwise_loss[readout_id] = compute_loss_or_metric(
+                spec.loss_fn, spec.type, output, target, weights
+            )
+
+            loss = loss + taskwise_loss[readout_id] * len(target)
+
+        batch_size = batch["input_unit_index"].shape[0]
+        # TODO change batch_size when POYOPlusEfficient is used
+        loss = loss / batch_size
+
+        self.log("train_loss", loss, prog_bar=True)
+        self.log_dict({f"losses/{k}": v for k, v in taskwise_loss.items()})
+
+        # Log batch statistics
+        # for name in target_values.keys():
+        #     preds = torch.cat([pred[name] for pred in output if name in pred])
+        #     self.log(f"predictions/mean_{name}", preds.mean())
+        #     self.log(f"predictions/std_{name}", preds.std())
+
+        #     targets = target_values[name].float()
+        #     self.log(f"targets/mean_{name}", targets.mean())
+        #     self.log(f"targets/std_{name}", targets.std())
+
+        unit_index = batch["input_unit_index"].float()
+        self.log("inputs/mean_unit_index", unit_index.mean())
+        self.log("inputs/std_unit_index", unit_index.std())
+
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        target_values = batch.pop("target_values")
+        batch.pop("target_weights")
+        absolute_starts = batch.pop("absolute_start")
+        session_ids = batch.pop("session_id")
+        output_subtask_index = batch.pop("output_subtask_index")
+
+        # forward pass
+        output_values = self.model(**batch, unpack_output=True)
+
+        # add removed elements back to batch
+        batch["target_values"] = target_values
+        batch["absolute_start"] = absolute_starts
+        batch["session_id"] = session_ids
+        batch["output_subtask_index"] = output_subtask_index
+
+        return output_values
+
+    def on_test_epoch_start(self):
+        self.on_validation_epoch_start()
+
+    def test_step(self, batch, batch_idx):
+        self.validation_step(batch, batch_idx)
+
+    def on_test_epoch_end(self):
+        self.on_validation_epoch_end(prefix="test")
+
+
+@hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
+def main(cfg: DictConfig):
+    # fix random seed, skipped if cfg.seed is None
     seed_everything(cfg.seed)
 
-    # Higher speed on machines with tensor cores.
-    torch.set_float32_matmul_precision("medium")
-
+    # setup loggers
     log = logging.getLogger(__name__)
-
-    # Device setup is managed by PyTorch Lightning.
-
-    # make model
-    model = hydra.utils.instantiate(
-        cfg.model,
-        readout_specs=MODALITIY_REGISTRY,
-        _convert_="object",
-    )
-
-    # prepare tokenizer and transforms
-
-    # The transform list is defined in the config file.
-    sequence_length = 1.0
-    transforms = hydra.utils.instantiate(
-        cfg.train_transforms, sequence_length=sequence_length
-    )
-
-    # build tokenizer
-    tokenizer = POYOPlusTokenizer(
-        model.unit_emb.tokenizer,
-        model.session_emb.tokenizer,
-        decoder_registry=MODALITIY_REGISTRY,
-        latent_step=1 / 8,
-        num_latents_per_step=cfg.model.num_latents,
-    )
-
-    transform = Compose([*transforms, tokenizer])
-
-    log.info("Data root: {}".format(cfg.data_root))
-
-    train_dataset = Dataset(
-        root=cfg.data_root,
-        config=cfg.dataset,
-        split="train",
-        transform=transform,
-    )
-    train_dataset.disable_data_leakage_check()
-
-    # In Lightning, testing only happens once, at the end of training. To get the
-    # intended behavior, we need to specify a validation set instead.
-    val_tokenizer = copy.copy(tokenizer)
-    val_tokenizer.eval = True
-    val_dataset = Dataset(
-        root=cfg.data_root,
-        config=cfg.dataset,
-        split="test",
-        transform=val_tokenizer,
-    )
-    val_dataset.disable_data_leakage_check()
-
-    if not cfg.finetune:
-        # Register units and sessions
-        model.unit_emb.initialize_vocab(train_dataset.get_unit_ids())
-        model.session_emb.initialize_vocab(train_dataset.get_session_ids())
-    else:
-        assert (
-            cfg.ckpt_path is not None
-        ), "Missing `ckpt_path`. Checkpoint is required finetuning."
-        ckpt = torch.load(cfg.ckpt_path, map_location="cpu")
-        state_dict = ckpt["state_dict"]
-
-        # Remove 'model.' prefix at the front of the state dict keys
-        new_state_dict = {}
-        for key, value in state_dict.items():
-            new_key = key.removeprefix("model.")
-            new_state_dict[new_key] = state_dict[key]
-
-        model.load_state_dict(new_state_dict)
-        log.info(f"Loaded model state dict from {cfg.ckpt_path}")
-
-        # Optionally freeze parameters for Unit Identification
-        if cfg.freeze_perceiver_until_epoch != 0:
-            model.freeze_middle()
-            log.info(f"Froze perceiver")
-
-        # Register new units and sessions, and delete old ones
-        model.unit_emb.extend_vocab(train_dataset.get_unit_ids(), exist_ok=False)
-        model.unit_emb.subset_vocab(train_dataset.get_unit_ids())
-
-        model.session_emb.extend_vocab(train_dataset.session_ids, exist_ok=False)
-        model.session_emb.subset_vocab(train_dataset.session_ids)
-
-    # sampler and dataloader
-    train_sampler = RandomFixedWindowSampler(
-        interval_dict=train_dataset.get_sampling_intervals(),
-        window_length=sequence_length,
-        generator=torch.Generator().manual_seed(cfg.seed + 1),
-    )
-
-    train_loader = DataLoader(
-        train_dataset,
-        sampler=train_sampler,
-        collate_fn=collate,
-        batch_size=cfg.batch_size,
-        num_workers=cfg.num_workers,
-        drop_last=True,
-        pin_memory=True,
-        # For debugging. we allow the user to set num_workers to 0.
-        persistent_workers=True if cfg.num_workers > 0 else False,
-        prefetch_factor=2 if cfg.num_workers > 0 else None,
-    )
-
-    log.info(f"Training on {len(train_sampler)} samples")
-    log.info(f"Training on {len(train_dataset.get_unit_ids())} units")
-    log.info(f"Training on {len(train_dataset.get_session_ids())} sessions")
-
-    val_sampler = SequentialFixedWindowSampler(
-        interval_dict=val_dataset.get_sampling_intervals(),
-        window_length=sequence_length,
-        step=sequence_length / 2,
-    )
-
-    val_loader = DataLoader(
-        val_dataset,
-        sampler=val_sampler,
-        collate_fn=collate,
-        batch_size=cfg.eval_batch_size or cfg.batch_size,
-        num_workers=2,
-    )
-
-    # Update config with dynamic data
-    with open_dict(cfg):
-        cfg.steps_per_epoch = len(train_loader)
-
-    if cfg.epochs > 0:
-        cfg.epochs = cfg.epochs
-    elif cfg.steps > 0:
-        cfg.epochs = cfg.steps // cfg.steps_per_epoch + 1
-        cfg.steps = 0
-        log.info(f"Setting epochs to {cfg.epochs} using cfg.steps = {cfg.steps}")
-    else:
-        raise ValueError("Must specify either epochs or steps")
-
-    # Lightning train wrapper
-    wrapper = POYOTrainWrapper(
-        cfg=cfg,
-        model=model,
-        dataset_config_dict=train_dataset.get_recording_config_dict(),
-    )
-
     wandb_logger = None
     if cfg.wandb.enable:
-        wandb_logger = lightning.pytorch.loggers.WandbLogger(
+        wandb_logger = L.pytorch.loggers.WandbLogger(
             save_dir=cfg.log_dir,
             entity=cfg.wandb.entity,
             name=cfg.wandb.run_name,
@@ -188,7 +159,31 @@ def run_training(cfg: DictConfig):
             log_model=cfg.wandb.log_model,
         )
 
+    # make model
+    model = hydra.utils.instantiate(cfg.model, readout_specs=MODALITIY_REGISTRY)
+
+    # setup data module
+    data_module = DataModule(cfg, model.unit_emb.tokenizer, model.session_emb.tokenizer)
+    data_module.setup()
+
+    # register units and sessions
+    model.unit_emb.initialize_vocab(data_module.get_unit_ids())
+    model.session_emb.initialize_vocab(data_module.get_session_ids())
+
+    # Lightning train wrapper
+    wrapper = POYOTrainWrapper(
+        cfg=cfg,
+        model=model,
+        dataset_config_dict=data_module.get_recording_config_dict(),
+        steps_per_epoch=len(data_module.train_dataloader()),
+    )
+
+    evaluator = StitchEvaluator(
+        dataset_config_dict=data_module.get_recording_config_dict()
+    )
+
     callbacks = [
+        evaluator,
         ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
         ModelCheckpoint(
             save_last=True,
@@ -203,11 +198,7 @@ def run_training(cfg: DictConfig):
         tbrain_callbacks.ModelWeightStatsLogger(),
     ]
 
-    if cfg.finetune:
-        if cfg.freeze_perceiver_until_epoch > 0:
-            raise NotImplementedError("This functionality isn't properly implemented.")
-
-    trainer = lightning.Trainer(
+    trainer = L.Trainer(
         logger=wandb_logger,
         default_root_dir=cfg.log_dir,
         check_val_every_n_epoch=cfg.eval_epochs,
@@ -217,11 +208,12 @@ def run_training(cfg: DictConfig):
             "ddp_find_unused_parameters_true" if torch.cuda.is_available() else "auto"
         ),
         callbacks=callbacks,
-        num_sanity_val_steps=0,
         precision=cfg.precision,
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=cfg.gpus,
         num_nodes=cfg.nodes,
+        num_sanity_val_steps=0,  # Disable sanity validation
+        limit_val_batches=None,  # Ensure no limit on validation batches
     )
 
     log.info(
@@ -232,19 +224,9 @@ def run_training(cfg: DictConfig):
     # Train
     trainer.fit(
         wrapper,
-        train_loader,
-        val_loader,
+        data_module,
         ckpt_path=cfg.ckpt_path if not cfg.finetune else None,
     )
-
-
-# This loads the config file using Hydra, similar to Flags, but composable.
-@hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
-def main(cfg: DictConfig):
-    # Train the whole thing.
-    # This inner function is unnecessary, but I keep it here to maintain
-    # a parallel to the original code.
-    run_training(cfg)
 
 
 if __name__ == "__main__":

@@ -192,7 +192,7 @@ def prepare_for_multitask_readout(
         if key not in MODALITIY_REGISTRY:
             raise ValueError(
                 f"Readout {key} not found in modality registry, please register it "
-                "using torch_brain.nn.register_modality()"
+                "using torch_brain.register_modality()"
             )
 
         readout_spec = readout_registry[key]
