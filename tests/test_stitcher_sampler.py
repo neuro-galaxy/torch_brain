@@ -73,4 +73,4 @@ def test_distributed_stitching_sampler():
     # Check sequence indices are available and make sense
     assert hasattr(sampler0, "sequence_index")
     assert len(sampler0.sequence_index) == len(sampler0.indices)
-    assert all(isinstance(idx, int) for idx in sampler0.sequence_index)
+    assert all(isinstance(idx.item(), int) for idx in sampler0.sequence_index)

@@ -423,8 +423,8 @@ class Dataset(torch.utils.data.Dataset):
     def get_subject_ids(self):
         r"""Returns all subject ids in the dataset."""
         subject_ids = []
-        for session_id in self.session_dict.keys():
-            data = self._data_objects[session_id]
+        for recording_id in self.recording_dict.keys():
+            data = self._data_objects[recording_id]
             subject_ids.append(f"{data.brainset.id}/{data.subject.id}")
         return sorted(list(set(subject_ids)))
 

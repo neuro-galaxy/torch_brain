@@ -22,7 +22,7 @@ def test_data_type_enum():
 def test_modality_spec_creation():
     """Test ModalitySpec dataclass creation and attributes."""
     spec = ModalitySpec(
-        id=0,
+        id=1,
         dim=2,
         type=DataType.CONTINUOUS,
         loss_fn="mse",
@@ -31,7 +31,7 @@ def test_modality_spec_creation():
         context_key="test.context",
     )
 
-    assert spec.id == 0
+    assert spec.id == 1
     assert spec.dim == 2
     assert spec.type == DataType.CONTINUOUS
     assert spec.loss_fn == "mse"
@@ -43,7 +43,7 @@ def test_modality_spec_creation():
 def test_modality_spec_optional_context():
     """Test ModalitySpec creation without optional context_key."""
     spec = ModalitySpec(
-        id=0,
+        id=1,
         dim=2,
         type=DataType.CONTINUOUS,
         loss_fn="mse",
@@ -73,9 +73,9 @@ def test_register_modality(clear_registry):
         value_key="test.values",
     )
 
-    assert modality_id == 0
+    assert modality_id == 1
     assert "test_modality" in MODALITIY_REGISTRY
-    assert MODALITIY_REGISTRY["test_modality"].id == 0
+    assert MODALITIY_REGISTRY["test_modality"].id == 1
     assert MODALITIY_REGISTRY["test_modality"].dim == 2
 
 
@@ -123,8 +123,8 @@ def test_register_multiple_modalities(clear_registry):
         value_key="test2.values",
     )
 
-    assert id1 == 0
-    assert id2 == 1
+    assert id1 == 1
+    assert id2 == 2
     assert len(MODALITIY_REGISTRY) == 2
-    assert MODALITIY_REGISTRY["modality1"].id == 0
-    assert MODALITIY_REGISTRY["modality2"].id == 1
+    assert MODALITIY_REGISTRY["modality1"].id == 1
+    assert MODALITIY_REGISTRY["modality2"].id == 2

@@ -188,10 +188,21 @@ def test_get_recording_data(dummy_data):
 
 
 def test_get_subject_ids(dummy_data):
-    ds = Dataset(
-        dummy_data,
-        split=None,
-        include=[{"selection": [{"brainset": "allen_neuropixels_mock"}]}],
-    )
-    subject_ids = ds.get_subject_ids()
-    assert subject_ids == ["allen_neuropixels_mock/alice", "allen_neuropixels_mock/bob"]
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".yaml") as temp_config_file:
+        yaml.dump(
+            [{"selection": [{"brainset": "allen_neuropixels_mock"}]}],
+            temp_config_file,
+            encoding="utf-8",
+            allow_unicode=True,
+        )
+        temp_config_file.flush()
+        ds = Dataset(
+            str(dummy_data),
+            split=None,
+            config=temp_config_file.name,
+        )
+        subject_ids = ds.get_subject_ids()
+        assert subject_ids == [
+            "allen_neuropixels_mock/alice",
+            "allen_neuropixels_mock/bob",
+        ]

@@ -63,7 +63,7 @@ def test_poyo_plus_forward(model):
         "latent_timestamps": torch.linspace(0, 1, n_latent).repeat(batch_size, 1),
         "output_session_index": torch.zeros(batch_size, n_out, dtype=torch.long),
         "output_timestamps": torch.rand(batch_size, n_out),
-        "output_decoder_index": torch.zeros(batch_size, n_out, dtype=torch.long),
+        "output_decoder_index": torch.ones(batch_size, n_out, dtype=torch.long),
     }
 
     # Forward pass
