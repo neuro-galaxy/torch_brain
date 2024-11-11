@@ -185,3 +185,13 @@ def test_get_recording_data(dummy_data):
 
     assert len(data.spikes) == 1000
     assert len(data.gabors) == 1000
+
+
+def test_get_subject_ids(dummy_data):
+    ds = Dataset(
+        dummy_data,
+        split=None,
+        include=[{"selection": [{"brainset": "allen_neuropixels_mock"}]}],
+    )
+    subject_ids = ds.get_subject_ids()
+    assert subject_ids == ["allen_neuropixels_mock/alice", "allen_neuropixels_mock/bob"]

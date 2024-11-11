@@ -1,5 +1,5 @@
 import copy
-
+import pytest
 import torch
 
 from torch_brain.nn import InfiniteVocabEmbedding
@@ -56,6 +56,25 @@ def test_embedding():
         "word5": 5,
     }, "Vocabulary should be extended."
     assert torch.allclose(extended_emb.weight[:4], emb.weight)
+
+
+def test_duplicate_vocab_entries():
+    emb = InfiniteVocabEmbedding(embedding_dim=128)
+
+    # Test duplicate entries in initialize_vocab
+    with pytest.raises(ValueError, match="Vocabulary contains duplicate words"):
+        emb.initialize_vocab(["word1", "word2", "word1", "word3"])
+
+    # Initialize with valid vocab
+    emb.initialize_vocab(["word1", "word2", "word3"])
+
+    # Test duplicate entries in extend_vocab
+    with pytest.raises(ValueError, match="Vocabulary already contains"):
+        emb.extend_vocab(["word4", "word2", "word5"])
+
+    # Test duplicate entries in subset_vocab
+    with pytest.raises(ValueError, match="Vocabulary contains duplicate words"):
+        emb.subset_vocab(["word1", "word2", "word1"])
 
 
 def test_checkpointing():

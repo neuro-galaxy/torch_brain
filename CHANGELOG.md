@@ -20,3 +20,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 - Fixed memory issues during validation by implementing a cache flushing mechanism. ([#16](https://github.com/neuro-galaxy/torch_brain/pull/16))
+- Fixed a bug in `InfiniteVocabEmbedding` where duplicate words cause the model to fail silently. ([#9](https://github.com/neuro-galaxy/torch_brain/pull/9))
