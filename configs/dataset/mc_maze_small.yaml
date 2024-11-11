@@ -1,8 +1,8 @@
 - selection:
-    - dandiset: "mc_maze_small"
+    - brainset: "mc_maze_small"
   config:
     multitask_readout:
-      - decoder_id: ARMVELOCITY2D
+      - readout_id: arm_velocity_2d
         subtask_weights:
           REACHING.RANDOM: 1.0
           REACHING.HOLD: 1.0
@@ -11,5 +11,7 @@
           REACHING.INVALID: 1.0
           REACHING.OUTLIER: 0.1
         metrics:
-          - metric: r2
+          - metric:
+              _target_: torchmetrics.R2Score
+              num_outputs: 2
             task: REACHING

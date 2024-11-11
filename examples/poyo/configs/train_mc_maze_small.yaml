@@ -5,7 +5,7 @@ defaults:
   - _self_
 
 train_transforms:
-  - _target_: kirby.transforms.UnitDropout
+  - _target_: torch_brain.transforms.UnitDropout
     max_units: 1000
     min_units: 60
     mode_units: 300

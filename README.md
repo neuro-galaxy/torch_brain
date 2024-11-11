@@ -1,4 +1,4 @@
-# 🔥 torch_brain
+# torch_brain
 
 **torch_brain** is a Python library for various deep learning models designed for neuroscience.
 
@@ -15,12 +15,6 @@ used as follows:
 ```bash
 pip install -e ".[xformers]"
 ```
-
-## Documentation
-> [!WARNING]  
-> The docs are hosted publically for convenience, please do not share the link.
-
-You can find the documentation for this package [here](https://chic-dragon-bc9a04.netlify.app/).
 
 ## Contributing
 If you are planning to contribute to the package, you can install the package in

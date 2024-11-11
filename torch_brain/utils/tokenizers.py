@@ -1,11 +1,9 @@
 import numpy as np
 from einops import repeat
+from enum import Enum
 
 
-from brainsets.taxonomy.core import StringIntEnum
-
-
-class TokenType(StringIntEnum):
+class TokenType(Enum):
     DEFAULT = 0
     START_OF_SEQUENCE = 1
     END_OF_SEQUENCE = 2
@@ -21,7 +19,8 @@ def create_start_end_unit_tokens(unit_ids, start, end):
         end (float): The end time of the sequence.
     """
     token_type_index = np.array(
-        [TokenType.START_OF_SEQUENCE, TokenType.END_OF_SEQUENCE], dtype=np.int64
+        [TokenType.START_OF_SEQUENCE.value, TokenType.END_OF_SEQUENCE.value],
+        dtype=np.int64,
     )
     token_type_index = repeat(token_type_index, "u -> (t u)", t=len(unit_ids))
 
