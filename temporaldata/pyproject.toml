@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=60.2.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "temporaldata"
+version = "0.1.1"
+description = "A utility package for complex temporal data manipulation"
+readme = "README.md"
+authors = [
+    {name = "Mehdi Azabou", email = "mehdiazabou@gmail.com"},
+]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License", 
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "setuptools~=60.2.0",
+    "numpy~=1.23.5",
+    "pandas~=1.5.3", 
+    "h5py~=3.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest~=7.2.1",
+    "black==24.2.0",
+    "pre-commit>=3.5.0",
+    "flake8",
+]
+
+[project.urls]
+Homepage = "https://github.com/neuro-galaxy/temporaldata"
+Issues = "https://github.com/neuro-galaxy/temporaldata/issues"

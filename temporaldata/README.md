@@ -14,12 +14,6 @@ To install the package, run the following command:
 pip install -e .
 ```
 
-## Documentation
-> [!WARNING]  
-> The docs are hosted publically for convenience, please do not share the link.
-
-You can find the documentation for this package [here](https://chic-dragon-bc9a04.netlify.app/).
-
 ## Contributing
 If you are planning to contribute to the package, you can install the package in
 development mode by running the following command:

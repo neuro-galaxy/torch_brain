@@ -2,7 +2,7 @@ import datetime
 
 import temporaldata
 
-author = "Team Kirby"
+author = "neuro-galaxy Team"
 project = "temporaldata"
 version = temporaldata.__version__
 copyright = f"{datetime.datetime.now().year}, {author}"
@@ -21,7 +21,7 @@ extensions = [
     "sphinx.ext.mathjax",
 ]
 
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
 html_static_path = ["_static"]
 templates_path = ["_templates"]
 
