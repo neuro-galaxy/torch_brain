@@ -3,6 +3,8 @@ import pytest
 import numpy as np
 import torch
 
+from temporaldata import Interval
+
 from torch_brain.data.sampler import (
     SequentialFixedWindowSampler,
     RandomFixedWindowSampler,
@@ -14,7 +16,7 @@ from torch_brain.data.dataset import DatasetIndex
 # helper
 def compare_slice_indices(a, b):
     return (
-        (a.session_id == b.session_id)
+        (a.recording_id == b.recording_id)
         and np.isclose(a.start, b.start)
         and np.isclose(a.end, b.end)
     )
@@ -23,13 +25,15 @@ def compare_slice_indices(a, b):
 # helper
 def samples_in_interval_dict(samples, interval_dict):
     for s in samples:
-        assert s.session_id in interval_dict
-        allowed_intervals = interval_dict[s.session_id]
+        assert s.recording_id in interval_dict
+        allowed_intervals = interval_dict[s.recording_id]
         if not (
             sum(
                 [
                     (s.start >= start) and (s.end <= end)
-                    for start, end in allowed_intervals
+                    for start, end in zip(
+                        allowed_intervals.start, allowed_intervals.end
+                    )
                 ]
             )
             == 1
@@ -42,14 +46,18 @@ def samples_in_interval_dict(samples, interval_dict):
 def test_sequential_sampler():
     sampler = SequentialFixedWindowSampler(
         interval_dict={
-            "session1": [
-                (0.0, 2.0),
-                (3.0, 4.5),
-            ],  # 3
-            "session2": [(0.1, 1.25), (2.5, 5.0), (15.0, 18.7)],  # 7
-            "session3": [
-                (1000.0, 1002.0),
-            ],  # 2
+            "session1": Interval(
+                start=np.array([0.0, 3.0]),
+                end=np.array([2.0, 4.5]),
+            ),
+            "session2": Interval(
+                start=np.array([0.1, 2.5, 15.0]),
+                end=np.array([1.25, 5.0, 18.7]),
+            ),
+            "session3": Interval(
+                start=np.array([1000.0]),
+                end=np.array([1002.0]),
+            ),
         },
         window_length=1.1,
         step=0.75,
@@ -84,14 +92,18 @@ def test_sequential_sampler():
 def test_random_sampler():
 
     interval_dict = {
-        "session1": [
-            (0.0, 2.0),
-            (3.0, 4.5),
-        ],  # 3
-        "session2": [(0.1, 1.25), (2.5, 5.0), (15.0, 18.7)],  # 7
-        "session3": [
-            (1000.0, 1002.0),
-        ],  # 2
+        "session1": Interval(
+            start=np.array([0.0, 3.0]),
+            end=np.array([2.0, 4.5]),
+        ),  # 3
+        "session2": Interval(
+            start=np.array([0.1, 2.5, 15.0]),
+            end=np.array([1.25, 5.0, 18.7]),
+        ),  # 7
+        "session3": Interval(
+            start=np.array([1000.0]),
+            end=np.array([1002.0]),
+        ),  # 2
     }
 
     sampler = RandomFixedWindowSampler(
@@ -135,12 +147,18 @@ def test_random_sampler():
 
 def test_trial_sampler():
     interval_dict = {
-        "session1": [
-            (0.0, 2.0),
-            (3.0, 4.5),
-        ],
-        "session2": [(0.1, 1.25), (2.5, 5.0), (15.0, 18.7)],
-        "session3": [(1000.0, 1002.0), (1002.0, 1003.0)],
+        "session1": Interval(
+            start=np.array([0.0, 3.0]),
+            end=np.array([2.0, 4.5]),
+        ),
+        "session2": Interval(
+            start=np.array([0.1, 2.5, 15.0]),
+            end=np.array([1.25, 5.0, 18.7]),
+        ),
+        "session3": Interval(
+            start=np.array([1000.0, 1002.0]),
+            end=np.array([1002.0, 1003.0]),
+        ),
     }
 
     sampler = TrialSampler(

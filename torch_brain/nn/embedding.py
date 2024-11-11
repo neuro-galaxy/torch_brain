@@ -13,9 +13,9 @@ class Embedding(nn.Embedding):
         embedding_dim (int): the size of each embedding vector
         init_scale (float, optional): standard deviation of the normal distribution used
             for the initialization. Defaults to 0.02, which is the default value used in
-            most transformer models.
+            most transformer models
         **kwargs: Additional arguments. Refer to the documentation of
-            :class:`torch.nn.Embedding` for details.
+            :class:`torch.nn.Embedding` for details
     """
 
     def __init__(

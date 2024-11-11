@@ -4,6 +4,10 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import copy
+import numpy as np
+import omegaconf
+
 
 import h5py
 import numpy as np
@@ -14,37 +18,46 @@ from temporaldata import Data, Interval
 
 @dataclass
 class DatasetIndex:
-    """Accessing the dataset is done by specifying a session id and a time interval."""
+    r"""The dataset can be indexed by specifying a recording id and a start and end time."""
 
-    session_id: str
+    recording_id: str
     start: float
     end: float
 
 
 class Dataset(torch.utils.data.Dataset):
-    r"""This class abstracts a collection of lazily-loaded Data objects. Each of these
-    Data objects corresponds to a session and lives on the disk until it is requested.
-    The `include` argument guides which sessions are included in this Dataset.
-    To request a piece of a included session's data, you can use the `get` method,
-    or index the Dataset with a `DatasetIndex` object (see `__getitem__`).
+    r"""This class abstracts a collection of lazily-loaded Data objects. Each data object
+    corresponds to a full recording. It is never fully loaded into memory, but rather
+    lazy-loaded on-the-fly from disk.
 
-    This definition is a deviation from the standard PyTorch Dataset definition, which
-    generally presents the dataset directly as samples. In this case, the Dataset
-    by itself does not provide you with samples, but rather the means to flexibly work
-    and accesss complete sessions.
-    Within this framework, it is the job of the sampler to provide the
-    DatasetIndex indices to slice the dataset into samples (see `kirby.data.sampler`).
+    The dataset can be indexed by a recording id and a start and end time using the `get`
+    method, or by a DatasetIndex object. This definition is a deviation from the standard
+    PyTorch Dataset definition, which generally presents the dataset directly as samples.
+    In this case, the Dataset by itself does not provide you with samples, but rather the
+    means to flexibly work and access complete sessions.
+    Within this framework, it is the job of the sampler to provide a list of
+    DatasetIndex objects that are used to slice the dataset into samples (see
+    `torch_brain.data.sampler`).
 
-    Files will be opened, and only closed when the Dataset object is deleted.
+    The lazy loading is done both in:
+    - time: only the requested time interval is loaded, without having to load the entire
+      recording into memory, and
+    - attributes: attributes are not loaded until they are requested, this is useful when
+      only a small subset of the attributes are actually needed.
+
+    References to the underlying hdf5 files will be opened, and will only be closed when
+    the Dataset object is destroyed.
 
     Args:
         root: The root directory of the dataset.
+        config: The configuration file specifying the sessions to include.
+        brainset: The brainset to include. This is used to specify a single brainset,
+            and can only be used if config is not provided.
+        session: The session to include. This is used to specify a single session, and
+            can only be used if config is not provided.
         split: The split of the dataset. This is used to determine the sampling intervals
-            for each session.
-        include: A list of dictionaries specifying the datasets to include. Each dictionary
-            should have the following keys:
-            - brainset: The brainset to include.
-            - selection: A dictionary specifying the selection criteria for the dataset.
+            for each session. The split is optional, and is used to load a subset of the data
+            in a session based on a predefined split.
         transform: A transform to apply to the data. This transform should be a callable
             that takes a Data object and returns a Data object.
     """
@@ -56,30 +69,50 @@ class Dataset(torch.utils.data.Dataset):
     def __init__(
         self,
         root: str,
-        split: str,
-        include: List[Dict[str, Any]],
+        *,
+        config: str = None,
+        recording_id: str = None,
+        split: str = None,
         transform=None,
     ):
         super().__init__()
         self.root = root
+        self.config = config
         self.split = split
-
-        if include is None:
-            raise ValueError("Please specify the datasets to include")
-
-        self.include = include
         self.transform = transform
 
-        self.session_dict = self._look_for_files()
+        if config is not None:
+            assert (
+                recording_id is None
+            ), "Cannot specify recording_id when using config."
+
+            if isinstance(config, omegaconf.listconfig.ListConfig):
+                config = omegaconf.OmegaConf.to_container(config)
+            elif Path(config).is_file():
+                config = omegaconf.OmegaConf.load(config)
+            else:
+                raise ValueError(f"Could not open configuration file: '{config}'")
+
+            self.recording_dict = self._look_for_files(config)
+
+        elif recording_id is not None:
+            self.recording_dict = {
+                recording_id: {
+                    "filename": Path(self.root) / (recording_id + ".h5"),
+                    "config": {},
+                }
+            }
+        else:
+            raise ValueError("Please either specify a config file or a recording_id.")
 
         self._open_files = {
-            session_id: h5py.File(session_info["filename"], "r")
-            for session_id, session_info in self.session_dict.items()
+            recording_id: h5py.File(recording_info["filename"], "r")
+            for recording_id, recording_info in self.recording_dict.items()
         }
 
         self._data_objects = {
-            session_id: Data.from_hdf5(f, lazy=True)
-            for session_id, f in self._open_files.items()
+            recording_id: Data.from_hdf5(f, lazy=True)
+            for recording_id, f in self._open_files.items()
         }
 
     def _close_open_files(self):
@@ -96,10 +129,10 @@ class Dataset(torch.utils.data.Dataset):
     def __del__(self):
         self._close_open_files()
 
-    def _look_for_files(self) -> Dict[str, Dict]:
-        session_dict = {}
+    def _look_for_files(self, config: omegaconf.DictConfig) -> Dict[str, Dict]:
+        recording_dict = {}
 
-        for i, selection_list in enumerate(self.include):
+        for i, selection_list in enumerate(config):
             selection = selection_list["selection"]
 
             # parse selection
@@ -119,7 +152,10 @@ class Dataset(torch.utils.data.Dataset):
 
                 if len(session_ids) == 0:
                     raise ValueError(
-                        f"No files found in {brainset_dir}. Please check the path."
+                        f"No files found in {brainset_dir}. This is either a problem "
+                        "with the provided path or the dataset has not been downloaded "
+                        "and/or processed. For supported brainsets, please refer to "
+                        "https://github.com/neuro-galaxy/brainsets"
                     )
 
                 # Perform selection. Right now, we are limiting ourselves to session,
@@ -127,15 +163,15 @@ class Dataset(torch.utils.data.Dataset):
                 # future.
                 sel_session = subselection.get("session", None)
                 sel_sessions = subselection.get("sessions", None)
+                sel_subject = subselection.get("subject", None)
+                sel_subjects = subselection.get("subjects", None)
                 # exclude_sessions allows you to exclude some sessions from the selection.
                 # example use: you want to train on the complete brainset, but leave out
                 # a few sessions for evaluating transfer performance.
                 sel_exclude_sessions = subselection.get("exclude_sessions", None)
-                sel_subject = subselection.get("subject", None)
-                sel_subjects = subselection.get("subjects", None)
 
-                # if subject is needed, we need to load all the files and extract
-                # the subject id
+                # if subject is used for selection, we need to load all the files and
+                # extract the subjects ids
                 if sel_subject is not None or sel_subjects is not None:
                     all_session_subjects = []
                     for session_id in session_ids:
@@ -216,33 +252,33 @@ class Dataset(torch.utils.data.Dataset):
                 config = selection_list.get("config", {})
 
                 for session_id in session_ids:
-                    full_session_id = subselection["brainset"] + "/" + session_id
+                    recording_id = subselection["brainset"] + "/" + session_id
 
-                    if session_id in session_dict:
+                    if recording_id in recording_dict:
                         raise ValueError(
-                            f"Session {full_session_id} is already included in the dataset."
+                            f"Recording {recording_id} is already included in the dataset."
                             "Please verify that it is only selected once."
                         )
 
-                    session_dict[full_session_id] = dict(
-                        filename=(Path(self.root) / (full_session_id + ".h5")),
+                    recording_dict[recording_id] = dict(
+                        filename=(Path(self.root) / (recording_id + ".h5")),
                         config=config,
                     )
 
-        return session_dict
+        return recording_dict
 
-    def get(self, session_id: str, start: float, end: float):
-        r"""This is the main method to extract a slice from a session. It returns a
-        Data object that contains all data for session :obj:`session_id` between
+    def get(self, recording_id: str, start: float, end: float):
+        r"""This is the main method to extract a slice from a recording. It returns a
+        Data object that contains all data for recording :obj:`recording_id` between
         times :obj:`start` and :obj:`end`.
 
         Args:
-            session_id: The session id of the slice. Note this is the fully qualified
-                session-id: <brainset>/<session_id>
+            recording_id: The recording id of the slice. This is usually
+                <brainset_id>/<session_id>
             start: The start time of the slice.
             end: The end time of the slice.
         """
-        data = copy.copy(self._data_objects[session_id])
+        data = copy.copy(self._data_objects[recording_id])
         # TODO: add more tests to make sure that slice does not modify the original data object
         # note there should be no issues as long as the self._data_objects stay lazy
         sample = data.slice(start, end)
@@ -251,16 +287,16 @@ class Dataset(torch.utils.data.Dataset):
             f"{sample.brainset}/{sample.session}/", sample.units.id.astype(str)
         )
 
-        if self._check_for_data_leakage_flag:
+        if self._check_for_data_leakage_flag and self.split is not None:
             sample._check_for_data_leakage(self.split)
 
-        sample.session = session_id
-        sample.config = self.session_dict[session_id]["config"]
+        sample.session = recording_id  # TODO: update to recording
+        sample.config = self.recording_dict[recording_id]["config"]
         return sample
 
-    def get_session_data(self, session_id: str):
-        r"""Returns the data object corresponding to the session :obj:`session_id`.
-        If the split is not "full", the data object is sliced to the allowed sampling
+    def get_recording_data(self, recording_id: str):
+        r"""Returns the data object corresponding to the recording :obj:`recording_id`.
+        If the split is not :obj:`None`, the data object is sliced to the allowed sampling
         intervals for the split, to avoid any data leakage. :obj:`RegularTimeSeries`
         objects are converted to :obj:`IrregularTimeSeries` objects, since they are
         most likely no longer contiguous.
@@ -269,12 +305,11 @@ class Dataset(torch.utils.data.Dataset):
             This method might load the full data object in memory, avoid multiple calls
             to this method if possible.
         """
-        data = copy.copy(self._data_objects[session_id])
+        data = copy.copy(self._data_objects[recording_id])
 
         # get allowed sampling intervals
         if self.split is not None:
-            sampling_intervals = self.get_sampling_intervals()[session_id]
-            sampling_intervals = Interval.from_list(sampling_intervals)
+            sampling_intervals = self.get_sampling_intervals()[recording_id]
             data = data.select_by_interval(sampling_intervals)
             if self._check_for_data_leakage_flag:
                 data._check_for_data_leakage(self.split)
@@ -287,24 +322,27 @@ class Dataset(torch.utils.data.Dataset):
         return data
 
     def get_sampling_intervals(self):
-        r"""Returns a dictionary of interval-list for each session.
-        Each interval-list is a list of tuples (start, end) for each interval. This
-        represents the intervals that can be sampled from each session.
+        r"""Returns a dictionary of sampling intervals for each session.
+        This represents the intervals that can be sampled from each session.
 
-        Note that these intervals will change depending on the split.
+        Note that these intervals will change depending on the split. If no split is
+        provided, the full domain of the data is used.
         """
-        interval_dict = {}
-        for session_id in self.session_dict.keys():
-            intervals = getattr(self._data_objects[session_id], f"{self.split}_domain")
-            sampling_intervals_modifier_code = self.session_dict[session_id][
+        sampling_intervals_dict = {}
+        for recording_id in self.recording_dict.keys():
+            sampling_domain = (
+                f"{self.split}_domain" if self.split is not None else "domain"
+            )
+            sampling_intervals = getattr(
+                self._data_objects[recording_id], sampling_domain
+            )
+            sampling_intervals_modifier_code = self.recording_dict[recording_id][
                 "config"
             ].get("sampling_intervals_modifier", None)
-            if sampling_intervals_modifier_code is None:
-                interval_dict[session_id] = list(zip(intervals.start, intervals.end))
-            else:
+            if sampling_intervals_modifier_code is not None:
                 local_vars = {
-                    "data": copy.deepcopy(self._data_objects[session_id]),
-                    "sampling_intervals": intervals,
+                    "data": copy.deepcopy(self._data_objects[recording_id]),
+                    "sampling_intervals": sampling_intervals,
                     "split": self.split,
                 }
                 try:
@@ -318,64 +356,62 @@ class Dataset(torch.utils.data.Dataset):
                 except Exception as e:
                     error_message = (
                         f"Error while executing sampling_intervals_modifier defined in "
-                        f"the config file for session {session_id}: {e}"
+                        f"the config file for session {recording_id}: {e}"
                     )
                     raise type(e)(error_message) from e
 
                 sampling_intervals = local_vars.get("sampling_intervals")
-                interval_dict[session_id] = list(
-                    zip(sampling_intervals.start, sampling_intervals.end)
-                )
-        return interval_dict
+            sampling_intervals_dict[recording_id] = sampling_intervals
+        return sampling_intervals_dict
 
-    def get_session_config_dict(self):
+    def get_recording_config_dict(self):
         r"""Returns configs for each session in the dataset as a dictionary."""
         ans = {}
-        for session_id in self.session_dict.keys():
-            ans[session_id] = self.session_dict[session_id]["config"]
+        for recording_id in self.recording_dict.keys():
+            ans[recording_id] = self.recording_dict[recording_id]["config"]
         return ans
 
     def get_session_ids(self):
         r"""Returns the session ids of the dataset."""
-        return sorted(list(self.session_dict.keys()))
+        return sorted(list(self.recording_dict.keys()))
 
-    def get_unit_ids(self):
-        r"""Returns the unit ids of the dataset."""
-        unit_ids = []
-        for session_id in self._data_objects.keys():
-            data = copy.copy(self._data_objects[session_id])
+    # def get_unit_ids(self):
+    #     r"""Returns the unit ids of the dataset."""
+    #     unit_ids = []
+    #     for recording_id in self._data_objects.keys():
+    #         data = copy.copy(self._data_objects[recording_id])
 
-            supported_formats = ["brainset/session/unit", "brainset/device/unit"]
-            unit_ids_format = self.session_dict[session_id]["config"].get(
-                "unit_ids_format", "brainset/session/unit"
-            )
-            if unit_ids_format == "brainset/session/unit":
-                unit_ids.extend(
-                    [
-                        f"{data.brainset.id}/{data.session.id}/{unit_id}"
-                        for unit_id in data.units.id
-                    ]
-                )
-            elif unit_ids_format == "brainset/device/unit":
-                unit_ids.extend(
-                    [
-                        f"{data.brainset.id}/{data.device.id}/{unit_id}"
-                        for unit_id in data.units.id
-                    ]
-                )
-            else:
-                raise ValueError(
-                    f"unit_ids_format {unit_ids_format} is not supported. Supported formats are: {supported_formats}"
-                )
+    #         supported_formats = ["brainset/session/unit", "brainset/device/unit"]
+    #         unit_ids_format = self.recording_dict[recording_id]["config"].get(
+    #             "unit_ids_format", "brainset/session/unit"
+    #         )
+    #         if unit_ids_format == "brainset/session/unit":
+    #             unit_ids.extend(
+    #                 [
+    #                     f"{data.brainset.id}/{data.session.id}/{unit_id}"
+    #                     for unit_id in data.units.id
+    #                 ]
+    #             )
+    #         elif unit_ids_format == "brainset/device/unit":
+    #             unit_ids.extend(
+    #                 [
+    #                     f"{data.brainset.id}/{data.device.id}/{unit_id}"
+    #                     for unit_id in data.units.id
+    #                 ]
+    #             )
+    #         else:
+    #             raise ValueError(
+    #                 f"unit_ids_format {unit_ids_format} is not supported. Supported formats are: {supported_formats}"
+    #             )
 
-        unit_ids = sorted(list(set(unit_ids)))
-        return unit_ids
+    #     unit_ids = sorted(list(set(unit_ids)))
+    #     return unit_ids
 
     def get_unit_ids(self):
         r"""Returns all unit ids in the dataset."""
         unit_ids_list = []
-        for session_id in self.session_dict.keys():
-            data = self._data_objects[session_id]
+        for recording_id in self.recording_dict.keys():
+            data = self._data_objects[recording_id]
             unit_ids = data.units.id
             unit_ids = np.core.defchararray.add(
                 f"{data.brainset}/{data.session}/",
@@ -384,15 +420,11 @@ class Dataset(torch.utils.data.Dataset):
             unit_ids_list.extend(unit_ids)
         return unit_ids_list
 
-    def get_session_ids(self):
-        r"""Returns all session ids in the dataset."""
-        return list(self.session_dict.keys())
-
     def get_subject_ids(self):
         r"""Returns all subject ids in the dataset."""
         subject_ids = []
-        for session_id in self.session_dict.keys():
-            data = self._data_objects[session_id]
+        for recording_id in self.recording_dict.keys():
+            data = self._data_objects[recording_id]
             subject_ids.append(f"{data.brainset.id}/{data.subject.id}")
         return sorted(list(set(subject_ids)))
 
@@ -410,7 +442,7 @@ class Dataset(torch.utils.data.Dataset):
         )
 
     def __getitem__(self, index: DatasetIndex):
-        sample = self.get(index.session_id, index.start, index.end)
+        sample = self.get(index.recording_id, index.start, index.end)
 
         # apply transform
         if self.transform is not None:
@@ -423,3 +455,6 @@ class Dataset(torch.utils.data.Dataset):
 
     def __iter__(self):
         raise NotImplementedError("Iteration over dataset is not defined")
+
+    def __repr__(self):
+        return f"Dataset(root={self.root}, config={self.config}, split={self.split})"
