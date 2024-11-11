@@ -21,6 +21,7 @@ setup(
         "lightning==2.3.3",
         "wandb~=0.15",
         "torchtyping~=0.1",
+        "pydantic~=2.0",
     ],
     extras_require={
         "dev": [
