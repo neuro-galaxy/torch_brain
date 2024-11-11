@@ -15,14 +15,20 @@ from temporaldata import (
     ArrayDict,
 )
 from torch_brain.data import Dataset
-from brainsets.taxonomy import (
-    BrainsetDescription,
-    SubjectDescription,
-    SessionDescription,
-    DeviceDescription,
-)
-from brainsets.taxonomy import Task, Species, RecordingTech
-from brainsets import serialize_fn_map
+
+try:
+    from brainsets.taxonomy import (
+        BrainsetDescription,
+        SubjectDescription,
+        SessionDescription,
+        DeviceDescription,
+    )
+    from brainsets.taxonomy import Task, Species, RecordingTech
+    from brainsets import serialize_fn_map
+
+    BRAINSETS_AVAILABLE = True
+except ImportError:
+    BRAINSETS_AVAILABLE = False
 
 GABOR_POS_2D_MEAN = 10.0
 GABOR_POS_2D_STD = 1.0
@@ -30,6 +36,7 @@ RUNNING_SPEED_MEAN = 20.0
 RUNNING_SPEED_STD = 2.0
 
 
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 @pytest.fixture
 def dummy_data(tmp_path):
 
@@ -125,6 +132,7 @@ def dummy_data(tmp_path):
     return tmp_path
 
 
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_dataset_selection(dummy_data):
     include_config_1 = [{"selection": [{"brainset": "allen_neuropixels_mock"}]}]
     include_config_2 = [
@@ -174,6 +182,7 @@ def test_dataset_selection(dummy_data):
         assert len(ds.recording_dict) == 1
 
 
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_recording_data(dummy_data):
     ds = Dataset(
         dummy_data,
@@ -187,6 +196,7 @@ def test_get_recording_data(dummy_data):
     assert len(data.gabors) == 1000
 
 
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_subject_ids(dummy_data):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".yaml") as temp_config_file:
         yaml.dump(

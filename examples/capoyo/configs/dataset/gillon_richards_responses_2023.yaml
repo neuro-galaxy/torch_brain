@@ -1,9 +1,0 @@
-- selection:
-    - dandiset: "gillon_richards_responses_2023"
-      sortset: "408021_20180926"
-    
-  config:
-    multitask_readout:
-      - decoder_id: GABOR_ORIENTATION
-        metrics:
-          - metric: accuracy

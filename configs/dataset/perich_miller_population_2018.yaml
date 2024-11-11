@@ -91,7 +91,9 @@
           REACHING.INVALID: 0.1
           REACHING.OUTLIER: 0.0
         metrics:
-          - metric: r2
+          - metric:
+              _target_: torchmetrics.R2Score
+              num_outputs: 2
             task: REACHING
             subtask: REACHING.REACH
 
@@ -131,6 +133,8 @@
           REACHING.INVALID: 0.1
           REACHING.OUTLIER: 0.0
         metrics:
-          - metric: r2
+          - metric:
+              _target_: torchmetrics.R2Score
+              num_outputs: 2
             task: REACHING
             subtask: REACHING.RANDOM
