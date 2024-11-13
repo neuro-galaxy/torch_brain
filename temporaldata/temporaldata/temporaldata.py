@@ -23,7 +23,7 @@ class ArrayDict(object):
     .. code-block:: python
 
         import numpy as np
-        from kirby.data import ArrayDict
+        from temporaldata import ArrayDict
 
         units = ArrayDict(
             unit_id=np.array(["unit01", "unit02"]),
@@ -51,7 +51,7 @@ class ArrayDict(object):
     .. note::
         Private attributes (starting with an underscore) do not need to be arrays,
         or have the same first dimension as the other attributes. They will not be
-        listed in :method:`keys()`.
+        listed in :meth:`keys()`.
     """
 
     def __init__(self, **kwargs: Dict[str, np.ndarray]):
@@ -122,14 +122,14 @@ class ArrayDict(object):
 
         Args:
             mask: Boolean array used for masking. The mask needs to be 1-dimensional,
-                and of equal length as the first dimension of the :cls:`ArrayDict`.
+                and of equal length as the first dimension of the :obj:`ArrayDict`.
             **kwargs: Private attributes that will not be masked will need to be passed
                 as arguments.
 
         .. code-block:: python
 
             import numpy as np
-            from kirby.data import ArrayDict
+            from temporaldata import ArrayDict
 
             data = ArrayDict(
                 unit_id=np.array(["unit01", "unit02"]),
@@ -240,7 +240,7 @@ class ArrayDict(object):
         .. code-block:: python
 
             import h5py
-            from kirby.data import ArrayDict
+            from temporaldata import ArrayDict
 
             data = ArrayDict(
                 unit_id=np.array(["unit01", "unit02"]),
@@ -291,7 +291,7 @@ class ArrayDict(object):
         .. code-block:: python
 
             import h5py
-            from kirby.data import ArrayDict
+            from temporaldata import ArrayDict
 
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
@@ -467,7 +467,7 @@ class LazyArrayDict(ArrayDict):
         .. code-block:: python
 
             import h5py
-            from kirby.data import ArrayDict
+            from temporaldata import ArrayDict
 
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
@@ -506,7 +506,7 @@ class IrregularTimeSeries(ArrayDict):
     .. code-block:: python
 
         import numpy as np
-        from kirby.data import IrregularTimeSeries
+        from temporaldata import IrregularTimeSeries
 
         spikes = IrregularTimeSeries(
             unit_index=np.array([0, 0, 1, 0, 1, 2]),
@@ -798,7 +798,7 @@ class IrregularTimeSeries(ArrayDict):
         .. code-block:: python
 
             import h5py
-            from kirby.data import IrregularTimeseries
+            from temporaldata import IrregularTimeseries
 
             data = IrregularTimeseries(
                 unit_index=np.array([0, 0, 1, 0, 1, 2]),
@@ -869,7 +869,7 @@ class IrregularTimeSeries(ArrayDict):
         .. code-block:: python
 
             import h5py
-            from kirby.data import IrregularTimeSeries
+            from temporaldata import IrregularTimeSeries
 
             with h5py.File("data.h5", "r") as f:
                 data = IrregularTimeSeries.from_hdf5(f)
@@ -1177,7 +1177,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         .. code-block:: python
 
             import h5py
-            from kirby.data import ArrayDict
+            from temporaldata import ArrayDict
 
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
@@ -1209,22 +1209,20 @@ class RegularTimeSeries(ArrayDict):
     and meaningful Fourier operations. The first dimension of all attributes must be
     the time dimension.
 
-    .. note:: If you have a matrix of shape (N, T), where N is the number of channels
-    and T is the number of time points, you should transpose it to (T, N) before passing
-    it to the constructor, since the first dimension should always be time.
+    .. note:: If you have a matrix of shape (N, T), where N is the number of channels and T is the number of time points, you should transpose it to (T, N) before passing it to the constructor, since the first dimension should always be time.
 
     Args:
         sampling_rate: Sampling rate in Hz.
         domain: an :obj:`Interval` object that defines the domain over which the
             timeseries is defined. It is not possible to set domain to :obj:`"auto"`.
         **kwargs: Arbitrary keyword arguments where the values are arbitrary
-            multi-dimensional (2d, 3d, ..., nd) arrays with shape (N, *).
+            multi-dimensional (2d, 3d, ..., nd) arrays with shape (N, \*).
 
 
     .. code-block:: python
 
         import numpy as np
-        from kirby.data import RegularTimeSeries
+        from temporaldata import RegularTimeSeries
 
         lfp = RegularTimeSeries(
             raw=np.zeros((1000, 128)),
@@ -1388,7 +1386,7 @@ class RegularTimeSeries(ArrayDict):
         .. code-block:: python
 
                 import h5py
-                from kirby.data import RegularTimeSeries
+                from temporaldata import RegularTimeSeries
 
                 data = RegularTimeSeries(
                     raw=np.zeros((1000, 128)),
@@ -1424,7 +1422,7 @@ class RegularTimeSeries(ArrayDict):
         .. code-block:: python
 
             import h5py
-            from kirby.data import RegularTimeSeries
+            from temporaldata import RegularTimeSeries
 
             with h5py.File("data.h5", "r") as f:
                 data = RegularTimeSeries.from_hdf5(f)
@@ -1555,7 +1553,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         .. code-block:: python
 
             import h5py
-            from kirby.data import ArrayDict
+            from temporaldata import ArrayDict
 
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
@@ -1591,7 +1589,7 @@ class Interval(ArrayDict):
     .. code-block:: python
 
         import numpy as np
-        from kirby.data import Interval
+        from temporaldata import Interval
 
         intervals = Interval(
             start=np.array([0, 1, 2]),
@@ -2042,7 +2040,7 @@ class Interval(ArrayDict):
 
         .. code-block:: python
 
-            from kirby.data import Interval
+            from temporaldata import Interval
 
             interval = Interval.linspace(0., 10., 100)
 
@@ -2116,7 +2114,7 @@ class Interval(ArrayDict):
 
         .. code-block:: python
 
-            from kirby.data import Interval
+            from temporaldata import Interval
 
             interval_list = [(0, 1), (1, 2), (2, 3)]
             interval = Interval.from_list(interval_list)
@@ -2139,7 +2137,7 @@ class Interval(ArrayDict):
         .. code-block:: python
 
                 import h5py
-                from kirby.data import Interval
+                from temporaldata import Interval
 
                 interval = Interval(
                     start=np.array([0, 1, 2]),
@@ -2189,7 +2187,7 @@ class Interval(ArrayDict):
         .. code-block:: python
 
             import h5py
-            from kirby.data import Interval
+            from temporaldata import Interval
 
             with h5py.File("data.h5", "r") as f:
                 interval = Interval.from_hdf5(f)
@@ -2526,7 +2524,7 @@ class LazyInterval(Interval):
         .. code-block:: python
 
             import h5py
-            from kirby.data import ArrayDict
+            from temporaldata import ArrayDict
 
             with h5py
         """
@@ -2612,7 +2610,7 @@ class Data(object):
     .. code-block:: python
 
         import numpy as np
-        from kirby.data import (
+        from temporaldata import (
             ArrayDict,
             IrregularTimeSeries,
             RegularTimeSeries,
@@ -2895,7 +2893,7 @@ class Data(object):
         .. code-block:: python
 
                 import h5py
-                from kirby.data import Data
+                from temporaldata import Data
 
                 data = Data(...)
 
@@ -2945,7 +2943,7 @@ class Data(object):
         .. code-block:: python
 
             import h5py
-            from kirby.data import Data
+            from temporaldata import Data
 
             with h5py.File("data.h5", "r") as f:
                 data = Data.from_hdf5(f)

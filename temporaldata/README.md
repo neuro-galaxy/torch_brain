@@ -11,7 +11,7 @@ temporaldata has minimal dependencies, it only requires `numpy`, `pandas`, and `
 
 To install the package, run the following command:
 ```bash
-pip install -e .
+pip install temporaldata
 ```
 
 ## Contributing

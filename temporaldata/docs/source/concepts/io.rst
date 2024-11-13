@@ -1,94 +1,117 @@
 I/O Operations
 --------------
 
-Data Persistence
-===============
+All data objects in **temporaldata** can be saved to and loaded from HDF5 files. This provides an efficient way to store and retrieve large datasets.
 
-All data objects in temporaldata can be saved to and loaded from HDF5 files. This provides an efficient way to store and retrieve large datasets.
 
-Saving Data
-~~~~~~~~~~~~~~~~
+Writing
+~~~~~~~
 
-To save a data object to disk, use the ``to_hdf5`` method::
 
-    import h5py
-    from temporaldata import RegularTimeSeries, Data
-    
-    # Create a regular time series
-    data = RegularTimeSeries(
-        raw=np.zeros((1000, 128)),
-        sampling_rate=250.,
-        domain=Interval(0., 4.)
-    )
-    
-    # Save to HDF5
-    with h5py.File("data.h5", "w") as f:
-        data.to_hdf5(f)
+To save a data object to disk, use the ``to_hdf5`` method:
+
+.. tab:: Generic
+
+    .. code-block:: python
+
+        import h5py
+        from temporaldata import RegularTimeSeries, IrregularTimeSeries, Data, Interval
+        import numpy as np
+
+        # Create a complex data object
+        user_session = Data(
+            clicks=IrregularTimeSeries(
+                timestamps=np.array([1.2, 2.3, 3.1]),
+                position=np.array([[100,200], [150,300], [200,150]]),
+                domain=Interval(start=0, end=4)
+            ),
+            sensor=RegularTimeSeries(
+                sampling_rate=100,
+                accelerometer=np.random.randn(400, 3),
+                domain=Interval(start=0, end=4)
+            ),
+            user_id='user123',
+            device='laptop'
+        )
+
+        # Save to HDF5
+        with h5py.File("user_data.h5", "w") as f:
+            user_session.to_hdf5(f)
+
+.. tab:: Neuroscience
+
+    .. code-block:: python
+
+        import h5py
+        from temporaldata import RegularTimeSeries, IrregularTimeSeries, Data, Interval
+        import numpy as np
+
+        # Create a complex data object
+        session = Data(
+            spikes=IrregularTimeSeries(
+                timestamps=np.array([1.2, 2.3, 3.1]),
+                unit_id=np.array([1, 2, 1]),
+                domain=Interval(start=0, end=4)
+            ),
+            lfp=RegularTimeSeries(
+                sampling_rate=1000,
+                raw=np.random.randn(4000, 3),
+                domain=Interval(start=0, end=4)
+            ),
+            subject_id='mouse1',
+            date='2023-01-01'
+        )
+
+        # Save to HDF5
+        with h5py.File("neural_data.h5", "w") as f:
+            session.to_hdf5(f)
 
 The data structure is preserved in the HDF5 file, including all attributes and metadata.
 
-Lazy Loading
-~~~~~~~~~~~~~~~~
+Any data object in **temporaldata** can be saved to an HDF5 file, including :obj:`ArrayDict <temporaldata.ArrayDict>`, :obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>`, :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`, :obj:`Interval <temporaldata.Interval>`, and :obj:`Data <temporaldata.Data>`.
 
-For large datasets, loading everything into memory might not be feasible. temporaldata provides lazy loading capabilities through the ``Lazy`` variants of its data classes (``LazyRegularTimeSeries``, ``LazyIrregularTimeSeries``, ``LazyInterval``).
+Reading
+~~~~~~~
 
-Time-Based Lazy Loading
-~~~~~~~~~~~~~~~~
+To read data from an HDF5 file, use the ``from_hdf5`` method:
 
-When working with time series data, you can load only specific time windows without loading the entire dataset::
+.. tab:: Generic
 
-    with h5py.File("data.h5", "r") as f:
-        # Create a lazy reference to the data
-        lazy_data = LazyRegularTimeSeries.from_hdf5(f)
-        
-        # Select a time window - this doesn't load the data yet
-        subset = lazy_data.select(start=0.0, end=2.0)
-        
-        # Data is only loaded when actually accessed
-        print(subset.raw)  # This triggers the loading
+    .. code-block:: python
 
-Attribute-Based Lazy Loading
-~~~~~~~~~~~~~~~~
+        # Read from HDF5
+        with h5py.File("user_data.h5", "r") as f:
+            user_session = Data.from_hdf5(f)
+            
+            # Access data as normal
+            print(user_session.clicks.timestamps)  # [1.2, 2.3, 3.1]
+            print(user_session.sensor.sampling_rate)  # 100
+            print(user_session.user_id)  # 'user123'
 
-Lazy loading also works on a per-attribute basis. Data is only loaded when a specific attribute is accessed::
+            # Perform operations
+            subset = user_session.clicks.slice(0, 2.0)
+            print(subset.timestamps)  # [1.2]
 
-    with h5py.File("data.h5", "r") as f:
-        lazy_data = LazyIrregularTimeSeries.from_hdf5(f)
-        
-        # This doesn't load any data
-        print(lazy_data.keys())
-        
-        # Only the 'timestamps' attribute is loaded
-        print(lazy_data.timestamps)
-        
-        # 'raw' is still not loaded until accessed
-        print(lazy_data.raw)  # Now 'raw' is loaded
+.. tab:: Neuroscience
 
-Implementation Details
-~~~~~~~~~~~~~~~~
+    .. code-block:: python
 
-The lazy loading mechanism works through several key components:
+        # Read neural data from HDF5
+        with h5py.File("neural_data.h5", "r") as f:
+            session = Data.from_hdf5(f)
+            
+            # Access neural data
+            print(session.spikes.timestamps)  # [1.2, 2.3, 3.1] 
+            print(session.lfp.sampling_rate)  # 1000
+            print(session.subject_id)  # 'mouse1'
 
-1. **Delayed Loading**: When a lazy object is created from an HDF5 file, it only stores references to the datasets, not the actual data.
+            # Get spikes from specific unit
+            unit1_spikes = session.spikes.select_by_mask(session.spikes.unit_id == 1)
+            print(unit1_spikes.timestamps)  # [1.2, 3.1]
 
-2. **Attribute Interception**: The ``__getattribute__`` method intercepts attribute access and performs loading only when needed.
+The loaded objects maintain all the functionality of the original objects, allowing you to perform operations, slicing, and access all attributes.
 
-3. **Operation Queueing**: Operations like slicing and masking are queued in ``_lazy_ops`` and only applied when the data is actually loaded::
-
-    lazy_data = LazyIrregularTimeSeries.from_hdf5(f)
-    masked_data = lazy_data.select_by_mask(mask)  # Operation is queued
-    print(masked_data.raw)  # Loading happens here, with mask applied
-
-Best Practices
-~~~~~~~~~~~~~~~~
-
-1. Always use ``with`` statements when working with HDF5 files to ensure proper file handling.
-
-2. Use lazy loading when:
-   - Working with large datasets
-   - Only needing specific time windows
-   - Accessing only a subset of attributes
-
-3. Consider memory constraints when deciding between regular and lazy variants.
-
-4. Keep HDF5 files in read-only mode when using lazy loading to prevent concurrent modification issues.
+Note that, when reading from an HDF5 file, the data is not loaded into memory immediately. 
+Instead, it is loaded on demand when you access an attribute. This lazy loading mechanism 
+allows you to work with large datasets without loading the entire file into memory at once. 
+For more details, see :ref:`lazy_loading`.
