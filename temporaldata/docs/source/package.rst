@@ -2,8 +2,10 @@
 
 Data Objects
 ------------
+
 .. list-table::
    :widths: 25 75
+   :align: left
 
    * - :py:class:`ArrayDict`
      - A class representing an array dictionary.
@@ -46,8 +48,9 @@ Functions
 ------------
 .. list-table::
    :widths: 25 75
+   :align: left
 
    * - :py:func:`concat`
-     - Concatanate multiple data objects.
+     - Concatenate multiple data objects into a single object.
 
 .. autofunction:: concat

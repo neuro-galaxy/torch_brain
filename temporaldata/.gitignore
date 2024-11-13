@@ -157,3 +157,7 @@ smux*
 
 data/processed
 data/raw
+
+# macOS system files
+.DS_Store
+**/.DS_Store

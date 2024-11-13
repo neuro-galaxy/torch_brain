@@ -43,10 +43,3 @@ myst_enable_extensions = [
 ]
 
 pygments_style = "default"
-
-html_theme_options = {
-    "collapse_navigation": False,
-    "navigation_depth": 4,
-    "includehidden": True,
-    "titles_only": False,
-}
