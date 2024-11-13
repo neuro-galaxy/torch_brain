@@ -4,7 +4,7 @@ import numpy as np
 import torch.nn as nn
 from torchtyping import TensorType
 
-from torch_brain.data import chain, pad, track_mask
+from torch_brain.data import chain, pad8, track_mask8
 from torch_brain.nn import (
     Embedding,
     FeedForward,
@@ -335,17 +335,17 @@ class POYOPlusTokenizer:
 
         batch = {
             # input sequence
-            "input_unit_index": pad(spike_unit_index),
-            "input_timestamps": pad(spike_timestamps),
-            "input_token_type": pad(spike_token_type_index),
-            "input_mask": track_mask(spike_unit_index),
+            "input_unit_index": pad8(spike_unit_index),
+            "input_timestamps": pad8(spike_timestamps),
+            "input_token_type": pad8(spike_token_type_index),
+            "input_mask": track_mask8(spike_unit_index),
             # latent sequence
             "latent_index": latent_index,
             "latent_timestamps": latent_timestamps,
             # output sequence
-            "output_session_index": pad(session_index),
-            "output_timestamps": pad(output_timestamps),
-            "output_decoder_index": pad(output_task_index),
+            "output_session_index": pad8(session_index),
+            "output_timestamps": pad8(output_timestamps),
+            "output_decoder_index": pad8(output_task_index),
             # ground truth targets
             "target_values": chain(output_values, allow_missing_keys=True),
             "target_weights": chain(output_weights, allow_missing_keys=True),

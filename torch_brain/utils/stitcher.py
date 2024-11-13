@@ -117,6 +117,10 @@ class StitchEvaluator(L.Callback):
 
         # update the cache with the predictions and targets
         for readout_index in torch.unique(batch["output_decoder_index"]):
+            if readout_index.item() == 0:
+                # skip the padding token
+                continue
+
             mask = batch["output_decoder_index"] == readout_index
             readout_id = torch_brain.get_modality_by_id(readout_index.item())
 
@@ -189,16 +193,21 @@ class StitchEvaluator(L.Callback):
             for task_name in self.metrics[recording_id].keys():
                 for metric_name in self.metrics[recording_id][task_name].keys():
                     metrics[f"{recording_id}/{task_name}/{metric_name}/{prefix}"] = (
-                        self.metrics[recording_id][task_name][metric_name].compute()
+                        self.metrics[recording_id][task_name][metric_name]
+                        .to(pl_module.device)
+                        .compute()
                     )
                     self.metrics[recording_id][task_name][metric_name].reset()
+                    self.metrics[recording_id][task_name][metric_name].to("cpu")
 
         # log the metrics
         self.log_dict(metrics)
         logging.info(f"Logged {len(metrics)} {prefix} metrics.")
 
         # compute the average metric
-        metrics[f"average_{prefix}_metric"] = np.array(list(metrics.values())).mean()
+        metrics[f"average_{prefix}_metric"] = torch.tensor(
+            list(metrics.values())
+        ).mean()
 
         metrics_data = []
         for metric_name, metric_value in metrics.items():

@@ -89,7 +89,12 @@ class POYOTrainWrapper(L.LightningModule):
                 spec.loss_fn, spec.type, output, target, weights
             )
 
-            loss = loss + taskwise_loss[readout_id] * len(target)
+            # count the number of sequences in the batch that have the current task
+            num_sequences_with_current_task = torch.any(
+                batch["output_decoder_index"] == MODALITIY_REGISTRY[readout_id].id,
+                dim=1,
+            ).sum()
+            loss = loss + taskwise_loss[readout_id] * num_sequences_with_current_task
 
         batch_size = batch["input_unit_index"].shape[0]
         # TODO change batch_size when POYOPlusEfficient is used

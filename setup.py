@@ -22,6 +22,7 @@ setup(
         "wandb~=0.15",
         "torchtyping~=0.1",
         "pydantic~=2.0",
+        "tabulate",
     ],
     extras_require={
         "dev": [

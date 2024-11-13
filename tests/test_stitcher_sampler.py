@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from temporaldata import Interval
 
-from torch_brain.data.sampler import DistributedStitchingFixedWindowBatchSampler
+from torch_brain.data.sampler import DistributedStitchingFixedWindowSampler
 
 
 def test_distributed_stitching_sampler():
@@ -18,7 +18,7 @@ def test_distributed_stitching_sampler():
     num_replicas = 2
 
     # Test rank 0
-    sampler0 = DistributedStitchingFixedWindowBatchSampler(
+    sampler0 = DistributedStitchingFixedWindowSampler(
         interval_dict=interval_dict,
         window_length=window_length,
         step=step,
@@ -26,9 +26,10 @@ def test_distributed_stitching_sampler():
         num_replicas=num_replicas,
         rank=0,
     )
+    samples0 = list(sampler0)
 
     # Test rank 1
-    sampler1 = DistributedStitchingFixedWindowBatchSampler(
+    sampler1 = DistributedStitchingFixedWindowSampler(
         interval_dict=interval_dict,
         window_length=window_length,
         step=step,
@@ -36,20 +37,19 @@ def test_distributed_stitching_sampler():
         num_replicas=num_replicas,
         rank=1,
     )
+    samples1 = list(sampler1)
 
     # Get all batches from both samplers
-    batches0 = list(sampler0)
-    batches1 = list(sampler1)
+    batches0 = [
+        samples0[i : i + batch_size] for i in range(0, len(samples0), batch_size)
+    ]
+    batches1 = [
+        samples1[i : i + batch_size] for i in range(0, len(samples1), batch_size)
+    ]
 
     # Basic checks
     assert len(batches0) > 0
     assert len(batches1) > 0
-
-    # Check batch sizes
-    for batch in batches0[:-1]:  # All except last batch
-        assert len(batch) == batch_size
-    for batch in batches1[:-1]:
-        assert len(batch) == batch_size
 
     # Check window properties
     for batch in batches0:

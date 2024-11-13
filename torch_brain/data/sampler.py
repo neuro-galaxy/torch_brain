@@ -331,8 +331,8 @@ class DistributedSamplerWrapper(torch.utils.data.Sampler):
         return iter(indices)
 
 
-class DistributedStitchingFixedWindowBatchSampler(torch.utils.data.BatchSampler):
-    r"""A batch sampler designed specifically for evaluation that enables sliding window
+class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler):
+    r"""A sampler designed specifically for evaluation that enables sliding window
     inference with prediction stitching across distributed processes.
 
     This sampler divides sequences into overlapping windows and distributes them across
@@ -463,15 +463,10 @@ class DistributedStitchingFixedWindowBatchSampler(torch.utils.data.BatchSampler)
         return indices, sequence_index
 
     def __iter__(self):
-        # Create batches from our pre-computed indices
-        batches = [
-            self.indices[i : i + self.batch_size]
-            for i in range(0, len(self.indices), self.batch_size)
-        ]
-        return iter(batches)
+        return iter(self.indices)
 
     def __len__(self) -> int:
-        return (self.num_samples + self.batch_size - 1) // self.batch_size
+        return self.num_samples
 
     def set_epoch(self, epoch: int) -> None:
         """Set the epoch number. Not strictly necessary for sequential sampler
