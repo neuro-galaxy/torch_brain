@@ -10,10 +10,10 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(),
     install_requires=[
-        "setuptools~=60.2.0",
-        "numpy~=1.23.5",
-        "pandas~=1.5.3",
-        "h5py~=3.8.0",
+        "setuptools>=60.0.0",
+        "numpy>=1.14.0",
+        "pandas>=1.0.0",
+        "h5py>=3.0.0",
     ],
     extras_require={
         "dev": [
