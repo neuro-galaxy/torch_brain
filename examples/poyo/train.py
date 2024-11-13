@@ -15,7 +15,8 @@ from omegaconf import DictConfig, OmegaConf
 from torch_brain.nn import compute_loss_or_metric
 from torch_brain.registry import MODALITIY_REGISTRY
 from torch_brain.utils import callbacks as tbrain_callbacks
-from torch_brain.utils import seed_everything, DataModule
+from torch_brain.utils import seed_everything
+from torch_brain.utils.datamodules import DataModule
 from torch_brain.utils.stitcher import StitchEvaluator
 
 # higher speed on machines with tensor cores
