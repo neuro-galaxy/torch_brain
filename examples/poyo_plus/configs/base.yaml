@@ -29,15 +29,4 @@ precision: 32
 nodes: 1
 gpus: 1
 
-# Where to resume/finetune from. Could be null (yaml for None, meaning train from
-# scratch) or a fully qualified path to the .ckpt file.
-ckpt_path: null
-
-# Finetuning configuration:
-finetune: false
-# Num of epochs to freeze perceiver network while finetuning
-# -1 => Keep frozen, i.e. perform Unit-identification
-#  0 => Train everything
-# >0 => Only train unit/session embeddings for first few epochs,
-#       and then train everything
-freeze_perceiver_until_epoch: 0
+ckpt_path: null  # for resuming training, or loading a model during finetuning
