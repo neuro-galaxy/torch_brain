@@ -20,7 +20,7 @@ class EpochTimeLogger(L.Callback):
     def on_train_epoch_end(self, trainer, pl_module):
         if self.enable:
             epoch_time = time.time() - self.start_time
-            pl_module.log("epoch_time", epoch_time)
+            pl_module.log("epoch_time", epoch_time, sync_dist=True)
 
 
 class ModelWeightStatsLogger(L.Callback):
