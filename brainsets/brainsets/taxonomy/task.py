@@ -24,18 +24,6 @@ class Task(StringIntEnum):
     CONTINUOUS_SPEAKING_SENTENCE = 7
 
 
-class REACHING(StringIntEnum, parent=Task.REACHING):
-    """A classic BCI task involving reaching to a 2d target."""
-
-    RANDOM = 0
-    HOLD = 1
-    REACH = 2
-    RETURN = 3
-    INVALID = 4
-    OUTLIER = 5
-    MAX = 6
-
-
 class Stimulus(StringIntEnum):
     """Stimuli can variously act like inputs (for conditioning) or like outputs."""
 

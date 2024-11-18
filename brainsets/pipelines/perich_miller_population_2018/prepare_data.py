@@ -8,13 +8,7 @@ import numpy as np
 from pynwb import NWBHDF5IO
 from scipy.ndimage import binary_dilation, binary_erosion
 
-from temporaldata import (
-    Data,
-    RegularTimeSeries,
-    IrregularTimeSeries,
-    Interval,
-    ArrayDict,
-)
+from temporaldata import Data, IrregularTimeSeries, Interval
 from brainsets.descriptions import (
     BrainsetDescription,
     SessionDescription,
@@ -30,7 +24,30 @@ from brainsets import serialize_fn_map
 logging.basicConfig(level=logging.INFO)
 
 
-def extract_trials(nwbfile, task):
+def extract_behavior(nwbfile):
+    """Extract behavior from the NWB file.
+
+    ..note::
+        Cursor position and target position are in the same frame of reference.
+        They are both of size (sequence_len, 2).
+    """
+    timestamps = nwbfile.processing["behavior"]["Position"]["cursor_pos"].timestamps[:]
+    cursor_pos = nwbfile.processing["behavior"]["Position"]["cursor_pos"].data[:]  # 2d
+    cursor_vel = nwbfile.processing["behavior"]["Velocity"]["cursor_vel"].data[:]
+    cursor_acc = nwbfile.processing["behavior"]["Acceleration"]["cursor_acc"].data[:]
+
+    cursor = IrregularTimeSeries(
+        timestamps=timestamps,
+        pos=cursor_pos,
+        vel=cursor_vel,
+        acc=cursor_acc,
+        domain="auto",
+    )
+
+    return cursor
+
+
+def extract_trials(nwbfile, task, cursor):
     r"""Extract trial information from the NWB file. Trials that are flagged as
     "to discard" or where the monkey failed are marked as invalid."""
     trial_table = nwbfile.trials.to_dataframe()
@@ -44,90 +61,74 @@ def extract_trials(nwbfile, task):
     )
     trials = Interval.from_dataframe(trial_table)
 
+    # next we extract the different periods in the trials
     if task == "center_out_reaching":
+        # isolate valid trials based on success
         trials.is_valid = np.logical_and(
             np.logical_and(trials.result == "R", ~(np.isnan(trials.target_id))),
             (trials.end - trials.start) < 6.0,
         )
+        valid_trials = trials.select_by_mask(trials.is_valid)
+
+        movement_phases = Data(
+            hold_period=Interval(
+                start=valid_trials.target_on_time, end=valid_trials.go_cue_time
+            ),
+            reach_period=Interval(start=valid_trials.go_cue_time, end=valid_trials.end),
+            return_period=Interval(
+                start=valid_trials.start, end=valid_trials.target_on_time
+            ),
+            domain="auto",
+        )
 
     elif task == "random_target_reaching":
+        # isolate valid trials based on success
         trials.is_valid = np.logical_and(
             np.logical_and(trials.result == "R", trials.num_attempted == 4),
             (trials.end - trials.start) < 10.0,
         )
+        valid_trials = trials.select_by_mask(trials.is_valid)
 
-    return trials
+        movement_phases = Data(
+            hold_period=Interval(
+                start=valid_trials.start, end=valid_trials.go_cue_time_array[:, 0]
+            ),
+            domain="auto",
+        )
+
+    movement_phases = movement_phases.sort()
+    # everything outside of the different identified periods will be marked as random
+    movement_phases.random_period = cursor.domain.difference(movement_phases.domain)
+
+    return trials, movement_phases
 
 
-def extract_behavior(nwbfile, trials, task):
-    """Extract behavior from the NWB file.
-
-    ..note::
-        Cursor position and target position are in the same frame of reference.
-        They are both of size (sequence_len, 2). Finger position can be either 3d or 6d,
-        depending on the sequence. # todo investigate more
-    """
-    # cursor, hand and eye share the same timestamps (verified)
-    timestamps = nwbfile.processing["behavior"]["Position"]["cursor_pos"].timestamps[:]
-    cursor_pos = nwbfile.processing["behavior"]["Position"]["cursor_pos"].data[:]  # 2d
-    cursor_vel = nwbfile.processing["behavior"]["Velocity"]["cursor_vel"].data[:]
-    cursor_acc = nwbfile.processing["behavior"]["Acceleration"]["cursor_acc"].data[:]
-
-    # normalization
-    cursor_vel = cursor_vel / 20.0
-
-    # create a behavior type segmentation mask
-    subtask_index = np.ones_like(timestamps, dtype=np.int64) * int(Task.REACHING.RANDOM)
-    if task == "center_out_reaching":
-        for i in range(len(trials)):
-            # first we check whether the trials are valid or not
-            if trials.is_valid[i]:
-                subtask_index[
-                    (timestamps >= trials.target_on_time[i])
-                    & (timestamps < trials.go_cue_time[i])
-                ] = int(Task.REACHING.HOLD)
-                subtask_index[
-                    (timestamps >= trials.go_cue_time[i]) & (timestamps < trials.end[i])
-                ] = int(Task.REACHING.REACH)
-                subtask_index[
-                    (timestamps >= trials.start[i])
-                    & (timestamps < trials.target_on_time[i])
-                ] = int(Task.REACHING.RETURN)
-    elif task == "random_target_reaching":
-        for i in range(len(trials)):
-            if trials.is_valid[i]:
-                subtask_index[
-                    (timestamps >= trials.start[i])
-                    & (timestamps < trials.go_cue_time_array[i][0])
-                ] = int(Task.REACHING.HOLD)
-
+def detect_outliers(cursor):
     # sometimes monkeys get angry, we want to identify the segments where the hand is
     # moving too fast, and mark them as outliers
     # we use the norm of the acceleration to identify outliers
-    hand_acc_norm = np.linalg.norm(cursor_acc, axis=1)
-    mask = hand_acc_norm > 1500.0
-    mask = binary_dilation(mask, structure=np.ones(2, dtype=bool))
-    subtask_index[mask] = int(Task.REACHING.OUTLIER)
-
-    # we also want to identify out of bound segments
-    mask = np.logical_or(cursor_pos[:, 0] < -10, cursor_pos[:, 0] > 10)
-    mask = np.logical_or(mask, cursor_pos[:, 1] < -10)
-    mask = np.logical_or(mask, cursor_pos[:, 1] > 10)
-    # dilate than erode
-    mask = binary_dilation(mask, np.ones(400, dtype=bool))
-    mask = binary_erosion(mask, np.ones(100, dtype=bool))
-    subtask_index[mask] = int(Task.REACHING.OUTLIER)
-
-    cursor = IrregularTimeSeries(
-        timestamps=timestamps,
-        pos=cursor_pos,
-        vel=cursor_vel,
-        acc=cursor_acc,
-        subtask_index=subtask_index,
-        domain="auto",
+    hand_acc_norm = np.linalg.norm(cursor.acc, axis=1)
+    mask_acceleration = hand_acc_norm > 1500.0
+    mask_acceleration = binary_dilation(
+        mask_acceleration, structure=np.ones(2, dtype=bool)
     )
 
-    return cursor
+    # we also want to identify out of bound segments
+    mask_position = np.logical_or(cursor.pos[:, 0] < -10, cursor.pos[:, 0] > 10)
+    mask_position = np.logical_or(mask_position, cursor.pos[:, 1] < -10)
+    mask_position = np.logical_or(mask_position, cursor.pos[:, 1] > 10)
+    # dilate than erode
+    mask_position = binary_dilation(mask_position, np.ones(400, dtype=bool))
+    mask_position = binary_erosion(mask_position, np.ones(100, dtype=bool))
+
+    outlier_mask = np.logical_or(mask_acceleration, mask_position)
+
+    # convert to interval, you need to find the start and end of the outlier segments
+    start = cursor.timestamps[np.where(np.diff(outlier_mask.astype(int)) == 1)[0]]
+    end = cursor.timestamps[np.where(np.diff(outlier_mask.astype(int)) == -1)[0]]
+    cursor_outlier_segments = Interval(start=start, end=end)
+
+    return cursor_outlier_segments
 
 
 def main():
@@ -193,11 +194,12 @@ def main():
         nwbfile, recording_tech=RecordingTech.UTAH_ARRAY_SPIKES
     )
 
-    # extract data about trial structure
-    trials = extract_trials(nwbfile, task)
-
     # extract behavior
-    cursor = extract_behavior(nwbfile, trials, task)
+    cursor = extract_behavior(nwbfile)
+    cursor_outlier_segments = detect_outliers(cursor)
+
+    # extract data about trial structure
+    trials, movement_phases = extract_trials(nwbfile, task, cursor)
 
     # close file
     io.close()
@@ -213,7 +215,9 @@ def main():
         units=units,
         # stimuli and behavior
         trials=trials,
+        movement_phases=movement_phases,
         cursor=cursor,
+        cursor_outlier_segments=cursor_outlier_segments,
         # domain
         domain=cursor.domain,
     )
@@ -228,9 +232,9 @@ def main():
         (valid_trials | test_trials).dilate(3.0)
     )
 
-    data.train_domain = train_sampling_intervals
-    data.valid_domain = valid_trials
-    data.test_domain = test_trials
+    data.set_train_domain(train_sampling_intervals)
+    data.set_valid_domain(valid_trials)
+    data.set_test_domain(test_trials)
 
     # save data to disk
     path = os.path.join(args.output_dir, f"{session_id}.h5")
