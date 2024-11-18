@@ -124,7 +124,13 @@ def detect_outliers(cursor):
 
     # convert to interval, you need to find the start and end of the outlier segments
     start = cursor.timestamps[np.where(np.diff(outlier_mask.astype(int)) == 1)[0]]
+    if outlier_mask[0]:
+        start = np.insert(start, 0, cursor.timestamps[0])
+
     end = cursor.timestamps[np.where(np.diff(outlier_mask.astype(int)) == -1)[0]]
+    if outlier_mask[-1]:
+        end = np.insert(end, 0, cursor.timestamps[-1])
+
     cursor_outlier_segments = Interval(start=start, end=end)
 
     return cursor_outlier_segments

@@ -4,7 +4,7 @@ setup(
     name="brainsets",
     version="0.1.0",
     author="Mehdi Azabou",
-    author_email="mehdiazabou@gmail.com", 
+    author_email="mehdiazabou@gmail.com",
     description="A package for processing neural datasets",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -12,7 +12,7 @@ setup(
     install_requires=[
         "temporaldata",
         "scipy~=1.10.1",
-        "pynwb~=2.2.0", 
+        "pynwb~=2.2.0",
         "setuptools~=60.2.0",
         "numpy~=1.23.5",
         "pandas~=1.5.3",
@@ -55,7 +55,7 @@ setup(
     },
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License", 
+        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.8",

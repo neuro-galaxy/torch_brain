@@ -1,13 +1,21 @@
-# 🧠 brainsets
+# brainsets
+
+[Documentation](https://brainsets.readthedocs.io/en/latest/) | [Paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca113d122584f12a6727341aaf58887-Abstract-Conference.html)
+
+[![PyPI version](https://badge.fury.io/py/brainsets.svg)](https://badge.fury.io/py/brainsets)
+[![Documentation Status](https://readthedocs.org/projects/brainsets/badge/?version=latest)](https://brainsets.readthedocs.io/en/latest/?badge=latest)
+[![Tests](https://github.com/neuro-galaxy/brainsets/actions/workflows/testing.yml/badge.svg)](https://github.com/neuro-galaxy/brainsets/actions/workflows/testing.yml)
+[![Linting](https://github.com/neuro-galaxy/brainsets/actions/workflows/linting.yml/badge.svg)](https://github.com/neuro-galaxy/brainsets/actions/workflows/linting.yml)
+
 
 **brainsets** is a Python package for processing neural data into a standardized format.
 
 ## Installation
-brainsets is available for Python 3.9 to Python 3.11
+brainsets is available for Python 3.8 to Python 3.11
 
 To install the package, run the following command:
 ```bash
-pip install -e ".[dandi]"
+pip install brainsets
 ```
 
 ## Using the brainsets CLI
@@ -64,3 +72,18 @@ Unit tests are located under test/. Run the entire test suite with
 pytest
 ```
 or test individual files via, e.g., `pytest test/test_enum_unique.py`
+
+
+## Cite
+
+Please cite [our paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca113d122584f12a6727341aaf58887-Abstract-Conference.html) if you use this code in your own work:
+
+```bibtex
+@inproceedings{
+    azabou2023unified,
+    title={A Unified, Scalable Framework for Neural Population Decoding},
+    author={Mehdi Azabou and Vinam Arora and Venkataramana Ganesh and Ximeng Mao and Santosh Nachimuthu and Michael Mendelson and Blake Richards and Matthew Perich and Guillaume Lajoie and Eva L. Dyer},
+    booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
+    year={2023},
+}
+```
