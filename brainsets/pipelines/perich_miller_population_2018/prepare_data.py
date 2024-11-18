@@ -96,7 +96,6 @@ def extract_trials(nwbfile, task, cursor):
             domain="auto",
         )
 
-    movement_phases = movement_phases.sort()
     # everything outside of the different identified periods will be marked as random
     movement_phases.random_period = cursor.domain.difference(movement_phases.domain)
 

@@ -13,10 +13,6 @@ def expand_path(path):
 # get various paths from config file
 config["RAW_DIR"] = expand_path(f"{config['raw_dir']}")
 config["PROCESSED_DIR"] = expand_path(f"{config['processed_dir']}")
-# config["COMPRESSED_DIR"] = expand_path(f"{config['compressed_dir']}/compressed")
-# config["UNCOMPRESSED_DIR"] = expand_path(f"{config['uncompressed_dir']}/uncompressed")
-# config["TMP_DIR"] = expand_path(f"{config['tmp_dir']}")
-
 
 # include all snakefiles for all individual datasets
 # includes are relative to the directory of the Snakefile in which they occur
@@ -26,95 +22,8 @@ module perich_miller_population_2018_module:
 use rule * from perich_miller_population_2018_module as perich_miller_population_2018_*
 use rule all from perich_miller_population_2018_module as perich_miller_population_2018
 
-module allen_visual_coding_ophys_2016_module:
-    snakefile: "pipelines/allen_visual_coding_ophys_2016/Snakefile"
-    config: config
-use rule * from allen_visual_coding_ophys_2016_module as allen_visual_coding_ophys_2016_*
-use rule all from allen_visual_coding_ophys_2016_module as allen_visual_coding_ophys_2016
-
-# module allen_natural_movie_calcium_module:
-#     snakefile: "pipelines/allen_natural_movie_calcium/Snakefile"
-#     config: config
-# use rule * from allen_natural_movie_calcium_module as allen_natural_movie_calcium_*
-# use rule all from allen_natural_movie_calcium_module as allen_natural_movie_calcium
-
-# module allen_visual_behavior_neuropixels_module:
-#     snakefile: "pipelines/allen_visual_behavior_neuropixels/Snakefile"
-#     config: config
-# use rule * from allen_visual_behavior_neuropixels_module as allen_visual_behavior_neuropixels_*
-# use rule all from allen_visual_behavior_neuropixels_module as allen_visual_behavior_neuropixels
-
-# module gillon_richards_responses_2023_module:
-#     snakefile: "pipelines/gillon_richards_responses_2023/Snakefile"
-#     config: config
-# use rule * from gillon_richards_responses_2023_module as gillon_richards_responses_2023_*
-# use rule all from gillon_richards_responses_2023_module as gillon_richards_responses_2023
-
-# module evenchen_shenoy_structure_2019_module:
-#     snakefile: "pipelines/evenchen_shenoy_structure_2019/Snakefile"
-#     config: config
-# use rule * from evenchen_shenoy_structure_2019_module as evenchen_shenoy_structure_2019_*
-# use rule all from evenchen_shenoy_structure_2019_module as evenchen_shenoy_structure_2019
-
-# module willett_shenoy_module:
-#     snakefile: "pipelines/willett_shenoy/Snakefile"
-#     config: config
-# use rule * from willett_shenoy_module as willett_shenoy_*
-# use rule all from willett_shenoy_module as willett_shenoy
-
-# module odoherty_sabes_nonhuman_2017_module:
-#     snakefile: "pipelines/odoherty_sabes_nonhuman_2017/Snakefile"
-#     config: config
-# use rule * from odoherty_sabes_nonhuman_2017_module as odoherty_sabes_nonhuman_2017_*
-# use rule all from odoherty_sabes_nonhuman_2017_module as odoherty_sabes_nonhuman_2017
-
-# module churchland_shenoy_neural_2012_module:
-#     snakefile: "pipelines/churchland_shenoy_neural_2012/Snakefile"
-#     config: config
-# use rule * from churchland_shenoy_neural_2012_module as churchland_shenoy_neural_2012_*
-# use rule all from churchland_shenoy_neural_2012_module as churchland_shenoy_neural_2012
-
 module pei_pandarinath_nlb_2021_module:
     snakefile: "pipelines/pei_pandarinath_nlb_2021/Snakefile"
     config: config
 use rule * from pei_pandarinath_nlb_2021_module as pei_pandarinath_nlb_2021_*
 use rule all from pei_pandarinath_nlb_2021_module as pei_pandarinath_nlb_2021
-
-# module bouchard_chang_module:
-#     snakefile: "pipelines/bouchard_chang/Snakefile"
-#     config: config
-# use rule * from bouchard_chang_module as bouchard_chang_*
-# use rule all from bouchard_chang_module as bouchard_chang
-
-# module flint_slutzky_accurate_2012_module:
-#     snakefile: "pipelines/flint_slutzky_accurate_2012/Snakefile"
-#     config: config
-# use rule * from flint_slutzky_accurate_2012_module as flint_slutzky_accurate_2012_*
-# use rule all from flint_slutzky_accurate_2012_module as flint_slutzky_accurate_2012
-
-# module willett_henderson_speech_2023_module:
-#     snakefile: "pipelines/willett_henderson_speech_2023/Snakefile"
-#     config: config
-# use rule * from willett_henderson_speech_2023_module as willett_henderson_speech_2023_*
-# use rule all from willett_henderson_speech_2023_module as willett_henderson_speech_2023
-
-# module orsborn_lab_ecog_reaching_2024_module:
-#     snakefile: "pipelines/orsborn_lab_ecog_reaching_2024/Snakefile"
-#     config: config
-# use rule * from orsborn_lab_ecog_reaching_2024_module as orsborn_lab_ecog_reaching_2024_*
-# use rule all from orsborn_lab_ecog_reaching_2024_module as orsborn_lab_ecog_reaching_2024
-
-
-# module yu_smith_selective_2022_module:
-#     snakefile: "pipelines/yu_smith_selective_2022/Snakefile"
-#     config: config
-# use rule * from yu_smith_selective_2022_module as yu_smith_selective_2022_*
-# use rule all from yu_smith_selective_2022_module as yu_smith_selective_2022
-
-# # make rules that combine multiple datasets
-# rule poyo_neurips:
-#     input:
-#         perich_miller_population_2018_module.rules.all.input,
-#         churchland_shenoy_neural_2012_module.rules.all.input,
-#         flint_slutzky_accurate_2012_module.rules.all.input,
-#         odoherty_sabes_nonhuman_2017_module.rules.all.input,

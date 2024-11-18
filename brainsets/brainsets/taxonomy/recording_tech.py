@@ -34,32 +34,32 @@ class Hemisphere(StringIntEnum):
     RIGHT = 2
 
 
-@dataclass
-class Channel(Dictable):
-    """Channels are the physical channels used to record the data. Channels are grouped
-    into probes."""
+# @dataclass
+# class Channel(Dictable):
+#     """Channels are the physical channels used to record the data. Channels are grouped
+#     into probes."""
 
-    id: str
-    local_index: int
+#     id: str
+#     local_index: int
 
-    # Position relative to the reference location of the probe, in microns.
-    relative_x_um: float
-    relative_y_um: float
-    relative_z_um: float
+#     # Position relative to the reference location of the probe, in microns.
+#     relative_x_um: float
+#     relative_y_um: float
+#     relative_z_um: float
 
-    area: StringIntEnum
-    hemisphere: Hemisphere = Hemisphere.UNKNOWN
+#     area: StringIntEnum
+#     hemisphere: Hemisphere = Hemisphere.UNKNOWN
 
 
-@dataclass
-class Probe(Dictable):
-    """Probes are the physical probes used to record the data."""
+# @dataclass
+# class Probe(Dictable):
+#     """Probes are the physical probes used to record the data."""
 
-    id: str
-    type: RecordingTech
-    lfp_sampling_rate: float
-    wideband_sampling_rate: float
-    waveform_sampling_rate: float
-    waveform_samples: int
-    channels: list[Channel]
-    ecog_sampling_rate: float = 0.0
+#     id: str
+#     type: RecordingTech
+#     lfp_sampling_rate: float
+#     wideband_sampling_rate: float
+#     waveform_sampling_rate: float
+#     waveform_samples: int
+#     channels: list[Channel]
+#     ecog_sampling_rate: float = 0.0
