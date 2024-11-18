@@ -10,7 +10,7 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(),
     install_requires=[
-        "temporaldata @ git+https://github.com/neuro-galaxy/temporaldata@main#egg=temporaldata-0.1.1",
+        "temporaldata",
         "scipy~=1.10.1",
         "pynwb~=2.2.0",
         "setuptools~=60.2.0",
@@ -24,6 +24,7 @@ setup(
         "snakemake~=7.32.3",
         "pydantic~=2.0",
         "pulp==2.7.0",
+        "click~=8.1.3",
     ],
     extras_require={
         "dev": [
@@ -61,4 +62,9 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.8",
+    entry_points={
+        "console_scripts": [
+            "brainsets=brainsets.cli:cli",
+        ],
+    },
 )

@@ -7,28 +7,45 @@ brainsets is available for Python 3.9 to Python 3.11
 
 To install the package, run the following command:
 ```bash
-pip install -e .
-```
-
-To avoid conflicts between different packages, you can specify the packages that will be
-used as follows:
-```bash
 pip install -e ".[dandi]"
 ```
 
+## Using the brainsets CLI
+
+### Configuring data directories
+First, configure the directories where brainsets will store raw and processed data:
 ```bash
-pip install -e ".[zenodo]"
+brainsets config
 ```
 
+You will be prompted to enter the paths to the raw and processed data directories.
 ```bash
-pip install -e ".[allen]"
+$> brainsets config
+Enter raw data directory: ./data/raw
+Enter processed data directory: ./data/processed
 ```
 
-## Documentation
-> [!WARNING]  
-> The docs are hosted publically for convenience, please do not share the link.
+You can update the configuration at any time by running the `config` command again.
 
-You can find the documentation for this package [here](https://chic-dragon-bc9a04.netlify.app/).
+### Listing available datasets
+You can list the available datasets by running the `list` command:
+```bash
+brainsets list
+```
+
+### Preparing data
+You can prepare a dataset by running the `prepare` command:
+```bash
+brainsets prepare <brainset>
+```
+
+Data preparation involves downloading the raw data from the source then processing it, 
+following a set of rules defined in `pipelines/<brainset>/`.
+
+For example, to prepare the Perich & Miller (2018) dataset, you can run:
+```bash
+brainsets prepare perich_miller_population_2018 --cores 8
+```
 
 ## Contributing
 If you are planning to contribute to the package, you can install the package in

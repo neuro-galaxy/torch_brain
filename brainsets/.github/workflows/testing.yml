@@ -23,17 +23,10 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install temporaldata
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      run: |
-        python -m pip install --no-user --upgrade pip 
-        pip install --no-user "temporaldata @ git+https://${GITHUB_TOKEN}:x-oauth-basic@github.com/neuro-galaxy/temporaldata@v0.1.1#egg=temporaldata-0.1.1"
     - name: Install dependencies
       run: |
         python -m pip install --no-user --upgrade pip
-        pip install scipy~=1.10.1 pynwb~=2.2.0 setuptools~=60.2.0 numpy~=1.23.5 pandas~=1.5.3 jsonschema~=4.21.1 scikit-image~=0.19.3 tqdm~=4.64.1 rich==13.3.2 msgpack~=1.0.5 snakemake~=7.32.3 pydantic~=2.0 pulp==2.7.0 pytest~=7.2.1 flake8 mne
-        pip install --no-user --no-deps -e .
+        pip install -e .
     - name: Install plugin
       run: pip install pytest-github-actions-annotate-failures
     - name: Test with pytest
