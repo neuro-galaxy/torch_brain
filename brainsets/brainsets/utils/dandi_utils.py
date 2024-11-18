@@ -3,11 +3,11 @@ import pandas as pd
 
 from temporaldata import ArrayDict, IrregularTimeSeries
 
+from brainsets.descriptions import SubjectDescription
 from brainsets.taxonomy import (
     RecordingTech,
     Sex,
     Species,
-    SubjectDescription,
 )
 
 

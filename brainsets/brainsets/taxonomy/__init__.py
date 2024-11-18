@@ -1,5 +1,3 @@
-from .core import StringIntEnum, Dictable
-
 from .subject import (
     Species,
     Sex,
@@ -18,11 +16,4 @@ from .recording_tech import (
     Hemisphere,
     Channel,
     Probe,
-)
-
-from .descriptors import (
-    BrainsetDescription,
-    SubjectDescription,
-    DeviceDescription,
-    SessionDescription,
 )

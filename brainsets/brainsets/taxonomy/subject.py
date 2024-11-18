@@ -1,4 +1,4 @@
-from .core import StringIntEnum
+from brainsets.core import StringIntEnum
 
 
 class Species(StringIntEnum):

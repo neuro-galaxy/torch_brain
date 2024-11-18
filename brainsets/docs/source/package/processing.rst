@@ -1,0 +1,4 @@
+.. currentmodule:: brainsets
+
+brainsets.processing
+--------------------

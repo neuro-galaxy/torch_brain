@@ -1,4 +1,4 @@
-from .core import StringIntEnum
+from brainsets.core import StringIntEnum
 
 
 # from a standard atlas https://github.com/neurodata/neuroparc/blob/master/atlases/label/Human/Anatomical-labels-csv/Glasser.csv

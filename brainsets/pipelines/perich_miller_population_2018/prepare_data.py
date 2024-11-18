@@ -15,12 +15,12 @@ from temporaldata import (
     Interval,
     ArrayDict,
 )
-from brainsets.taxonomy import (
+from brainsets.descriptions import (
     BrainsetDescription,
     SessionDescription,
     DeviceDescription,
 )
-from brainsets.dandi_utils import (
+from brainsets.utils.dandi_utils import (
     extract_spikes_from_nwbfile,
     extract_subject_from_nwb,
 )

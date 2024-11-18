@@ -1,4 +1,4 @@
-from .core import StringIntEnum
+from brainsets.core import StringIntEnum
 
 
 # Nomenclature from CHARM: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2944191/

@@ -1,6 +1,6 @@
 import pytest
 import inspect
-from brainsets.taxonomy import StringIntEnum
+from brainsets.core import StringIntEnum
 import brainsets.taxonomy
 
 

@@ -1,5 +1,5 @@
 from enum import Enum
-from dataclasses import asdict
+import datetime
 
 
 class NestedEnumType(type(Enum)):
@@ -21,7 +21,28 @@ class NestedEnumType(type(Enum)):
 
 
 class StringIntEnum(Enum, metaclass=NestedEnumType):
-    """Enum where the value is a string, but can be cast to an int."""
+    r"""Base class for string-integer enums.
+
+    This class extends Python's built-in Enum class to provide:
+        - String representation via __str__
+        - Integer representation via __int__
+        - Case-insensitive string parsing via from_string()
+        - Maximum value lookup via max_value()
+
+    .. code-block:: python
+
+        >>> class Color(StringIntEnum):
+        ...     RED = 1
+        ...     BLUE = 2
+        >>> str(Color.RED)
+        'RED'
+        >>> int(Color.RED)
+        1
+        >>> Color.from_string("red")
+        <Color.RED: 1>
+        >>> Color.max_value()
+        2
+    """
 
     def __str__(self):
         if self._parent is not None:
@@ -41,7 +62,7 @@ class StringIntEnum(Enum, metaclass=NestedEnumType):
             string: The string to convert to an enum member.
 
         Examples:
-            >>> from kirby.taxonomy import Sex
+            >>> from brainsets.taxonomy import Sex
             >>> Sex.from_string("Male")
             <Sex.MALE: 1>
             >>> Sex.from_string("M")
@@ -68,13 +89,47 @@ class StringIntEnum(Enum, metaclass=NestedEnumType):
 
     @classmethod
     def max_value(cls):
-        r"""Return the maximum value of the enum."""
+        r"""Return the maximum value in the enum class."""
         return max(cls.__members__.values(), key=lambda x: x.value).value
 
 
 class Dictable:
-    """A dataclass that can be converted to a dict."""
+    r"""A dataclass that can be converted to a dict."""
 
     def to_dict(self):
-        """__dict__ doesn't play well with torch.load"""
+        r"""Convert the dataclass instance to a dictionary.
+
+        Returns:
+            dict: A dictionary containing all fields of the dataclass as key-value pairs.
+
+        .. code-block:: python
+
+            >>> from dataclasses import dataclass
+            >>> @dataclass
+            ... class Person(Dictable):
+            ...     name: str
+            ...     age: int
+
+            >>> p = Person("Alice", 30)
+            >>> p.to_dict()
+            {'name': 'Alice', 'age': 30}
+        """
+        from dataclasses import asdict
+
         return {k: v for k, v in asdict(self).items()}  # type: ignore
+
+
+def string_int_enum_serialize_fn(obj, serialize_fn_map=None):
+    r"""Convert a StringIntEnum object to a string."""
+    return str(obj)
+
+
+def datetime_serialize_fn(obj, serialize_fn_map=None):
+    r"""Convert a datetime object to a string."""
+    return str(obj)
+
+
+serialize_fn_map = {
+    StringIntEnum: string_int_enum_serialize_fn,
+    datetime.datetime: datetime_serialize_fn,
+}
