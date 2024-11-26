@@ -17,13 +17,13 @@ config["PROCESSED_DIR"] = expand_path(f"{config['processed_dir']}")
 # include all snakefiles for all individual datasets
 # includes are relative to the directory of the Snakefile in which they occur
 module perich_miller_population_2018_module:
-    snakefile: "pipelines/perich_miller_population_2018/Snakefile"
+    snakefile: "perich_miller_population_2018/Snakefile"
     config: config
 use rule * from perich_miller_population_2018_module as perich_miller_population_2018_*
 use rule all from perich_miller_population_2018_module as perich_miller_population_2018
 
 module pei_pandarinath_nlb_2021_module:
-    snakefile: "pipelines/pei_pandarinath_nlb_2021/Snakefile"
+    snakefile: "pei_pandarinath_nlb_2021/Snakefile"
     config: config
 use rule * from pei_pandarinath_nlb_2021_module as pei_pandarinath_nlb_2021_*
 use rule all from pei_pandarinath_nlb_2021_module as pei_pandarinath_nlb_2021

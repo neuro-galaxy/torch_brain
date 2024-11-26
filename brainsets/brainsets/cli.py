@@ -48,6 +48,8 @@ def prepare(dataset, cores):
         process = subprocess.run(
             [
                 "snakemake",
+                "-s",
+                str(Path(__file__).parent.parent / "brainsets_pipelines" / "Snakefile"),
                 "--config",
                 f"raw_dir={config['raw_dir']}",
                 f"processed_dir={config['processed_dir']}",
