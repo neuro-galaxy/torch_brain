@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "brainsets"
-version = "0.1.0"
+version = "0.1.1"
 description = "A package for processing neural datasets"
 readme = "README.md"
 authors = [
@@ -51,3 +51,7 @@ Documentation = "https://brainsets.readthedocs.io/en/latest/"
 
 [project.scripts]
 brainsets = "brainsets.cli:cli"
+
+[tool.setuptools]
+packages = ["brainsets", "brainsets.utils", "brainsets_pipelines"]
+include-package-data = true
