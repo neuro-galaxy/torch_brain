@@ -212,7 +212,6 @@ class POYOTrainWrapper(L.LightningModule):
         batch.pop("target_weights")
         absolute_starts = batch.pop("absolute_start")
         session_ids = batch.pop("session_id")
-        output_subtask_index = batch.pop("output_subtask_index")
         output_mask = batch.pop("output_mask")
 
         # forward pass
@@ -222,7 +221,6 @@ class POYOTrainWrapper(L.LightningModule):
         batch["target_values"] = target_values
         batch["absolute_start"] = absolute_starts
         batch["session_id"] = session_ids
-        batch["output_subtask_index"] = output_subtask_index
         batch["output_mask"] = output_mask
 
         return output_values
