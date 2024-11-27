@@ -81,6 +81,12 @@
       - m_20150625_center_out_reaching
       - m_20150626_center_out_reaching
   config:
+    weights:
+      movement_periods.random_period: 1.0
+      movement_periods.hold_period: 0.1
+      movement_periods.reach_period: 5.0
+      movement_periods.return_period: 1.0
+      cursor_outlier_segments: 0.0
     eval_movement_phase: reach_period
 
 
@@ -110,4 +116,10 @@
     - m_20140221_random_target_reaching
     - m_20140224_random_target_reaching
   config:
+    weights:
+      movement_periods.random_period: 1.0
+      movement_periods.hold_period: 0.1
+      movement_periods.reach_period: 5.0
+      movement_periods.return_period: 1.0
+      cursor_outlier_segments: 0.0
     eval_movement_phase: random_period

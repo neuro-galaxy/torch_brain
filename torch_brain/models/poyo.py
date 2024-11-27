@@ -253,13 +253,11 @@ class POYOTokenizer:
         modality_spec: ModalitySpec,
         sequence_length: float = 1.0,
         eval: bool = False,
-        subtask_weights: Optional[Iterable[float]] = None,
     ):
         self.unit_tokenizer = unit_tokenizer
         self.session_tokenizer = session_tokenizer
 
         self.modality_spec = modality_spec
-        self.subtask_weights = subtask_weights
 
         self.latent_step = latent_step
         self.num_latents_per_step = num_latents_per_step
@@ -308,33 +306,18 @@ class POYOTokenizer:
         if output_values.dtype == np.float64:
             output_values = output_values.astype(np.float32)
 
-        session_index = self.session_tokenizer(data.session)
-        session_index = np.repeat(session_index, len(output_timestamps))
+        output_session_index = self.session_tokenizer(data.session)
+        output_session_index = np.repeat(output_session_index, len(output_timestamps))
 
-        # Assign each output timestamp a movement_phase
-        movement_phase_assignment = dict()
-        for k in data.movement_phases.keys():
-            movement_phase_assignment[k] = interval_contains(
-                data.movement_phases.__dict__[k],
-                output_timestamps,
-            )
-
-        # Weights for the output predictions (used in the loss function)
-        if self.subtask_weights is None:
-            output_weights = np.ones(len(output_values), dtype=np.float32)
-        else:
-            output_weights = np.zeros_like(output_timestamps, dtype=np.float32)
-            for k in data.movement_phases.keys():
-                output_weights = output_weights + (
-                    movement_phase_assignment[k].astype(float) * self.subtask_weights[k]
-                )
-
-        # Mask for the output predictions
-        output_mask = np.ones(len(output_values), dtype=bool)
-        if self.eval:
-            # During eval, only evaluate on the subtask specified in the config
-            eval_movement_phase = data.config["eval_movement_phase"]
-            output_mask = output_mask & (movement_phase_assignment[eval_movement_phase])
+        output_weights = np.ones_like(output_timestamps, dtype=np.float32)
+        if "weights" in data.config:
+            weights = data.config["weights"]
+            for weight_key, weight_value in weights.items():
+                # extract the interval from the weight key
+                weight = data.get_nested_attribute(weight_key)
+                if not isinstance(weight, Interval):
+                    raise ValueError(f"Weight {weight_key} is not an Interval")
+                output_weights[isin_interval(output_timestamps, weight)] *= weight_value
 
         batch = {
             # input sequence
@@ -346,9 +329,9 @@ class POYOTokenizer:
             "latent_index": latent_index,
             "latent_timestamps": latent_timestamps,
             # output sequence
-            "output_session_index": pad8(session_index),
+            "output_session_index": pad8(output_session_index),
             "output_timestamps": pad8(output_timestamps),
-            "output_mask": pad8(output_mask),
+            "output_mask": track_mask8(output_session_index),
             # ground truth targets
             "target_values": pad8(output_values),
             "target_weights": pad8(output_weights),
@@ -361,26 +344,22 @@ class POYOTokenizer:
         return batch
 
 
-def interval_contains(
-    interval: Interval, x: Union[float, np.ndarray]
-) -> Union[bool, np.ndarray]:
-    r"""If x is a single number, returns True if x is in the interval.
-    If x is a 1d numpy array, return a 1d bool numpy array.
+def isin_interval(timestamps: np.ndarray, interval: Interval) -> np.ndarray:
+    r"""Check if timestamps are in any of the intervals in the `Interval` object.
+
+    Args:
+        timestamps: Timestamps to check.
+        interval: Interval to check against.
+
+    Returns:
+        Boolean mask of the same shape as `timestamps`.
     """
+    if len(interval) == 0:
+        return np.zeros_like(timestamps, dtype=bool)
 
-    if isinstance(x, float):
-        if len(interval) == 0:
-            return False
-
-        return np.logical_and(x >= interval.start, x < interval.end).any()
-    elif isinstance(x, np.ndarray):
-        if len(interval) == 0:
-            return np.zeros_like(x, dtype=bool)
-
-        x_expanded = x[:, None]
-        y = np.logical_and(
-            x_expanded >= interval.start[None, :], x_expanded < interval.end[None, :]
-        )
-        y = np.logical_or.reduce(y, axis=1)
-        assert y.shape == x.shape
-        return y
+    timestamps_expanded = timestamps[:, None]
+    mask = np.any(
+        (timestamps_expanded >= interval.start) & (timestamps_expanded < interval.end),
+        axis=1,
+    )
+    return mask
