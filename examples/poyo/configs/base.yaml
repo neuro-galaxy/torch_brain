@@ -15,12 +15,6 @@ eval_batch_size: null  # if null, will use batch_size
 num_workers: 4
 seed: 42
 
-subtask_weights:
-  random_period: 1.0
-  hold_period: 0.1
-  reach_period: 5.0
-  return_period: 1.0
-
 optim:
   base_lr: 3.125e-5  # scaled linearly by batch size
   weight_decay: 1e-4
