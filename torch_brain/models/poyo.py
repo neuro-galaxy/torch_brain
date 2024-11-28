@@ -1,9 +1,9 @@
-from typing import Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import torch.nn as nn
 from torchtyping import TensorType
-from temporaldata import Data
+from temporaldata import Data, Interval
 
 from torch_brain.data import chain, pad8, track_mask8
 from torch_brain.nn import (
@@ -259,10 +259,7 @@ class POYOTokenizer:
         self.session_tokenizer = session_tokenizer
 
         self.modality_spec = modality_spec
-
         self.subtask_weights = subtask_weights
-        if self.subtask_weights is not None:
-            self.subtask_weights = np.array(self.subtask_weights, dtype=np.float32)
 
         self.latent_step = latent_step
         self.num_latents_per_step = num_latents_per_step
@@ -314,19 +311,30 @@ class POYOTokenizer:
         session_index = self.session_tokenizer(data.session)
         session_index = np.repeat(session_index, len(output_timestamps))
 
+        # Assign each output timestamp a movement_phase
+        movement_phase_assignment = dict()
+        for k in data.movement_phases.keys():
+            movement_phase_assignment[k] = interval_contains(
+                data.movement_phases.__dict__[k],
+                output_timestamps,
+            )
+
         # Weights for the output predictions (used in the loss function)
-        output_subtask_index = data.get_nested_attribute(self.modality_spec.context_key)
         if self.subtask_weights is None:
             output_weights = np.ones(len(output_values), dtype=np.float32)
         else:
-            output_weights = self.subtask_weights[output_subtask_index]
+            output_weights = np.zeros_like(output_timestamps, dtype=np.float32)
+            for k in data.movement_phases.keys():
+                output_weights = output_weights + (
+                    movement_phase_assignment[k].astype(float) * self.subtask_weights[k]
+                )
 
         # Mask for the output predictions
         output_mask = np.ones(len(output_values), dtype=bool)
         if self.eval:
             # During eval, only evaluate on the subtask specified in the config
-            target_subtask_index = data.config["eval_subtask_index"]
-            output_mask = output_mask & (output_subtask_index == target_subtask_index)
+            eval_movement_phase = data.config["eval_movement_phase"]
+            output_mask = output_mask & (movement_phase_assignment[eval_movement_phase])
 
         batch = {
             # input sequence
@@ -349,6 +357,30 @@ class POYOTokenizer:
         if self.eval:
             batch["session_id"] = data.session
             batch["absolute_start"] = data.absolute_start
-            batch["output_subtask_index"] = pad8(output_subtask_index)
 
         return batch
+
+
+def interval_contains(
+    interval: Interval, x: Union[float, np.ndarray]
+) -> Union[bool, np.ndarray]:
+    r"""If x is a single number, returns True if x is in the interval.
+    If x is a 1d numpy array, return a 1d bool numpy array.
+    """
+
+    if isinstance(x, float):
+        if len(interval) == 0:
+            return False
+
+        return np.logical_and(x >= interval.start, x < interval.end).any()
+    elif isinstance(x, np.ndarray):
+        if len(interval) == 0:
+            return np.zeros_like(x, dtype=bool)
+
+        x_expanded = x[:, None]
+        y = np.logical_and(
+            x_expanded >= interval.start[None, :], x_expanded < interval.end[None, :]
+        )
+        y = np.logical_or.reduce(y, axis=1)
+        assert y.shape == x.shape
+        return y

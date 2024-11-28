@@ -16,12 +16,10 @@ num_workers: 4
 seed: 42
 
 subtask_weights:
-  - 1.0  # RANDOM
-  - 0.1  # HOLD
-  - 5.0  # REACH
-  - 1.0  # RETURN
-  - 0.1  # INVALID
-  - 0.0  # OUTLIER
+  random_period: 1.0
+  hold_period: 0.1
+  reach_period: 5.0
+  return_period: 1.0
 
 optim:
   base_lr: 3.125e-5  # scaled linearly by batch size
