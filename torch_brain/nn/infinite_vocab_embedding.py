@@ -161,8 +161,20 @@ class InfiniteVocabEmbedding(nn.Module):
         # update tokenizer
         self.vocab.update(
             OrderedDict(
-                zip(vocab, range(len(self.vocab), len(self.vocab) + len(vocab)))
+                zip(new_words, range(len(self.vocab), len(self.vocab) + len(new_words)))
             )
+        )
+
+        # check that the dictionary update was done correctly
+        assert len(self.vocab) == len(self.weight) + len(new_words), (
+            f"Expected vocabulary length to be {len(self.weight) + len(new_words)}, "
+            f"but got {len(self.vocab)}"
+        )
+
+        # check that the largest value in the vocab matches its size
+        assert max(self.vocab.values()) == len(self.vocab) - 1, (
+            f"Expected maximum vocabulary index to be {len(self.vocab) - 1}, "
+            f"but got {max(self.vocab.values())}"
         )
 
         # make a copy of existing embeddings
@@ -350,6 +362,13 @@ class InfiniteVocabEmbedding(nn.Module):
         error_msgs,
     ):
         if not self.is_lazy():
+            # pop the vocabulary from the state_dict
+            # popping is done because by default pytorch does not know how to load
+            # vocab which is an OrderedDict, so we cannot keep it inside of the state_dict.
+            # however, if we pop it, it will also be removed in the original state_dict
+            # which can have unintended side effects, noteably this will alter the actual
+            # state_dict in the checkpoint or the other module being used.
+            # TODO: find a way to keep the vocab in the state_dict
             incoming_vocab = state_dict.pop(prefix + "vocab")
 
             # incoming_vocab and self.vocab might have the same keys but in a different order

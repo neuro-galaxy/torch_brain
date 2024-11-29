@@ -1,0 +1,24 @@
+defaults:
+  - base.yaml
+  - model: poyo_single_session.yaml
+  - dataset: perich_miller_population_2018.yaml
+  - _self_
+
+train_transforms:
+  - _target_: torch_brain.transforms.UnitDropout
+    max_units: 1000
+    min_units: 60
+    mode_units: 300
+    peak: 4
+
+wandb:
+  run_name: poyo_mp_mini_finetune
+
+ckpt_path: null  # Must specify path to model to finetune
+
+# Num of epochs to freeze perceiver network while finetuning
+# -1 => Keep frozen, i.e. perform Unit-identification
+#  0 => Train everything
+# >0 => Only train unit/session embeddings for first few epochs,
+#       and then train everything
+freeze_perceiver_until_epoch: 2
