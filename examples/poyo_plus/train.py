@@ -17,7 +17,7 @@ from torch_brain.registry import MODALITIY_REGISTRY
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
 from torch_brain.utils.datamodules import DataModule
-from torch_brain.utils.stitcher import StitchEvaluator
+from torch_brain.utils.stitcher import MultiTaskDecodingStitchEvaluator
 
 # higher speed on machines with tensor cores
 torch.set_float32_matmul_precision("medium")
@@ -178,7 +178,7 @@ def main(cfg: DictConfig):
         steps_per_epoch=len(data_module.train_dataloader()),
     )
 
-    evaluator = StitchEvaluator(
+    evaluator = MultiTaskDecodingStitchEvaluator(
         dataset_config_dict=data_module.get_recording_config_dict()
     )
 
