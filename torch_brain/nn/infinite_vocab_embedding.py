@@ -1,11 +1,11 @@
 import warnings
+from collections import OrderedDict
 from collections.abc import Iterable
 from typing import List, Union
-from collections import OrderedDict
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 from torch.nn.parameter import UninitializedParameter
 
 
@@ -384,7 +384,7 @@ class InfiniteVocabEmbedding(nn.Module):
             # incoming_vocab and self.vocab might have the same keys but in a different order
             # reorder incoming_vocab to match self.vocab, and get the remapping indices
             remap_indices = []
-            for word, index in self.vocab.items():
+            for word, index in list(self.vocab.items()):
                 if not word in incoming_vocab:
                     raise ValueError(
                         f"Vocabulary mismatch: word {word} is missing. If "

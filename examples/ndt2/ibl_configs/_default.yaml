@@ -1,0 +1,41 @@
+wandb:
+  project: NDT2_IBL
+  enable: true
+  entity: aandre8-gatech
+
+log_dir: /home/aandre8/torch_brain/examples/ndt2/logs
+data_root: /home/aandre8/brainsets_private/processed/
+  
+load_from_checkpoint: false
+
+ctx_time: 2.0
+bin_time: 0.02
+
+ctx_keys: ["session", "subject"]
+
+is_ssl: true
+model:
+  max_time_patches: 256
+  max_space_patches: 256
+
+custom_ndt2_data_spliter: false
+unsorted: false
+keep_M1_units: false
+
+epochs: 500
+log_every_n_steps: 1
+fast_dev_run: false
+num_sanity_val_steps: 0
+
+seed: 0
+pad_val: 64
+
+superv_batch_size: null  #  defaults to batch_size
+eval_epochs: 1
+precision: bf16-mixed
+
+callbacks:
+  checkpoint: true
+  early_stop: true
+  patience: 100
+  checkpoint_path: /nethome/aandre8/torch_brain/examples/ndt2/logs/NDT2_IBL/checkpoints/

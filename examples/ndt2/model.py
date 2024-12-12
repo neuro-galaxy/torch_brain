@@ -1,17 +1,17 @@
 import math
 from typing import Dict, List, Optional, Tuple
 
+import numpy as np
 import torch
-import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
-from einops import einsum, rearrange, repeat
-from torch import Tensor
+from einops import rearrange, repeat
+from sklearn.metrics import r2_score, accuracy_score, balanced_accuracy_score
 
 from torch_brain.nn import InfiniteVocabEmbedding
 
 
-class NDT2_MAE_MaskManager(nn.Module):
+class MaeMaskManager(nn.Module):
     def __init__(self, mask_ratio: float):
         super().__init__()
         self.mask_ratio = mask_ratio
@@ -23,30 +23,32 @@ class NDT2_MAE_MaskManager(nn.Module):
         if self.mask_ratio is None:
             return batch
 
+        keys = ["spike_tokens", "time_idx", "space_idx", "channel_counts"]
         spikes = batch["spike_tokens"]
         if eval_mode:
             batch["shuffle"] = torch.arange(spikes.size(1), device=spikes.device)
             batch["encoder_frac"] = spikes.size(1)
-            for key in ["spike_tokens", "time_idx", "space_idx"]:
-                batch[f"{key}_target"] = batch[key]
+            for k in keys:
+                batch[f"{k}_target"] = batch[k]
             return batch
 
         shuffle = torch.randperm(spikes.size(1), device=spikes.device)
         encoder_frac = int((1 - self.mask_ratio) * spikes.size(1))
-        for key in ["spike_tokens", "time_idx", "space_idx"]:
-            t = batch[key].transpose(1, 0)[shuffle].transpose(1, 0)
+        for k in keys:
+            t = batch[k].transpose(1, 0)[shuffle].transpose(1, 0)
 
-            batch[key] = t[:, :encoder_frac]
-            batch[f"{key}_target"] = t[:, encoder_frac:]
+            batch[k] = t[:, :encoder_frac]
+            batch[f"{k}_target"] = t[:, encoder_frac:]
+
         batch["encoder_frac"] = encoder_frac
         batch["shuffle"] = shuffle
 
         return batch
 
 
-class NDT2_SpikesPatchifier(nn.Module):
+class SpikesPatchifier(nn.Module):
     # TODO transfer at the cfg file
-    def __init__(self, dim, patch_size=(32, 1), max_neuron_count=21, pad=5):
+    def __init__(self, dim, patch_size=(32, 1), max_neuron_count=100, pad=5):
         """
         Args:
             dim (Int): Dimension of the output patchified tensor
@@ -65,11 +67,10 @@ class NDT2_SpikesPatchifier(nn.Module):
         Returns: (NxT, D)
         """
         x = rearrange(spikes, "bs T Pn Pt -> bs T (Pn Pt)")
-        x = self.readin(x).flatten(-2, -1)
-        return x
+        return self.readin(x).flatten(-2, -1)
 
 
-class NDT2_ContextManager(nn.Module):
+class ContextManager(nn.Module):
     def __init__(
         self,
         dim: int,
@@ -95,6 +96,9 @@ class NDT2_ContextManager(nn.Module):
         for k, ids in vocab.items():
             getattr(self, f"{k}_emb").extend_vocab(ids, exist_ok=True)
 
+    def get_ctx_tokenizer(self):
+        return {k: getattr(self, f"{k}_emb").tokenizer for k in self.keys}
+
     def forward(
         self, batch: Dict[str, torch.Tensor], type: torch.Tensor
     ) -> torch.Tensor:
@@ -105,7 +109,7 @@ class NDT2_ContextManager(nn.Module):
         return torch.stack(ctx_emb, dim=1)
 
 
-class NDT2_PositionalEncoding(nn.Module):
+class PositionalEncoding(nn.Module):
     def __init__(
         self,
         dim: int,
@@ -130,7 +134,7 @@ class NDT2_PositionalEncoding(nn.Module):
         return self.time_emb(times) + self.space_emb(spaces)
 
 
-class NDT2_Transformer(nn.Module):
+class Transformer(nn.Module):
     def __init__(
         self,
         dim,
@@ -139,7 +143,6 @@ class NDT2_Transformer(nn.Module):
         dropout,
         max_time_patches,
         max_space_patches,
-        in_encoder=True,
         ffn_mult=1,
         causal=True,
         activation="gelu",
@@ -168,8 +171,6 @@ class NDT2_Transformer(nn.Module):
         self.ffn_mult = ffn_mult
         self.causal = causal
 
-        self.in_encoder = in_encoder
-
         enc_layer = nn.TransformerEncoderLayer(
             dim,
             heads,
@@ -179,9 +180,9 @@ class NDT2_Transformer(nn.Module):
             activation=activation,
             norm_first=pre_norm,
         )
-        self.transformer_encoder = nn.TransformerEncoder(enc_layer, depth)
+        self.transformer = nn.TransformerEncoder(enc_layer, depth)
 
-        self.positional_encoding = NDT2_PositionalEncoding(
+        self.positional_encoding = PositionalEncoding(
             dim, max_time_patches, max_space_patches, allow_embed_padding
         )
 
@@ -200,7 +201,7 @@ class NDT2_Transformer(nn.Module):
         src = src + self.positional_encoding(times, spaces)
 
         try:
-            nb_ctx_token = ctx_emb[0].shape[1]
+            nb_ctx_token = ctx_emb[0].shape[0]
             src = torch.cat([src, ctx_emb], dim=1)
             pad_mask = F.pad(pad_mask, (0, nb_ctx_token), value=False)
         except:
@@ -208,8 +209,8 @@ class NDT2_Transformer(nn.Module):
 
         src_mask = self.make_src_mask(times, nb_ctx_token)
 
-        # encoder forward
-        out = self.transformer_encoder(src, src_mask, src_key_padding_mask=pad_mask)
+        # forward pass
+        out = self.transformer(src, src_mask, src_key_padding_mask=pad_mask)
 
         encoder_out = out[:, :-nb_ctx_token]
         return self.dropout_out(encoder_out)
@@ -231,17 +232,6 @@ class NDT2_Transformer(nn.Module):
             src_mask = repeat(src_mask, "b t1 t2 -> (b h) t1 t2", h=self.heads)
         return src_mask
 
-    def encode(
-        self,
-        encoder_input: torch.Tensor,
-        ctx_emb: torch.Tensor,
-        batch: Dict[str, torch.Tensor],
-    ) -> torch.Tensor:
-        time = batch["time_idx"]
-        space = batch["space_idx"]
-        pad_mask = self.get_temporal_padding_mask(encoder_input, batch)
-        return self(encoder_input, ctx_emb, time, space, pad_mask)
-
     def get_temporal_padding_mask(
         self, ref: torch.Tensor, batch: Dict[str, torch.Tensor]
     ) -> torch.Tensor:
@@ -249,12 +239,60 @@ class NDT2_Transformer(nn.Module):
             token_position = batch["shuffle"]
             token_position = token_position[: batch["encoder_frac"]]
         else:
+            # TODO spike_tokens_mask can be returned directly
             token_position = torch.arange(ref.shape[1], device=ref.device)
         token_position = rearrange(token_position, "t -> () t")
-        return token_position >= rearrange(batch["token_length"], "b -> b ()")
+        token_length = batch["spike_tokens_mask"].sum(1, keepdim=True)
+        return token_position >= token_length
 
 
-class NDT2_Decoder(nn.Module):
+class Encoder(nn.Module):
+    def __init__(
+        self,
+        dim,
+        depth,
+        heads,
+        dropout,
+        max_time_patches,
+        max_space_patches,
+        ffn_mult,
+        causal=True,
+        activation="gelu",
+        pre_norm=False,
+    ):
+        super().__init__()
+
+        self.encoder = Transformer(
+            dim=dim,
+            depth=depth,
+            heads=heads,
+            dropout=dropout,
+            max_time_patches=max_time_patches,
+            max_space_patches=max_space_patches,
+            ffn_mult=ffn_mult,
+            causal=causal,
+            activation=activation,
+            pre_norm=pre_norm,
+        )
+
+    def forward(
+        self,
+        encoder_input: torch.Tensor,
+        ctx_emb: torch.Tensor,
+        batch: Dict[str, torch.Tensor],
+    ) -> torch.Tensor:
+        time = batch["time_idx"]
+        space = batch["space_idx"]
+        pad_mask = self.encoder.get_temporal_padding_mask(encoder_input, batch)
+        return self.encoder(encoder_input, ctx_emb, time, space, pad_mask)
+
+
+class Decoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class SslDecoder(Decoder):
     def __init__(
         self,
         dim,
@@ -274,7 +312,7 @@ class NDT2_Decoder(nn.Module):
         self.dim = dim
         self.neurons_per_token = patch_size[0]
 
-        self.decoder = NDT2_Transformer(
+        self.decoder = Transformer(
             dim=dim,
             depth=depth,
             heads=heads,
@@ -285,7 +323,6 @@ class NDT2_Decoder(nn.Module):
             causal=causal,
             activation=activation,
             pre_norm=pre_norm,
-            in_encoder=False,
         )
 
         self.mask_token = nn.Parameter(torch.randn(dim))
@@ -312,7 +349,8 @@ class NDT2_Decoder(nn.Module):
 
         # get temporal padding mask
         token_position = rearrange(batch["shuffle"], "t -> () t")
-        pad_mask = token_position >= rearrange(batch["token_length"], "b -> b ()")
+        token_length = batch["spike_tokens_mask"].sum(1, keepdim=True)
+        pad_mask = token_position >= token_length
 
         # decoder forward
         decoder_out: torch.Tensor
@@ -321,31 +359,32 @@ class NDT2_Decoder(nn.Module):
         target = batch["spike_tokens_target"].squeeze(-1)
 
         # compute rates
-        reps = reps[:, -target.size(1) :]
+        decoder_out = decoder_out[:, -target.size(1) :]
         rates = self.out(decoder_out)
 
         # compute loss
         loss: torch.Tensor = self.loss(rates, target)  # b t' c
         loss_mask = self.get_loss_mask(batch, loss)
         loss = loss[loss_mask]
-        return loss.mean()
+        return {"loss": loss.mean()}
 
     def get_loss_mask(self, batch: Dict[str, torch.Tensor], loss: torch.Tensor):
         loss_mask = torch.ones(loss.size(), device=loss.device, dtype=torch.bool)
+
+        tmp = torch.arange(loss.shape[-1], device=loss.device)
+        comparison = repeat(tmp, "c -> 1 t c", t=loss.shape[1])
+        channel_mask = comparison < batch["channel_counts_target"].unsqueeze(-1)
+        loss_mask = loss_mask & channel_mask
+
         token_position = batch["shuffle"][batch["encoder_frac"] :]
         token_position = rearrange(token_position, "t -> () t")
-        length_mask = token_position < rearrange(batch["token_length"], "b -> b ()")
+        token_length = batch["spike_tokens_mask"].sum(1, keepdim=True)
+        length_mask = token_position < token_length
 
         return loss_mask & length_mask.unsqueeze(-1)
 
 
-import numpy as np
-
-# from sklearn.metrics import r2_score
-from torchmetrics import R2Score
-
-
-class NDT2_bhvr_Decoder(nn.Module):
+class BhvrDecoder(Decoder):
     def __init__(
         self,
         dim,
@@ -358,24 +397,25 @@ class NDT2_bhvr_Decoder(nn.Module):
         decode_time_pool,
         behavior_dim,
         bin_time,
-        behavior_lag,
+        behavior_lag=None,
         causal=True,
         activation="gelu",
         pre_norm=False,
-        behavior_lag_lookahead=True,
+        task="regression",
     ):
         super().__init__()
         self.dim = dim
         self.causal = causal
         self.bin_time = bin_time
-        self.behavior_lag = behavior_lag
-        self.bhvr_lag_bins = round(behavior_lag / bin_time)
+        self.lag = behavior_lag
         self.decode_time_pool = decode_time_pool
         self.behavior_dim = behavior_dim
-        self.behavior_lag_lookahead = behavior_lag_lookahead
+        self.task = task
+        if self.lag:
+            self.bhvr_lag_bins = round(self.lag / bin_time)
 
-        self.cls_token = nn.Parameter(torch.randn(dim))
-        self.decoder = NDT2_Transformer(
+        self.query_token = nn.Parameter(torch.randn(dim))
+        self.decoder = Transformer(
             dim=dim,
             depth=depth,
             heads=heads,
@@ -386,7 +426,6 @@ class NDT2_bhvr_Decoder(nn.Module):
             causal=causal,
             activation=activation,
             pre_norm=pre_norm,
-            in_encoder=False,
             allow_embed_padding=True,
         )
         self.out = nn.Linear(dim, self.behavior_dim)
@@ -398,20 +437,25 @@ class NDT2_bhvr_Decoder(nn.Module):
         batch: Dict[str, torch.Tensor],
     ):
         # prepare decoder input and temporal padding mask
-        bhvr_tgt = batch["bhvr_vel"]
+        bhvr_tgt = batch["bhvr"]
+        bhvr_length = batch["bhvr_mask"].sum(1, keepdim=True)
+        token_length = batch["spike_tokens_mask"].sum(1, keepdim=True)
         time = batch["time_idx"]
 
-        pad_mask = self.temporal_pad_mask(encoder_out, batch["token_length"])
+        pad_mask = self.temporal_pad_mask(encoder_out, token_length)
+
         encoder_out, pad_mask = self.temporal_pool(time, encoder_out, pad_mask)
         decoder_in, pad_mask = self.prepare_decoder_input(
-            bhvr_tgt, encoder_out, pad_mask, batch["bhvr_length"]
+            bhvr_tgt, encoder_out, pad_mask, bhvr_length
         )
 
         # get time, space
-        time, space = self.get_time_space(bhvr_tgt)
+        time, space = self.get_time_space(encoder_out, bhvr_tgt)
 
         # decoder forward
         decoder_out: torch.Tensor
+        ctx_emb = ctx_emb.detach()
+
         decoder_out = self.decoder(decoder_in, ctx_emb, time, space, pad_mask)
 
         # compute behavior
@@ -420,17 +464,39 @@ class NDT2_bhvr_Decoder(nn.Module):
         bhvr = self.get_bhvr(decoder_out)
 
         # Compute loss & r2
-        length_mask = self.get_length_mask(decoder_out, bhvr_tgt, batch["token_length"])
+        length_mask = self.get_length_mask(decoder_out, bhvr_tgt, token_length)
+        bhvr_tgt = bhvr_tgt.to(bhvr.dtype)  # TODO make it cleanner
         loss = self.loss(bhvr, bhvr_tgt, length_mask)
-        r2 = self.r2(bhvr, bhvr_tgt, length_mask)
-        return loss, r2
+
+        if self.task == "regression":
+            tgt = bhvr_tgt[length_mask].float().detach().cpu()
+            pred = bhvr[length_mask].float().detach().cpu()
+            r2 = r2_score(tgt, pred, multioutput="raw_values")
+            if r2.mean() < -10:
+                r2 = np.zeros_like(r2)
+            return {"loss": loss, "r2": r2, "pred": bhvr}
+
+        elif self.task == "classification":
+            tgt = bhvr_tgt.argmax(dim=-1).cpu()
+            pred = bhvr.argmax(dim=-1).cpu()
+            acc = accuracy_score(tgt, pred)
+            balanced_acc = balanced_accuracy_score(tgt, pred)
+            return {
+                "loss": loss,
+                "acc": acc,
+                "balanced_acc": balanced_acc,
+                "pred": bhvr,
+            }
+        else:
+            raise NotImplementedError
 
     def temporal_pad_mask(
         self, ref: torch.Tensor, max_lenght: torch.Tensor
     ) -> torch.Tensor:
+
         token_position = torch.arange(ref.shape[1], device=ref.device)
         token_position = rearrange(token_position, "t -> () t")
-        return token_position >= rearrange(max_lenght, "b -> b ()")
+        return token_position >= max_lenght
 
     def temporal_pool(
         self,
@@ -468,49 +534,74 @@ class NDT2_bhvr_Decoder(nn.Module):
 
     def prepare_decoder_input(
         self,
-        bhvr_vel: torch.Tensor,
+        bhvr: torch.Tensor,
         encoder_out: torch.Tensor,
         pad_mask: torch.Tensor,
         max_length: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        b, t = bhvr_vel.size()[:2]
-        extra_tokens = repeat(self.cls_token, "h -> b t h", b=b, t=t)
+        b, t = bhvr.size()[:2]
+        query_tokens = repeat(self.query_token, "h -> b t h", b=b, t=t)
         if encoder_out.shape[1] < t:
             to_add = t - encoder_out.shape[1]
             encoder_out = F.pad(encoder_out, (0, 0, 0, to_add), value=0)
-        decoder_in = torch.cat([encoder_out, extra_tokens], dim=1)
+        decoder_in = torch.cat([encoder_out, query_tokens], dim=1)
 
         if encoder_out.shape[1] < t:
             to_add = t - pad_mask.shape[1]
             pad_mask = F.pad(pad_mask, (0, to_add), value=True)
-        extra_pad_mask = self.temporal_pad_mask(extra_tokens, max_length)
-        pad_mask = torch.cat([pad_mask, extra_pad_mask], dim=1)
+        query_pad_mask = self.temporal_pad_mask(query_tokens, max_length)
+        pad_mask = torch.cat([pad_mask, query_pad_mask], dim=1)
 
         return decoder_in, pad_mask
 
+    # def get_time_space(self, bhvr: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    #     b, t = bhvr.size()[:2]
+    #     dev = bhvr.device
+
+    #     time = repeat(torch.arange(t, device=dev), "t -> b t", b=b)
+    #     query_time = time
+    #     if self.causal and self.lag:
+    #         # allow looking N-bins of neural data into the "future";
+    #         # we back-shift during the actual decode comparison.
+    #         query_time = time + self.bhvr_lag_bins
+    #     time = torch.cat([time, query_time], dim=1)
+
+    #     # Do use space for this decoder
+    #     query_space = torch.zeros((b, t), device=dev, dtype=torch.long)
+    #     space = torch.cat([query_space, query_space], dim=1)
+
+    #     return time, space
+
     def get_time_space(
-        self,
-        bhvr_vel: torch.Tensor,
+        self, encoder_out: torch.Tensor, bhvr: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        b, t = bhvr_vel.size()[:2]
-        dev = bhvr_vel.device
-        injected_time = repeat(torch.arange(t, device=dev), "t -> b t", b=b)
-        decode_time = injected_time
-        if self.causal and self.behavior_lag_lookahead:
-            # allow looking N-bins of neural data into the "future"; we back-shift during the actual decode comparison.
-            decode_time = injected_time + self.bhvr_lag_bins
-        time = torch.cat([injected_time, decode_time], dim=1)
+        b, t_enc = encoder_out.size()[:2]
+        dev = encoder_out.device
+        time = repeat(torch.arange(t_enc, device=dev), "t -> b t", b=b)
+
+        if self.task == "classification":
+            query_time = repeat(torch.tensor([t_enc], device=dev), "t -> b t", b=b)
+        else:
+            t = bhvr.shape[1]
+            query_time = repeat(torch.arange(t, device=dev), "t -> b t", b=b)
+        if self.causal and self.lag:
+            # allow looking N-bins of neural data into the "future";
+            # we back-shift during the actual decode comparison.
+            query_time = time + self.bhvr_lag_bins
+        time = torch.cat([time, query_time], dim=1)
+
         # Do use space for this decoder
-        injected_space = torch.zeros((b, t), device=dev, dtype=torch.long)
-        space = torch.cat([injected_space, injected_space], dim=1)
+        space = torch.zeros_like(time)
 
         return time, space
 
     def get_bhvr(self, decoder_out: torch.Tensor) -> torch.Tensor:
         bhvr = self.out(decoder_out)
 
-        if self.bhvr_lag_bins:
+        if self.lag:
+            # exclude the last N-bins
             bhvr = bhvr[:, : -self.bhvr_lag_bins]
+            # add to the left N-bins to match the lag
             bhvr = F.pad(bhvr, (0, 0, self.bhvr_lag_bins, 0), value=0)
         return bhvr
 
@@ -523,43 +614,44 @@ class NDT2_bhvr_Decoder(nn.Module):
         length_mask = ~self.temporal_pad_mask(decoder_out, max_length)
         no_nan_mask = ~torch.isnan(decoder_out).any(-1) & ~torch.isnan(bhvr_tgt).any(-1)
         length_mask = length_mask & no_nan_mask
-        length_mask[:, : self.bhvr_lag_bins] = False
+        if self.lag:
+            length_mask[:, : self.bhvr_lag_bins] = False
+
         return length_mask
 
     def loss(
         self, bhvr: torch.Tensor, bhvr_tgt: torch.Tensor, length_mask: torch.Tensor
     ) -> torch.Tensor:
-        loss = F.mse_loss(bhvr, bhvr_tgt, reduction="none")
-        return loss[length_mask].mean()
-
-    def r2(
-        self, bhvr: torch.Tensor, bhvr_tgt: torch.Tensor, length_mask: torch.Tensor
-    ) -> np.ndarray:
-        tgt = bhvr_tgt[length_mask].float().detach().cpu()
-        bhvr = bhvr[length_mask].float().detach().cpu()
-        # o.g. r2 is computed with sklearn.metrics.r2_score
-        r2_score = R2Score(multioutput="raw_values")
-        r2 = r2_score(bhvr, tgt)
-        if r2.mean() < -10:
-            r2 = np.zeros_like(r2)
-        return r2
+        if self.task == "regression":
+            loss = F.mse_loss(bhvr, bhvr_tgt, reduction="none")
+            return loss[length_mask].mean()
+        elif self.task == "classification":
+            loss = F.binary_cross_entropy_with_logits(bhvr, bhvr_tgt, reduction="none")
+            return loss[length_mask].mean()
+        else:
+            raise NotImplementedError
 
 
-# params = list(self.named_parameters())
-# # As of 2/24/23 all my parameters are named, this better stay the case
-# accel_flag = lambda name: name in self.novel_params or (
-#     "session_embed" in name
-#     or "subject_embed" in name
-#     or "task_embed" in name
-#     or "array_embed" in name
-# )
-# grouped_params = [
-#     {
-#         "params": [p for n, p in params if accel_flag(n)],
-#         "lr": self.cfg.lr_init * self.cfg.accelerate_new_params,
-#     },
-#     {
-#         "params": [p for n, p in params if not accel_flag(n)],
-#         "lr": self.cfg.lr_init,
-#     },
-# ]
+class NDT2Model(nn.Module):
+    def __init__(
+        self,
+        mae_mask_manager: Optional[MaeMaskManager] = None,
+        ctx_manager: Optional[ContextManager] = None,
+        spikes_patchifier: Optional[SpikesPatchifier] = None,
+        encoder: Optional[Encoder] = None,
+        decoder: Optional[Decoder] = None,
+    ):
+        super().__init__()
+        self.mae_mask_manager = mae_mask_manager
+        self.ctx_manager = ctx_manager
+        self.spikes_patchifier = spikes_patchifier
+        self.encoder = encoder
+        self.decoder = decoder
+
+    def forward(self, batch, method: str = "ssl"):
+        if method == "ssl":
+            batch = self.mae_mask_manager(batch)
+        encoder_input = self.spikes_patchifier(batch["spike_tokens"])
+        ctx_emb = self.ctx_manager(batch, encoder_input.dtype)
+        encoder_out = self.encoder(encoder_input, ctx_emb, batch)
+        return self.decoder(encoder_out, ctx_emb, batch)

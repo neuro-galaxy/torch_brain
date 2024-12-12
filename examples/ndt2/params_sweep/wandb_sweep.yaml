@@ -1,0 +1,41 @@
+# This YAML file specifies the configuration for a hyperparameter tuning using wandb
+program: train.py
+
+name: trial_sweep
+
+project: NDT2_IBL
+
+metric:
+  name: val_loss
+  goal: minimize
+
+method: random
+parameters:
+  optimizer.lr:
+    distribution: log_uniform_values  
+    min: 1e-4
+    max: 1e-2
+  mask_ratio:
+    distribution: uniform
+    min: 0.1
+    max: 0.5
+  optimizer.weight_decay:
+    distribution: log_uniform_values  
+    min: 1e-3
+    max: 1e-1
+  model.dim:
+    values: [128, 256, 512]
+  patch_size: 
+    values: 
+      - [64, 1]
+      - [32, 1]
+
+
+command:
+- ${env}
+- ${interpreter}
+- ${program} # first line
+- --config-name=ibl_params_sweep.yaml # specify the root-level yaml file
+- +sweep=True # to make the training script "sweep-aware"
+- ${args_no_hyphens}
+

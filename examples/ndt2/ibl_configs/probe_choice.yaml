@@ -1,0 +1,14 @@
+defaults:
+  - probe
+  - _self_
+
+wandb:
+  run_name: probe_choice_long_finetune
+
+bhvr_key: choice
+
+
+model:
+  bhv_decoder:
+    behavior_dim: 2
+    task: classification

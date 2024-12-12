@@ -1,0 +1,61 @@
+callbacks:
+  checkpoint: true
+  early_stop: true
+  patience: 250
+
+wandb:
+  enable: true
+  entity: aandre8-gatech  # chooses default username
+  project: reproduce_NDT2
+  run_name: null
+
+seed: 0
+split_seed: 0
+superv_batch_size: null  #  defaults to batch_size
+epochs: 800
+eval_epochs: 1
+
+precision: bf16-mixed
+num_workers: 16
+
+log_dir: ./logs
+log_every_n_steps: 1
+fast_dev_run: false
+num_sanity_val_steps: 0
+
+
+model:
+  dim: 256
+  max_time_patches: 256
+  max_space_patches: 256
+  patchifier: {}
+  encoder:
+    depth: 6
+    heads: 4
+    dropout: 0.1
+    ffn_mult: 1 
+  predictor:
+    depth: 2
+    heads: 4
+    dropout: 0.1
+    ffn_mult: 1 
+  bhv_decoder:
+    depth: 2
+    heads: 4
+    dropout: 0.1
+    ffn_mult: 1
+    decode_time_pool: "mean"
+    behavior_dim: 2
+    behavior_lag: 0.12
+    
+
+subtask_idx: 2
+data_root: ./data/process
+
+ctx_time: 1.0
+bin_time: 0.02
+patch_size: [32, 1]
+pad_val: 64
+
+
+ctx_keys: ["session", "subject"]
