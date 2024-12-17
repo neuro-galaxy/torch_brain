@@ -114,16 +114,14 @@ class DecodingStitchEvaluator(L.Callback):
     def __init__(
         self,
         session_ids: Iterable[str],
-        modality_spec: Optional[ModalitySpec] = None,
+        modality_spec: ModalitySpec,
         quiet=False,
     ):
         r"""
         Args:
             session_ids: An iterable of session IDs for which the metrics are to be computed.
-            modality_spec: (Optional) The modality specification for the task. Either this
-                or metric_factory must be provided.
-            metric_factory: (Optional) A callable that returns an instance of the metric to be used.
-                If not provided, the metric is inferred based on the modality_spec.
+            modality_spec: The modality specification for the task, used to decide
+                which metric function to use.
             quiet: If True, disables the logging of the metrics to the console.
         """
         self.quiet = quiet
