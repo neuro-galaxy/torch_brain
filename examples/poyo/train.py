@@ -1,9 +1,10 @@
 import logging
-from typing import Callable, Dict
+from typing import Callable, Dict, List
 import copy
 
 import hydra
 import lightning as L
+import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -20,7 +21,7 @@ from torch_brain.registry import MODALITIY_REGISTRY, ModalitySpec
 from torch_brain.models.poyo import POYOTokenizer, poyo_mp
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
-from torch_brain.utils.stitcher import DecodingStitchEvaluator
+from torch_brain.utils.stitcher import Stitcher
 from torch_brain.data import Dataset, collate
 from torch_brain.nn import compute_loss_or_metric
 from torch_brain.data.sampler import (
@@ -39,12 +40,14 @@ class POYOTrainWrapper(L.LightningModule):
         cfg: DictConfig,
         model: nn.Module,
         modality_spec: ModalitySpec,
+        session_ids: List[str],
     ):
         super().__init__()
 
         self.cfg = cfg
         self.model = model
         self.modality_spec = modality_spec
+        self.stitchers = {k: Stitcher() for k in session_ids}
         self.save_hyperparameters(OmegaConf.to_container(cfg))
 
     def configure_optimizers(self):
@@ -123,17 +126,55 @@ class POYOTrainWrapper(L.LightningModule):
         # forward pass
         output_values = self.model(**batch)
 
-        # add removed elements back to batch
-        batch["target_values"] = target_values
-        batch["absolute_start"] = absolute_starts
-        batch["session_id"] = session_ids
-        batch["output_subtask_index"] = output_subtask_index
-        batch["output_mask"] = output_mask
+        for i in range(len(output_values)):
+            mask = output_mask[i]
+            self.stitchers[session_ids[i]].update(
+                timestamps=batch["output_timestamps"][i][mask] + absolute_starts[i],
+                preds=output_values[i][mask],
+                target=target_values[i][mask],
+            )
 
-        return output_values
+    def on_validation_epoch_end(self, prefix="val"):
+        metrics = {}
+        for sess_id, stitcher in self.stitchers.items():
+            stitched_preds, stitched_target = stitcher.compute()
+            stitcher.reset()
+            metrics[sess_id] = compute_loss_or_metric(
+                loss_or_metric=self.cfg.readout_metric_name,
+                output_type=self.modality_spec.type,
+                output=stitched_preds,
+                target=stitched_target,
+            )
+
+        metrics[f"avg_{prefix}_metric"] = torch.tensor(list(metrics.values())).mean()
+
+        # logging
+        self.log_dict(metrics)
+        metrics_df = pd.DataFrame(
+            [{"metric": k, "value": v.item()} for k, v in metrics.items()]
+        )
+        if self.trainer.is_global_zero:
+            from rich import print as rprint
+
+            rprint(metrics_df)
+
+            for logger in self.trainer.loggers:
+                if isinstance(logger, L.pytorch.loggers.TensorBoardLogger):
+                    logger.experiment.add_text(
+                        f"{prefix}_metrics", metrics_df.to_markdown()
+                    )
+                if isinstance(logger, L.pytorch.loggers.WandbLogger):
+                    import wandb
+
+                    logger.experiment.log(
+                        {f"{prefix}_metrics": wandb.Table(dataframe=metrics_df)}
+                    )
 
     def test_step(self, batch, batch_idx):
         return self.validation_step(batch, batch_idx)
+
+    def on_test_epoch_end(self):
+        return self.on_validation_epoch_end(prefix="test")
 
 
 class DataModule(L.LightningDataModule):
@@ -311,15 +352,10 @@ def main(cfg: DictConfig):
         cfg=cfg,
         model=model,
         modality_spec=readout_spec,
-    )
-
-    stitch_evaluator = DecodingStitchEvaluator(
         session_ids=data_module.get_session_ids(),
-        modality_spec=readout_spec,
     )
 
     callbacks = [
-        stitch_evaluator,
         ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
         ModelCheckpoint(
             save_last=True,
