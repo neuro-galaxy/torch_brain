@@ -278,6 +278,8 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
 
             token_sample_idx = torch.where(mask)[0]
 
+            curr_sample_ptr = self.sample_ptr
+
             for i in torch.unique(token_sample_idx):
                 pred = output_values[i][readout_id]
                 target = target_values[readout_id][token_sample_idx == i]
@@ -287,18 +289,20 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                 )
                 subtask_idx = output_subtask_index[readout_id][token_sample_idx == i]
 
-                self.cache[self.sequence_index[self.sample_ptr]]["pred"][
+                self.cache[self.sequence_index[curr_sample_ptr]]["pred"][
                     readout_id
                 ].append(pred.detach().cpu())
-                self.cache[self.sequence_index[self.sample_ptr]]["target"][
+                self.cache[self.sequence_index[curr_sample_ptr]]["target"][
                     readout_id
                 ].append(target.detach().cpu())
-                self.cache[self.sequence_index[self.sample_ptr]]["timestamps"][
+                self.cache[self.sequence_index[curr_sample_ptr]]["timestamps"][
                     readout_id
                 ].append(timestamps.detach().cpu())
-                self.cache[self.sequence_index[self.sample_ptr]]["subtask_index"][
+                self.cache[self.sequence_index[curr_sample_ptr]]["subtask_index"][
                     readout_id
                 ].append(subtask_idx.detach().cpu())
+
+                curr_sample_ptr += 1
 
         # update counter then check if the cache should be flushed
         for i in range(len(output_values)):
