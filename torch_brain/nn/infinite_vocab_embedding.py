@@ -161,7 +161,7 @@ class InfiniteVocabEmbedding(nn.Module):
         # update tokenizer
         self.vocab.update(
             OrderedDict(
-                zip(vocab, range(len(self.vocab), len(self.vocab) + len(vocab)))
+                zip(new_words, range(len(self.vocab), len(self.vocab) + len(new_words)))
             )
         )
 
