@@ -3,7 +3,16 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.2] - 2025-01-22
+### Added 
+- Added documentation. ([#24](https://github.com/neuro-galaxy/temporaldata/pull/24), [#25](https://github.com/neuro-galaxy/temporaldata/pull/25), [#26](https://github.com/neuro-galaxy/temporaldata/pull/26))
+- Added LISENCE file. ([#29](https://github.com/neuro-galaxy/temporaldata/pull/29))
+
+### Changed
+- Relaxed the requirements for `numpy`, `pandas`, and `h5py`. ([#27](https://github.com/neuro-galaxy/temporaldata/pull/27))
+
+
+## [0.1.1] - 2024-11-11
 ### Added
 - Added `set_train_domain`, `set_valid_domain`, and `set_test_domain` methods to `Data` to set the domain and split masks at once. ([#21](https://github.com/neuro-galaxy/temporaldata/pull/21))
 
