@@ -82,15 +82,17 @@
       - m_20150626_center_out_reaching
   config:
     readout_id: cursor_velocity_2d
-    metrics:
-      - metric:
-          _target_: torchmetrics.R2Score
+    normalize_mean: 0.
+    normalize_std: 20.
     weights:
       movement_phases.random_period: 1.0
       movement_phases.hold_period: 0.1
       movement_phases.reach_period: 5.0
       movement_phases.return_period: 1.0
       cursor_outlier_segments: 0.0
+    metrics:
+      - metric:
+          _target_: torchmetrics.R2Score
     eval_interval: movement_phases.reach_period
 
 # Random target reaching
@@ -120,11 +122,13 @@
     - m_20140224_random_target_reaching
   config:
     readout_id: cursor_velocity_2d
-    metrics:
-      - metric:
-          _target_: torchmetrics.R2Score
+    normalize_mean: 0.
+    normalize_std: 20.
     weights:
       movement_phases.random_period: 1.0
       movement_phases.hold_period: 0.1
       cursor_outlier_segments: 0.0
+    metrics:
+      - metric:
+          _target_: torchmetrics.R2Score
     eval_interval: movement_phases.random_period

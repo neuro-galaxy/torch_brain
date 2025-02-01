@@ -307,6 +307,13 @@ class POYOTokenizer:
         if output_values.dtype == np.float64:
             output_values = output_values.astype(np.float32)
 
+        # normalize if needed
+        if "normalize_mean" in data.config:
+            output_values = output_values - np.array(data.config["normalize_mean"])
+        if "normalize_std" in data.config:
+            output_values = output_values / np.array(data.config["normalize_std"])
+
+        # create session index for output
         output_session_index = self.session_tokenizer(data.session)
         output_session_index = np.repeat(output_session_index, len(output_timestamps))
 
