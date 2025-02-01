@@ -115,6 +115,7 @@ class DecodingStitchEvaluator(L.Callback):
         self,
         session_ids: Iterable[str],
         modality_spec: Optional[ModalitySpec] = None,
+        metric_factory: Optional[Callable[[int], ModalitySpec]] = None,
         quiet=False,
     ):
         r"""

@@ -266,13 +266,12 @@ class DataModule(L.LightningDataModule):
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
 def main(cfg: DictConfig):
+    logger.info("POYO!")
 
     # fix random seed, skipped if cfg.seed is None
     seed_everything(cfg.seed)
 
     # setup loggers
-    log = logging.getLogger(__name__)
-    log.info("POYO!")
     wandb_logger = None
     if cfg.wandb.enable:
         wandb_logger = L.pytorch.loggers.WandbLogger(
@@ -296,7 +295,6 @@ def main(cfg: DictConfig):
         num_latents_per_step=cfg.model.num_latents,
         readout_spec=readout_spec,
         sequence_length=cfg.sequence_length,
-        subtask_weights=cfg.subtask_weights,
     )
 
     # setup data module
@@ -339,8 +337,12 @@ def main(cfg: DictConfig):
         check_val_every_n_epoch=cfg.eval_epochs,
         max_epochs=cfg.epochs,
         log_every_n_steps=1,
+        strategy=(
+            "ddp_find_unused_parameters_true" if torch.cuda.is_available() else "auto"
+        ),
         callbacks=callbacks,
         precision=cfg.precision,
+        accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=cfg.gpus,
         num_nodes=cfg.nodes,
         limit_val_batches=None,  # Ensure no limit on validation batches
