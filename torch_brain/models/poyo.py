@@ -19,6 +19,7 @@ from torch_brain.registry import ModalitySpec
 from torch_brain.utils import (
     create_linspace_latent_tokens,
     create_start_end_unit_tokens,
+    resolve_weights_based_on_interval_membership,
 )
 
 
@@ -309,15 +310,10 @@ class POYOTokenizer:
         output_session_index = self.session_tokenizer(data.session)
         output_session_index = np.repeat(output_session_index, len(output_timestamps))
 
-        output_weights = np.ones_like(output_timestamps, dtype=np.float32)
-        if "weights" in data.config:
-            weights = data.config["weights"]
-            for weight_key, weight_value in weights.items():
-                # extract the interval from the weight key
-                weight = data.get_nested_attribute(weight_key)
-                if not isinstance(weight, Interval):
-                    raise ValueError(f"Weight {weight_key} is not an Interval")
-                output_weights[isin_interval(output_timestamps, weight)] *= weight_value
+        # resolve weights
+        output_weights = resolve_weights_based_on_interval_membership(
+            output_timestamps, data, config=data.config.get("weights", None)
+        )
 
         batch = {
             # input sequence
@@ -342,24 +338,3 @@ class POYOTokenizer:
             batch["absolute_start"] = data.absolute_start
 
         return batch
-
-
-def isin_interval(timestamps: np.ndarray, interval: Interval) -> np.ndarray:
-    r"""Check if timestamps are in any of the intervals in the `Interval` object.
-
-    Args:
-        timestamps: Timestamps to check.
-        interval: Interval to check against.
-
-    Returns:
-        Boolean mask of the same shape as `timestamps`.
-    """
-    if len(interval) == 0:
-        return np.zeros_like(timestamps, dtype=bool)
-
-    timestamps_expanded = timestamps[:, None]
-    mask = np.any(
-        (timestamps_expanded >= interval.start) & (timestamps_expanded < interval.end),
-        axis=1,
-    )
-    return mask
