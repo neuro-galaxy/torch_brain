@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
+- Added a method to resolve weights based on interval membership of timestamps. ([#31](https://github.com/neuro-galaxy/torch_brain/pull/31))
 - Added multitask decoder taxonomy. ([#8](https://github.com/neuro-galaxy/torch_brain/pull/8))
 - Added stitching callback that takes care of stitching. ([#16](https://github.com/neuro-galaxy/torch_brain/pull/16))
 

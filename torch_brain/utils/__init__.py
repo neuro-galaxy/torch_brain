@@ -1,4 +1,4 @@
 from .tokenizers import create_linspace_latent_tokens, create_start_end_unit_tokens
 from .sinusoidal_encoding import get_sinusoidal_encoding
-
+from .weights import resolve_weights_based_on_interval_membership
 from .seed_everything import seed_everything
