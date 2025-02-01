@@ -132,7 +132,7 @@ class DecodingStitchEvaluator(L.Callback):
         if metric_factory is not None:
             pass
         elif modality_spec.type == DataType.CONTINUOUS:
-            metric_factory = lambda: torchmetrics.R2Score(num_outputs=modality_spec.dim)
+            metric_factory = lambda: torchmetrics.R2Score()
         elif modality_spec.type in [DataType.BINARY, DataType.MULTINOMIAL]:
             metric_factory = lambda: torchmetrics.Accuracy(
                 task="multiclass", num_classes=modality_spec.dim

@@ -242,7 +242,6 @@ class POYOTokenizer:
         weight_registry (Dict): Registry of the weights.
         latent_step (float): Step size for generating latent tokens.
         num_latents_per_step (int): Number of latents per step.
-        subtask_weights (List[float]): Loss-weights for different subtasks.
     """
 
     def __init__(

@@ -85,12 +85,11 @@
     metrics:
       - metric:
           _target_: torchmetrics.R2Score
-          num_outputs: 2
     weights:
-      movement_periods.random_period: 1.0
-      movement_periods.hold_period: 0.1
-      movement_periods.reach_period: 5.0
-      movement_periods.return_period: 1.0
+      movement_phases.random_period: 1.0
+      movement_phases.hold_period: 0.1
+      movement_phases.reach_period: 5.0
+      movement_phases.return_period: 1.0
       cursor_outlier_segments: 0.0
     eval_movement_phase: reach_period
 
@@ -125,9 +124,8 @@
     metrics:
       - metric:
           _target_: torchmetrics.R2Score
-          num_outputs: 2
     weights:
-      movement_periods.random_period: 1.0
-      movement_periods.hold_period: 0.1
+      movement_phases.random_period: 1.0
+      movement_phases.hold_period: 0.1
       cursor_outlier_segments: 0.0
     eval_movement_phase: random_period
