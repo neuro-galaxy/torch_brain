@@ -1,21 +1,21 @@
 import logging
+from typing import List, Optional
 
 import hydra
 import lightning as L
 import torch
 import torch.nn as nn
-from torch_optimizer import Lamb
 from lightning.pytorch.callbacks import (
     LearningRateMonitor,
     ModelCheckpoint,
     ModelSummary,
 )
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
-from torch_brain.nn import compute_loss_or_metric
 from torch_brain.registry import MODALITIY_REGISTRY
 from torch_brain.utils import callbacks as tbrain_callbacks
-from torch_brain.utils import seed_everything, DataModule
+from torch_brain.utils import seed_everything
+from torch_brain.utils.datamodules import DataModule
 from torch_brain.utils.stitcher import StitchEvaluator
 
 from train import POYOTrainWrapper
@@ -24,7 +24,7 @@ from train import POYOTrainWrapper
 torch.set_float32_matmul_precision("medium")
 
 
-class FreezeUnfreezePOYO(L.Callback):
+class GradualUnfreezing(L.Callback):
     r"""A Lightning callback to handle freezing and unfreezing of the model for the
     purpose of finetuning the model to new sessions. If this callback is used,
     most of the model weights will be frozen initially.
@@ -32,7 +32,11 @@ class FreezeUnfreezePOYO(L.Callback):
     One we reach the specified epoch (`unfreeze_at_epoch`), the entire model will be unfrozen.
     """
 
+    _has_been_frozen: bool = False
+    frozen_params: Optional[List[nn.Parameter]] = None
+
     def __init__(self, unfreeze_at_epoch: int):
+        self.enabled = unfreeze_at_epoch != 0
         self.unfreeze_at_epoch = unfreeze_at_epoch
         self.cli_log = logging.getLogger(__name__)
 
@@ -62,31 +66,46 @@ class FreezeUnfreezePOYO(L.Callback):
         return frozen_params
 
     def on_train_start(self, trainer, pl_module):
-        model = pl_module.model
-        self.frozen_params = self.freeze(model)
-        self.cli_log.info(f"POYO Perceiver frozen at epoch 0")
+        if self.enabled:
+            self.frozen_params = self.freeze(pl_module.model)
+            self._has_been_frozen = True
+            self.cli_log.info(
+                f"POYO+ Perceiver frozen at epoch 0. "
+                f"Will stay frozen until epoch {self.unfreeze_at_epoch}."
+            )
 
     def on_train_epoch_start(self, trainer, pl_module):
-        if trainer.current_epoch == self.unfreeze_at_epoch:
-            if not hasattr(self, "frozen_params"):
-                raise RuntimeError(
-                    "Model has not been frozen yet. Missing `frozen_params` attribute."
-                )
+        if self.enabled and (trainer.current_epoch == self.unfreeze_at_epoch):
+            if not self._has_been_frozen:
+                raise RuntimeError("Model has not been frozen yet.")
 
             for param in self.frozen_params:
                 param.requires_grad = True
 
-            del self.frozen_params
-            self.cli_log.info(f"POYO unfrozen at epoch {trainer.current_epoch}")
+            self.frozen_params = None
+            self.cli_log.info(
+                f"POYO+ Perceiver unfrozen at epoch {trainer.current_epoch}"
+            )
+
+
+def load_model_from_ckpt(model: nn.Module, ckpt_path: str) -> None:
+    if ckpt_path is None:
+        raise ValueError("Must provide a checkpoint path to finetune the model.")
+
+    ckpt = torch.load(ckpt_path, map_location="cpu")
+    state_dict = ckpt["state_dict"]
+    state_dict = {
+        k.replace("model.", ""): v
+        for k, v in state_dict.items()
+        if k.startswith("model.")
+    }
+    model.load_state_dict(state_dict)
 
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
 def main(cfg: DictConfig):
     # fix random seed, skipped if cfg.seed is None
     seed_everything(cfg.seed)
-
-    if cfg.fast_dev_run:
-        cfg.wandb.enable = False
 
     # setup loggers
     log = logging.getLogger(__name__)
@@ -102,17 +121,8 @@ def main(cfg: DictConfig):
 
     # make model
     model = hydra.utils.instantiate(cfg.model, readout_specs=MODALITIY_REGISTRY)
-
-    # load weights from checkpoint
-    if cfg.ckpt_path is None:
-        raise ValueError("Must provide a checkpoint path to finetune the model.")
-
-    ckpt = torch.load(cfg.ckpt_path, map_location="cpu")
-    state_dict = ckpt["state_dict"]
-    state_dict = {
-        k.replace("model.", ""): v for k, v in state_dict.items() if "model." in k
-    }
-    model.load_state_dict(state_dict)
+    load_model_from_ckpt(model, cfg.ckpt_path)
+    log.info(f"Loaded model weights from {cfg.ckpt_path}")
 
     # setup data module
     data_module = DataModule(cfg, model.unit_emb.tokenizer, model.session_emb.tokenizer)
@@ -153,11 +163,8 @@ def main(cfg: DictConfig):
         tbrain_callbacks.MemInfo(),
         tbrain_callbacks.EpochTimeLogger(),
         tbrain_callbacks.ModelWeightStatsLogger(),
+        GradualUnfreezing(cfg.freeze_perceiver_until_epoch),
     ]
-
-    if cfg.freeze_perceiver_until_epoch != 0:
-        log.info(f"Freezing model until epoch {cfg.freeze_perceiver_until_epoch}")
-        callbacks.append(FreezeUnfreezePOYO(cfg.freeze_perceiver_until_epoch))
 
     trainer = L.Trainer(
         logger=wandb_logger,
@@ -175,7 +182,6 @@ def main(cfg: DictConfig):
         num_nodes=cfg.nodes,
         num_sanity_val_steps=0,
         limit_val_batches=None,  # Ensure no limit on validation batches
-        fast_dev_run=cfg.fast_dev_run,
     )
 
     log.info(

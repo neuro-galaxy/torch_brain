@@ -12,4 +12,4 @@ train_transforms:
     peak: 4
 
 wandb:
-  run_name: poyo_mp_mini
+  run_name: poyo_mp

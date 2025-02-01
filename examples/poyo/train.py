@@ -22,6 +22,7 @@ from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
 from torch_brain.utils.stitcher import DecodingStitchEvaluator
 from torch_brain.data import Dataset, collate
+from torch_brain.nn import compute_loss_or_metric
 from torch_brain.data.sampler import (
     DistributedStitchingFixedWindowSampler,
     RandomFixedWindowSampler,
@@ -30,6 +31,7 @@ from torch_brain.transforms import Compose
 
 # higher speed on machines with tensor cores
 torch.set_float32_matmul_precision("medium")
+
 
 logger = logging.getLogger(__name__)
 
@@ -179,14 +181,13 @@ class POYOTrainWrapper(L.LightningModule):
         target_values = target_values[output_mask]
         target_weights = target_weights[output_mask]
 
-        if self.modality_spec.loss_fn == "mse":
-            loss = torch.nn.functional.mse_loss(
-                output_values, target_values, reduction="none"
-            )
-            loss = loss * target_weights[:, None]
-            loss = loss.mean()
-        else:
-            raise NotImplementedError("Only MSE loss is supported for now.")
+        loss = compute_loss_or_metric(
+            loss_or_metric=self.modality_spec.loss_fn,
+            output_type=self.modality_spec.type,
+            output=output_values,
+            target=target_values,
+            weights=target_weights,
+        )
 
         self.log("train_loss", loss, prog_bar=True)
 
@@ -353,6 +354,96 @@ class DataModule(L.LightningDataModule):
         self.log.info(f"Testing on {len(test_sampler)} samples")
 
         return test_loader
+
+
+@hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
+def main(cfg: DictConfig):
+
+    # fix random seed, skipped if cfg.seed is None
+    seed_everything(cfg.seed)
+
+    # setup loggers
+    log = logging.getLogger(__name__)
+    log.info("POYO!")
+    wandb_logger = None
+    if cfg.wandb.enable:
+        wandb_logger = L.pytorch.loggers.WandbLogger(
+            save_dir=cfg.log_dir,
+            entity=cfg.wandb.entity,
+            name=cfg.wandb.run_name,
+            project=cfg.wandb.project,
+            log_model=cfg.wandb.log_model,
+        )
+
+    # get modality details
+    readout_spec = MODALITIY_REGISTRY[cfg.readout_modality_name]
+
+    # make model and tokenizer
+    model = poyo_mp(dim_out=readout_spec.dim)
+
+    tokenizer = POYOTokenizer(
+        unit_tokenizer=model.unit_emb.tokenizer,
+        session_tokenizer=model.session_emb.tokenizer,
+        latent_step=cfg.latent_step,
+        num_latents_per_step=cfg.model.num_latents,
+        readout_spec=readout_spec,
+        sequence_length=cfg.sequence_length,
+        subtask_weights=cfg.subtask_weights,
+    )
+
+    # setup data module
+    data_module = DataModule(cfg=cfg, tokenizer=tokenizer)
+    data_module.setup()
+
+    # register units and sessions
+    model.unit_emb.initialize_vocab(data_module.get_unit_ids())
+    model.session_emb.initialize_vocab(data_module.get_session_ids())
+
+    # Lightning train wrapper
+    wrapper = POYOTrainWrapper(
+        cfg=cfg,
+        model=model,
+        modality_spec=readout_spec,
+    )
+
+    stitch_evaluator = DecodingStitchEvaluator(
+        session_ids=data_module.get_session_ids(),
+        modality_spec=readout_spec,
+    )
+
+    callbacks = [
+        stitch_evaluator,
+        ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
+        ModelCheckpoint(
+            save_last=True,
+            save_on_train_epoch_end=True,
+            every_n_epochs=cfg.eval_epochs,
+        ),
+        LearningRateMonitor(logging_interval="step"),
+        tbrain_callbacks.MemInfo(),
+        tbrain_callbacks.EpochTimeLogger(),
+        tbrain_callbacks.ModelWeightStatsLogger(),
+    ]
+
+    trainer = L.Trainer(
+        logger=wandb_logger,
+        default_root_dir=cfg.log_dir,
+        check_val_every_n_epoch=cfg.eval_epochs,
+        max_epochs=cfg.epochs,
+        log_every_n_steps=1,
+        callbacks=callbacks,
+        precision=cfg.precision,
+        devices=cfg.gpus,
+        num_nodes=cfg.nodes,
+        limit_val_batches=None,  # Ensure no limit on validation batches
+        num_sanity_val_steps=cfg.num_sanity_val_steps,
+    )
+
+    # Train
+    trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path)
+
+    # Test
+    trainer.test(wrapper, data_module)
 
 
 if __name__ == "__main__":

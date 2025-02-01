@@ -35,7 +35,7 @@ class POYO(nn.Module):
 
     Args:
         dim: Hidden dimension of the model
-        dim_out: Dimension of the decoding targets
+        dim_out: Dimension of the output
         dim_head: Dimension of each attention head
         num_latents: Number of unique latent tokens (repeated at every latent step)
         depth: Number of processing layers (self-attentions in the latent space)
@@ -139,8 +139,13 @@ class POYO(nn.Module):
         # output sequence
         output_session_index: TensorType["batch", "n_out", int],
         output_timestamps: TensorType["batch", "n_out", float],
-    ) -> TensorType["batch", "n_out", "dim_out", float]:
-        """Forward pass of the POYO+ model.
+        output_mask: Optional[TensorType["batch", "n_out", bool]] = None,
+        unpack_output: bool = False,
+    ) -> Union[
+        TensorType["batch", "n_out", "dim_out", float],
+        List[TensorType[..., "dim_out", float]],
+    ]:
+        """Forward pass of the POYO model.
 
         The model processes input spike sequences through its encoder-processor-decoder
         architecture to generate task-specific predictions.
@@ -154,6 +159,15 @@ class POYO(nn.Module):
             latent_timestamps: Timestamps for latent tokens
             output_session_index: Index of the recording session
             output_timestamps: Timestamps for output predictions
+            output_mask: A mask of the same size as output_timestamps. True implies
+                that particular timestamp is a valid query for POYO. This is required
+                iff `unpack_output` is set to True.
+            unpack_output: If False, this function will return a padded tensor of
+                shape (batch size, num of max output queries in batch, `dim_out`).
+                In this case you have to use `output_mask` externally to only look
+                at valid outputs. If True, this will return a list of Tensors:
+                the length of the list is equal to batch size, the shape of
+                i^th Tensor is (num of valid output queries for i^th sample, `d_out`).
 
         Returns:
             A :class:`torch.Tensor` of shape `(batch, n_out, dim_out)`
@@ -209,6 +223,9 @@ class POYO(nn.Module):
         output_latents = output_queries + self.dec_ffn(output_queries)
         output = self.readout(output_latents)
 
+        if unpack_output:
+            output = [output[b][output_mask[b]] for b in range(output.size(0))]
+
         return output
 
 
@@ -251,14 +268,14 @@ class POYOTokenizer:
         session_tokenizer: Callable,
         latent_step: float,
         num_latents_per_step: int,
-        modality_spec: ModalitySpec,
+        readout_spec: ModalitySpec,
         sequence_length: float = 1.0,
         eval: bool = False,
     ):
         self.unit_tokenizer = unit_tokenizer
         self.session_tokenizer = session_tokenizer
 
-        self.modality_spec = modality_spec
+        self.readout_spec = readout_spec
 
         self.latent_step = latent_step
         self.num_latents_per_step = num_latents_per_step
@@ -302,8 +319,8 @@ class POYOTokenizer:
         )
 
         ### prepare output queries and targets
-        output_timestamps = data.get_nested_attribute(self.modality_spec.timestamp_key)
-        output_values = data.get_nested_attribute(self.modality_spec.value_key)
+        output_timestamps = data.get_nested_attribute(self.readout_spec.timestamp_key)
+        output_values = data.get_nested_attribute(self.readout_spec.value_key)
         if output_values.dtype == np.float64:
             output_values = output_values.astype(np.float32)
 
