@@ -3,7 +3,7 @@ from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 import numpy as np
 import torch.nn as nn
 from torchtyping import TensorType
-from temporaldata import Data, Interval
+from temporaldata import Data
 
 from torch_brain.data import chain, pad8, track_mask8
 from torch_brain.nn import (
@@ -20,6 +20,7 @@ from torch_brain.utils import (
     create_linspace_latent_tokens,
     create_start_end_unit_tokens,
     resolve_weights_based_on_interval_membership,
+    isin_interval,
 )
 
 
@@ -335,5 +336,9 @@ class POYOTokenizer:
         if self.eval:
             batch["session_id"] = data.session
             batch["absolute_start"] = data.absolute_start
+
+            eval_interval_key = data.config.get("eval_interval", None)
+            eval_interval = data.get_nested_attribute(eval_interval_key)
+            batch["output_mask"] = pad8(isin_interval(output_timestamps, eval_interval))
 
         return batch

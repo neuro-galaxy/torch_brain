@@ -91,8 +91,7 @@
       movement_phases.reach_period: 5.0
       movement_phases.return_period: 1.0
       cursor_outlier_segments: 0.0
-    eval_movement_phase: reach_period
-
+    eval_interval: movement_phases.reach_period
 
 # Random target reaching
 - selection:
@@ -128,4 +127,4 @@
       movement_phases.random_period: 1.0
       movement_phases.hold_period: 0.1
       cursor_outlier_segments: 0.0
-    eval_movement_phase: random_period
+    eval_interval: movement_phases.random_period
