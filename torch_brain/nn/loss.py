@@ -1,3 +1,4 @@
+from typing import Optional
 import torch
 import torch.nn.functional as F
 from torchmetrics import R2Score
@@ -10,7 +11,7 @@ def compute_loss_or_metric(
     output_type: DataType,
     output: torch.Tensor,
     target: torch.Tensor,
-    weights: torch.Tensor,
+    weights: Optional[torch.Tensor] = None,
 ) -> torch.Tensor:
     r"""Helper function to compute various losses or metrics for a given output type.
 

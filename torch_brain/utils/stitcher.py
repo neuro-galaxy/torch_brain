@@ -7,8 +7,10 @@ import numpy as np
 import pandas as pd
 from rich import print as rprint
 import torch
+from torch import Tensor
 import lightning as L
 import torchmetrics
+from torchmetrics.utilities import dim_zero_cat
 import wandb
 
 import torch_brain
@@ -389,3 +391,31 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
 
     def on_test_epoch_end(self, *args, **kwargs):
         self.on_validation_epoch_end(*args, **kwargs, prefix="test")
+
+
+class Stitcher(torchmetrics.Metric):
+    r"""A simple prediction stitcher. Use this if your model output has associated
+    timestamps and your sampling strategy involves overlapping time windows, requiring
+    stitching to coalesce the pridiction and targets before computing the evaluation
+    metric.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.add_state("timestamps", default=[], dist_reduce_fx="cat")
+        self.add_state("preds", default=[], dist_reduce_fx="cat")
+        self.add_state("target", default=[], dist_reduce_fx="cat")
+
+    def update(self, timestamps: Tensor, preds: Tensor, target: Tensor) -> None:
+        self.timestamps.append(timestamps)
+        self.preds.append(preds)
+        self.target.append(target)
+
+    def compute(self):
+        timestamps = dim_zero_cat(self.timestamps)
+        preds = dim_zero_cat(self.preds)
+        target = dim_zero_cat(self.target)
+
+        stitched_preds = stitch(timestamps, preds)
+        stitched_target = stitch(timestamps, target)
+        return stitched_preds, stitched_target
