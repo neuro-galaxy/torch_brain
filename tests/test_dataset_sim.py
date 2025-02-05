@@ -17,7 +17,7 @@ from temporaldata import (
 from torch_brain.data import Dataset
 
 try:
-    from brainsets.taxonomy import (
+    from brainsets.descriptions import (
         BrainsetDescription,
         SubjectDescription,
         SessionDescription,
