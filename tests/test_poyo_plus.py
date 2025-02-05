@@ -175,24 +175,21 @@ def test_poyo_plus_tokenizer_to_model(task_specs, model):
             domain="auto",
         ),
         units=ArrayDict(id=np.array(["unit1", "unit2", "unit3"])),
+        cursor_outlier_segments=Interval(
+            start=np.array([0, 0.5]),
+            end=np.array([0.1, 0.55]),
+        ),
         session="session1",
         config={
             "multitask_readout": [
                 {
                     "readout_id": "cursor_velocity_2d",
-                    "subtask_weights": {
-                        "REACHING.RANDOM": 1.0,
-                        "REACHING.HOLD": 0.1,
-                        "REACHING.REACH": 5.0,
-                        "REACHING.RETURN": 1.0,
-                        "REACHING.INVALID": 0.1,
-                        "REACHING.OUTLIER": 0.0,
+                    "weights": {
+                        "cursor_outlier_segments": 0.0,
                     },
                     "metrics": [
                         {
-                            "metric": "r2",
-                            "task": "REACHING",
-                            "subtask": "REACHING.REACH",
+                            "_target_": "torchmetrics.R2Score",
                         }
                     ],
                 }

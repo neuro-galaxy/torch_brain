@@ -83,19 +83,18 @@
   config:
     multitask_readout:
       - readout_id: cursor_velocity_2d
-        subtask_weights:
-          REACHING.RANDOM: 1.0
-          REACHING.HOLD: 0.1
-          REACHING.REACH: 5.0
-          REACHING.RETURN: 1.0
-          REACHING.INVALID: 0.1
-          REACHING.OUTLIER: 0.0
+        normalize_mean: 0.
+        normalize_std: 20.
+        weights:
+          movement_phases.random_period: 1.0
+          movement_phases.hold_period: 0.1
+          movement_phases.reach_period: 5.0
+          movement_phases.return_period: 1.0
+          cursor_outlier_segments: 0.0
         metrics:
           - metric:
               _target_: torchmetrics.R2Score
-              num_outputs: 2
-            task: REACHING
-            subtask: REACHING.REACH
+        eval_interval: movement_phases.reach_period
 
 # Random target reaching
 - selection:
@@ -125,16 +124,13 @@
   config:
     multitask_readout:
       - readout_id: cursor_velocity_2d
-        subtask_weights:
-          REACHING.RANDOM: 1.0
-          REACHING.HOLD: 0.1
-          REACHING.REACH: 5.0
-          REACHING.RETURN: 1.0
-          REACHING.INVALID: 0.1
-          REACHING.OUTLIER: 0.0
+        normalize_mean: 0.
+        normalize_std: 20.
+        weights:
+          movement_phases.random_period: 1.0
+          movement_phases.hold_period: 0.1
+          cursor_outlier_segments: 0.0
         metrics:
           - metric:
               _target_: torchmetrics.R2Score
-              num_outputs: 2
-            task: REACHING
-            subtask: REACHING.RANDOM
+        eval_interval: movement_phases.random_period

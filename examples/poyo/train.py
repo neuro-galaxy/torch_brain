@@ -33,7 +33,10 @@ from torch_brain.transforms import Compose
 torch.set_float32_matmul_precision("medium")
 
 
-class POYOTrainWrapper(L.LightningModule):
+logger = logging.getLogger(__name__)
+
+
+class TrainWrapper(L.LightningModule):
     def __init__(
         self,
         cfg: DictConfig,
@@ -117,7 +120,6 @@ class POYOTrainWrapper(L.LightningModule):
         batch.pop("target_weights")
         absolute_starts = batch.pop("absolute_start")
         session_ids = batch.pop("session_id")
-        output_subtask_index = batch.pop("output_subtask_index")
         output_mask = batch.pop("output_mask")
 
         # forward pass
@@ -127,7 +129,6 @@ class POYOTrainWrapper(L.LightningModule):
         batch["target_values"] = target_values
         batch["absolute_start"] = absolute_starts
         batch["session_id"] = session_ids
-        batch["output_subtask_index"] = output_subtask_index
         batch["output_mask"] = output_mask
 
         return output_values
@@ -162,7 +163,7 @@ class DataModule(L.LightningDataModule):
         self.val_dataset = Dataset(
             root=self.cfg.data_root,
             config=self.cfg.dataset,
-            split="test",
+            split="valid",
             transform=eval_tokenizer,
         )
         self.val_dataset.disable_data_leakage_check()
@@ -265,13 +266,12 @@ class DataModule(L.LightningDataModule):
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
 def main(cfg: DictConfig):
+    logger.info("POYO!")
 
     # fix random seed, skipped if cfg.seed is None
     seed_everything(cfg.seed)
 
     # setup loggers
-    log = logging.getLogger(__name__)
-    log.info("POYO!")
     wandb_logger = None
     if cfg.wandb.enable:
         wandb_logger = L.pytorch.loggers.WandbLogger(
@@ -283,7 +283,7 @@ def main(cfg: DictConfig):
         )
 
     # get modality details
-    readout_spec = MODALITIY_REGISTRY[cfg.readout_modality_name]
+    readout_spec = MODALITIY_REGISTRY[cfg.readout_id]
 
     # make model and tokenizer
     model = poyo_mp(dim_out=readout_spec.dim)
@@ -295,7 +295,6 @@ def main(cfg: DictConfig):
         num_latents_per_step=cfg.model.num_latents,
         readout_spec=readout_spec,
         sequence_length=cfg.sequence_length,
-        subtask_weights=cfg.subtask_weights,
     )
 
     # setup data module
@@ -307,7 +306,7 @@ def main(cfg: DictConfig):
     model.session_emb.initialize_vocab(data_module.get_session_ids())
 
     # Lightning train wrapper
-    wrapper = POYOTrainWrapper(
+    wrapper = TrainWrapper(
         cfg=cfg,
         model=model,
         modality_spec=readout_spec,
@@ -340,6 +339,7 @@ def main(cfg: DictConfig):
         log_every_n_steps=1,
         callbacks=callbacks,
         precision=cfg.precision,
+        accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=cfg.gpus,
         num_nodes=cfg.nodes,
         limit_val_batches=None,  # Ensure no limit on validation batches

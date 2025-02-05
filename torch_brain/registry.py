@@ -30,7 +30,6 @@ class ModalitySpec:
         loss_fn: Name of loss function to use for this modality
         timestamp_key: Key to access timestamps in the data object
         value_key: Key to access values in the data object
-        context_key: Optional key to access additional context in the data object
         id: Unique numeric ID assigned to this modality
     """
 
@@ -40,7 +39,6 @@ class ModalitySpec:
     loss_fn: str
     timestamp_key: str  # can be overwritten
     value_key: str  # can be overwritten
-    context_key: Optional[str] = None
 
 
 MODALITIY_REGISTRY: Dict[str, ModalitySpec] = {}
@@ -54,7 +52,6 @@ def register_modality(name: str, **kwargs: Any) -> int:
         name: Unique identifier for this modality
         **kwargs: Keyword arguments used to construct the ModalitySpec
             Must include: dim, type, loss_fn, timestamp_key, value_key
-            Optional: context_key
 
     Returns:
         int: Unique numeric ID assigned to this modality
@@ -102,7 +99,6 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="cursor.timestamps",
     value_key="cursor.vel",
-    context_key="cursor.subtask_index",
     loss_fn="mse",
 )
 
@@ -112,7 +108,6 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="cursor.timestamps",
     value_key="cursor.pos",
-    context_key="cursor.subtask_index",
     loss_fn="mse",
 )
 
@@ -122,7 +117,6 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="behavior.timestamps",
     value_key="behavior.hand_vel",
-    context_key="behavior.subtask_index",
     loss_fn="mse",
 )
 

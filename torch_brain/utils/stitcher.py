@@ -114,20 +114,25 @@ class DecodingStitchEvaluator(L.Callback):
     def __init__(
         self,
         session_ids: Iterable[str],
-        modality_spec: ModalitySpec,
+        modality_spec: Optional[ModalitySpec] = None,
+        metric_factory: Optional[Callable[[int], ModalitySpec]] = None,
         quiet=False,
     ):
         r"""
         Args:
             session_ids: An iterable of session IDs for which the metrics are to be computed.
-            modality_spec: The modality specification for the task, used to decide
-                which metric function to use.
+            modality_spec: (Optional) The modality specification for the task. Either this
+                or metric_factory must be provided.
+            metric_factory: (Optional) A callable that returns an instance of the metric to be used.
+                If not provided, the metric is inferred based on the modality_spec.
             quiet: If True, disables the logging of the metrics to the console.
         """
         self.quiet = quiet
 
-        if modality_spec.type == DataType.CONTINUOUS:
-            metric_factory = lambda: torchmetrics.R2Score(num_outputs=modality_spec.dim)
+        if metric_factory is not None:
+            pass
+        elif modality_spec.type == DataType.CONTINUOUS:
+            metric_factory = lambda: torchmetrics.R2Score()
         elif modality_spec.type in [DataType.BINARY, DataType.MULTINOMIAL]:
             metric_factory = lambda: torchmetrics.Accuracy(
                 task="multiclass", num_classes=modality_spec.dim
@@ -150,8 +155,7 @@ class DecodingStitchEvaluator(L.Callback):
         )
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-        # Update the cache with the predictions, targets, timestamps, and subtask index
-        # TODO: Mask timestamps based on subtask_index
+        # Update the cache with the predictions, targets, and timestamps
         batch_size = len(outputs)
         for i in range(batch_size):
             mask = batch["output_mask"][i]
@@ -222,15 +226,7 @@ class DecodingStitchEvaluator(L.Callback):
 
 
 class MultiTaskDecodingStitchEvaluator(L.Callback):
-    def __init__(self, dataset_config_dict: dict):
-        metrics = defaultdict(lambda: defaultdict(dict))
-        # setup the metrics
-        for recording_id, recording_config in dataset_config_dict.items():
-            for readout_config in recording_config["multitask_readout"]:
-                readout_id = readout_config["readout_id"]
-                for metric_config in readout_config["metrics"]:
-                    metric = hydra.utils.instantiate(metric_config["metric"])
-                    metrics[recording_id][readout_id][str(metric)] = metric
+    def __init__(self, metrics: dict):
         self.metrics = metrics
 
     def on_validation_epoch_start(self, trainer, pl_module):
@@ -244,7 +240,6 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                 "target": defaultdict(list),
                 "pred": defaultdict(list),
                 "timestamps": defaultdict(list),
-                "subtask_index": defaultdict(list),
             }
             for _ in range(num_sequences)
         ]
@@ -260,7 +255,7 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
         target_values = batch.pop("target_values")
         absolute_starts = batch.pop("absolute_start")
         session_ids = batch.pop("session_id")
-        output_subtask_index = batch.pop("output_subtask_index")
+        eval_masks = batch.pop("eval_mask")
 
         # forward pass
         output_values = outputs  # pl_module.model(**batch, unpack_output=True)
@@ -285,7 +280,11 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                     batch["output_timestamps"][mask][token_sample_idx == i]
                     + absolute_starts[i]
                 )
-                subtask_idx = output_subtask_index[readout_id][token_sample_idx == i]
+                eval_mask = eval_masks[readout_id][token_sample_idx == i]
+
+                timestamps = timestamps[eval_mask]
+                pred = pred[eval_mask]
+                target = target[eval_mask]
 
                 self.cache[self.sequence_index[curr_sample_ptr]]["pred"][
                     readout_id
@@ -296,9 +295,6 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                 self.cache[self.sequence_index[curr_sample_ptr]]["timestamps"][
                     readout_id
                 ].append(timestamps.detach().cpu())
-                self.cache[self.sequence_index[curr_sample_ptr]]["subtask_index"][
-                    readout_id
-                ].append(subtask_idx.detach().cpu())
 
                 curr_sample_ptr += 1
 
@@ -315,7 +311,6 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
         for task_name in self.cache[i]["pred"].keys():
             pred = torch.cat(self.cache[i]["pred"][task_name])
             timestamps = torch.cat(self.cache[i]["timestamps"][task_name])
-            subtask_index = torch.cat(self.cache[i]["subtask_index"][task_name])
             target = torch.cat(self.cache[i]["target"][task_name])
 
             # Pool data wherever timestamps overlap

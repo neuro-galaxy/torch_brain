@@ -19,6 +19,7 @@ from torch_brain.registry import ModalitySpec
 from torch_brain.utils import (
     create_linspace_latent_tokens,
     create_start_end_unit_tokens,
+    prepare_for_readout,
 )
 
 
@@ -29,7 +30,18 @@ class POYO(nn.Module):
     POYO is a transformer-based model for neural decoding from electrophysiological
     recordings.
 
-    TODO: Document the model architecture
+    1. Input tokens are constructed by combining unit embeddings, token type embeddings,
+        and time embeddings for each spike in the sequence.
+    2. The input sequence is compressed using cross-attention, where learnable latent
+        tokens (each with an associated timestamp) attend to the input tokens.
+    3. The compressed latent token representations undergo further refinement through
+        multiple self-attention processing layers.
+    4. Query tokens are constructed for the desired outputs by combining session
+        embeddings, and output timestamps.
+    5. These query tokens attend to the processed latent representations through
+        cross-attention, producing outputs in the model's dimensional space (dim).
+    6. Finally, a task-specific linear layer maps the outputs from the model dimension
+        to the appropriate output dimension.
 
     Args:
         dim: Hidden dimension of the model
@@ -45,13 +57,13 @@ class POYO(nn.Module):
         emb_init_scale: Scale for embedding initialization
         t_min: Minimum timestamp resolution for rotary embeddings
         t_max: Maximum timestamp resolution for rotary embeddings
+        dim_out: Dimension of the output
     """
 
     def __init__(
         self,
         *,
         dim=512,
-        dim_out=2,
         dim_head=64,
         num_latents=64,
         depth=2,
@@ -63,6 +75,7 @@ class POYO(nn.Module):
         emb_init_scale=0.02,
         t_min=1e-4,
         t_max=4.0,
+        dim_out,
     ):
         super().__init__()
 
@@ -258,7 +271,6 @@ class POYOTokenizer:
         weight_registry (Dict): Registry of the weights.
         latent_step (float): Step size for generating latent tokens.
         num_latents_per_step (int): Number of latents per step.
-        subtask_weights (List[float]): Loss-weights for different subtasks.
     """
 
     def __init__(
@@ -270,16 +282,30 @@ class POYOTokenizer:
         readout_spec: ModalitySpec,
         sequence_length: float = 1.0,
         eval: bool = False,
-        subtask_weights: Optional[Iterable[float]] = None,
     ):
         self.unit_tokenizer = unit_tokenizer
         self.session_tokenizer = session_tokenizer
 
         self.readout_spec = readout_spec
 
-        self.subtask_weights = subtask_weights
-        if self.subtask_weights is not None:
-            self.subtask_weights = np.array(self.subtask_weights, dtype=np.float32)
+        if not isinstance(sequence_length, float):
+            raise ValueError("sequence_length must be a float")
+        if not sequence_length > 0:
+            raise ValueError("sequence_length must be greater than 0")
+        self.sequence_length = sequence_length
+
+        if not isinstance(latent_step, float):
+            raise ValueError("latent_step must be a float")
+        if not latent_step > 0:
+            raise ValueError("latent_step must be greater than 0")
+        self.latent_step = latent_step
+
+        # check if sequence_length is a multiple of latent_step
+        if abs(sequence_length % latent_step) > 1e-10:
+            self.log.warning(
+                f"sequence_length ({sequence_length}) is not a multiple of latent_step "
+                f"({latent_step}). This is a simple warning, and this behavior is allowed."
+            )
 
         self.latent_step = latent_step
         self.num_latents_per_step = num_latents_per_step
@@ -322,28 +348,13 @@ class POYOTokenizer:
             num_latents_per_step=self.num_latents_per_step,
         )
 
-        ### prepare output queries and targets
-        output_timestamps = data.get_nested_attribute(self.readout_spec.timestamp_key)
-        output_values = data.get_nested_attribute(self.readout_spec.value_key)
-        if output_values.dtype == np.float64:
-            output_values = output_values.astype(np.float32)
+        output_timestamps, output_values, output_weights, eval_mask = (
+            prepare_for_readout(data, self.readout_spec)
+        )
 
-        session_index = self.session_tokenizer(data.session)
-        session_index = np.repeat(session_index, len(output_timestamps))
-
-        # Weights for the output predictions (used in the loss function)
-        output_subtask_index = data.get_nested_attribute(self.readout_spec.context_key)
-        if self.subtask_weights is None:
-            output_weights = np.ones(len(output_values), dtype=np.float32)
-        else:
-            output_weights = self.subtask_weights[output_subtask_index]
-
-        # Mask for the output predictions
-        output_mask = np.ones(len(output_values), dtype=bool)
-        if self.eval:
-            # During eval, only evaluate on the subtask specified in the config
-            target_subtask_index = data.config["eval_subtask_index"]
-            output_mask = output_mask & (output_subtask_index == target_subtask_index)
+        # create session index for output
+        output_session_index = self.session_tokenizer(data.session)
+        output_session_index = np.repeat(output_session_index, len(output_timestamps))
 
         batch = {
             # input sequence
@@ -355,9 +366,9 @@ class POYOTokenizer:
             "latent_index": latent_index,
             "latent_timestamps": latent_timestamps,
             # output sequence
-            "output_session_index": pad8(session_index),
+            "output_session_index": pad8(output_session_index),
             "output_timestamps": pad8(output_timestamps),
-            "output_mask": pad8(output_mask),
+            "output_mask": track_mask8(output_session_index),
             # ground truth targets
             "target_values": pad8(output_values),
             "target_weights": pad8(output_weights),
@@ -366,6 +377,8 @@ class POYOTokenizer:
         if self.eval:
             batch["session_id"] = data.session
             batch["absolute_start"] = data.absolute_start
-            batch["output_subtask_index"] = pad8(output_subtask_index)
+
+            if eval_mask is not None:
+                batch["output_mask"] = pad8(eval_mask)
 
         return batch

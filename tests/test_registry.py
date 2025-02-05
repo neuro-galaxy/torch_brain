@@ -28,7 +28,6 @@ def test_modality_spec_creation():
         loss_fn="mse",
         timestamp_key="test.timestamps",
         value_key="test.values",
-        context_key="test.context",
     )
 
     assert spec.id == 1
@@ -37,21 +36,6 @@ def test_modality_spec_creation():
     assert spec.loss_fn == "mse"
     assert spec.timestamp_key == "test.timestamps"
     assert spec.value_key == "test.values"
-    assert spec.context_key == "test.context"
-
-
-def test_modality_spec_optional_context():
-    """Test ModalitySpec creation without optional context_key."""
-    spec = ModalitySpec(
-        id=1,
-        dim=2,
-        type=DataType.CONTINUOUS,
-        loss_fn="mse",
-        timestamp_key="test.timestamps",
-        value_key="test.values",
-    )
-
-    assert spec.context_key is None
 
 
 @pytest.fixture

@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
+- Added a method to resolve weights based on interval membership of timestamps. ([#31](https://github.com/neuro-galaxy/torch_brain/pull/31))
 - Added multitask decoder taxonomy. ([#8](https://github.com/neuro-galaxy/torch_brain/pull/8))
 - Added stitching callback that takes care of stitching. ([#16](https://github.com/neuro-galaxy/torch_brain/pull/16))
 
@@ -17,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Enhanced data sampling with distributed capabilities and sequence tracking. ([#16](https://github.com/neuro-galaxy/torch_brain/pull/16))
 - Updated attention layers to simplify interface and support both forward and forward_varlen modes. ([#16](https://github.com/neuro-galaxy/torch_brain/pull/16))
 - Replaced Decoder enum with registry system to track different modality specifications. ([#16](https://github.com/neuro-galaxy/torch_brain/pull/16))
+- Added eval_interval to config files as an optional field used to specify the interval for evaluation. ([#30](https://github.com/neuro-galaxy/torch_brain/pull/30))
 
 ### Fixed
 - Fixed memory issues during validation by implementing a cache flushing mechanism. ([#16](https://github.com/neuro-galaxy/torch_brain/pull/16))

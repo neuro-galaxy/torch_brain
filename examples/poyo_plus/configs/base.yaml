@@ -2,15 +2,17 @@
 
 data_root: ./data/processed/
 log_dir: ./logs
-seed: 42
+
+sequence_length: 1.0  # in seconds
+latent_step: 0.125
+
+epochs: 1000
+eval_epochs: 1
 
 batch_size: 128
 eval_batch_size: null  # if null, will use batch_size
 num_workers: 4
-
-epochs: 1000  # if -1, will use steps
-steps: -1  # if -1, will use epochs. Epochs take precedence.
-eval_epochs: 1
+seed: 42
 
 optim:
   base_lr: 3.125e-5  # scaled linearly by batch size
@@ -24,9 +26,10 @@ wandb:
   run_name: null
   log_model: false
 
-backend_config: gpu_fp32
 precision: 32
 nodes: 1
 gpus: 1
 
 ckpt_path: null  # for resuming training, or loading a model during finetuning
+
+num_sanity_val_steps: 0  # only supports 0 (none) and -1 (all) right now

@@ -1,0 +1,10 @@
+_target_: torch_brain.models.POYOPlus
+dim: 64
+dim_head: 64
+num_latents: 16
+depth: 6
+cross_heads: 2
+self_heads: 8
+ffn_dropout: 0.2
+lin_dropout: 0.4
+atn_dropout: 0.2

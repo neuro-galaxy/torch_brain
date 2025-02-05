@@ -322,10 +322,10 @@ class POYOPlusTokenizer:
 
         (
             output_timestamps,
-            output_task_index,
             output_values,
+            output_task_index,
             output_weights,
-            output_subtask_index,
+            output_eval_mask,
         ) = prepare_for_multitask_readout(
             data,
             self.decoder_registry,
@@ -355,8 +355,6 @@ class POYOPlusTokenizer:
             # we will add a few more fields needed for evaluation
             batch["session_id"] = data.session
             batch["absolute_start"] = data.absolute_start
-            batch["output_subtask_index"] = chain(
-                output_subtask_index, allow_missing_keys=True
-            )
+            batch["eval_mask"] = chain(output_eval_mask, allow_missing_keys=True)
 
         return batch

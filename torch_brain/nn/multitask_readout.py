@@ -4,11 +4,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torchtyping import TensorType
+from temporaldata import Data
 
 from torch_brain.data.collate import collate, chain, track_batch
 from torch_brain.registry import ModalitySpec, MODALITIY_REGISTRY
-
-from typing import Dict, List
+from torch_brain.utils import (
+    resolve_weights_based_on_interval_membership,
+    isin_interval,
+)
 
 
 class MultitaskReadout(nn.Module):
@@ -150,26 +153,25 @@ class MultitaskReadout(nn.Module):
 
 
 def prepare_for_multitask_readout(
-    data,
+    data: Data,
     readout_registry: Dict[str, ModalitySpec],
 ):
     required_keys = ["readout_id"]
     optional_keys = [
-        "weight",
-        "subtask_weights",
+        "weights",
         "normalize_mean",
         "normalize_std",
         "timestamp_key",
         "value_key",
-        "context_key",
         "metrics",
+        "eval_interval",
     ]
 
-    readout_index = list()
     timestamps = list()
+    readout_index = list()
     values = dict()
-    context_index = dict()
     weights = dict()
+    eval_mask = dict()
 
     for readout_config in data.config["multitask_readout"]:
         # check that the readout config contains all required keys
@@ -198,9 +200,6 @@ def prepare_for_multitask_readout(
         readout_spec = readout_registry[key]
         value_key = readout_config.get("value_key", readout_spec.value_key)
         timestamp_key = readout_config.get("timestamp_key", readout_spec.timestamp_key)
-        context_key = readout_config.get("context_key", readout_spec.context_key)
-        weight = readout_config.get("weight", 1.0)
-        subtask_weights = readout_config.get("subtask_weights", {})
 
         readout_index.append(readout_spec.id)
         timestamps.append(data.get_nested_attribute(timestamp_key))
@@ -226,18 +225,16 @@ def prepare_for_multitask_readout(
         if values[key].dtype == np.float64:
             values[key] = values[key].astype(np.float32)
 
-        if False and context_key is not None:
-            context_index[key] = data.get_nested_attribute(context_key)
-            num_subtasks = Task.from_string(list(subtask_weights.keys())[0]).max_value()
-            subtask_weight_map = np.ones(num_subtasks, dtype=np.float32)
-            for subtask, subtask_weight in subtask_weights.items():
-                subtask_weight_map[Task.from_string(subtask).value] = subtask_weight
+        weights[key] = resolve_weights_based_on_interval_membership(
+            timestamps[-1], data, config=readout_config.get("weights", None)
+        )
 
-            subtask_weight_map *= weight
-            weights[key] = subtask_weight_map[context_index[key]]
-        else:
-            context_index[key] = np.zeros(len(values[key]), dtype=np.int64)
-            weights[key] = np.ones(len(values[key]), dtype=np.float32) * weight
+        # resolve eval mask
+        eval_mask[key] = np.ones_like(timestamps[-1], dtype=bool)
+        eval_interval_key = data.config.get("eval_interval", None)
+        if eval_interval_key is not None:
+            eval_interval = data.get_nested_attribute(eval_interval_key)
+            eval_mask[key] = isin_interval(timestamps, eval_interval)
 
     # chain
     timestamps, batch = collate(
@@ -248,4 +245,4 @@ def prepare_for_multitask_readout(
     )
     readout_index = torch.tensor(readout_index)[batch]
 
-    return timestamps, readout_index, values, weights, context_index
+    return timestamps, values, readout_index, weights, eval_mask
