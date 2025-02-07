@@ -70,9 +70,9 @@ class Dataset(torch.utils.data.Dataset):
         self,
         root: str,
         *,
-        config: str = None,
-        recording_id: str = None,
-        split: str = None,
+        config: Optional[str] = None,
+        recording_id: Optional[str] = None,
+        split: Optional[str] = None,
         transform=None,
     ):
         super().__init__()
