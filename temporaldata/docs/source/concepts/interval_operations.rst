@@ -11,10 +11,10 @@ First, let's create some simple intervals:
     import numpy as np
 
     # Create two intervals: [1, 8] and [12, 18]
-    interval1 = Interval(start=np.array([1, 12]), end=np.array([8, 18]))
+    interval1 = Interval(start=np.array([1., 12.]),end=np.array([8., 18.]))
     
-    # Create three intervals: [2, 5], [6, 10], and [10, 17]
-    interval2 = Interval(start=np.array([2, 6, 10]), end=np.array([5, 10, 17]))
+    # Create three intervals: [2, 5], [7, 10], and [14, 17]
+    interval2 = Interval(start=np.array([2., 7., 14.]), end=np.array([5., 10., 17.]))
 
 Typically for most operations that involve multiple :obj:`Interval <temporaldata.Interval>` objects, 
 each :obj:`Interval <temporaldata.Interval>` object must be disjoint and sorted.
@@ -44,9 +44,9 @@ containing only the overlapping time periods between two :obj:`Interval <tempora
     # Compute intersection
     intersection = interval1 & interval2
     
-    # Result will contain [2, 5] and [12, 17] as these are the overlapping periods
-    print(intersection.start)  # [2, 12]
-    print(intersection.end)    # [5, 17]
+    # Result will contain [2, 5], [7, 8] and [14, 17] as these are the overlapping periods
+    print(intersection.start)  # [2., 7., 14.]
+    print(intersection.end)    # [5., 8., 17.]
 
 Union
 -----
@@ -65,9 +65,9 @@ containing the union of all intervals in both objects.
     # Compute union
     union = interval1 | interval2
     
-    # Result will contain [1, 10] and [10, 18]
-    print(union.start)  # [1, 10]
-    print(union.end)    # [10, 18]
+    # Result will contain [1, 10] and [12, 18]
+    print(union.start)  # [ 1., 12.]
+    print(union.end)    # [10., 18.]
 
 Difference
 ----------
@@ -81,17 +81,13 @@ The difference operation (``.difference()``) returns a new :obj:`Interval <tempo
 
 
 .. code-block:: python
-
-    # Create two intervals
-    a = Interval(start=[1, 12], end=[8, 18])
-    b = Interval(start=[2, 6, 10], end=[5, 10, 17])
     
     # Compute difference
-    difference = a.difference(b)
+    difference = interval1.difference(interval2)
     
-    # Results in intervals: [1, 2], [5, 6], [17, 18]
-    print(difference.start)  # [1, 5, 17]
-    print(difference.end)    # [2, 6, 18]
+    # Results in intervals: [1, 2], [5, 7], [12, 14], and [17, 18]
+    print(difference.start)  # [1., 5., 12., 17.]
+    print(difference.end)    # [2., 7., 14., 18.]
 
 Dilation
 --------
@@ -105,16 +101,18 @@ The dilation operation (``.dilate()``) expands each interval by a specified amou
 
 .. code-block:: python
 
-    # Create an interval
-    interval = Interval(start=[1, 5], end=[2, 6])
+    # Create three intervals: [1, 5], [10, 13.5], and [14, 18]
+    interval = Interval(start=np.array([1.0, 10.0, 14.0]), end=np.array([5.0, 13.5, 18.]))
     
     # Dilate by 0.5 on each side
     dilated = interval.dilate(0.5)
     
-    print(dilated.start)  # [0.5, 4.5]
-    print(dilated.end)    # [2.5, 6.5]
+    # Results in intervals: [0.5, 5.5], [9.5, 13.75], and [13.75, 18.5]
+    print(dilated.start)  # [0.5 , 9.5 , 13.75]
+    print(dilated.end)    # [5.5 ,13.75, 18.5 ]
 
 The dilation operation is particularly useful when you need to:
+
 - Create buffer periods around events
 - Account for uncertainty in interval boundaries
 - Merge intervals that are close together
@@ -131,20 +129,21 @@ The coalesce operation (``.coalesce()``) merges overlapping or touching interval
 
 .. code-block:: python
 
-    # Create intervals with small gaps
+    # Create four intervals [1, 6], [6.1, 11], [11.3, 14.5], and [14.5, 17.8]
     interval = Interval(
-        start=[1, 2.1, 4, 8],
-        end=[2, 3, 5, 9]
+        start=np.array([1., 6.1, 11.3, 14.5]), end=np.array([6., 11., 14.5, 17.8])
     )
+
     
     # Coalesce intervals that are within 0.2 of each other
     coalesced = interval.coalesce(0.2)
     
-    # [1-3] and [4-5] merged, [8-9] unchanged
-    print(coalesced.start)  # [1, 4, 8]
-    print(coalesced.end)    # [3, 5, 9]
+    # [6-6.1] and [14.5-14.5] merged, [11-11.3] unchanged
+    print(coalesced.start)  # [ 1., 11.3]
+    print(coalesced.end)    # [11., 17.8]
 
 The coalesce operation is useful for:
+
 - Cleaning up noisy interval data
 - Merging intervals that are effectively continuous
 - Simplifying interval representations
@@ -153,12 +152,14 @@ You can combine coalesce with dilate to merge intervals within a certain distanc
 
 .. code-block:: python
 
-    # Merge intervals within distance 0.5
-    interval = Interval(start=[1, 3], end=[2, 4])
-    merged = interval.dilate(0.25).coalesce(0)
+    # Create two intervals [1, 2.5], and [3, 4]
+    interval = Interval(start=np.array([1., 3.]), end=np.array([2.5, 4.]))
     
-    print(merged.start)  # [0.75]  
-    print(merged.end)    # [4.25]
+    # Merge intervals within distance 0.5
+    merged = interval.dilate(0.5).coalesce()
+    
+    print(merged.start)  # [0.5]  
+    print(merged.end)    # [4.5]
 
 
 There are multiple edge cases that can occur when performing interval operations. For more details, see :ref:`advanced_interval_operations`.
