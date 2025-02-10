@@ -20,38 +20,23 @@ class ArrayDict(object):
     Args:
         **kwargs: arrays that shares the same first dimension.
 
-    .. code-block:: python
+    Example ::
 
-        import numpy as np
-        from temporaldata import ArrayDict
+        >>> from temporaldata import ArrayDict
+        >>> import numpy as np
 
-        units = ArrayDict(
-            unit_id=np.array(["unit01", "unit02"]),
-            brain_region=np.array(["M1", "M1"]),
-            waveform_mean=np.zeros((2, 48)),
+        >>> units = ArrayDict(
+        ...     unit_id=np.array(["unit01", "unit02"]),
+        ...     brain_region=np.array(["M1", "M1"]),
+        ...     waveform_mean=np.random.rand(2, 48),
+        ... )
+
+        >>> units
+        ArrayDict(
+          unit_id=[2],
+          brain_region=[2],
+          waveform_mean=[2, 48]
         )
-
-        units
-        >>> ArrayDict(
-            unit_id=[2],
-            brain_region=[2],
-            waveform_mean=[2, 48]
-        )
-
-        len(units)
-        >>> 2
-
-        units.keys()
-        >>> ['unit_id', 'brain_region', 'waveform_mean']
-
-        'waveform_mean' in units
-        >>> True
-
-
-    .. note::
-        Private attributes (starting with an underscore) do not need to be arrays,
-        or have the same first dimension as the other attributes. They will not be
-        listed in :meth:`keys()`.
     """
 
     def __init__(self, **kwargs: Dict[str, np.ndarray]):
@@ -126,23 +111,25 @@ class ArrayDict(object):
             **kwargs: Private attributes that will not be masked will need to be passed
                 as arguments.
 
-        .. code-block:: python
+        Example ::
 
-            import numpy as np
-            from temporaldata import ArrayDict
+            >>> from temporaldata import ArrayDict
+            >>> import numpy as np
 
-            data = ArrayDict(
-                unit_id=np.array(["unit01", "unit02"]),
-                brain_region=np.array(["M1", "M1"]),
-                waveform_mean=np.zeros((2, 48)),
+            >>> units = ArrayDict(
+            ...     unit_id=np.array(["unit01", "unit02"]),
+            ...     brain_region=np.array(["M1", "M1"]),
+            ...     waveform_mean=np.random.rand(2, 48),
+            ... )
+
+            >>> units_subset = units.select_by_mask(np.array([True, False]))
+            >>> units_subset
+            ArrayDict(
+              unit_id=[1],
+              brain_region=[1],
+              waveform_mean=[1, 48]
             )
 
-            data.select_by_mask(np.array([True, False]))
-            >>> ArrayDict(
-                unit_id=[1],
-                brain_region=[1],
-                waveform_mean=[1, 48]
-            )
         """
         assert mask.ndim == 1, f"mask must be 1D, got {mask.ndim}D mask"
         assert mask.dtype == bool, f"mask must be boolean, got {mask.dtype}"
@@ -503,46 +490,47 @@ class IrregularTimeSeries(ArrayDict):
             automatically the interval defined by the minimum and maximum timestamps.
         **kwargs: arrays that shares the same first dimension N.
 
-    .. code-block:: python
+    Example ::
 
-        import numpy as np
-        from temporaldata import IrregularTimeSeries
+        >>> import numpy as np
+        >>> from temporaldata import IrregularTimeSeries
 
-        spikes = IrregularTimeSeries(
-            unit_index=np.array([0, 0, 1, 0, 1, 2]),
-            timestamps=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
-            waveforms=np.zeros((6, 48)),
-            domain="auto",
+        >>> spikes = IrregularTimeSeries(
+        ...     unit_index=np.array([0, 0, 1, 0, 1, 2]),
+        ...     timestamps=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        ...     waveforms=np.zeros((6, 48)),
+        ...     domain="auto",
+        ... )
+
+        >>> spikes
+        IrregularTimeSeries(
+          timestamps=[6],
+          unit_index=[6],
+          waveforms=[6, 48]
         )
 
-        spikes
-        >>> IrregularTimeseries(
-            unit_index=[6],
-            timestamps=[6],
-            waveforms=[6, 48]
+        >>> spikes.domain.start, spikes.domain.end
+        (array([0.1]), array([0.6]))
+
+        >>> spikes.keys()
+        ['timestamps', 'unit_index', 'waveforms']
+
+        >>> spikes.is_sorted()
+        True
+
+        >>> slice_of_spikes = spikes.slice(0.2, 0.5)
+        >>> slice_of_spikes
+        IrregularTimeSeries(
+          timestamps=[3],
+          unit_index=[3],
+          waveforms=[3, 48]
         )
 
-        spikes.domain.start, spikes.domain.end
-        >>> (array([0.1]), array([0.6]))
+        >>> slice_of_spikes.domain.start, slice_of_spikes.domain.end
+        (array([0.]), array([0.3]))
 
-        spikes.keys()
-        >>> ['unit_index', 'timestamps', 'waveforms']
-
-        spikes.is_sorted()
-        >>> True
-
-        slice_of_spikes = spikes.slice(0.2, 0.5)
-        >>> IrregularTimeseries(
-            unit_index=[3],
-            timestamps=[3],
-            waveforms=[3, 48]
-        )
-
-        slice_of_spikes.domain.start, slice_of_spikes.domain.end
-        >>> (array([0.]), array([0.3]))
-
-        slice_of_spikes.timestamps
-        >>> array([0. , 0.1, 0.2])
+        >>> slice_of_spikes.timestamps
+        array([0. , 0.1, 0.2])
     """
 
     _sorted = None
@@ -630,7 +618,7 @@ class IrregularTimeSeries(ArrayDict):
         # check if we already know that the sequence is sorted
         # if lazy loading, we'll have to skip this check
         if self._sorted is None:
-            self._sorted = np.all(self.timestamps[1:] >= self.timestamps[:-1])
+            self._sorted = bool(np.all(self.timestamps[1:] >= self.timestamps[:-1]))
         return self._sorted
 
     def _maybe_start(self) -> float:
@@ -1219,26 +1207,26 @@ class RegularTimeSeries(ArrayDict):
             multi-dimensional (2d, 3d, ..., nd) arrays with shape (N, \*).
 
 
-    .. code-block:: python
+    Example ::
 
-        import numpy as np
-        from temporaldata import RegularTimeSeries
+        >>> import numpy as np
+        >>> from temporaldata import RegularTimeSeries
 
-        lfp = RegularTimeSeries(
-            raw=np.zeros((1000, 128)),
-            sampling_rate=250.,
-            domain=Interval(0., 4.),
+        >>> lfp = RegularTimeSeries(
+        ...     raw=np.zeros((1000, 128)),
+        ...     sampling_rate=250.,
+        ...     domain=Interval(0., 4.),
+        ... )
+
+        >>> lfp.slice(0, 1)
+        RegularTimeSeries(
+          raw=[250, 128]
         )
 
-        lfp.slice(0, 1)
-        >>> RegularTimeSeries(
-            raw=[250, 128]
-        )
-
-        lfp.to_irregular()
-        >>> IrregularTimeSeries(
-            timestamps=[1000],
-            raw=[1000, 128]
+        >>> lfp.to_irregular()
+        IrregularTimeSeries(
+          timestamps=[1000],
+          raw=[1000, 128]
         )
     """
 
@@ -1586,48 +1574,53 @@ class Interval(ArrayDict):
             attributes.
         **kwargs: arrays that shares the same first dimension N.
 
-    .. code-block:: python
+    Example ::
 
-        import numpy as np
-        from temporaldata import Interval
+        >>> import numpy as np
+        >>> from temporaldata import Interval
 
-        intervals = Interval(
-            start=np.array([0, 1, 2]),
-            end=np.array([1, 2, 3]),
-            go_cue_time=np.array([0.5, 1.5, 2.5]),
-            drifting_gratings_dir=np.array([0, 45, 90]),
-            timekeys=["start", "end", "go_cue_time"],
+        >>> intervals = Interval(
+        ...    start=np.array([0., 1., 2.]),
+        ...    end=np.array([1., 2., 3.]),
+        ...    go_cue_time=np.array([0.5, 1.5, 2.5]),
+        ...    drifting_gratings_dir=np.array([0, 45, 90]),
+        ...    timekeys=["start", "end", "go_cue_time"],
+        ... )
+
+        >>> intervals
+        Interval(
+          start=[3],
+          end=[3],
+          go_cue_time=[3],
+          drifting_gratings_dir=[3]
         )
 
-        intervals
-        >>> Interval(
-            start=[3],
-            end=[3],
-            go_cue_time=[3],
-            drifting_gratings_dir=[3]
+        >>> intervals.keys()
+        ['start', 'end', 'go_cue_time', 'drifting_gratings_dir']
+
+        >>> intervals.is_sorted()
+        True
+
+        >>> intervals.is_disjoint()
+        True
+
+        >>> intervals.slice(1.5, 2.5)
+        Interval(
+          start=[2],
+          end=[2],
+          go_cue_time=[2],
+          drifting_gratings_dir=[2]
         )
 
-        intervals.keys()
-        >>> ['start', 'end', 'go_cue_time', 'drifting_gratings_dir']
+    An :obj:`Interval` object with a single interval can be simply created by passing
+    a single float to the :obj:`start` and :obj:`end` arguments.
 
-        intervals.is_sorted()
-        >>> True
+    Example ::
 
-        intervals.is_disjoint()
-        >>> True
-
-        intervals.slice(0.5, 2.5)
-        >>> Interval(
-            start=[2],
-            end=[2],
-            go_cue_time=[2],
-            drifting_gratings_dir=[2]
-        )
-
-        Interval(0., 1.)
-        >>> Interval(
-            start=[1],
-            end=[1]
+        >>> Interval(0., 1.)
+        Interval(
+          start=[1],
+          end=[1]
         )
 
     """
@@ -1672,7 +1665,7 @@ class Interval(ArrayDict):
 
     def register_timekey(self, timekey: str):
         r"""Register a new time-based attribute."""
-        if timekey not in self.keys:
+        if timekey not in self.keys():
             raise ValueError(f"'{timekey}' cannot be found in \n {self}.")
         if timekey not in self._timekeys:
             self._timekeys.append(timekey)
@@ -1704,15 +1697,16 @@ class Interval(ArrayDict):
                 # ValueError is returned if intervals are not disjoint
                 return False
             return tmp_copy.is_disjoint()
-        return np.all(self.end[:-1] <= self.start[1:])
+        return bool(np.all(self.end[:-1] <= self.start[1:]))
 
     def is_sorted(self):
         r"""Returns :obj:`True` if the intervals are sorted."""
         # check if we already know that the sequence is sorted
         # if lazy loading, we'll have to skip this check
         if self._sorted is None:
-            self._sorted = np.all(self.start[1:] >= self.start[:-1]) and np.all(
-                self.end[1:] >= self.end[:-1]
+            self._sorted = bool(
+                np.all(self.start[1:] >= self.start[:-1])
+                and np.all(self.end[1:] >= self.end[:-1])
             )
         return self._sorted
 
@@ -2038,17 +2032,17 @@ class Interval(ArrayDict):
             end: End time.
             steps: Number of samples.
 
-        .. code-block:: python
+        Example ::
 
-            from temporaldata import Interval
+            >>> from temporaldata import Interval
 
-            interval = Interval.linspace(0., 10., 100)
+            >>> interval = Interval.linspace(0., 10., 100)
 
-            interval
-            >>> Interval(
-                start=[100],
-                end=[100]
-                )
+            >>> interval
+            Interval(
+              start=[100],
+              end=[100]
+            )
         """
         timestamps = np.linspace(start, end, steps + 1, dtype=np.float64)
         return cls(
@@ -2112,15 +2106,15 @@ class Interval(ArrayDict):
         Args:
             interval_list: List of (start, end) tuples.
 
-        .. code-block:: python
+        Example ::
 
-            from temporaldata import Interval
+            >>> from temporaldata import Interval
 
-            interval_list = [(0, 1), (1, 2), (2, 3)]
-            interval = Interval.from_list(interval_list)
+            >>> interval_list = [(0, 1), (1, 2), (2, 3)]
+            >>> interval = Interval.from_list(interval_list)
 
-            interval.start, interval.end
-            >>> (array([0, 1, 2]), array([1, 2, 3]))
+            >>> interval.start, interval.end
+            (array([0., 1., 2.]), array([1., 2., 3.]))
         """
         start, end = zip(*interval_list)  # Unzip the list of tuples
         return cls(
@@ -2607,100 +2601,92 @@ class Data(object):
         end: End time.
         **kwargs: Arbitrary attributes.
 
-    .. code-block:: python
+    Example ::
 
-        import numpy as np
-        from temporaldata import (
-            ArrayDict,
-            IrregularTimeSeries,
-            RegularTimeSeries,
-            Interval,
-            Data,
+        >>> import numpy as np
+        >>> from temporaldata import (
+        ...     ArrayDict,
+        ...     IrregularTimeSeries,
+        ...     RegularTimeSeries,
+        ...     Interval,
+        ...     Data,
+        ... )
+
+        >>> data = Data(
+        ...     session_id="session_0",
+        ...     spikes=IrregularTimeSeries(
+        ...         timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
+        ...         unit_index=np.array([0, 0, 1, 0, 1, 2]),
+        ...         waveforms=np.zeros((6, 48)),
+        ...         domain=Interval(0., 3.),
+        ...     ),
+        ...     lfp=RegularTimeSeries(
+        ...         raw=np.zeros((1000, 3)),
+        ...         sampling_rate=250.,
+        ...         domain=Interval(0., 4.),
+        ...     ),
+        ...     units=ArrayDict(
+        ...         id=np.array(["unit_0", "unit_1", "unit_2"]),
+        ...         brain_region=np.array(["M1", "M1", "PMd"]),
+        ...     ),
+        ...     trials=Interval(
+        ...         start=np.array([0, 1, 2]),
+        ...         end=np.array([1, 2, 3]),
+        ...         go_cue_time=np.array([0.5, 1.5, 2.5]),
+        ...         drifting_gratings_dir=np.array([0, 45, 90]),
+        ...     ),
+        ...     drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
+        ...     domain=Interval(0., 4.),
+        ... )
+
+        >>> data
+        Data(
+        session_id='session_0',
+        spikes=IrregularTimeSeries(
+          timestamps=[6],
+          unit_index=[6],
+          waveforms=[6, 48]
+        ),
+        lfp=RegularTimeSeries(
+          raw=[1000, 3]
+        ),
+        units=ArrayDict(
+          id=[3],
+          brain_region=[3]
+        ),
+        trials=Interval(
+          start=[3],
+          end=[3],
+          go_cue_time=[3],
+          drifting_gratings_dir=[3]
+        ),
+        drifting_gratings_imgs=[8, 3, 32, 32],
         )
 
-        data = Data(
-            session_id="session_0",
-            spikes=IrregularTimeSeries(
-                timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
-                unit_index=np.array([0, 0, 1, 0, 1, 2]),
-                waveforms=np.zeros((6, 48)),
-                domain=Interval(0., 3.),
-            ),
-            lfp=RegularTimeSeries(
-                raw=np.zeros((1000, 3)),
-                sampling_rate=250.,
-                domain=Interval(0., 4.),
-            ),
-            units=ArrayDict(
-                id=np.array(["unit_0", "unit_1", "unit_2"]),
-                brain_region=np.array(["M1", "M1", "PMd"]),
-            ),
-            trials=Interval(
-                start=np.array([0, 1, 2]),
-                end=np.array([1, 2, 3]),
-                go_cue_time=np.array([0.5, 1.5, 2.5]),
-                drifting_gratings_dir=np.array([0, 45, 90]),
-            ),
-            drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
-            domain=Interval(0., 4.),
+        >>> data.slice(1, 3)
+        Data(
+        session_id='session_0',
+        spikes=IrregularTimeSeries(
+          timestamps=[3],
+          unit_index=[3],
+          waveforms=[3, 48]
+        ),
+        lfp=RegularTimeSeries(
+          raw=[500, 3]
+        ),
+        units=ArrayDict(
+          id=[3],
+          brain_region=[3]
+        ),
+        trials=Interval(
+          start=[2],
+          end=[2],
+          go_cue_time=[2],
+          drifting_gratings_dir=[2]
+        ),
+        drifting_gratings_imgs=[8, 3, 32, 32],
+        _absolute_start=1.0,
         )
-
-        data
-        >>> Data(
-            session_id='session_0',
-            spikes=IrregularTimeSeries(
-                timestamps=[6],
-                unit_index=[6],
-                waveforms=[6, 48]
-            ),
-            lfp=RegularTimeSeries(
-                raw=[1000, 3]
-            ),
-            units=ArrayDict(
-                id=[3],
-                brain_region=[3]
-            ),
-            trials=Interval(
-                start=[3],
-                end=[3],
-                go_cue_time=[3],
-                drifting_gratings_dir=[3]
-            ),
-            drifting_gratings_imgs=[8, 3, 32, 32]
-            _domain=Interval(
-                start=[1],
-                end=[1]
-            ),
-        )
-
-        data.slice(1, 3)
-        >>> Data(
-            session_id='session_0',
-            spikes=IrregularTimeSeries(
-                timestamps=[3],
-                unit_index=[3],
-                waveforms=[3, 48]
-            ),
-            lfp=RegularTimeSeries(
-                raw=[500, 3]
-            ),
-            units=ArrayDict(
-                id=[3],
-                brain_region=[3]
-            ),
-            trials=Interval(
-                start=[2],
-                end=[2],
-                go_cue_time=[2],
-                drifting_gratings_dir=[2]
-            ),
-            drifting_gratings_imgs=[8, 3, 32, 32],
-            _domain=Interval(
-                start=[1],
-                end=[1]
-            ),
-            _absolute_start=1.0,
-            )
     """
 
     _absolute_start = 0.0
@@ -2777,19 +2763,21 @@ class Data(object):
         r"""Returns the start time of this slice relative to the original start time.
         Should be 0. if the data object has not been sliced.
 
-        .. code-block:: python
+        Example ::
 
-            # Assuming `data` is a Data object that hasn't been sliced
-            data.absolute_start
-            >>> 0.0
+            >>> from temporaldata import Data
+            >>> data = Data(domain=Interval(0., 4.))
 
-            data = data.slice(1, 3)
-            data.absolute_start
-            >>> 1.0
+            >>> data.absolute_start
+            0.0
 
-            data = data.slice(0.4, 1.4)
-            data.absolute_start
-            >>> 1.4
+            >>> data = data.slice(1, 3)
+            >>> data.absolute_start
+            1.0
+
+            >>> data = data.slice(0.4, 1.4)
+            >>> data.absolute_start
+            1.4
         """
         return self._absolute_start if self.domain is not None else None
 
