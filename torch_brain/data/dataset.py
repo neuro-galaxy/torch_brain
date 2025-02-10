@@ -4,15 +4,11 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
-import copy
-import numpy as np
-import omegaconf
-
 
 import h5py
 import numpy as np
+import omegaconf
 import torch
-
 from temporaldata import Data, Interval
 
 
