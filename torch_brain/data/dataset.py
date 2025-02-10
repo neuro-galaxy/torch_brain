@@ -284,8 +284,9 @@ class Dataset(torch.utils.data.Dataset):
         sample = data.slice(start, end)
 
         sample.units.id = np.core.defchararray.add(
-            f"{sample.brainset}/{sample.session}/", sample.units.id.astype(str)
+            f"{sample.brainset.id}/{sample.session.id}/", sample.units.id.astype(str)
         )
+        sample.subject.id = f"{data.brainset.id}/{data.subject.id}"
 
         if self._check_for_data_leakage_flag and self.split is not None:
             sample._check_for_data_leakage(self.split)
@@ -317,8 +318,10 @@ class Dataset(torch.utils.data.Dataset):
             data = copy.deepcopy(data)
 
         data.units.id = np.core.defchararray.add(
-            f"{data.brainset}/{data.session}/", data.units.id.astype(str)
+            f"{data.brainset.id}/{data.session.id}/", data.units.id.astype(str)
         )
+        data.subject.id = f"{data.brainset.id}/{data.subject.id}"
+
         return data
 
     def get_sampling_intervals(self):
@@ -414,8 +417,8 @@ class Dataset(torch.utils.data.Dataset):
             data = self._data_objects[recording_id]
             unit_ids = data.units.id
             unit_ids = np.core.defchararray.add(
-                f"{data.brainset}/{data.session}/",
-                unit_ids.astype(str),
+                f"{data.brainset.id}/{data.session.id}/",
+                unit_ids.id.astype(str),
             )
             unit_ids_list.extend(unit_ids)
         return unit_ids_list
