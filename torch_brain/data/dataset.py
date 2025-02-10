@@ -1,3 +1,4 @@
+from __future__ import annotations
 import copy
 import logging
 import os
@@ -14,6 +15,7 @@ import numpy as np
 import torch
 
 from temporaldata import Data, Interval
+from torch_brain.transforms import TransformType
 
 
 @dataclass
@@ -68,51 +70,95 @@ class Dataset(torch.utils.data.Dataset):
                 >>> unit_id_prefix_fn = lambda data: f"{data.brainset.id}/{data.session.id}/"
     """
 
+    split: Optional[str] = None
+    transform: Optional[TransformType] = None
+    unit_id_prefix_fn: Optional[Callable[[Data], str]] = (None,)
     _check_for_data_leakage_flag: bool = True
     _open_files: Optional[Dict[str, h5py.File]] = None
     _data_objects: Optional[Dict[str, Data]] = None
 
-    def __init__(
-        self,
+    @classmethod
+    def from_config(
+        cls,
         root: str,
-        *,
-        config: Optional[str] = None,
-        recording_id: Optional[str] = None,
+        config: str,
         split: Optional[str] = None,
-        transform: Optional[Callable[[Data], Any]] = None,
+        transform: Optional[TransformType] = None,
         unit_id_prefix_fn: Optional[Callable[[Data], str]] = None,
-    ):
-        super().__init__()
-        self.root = root
-        self.config = config
-        self.split = split
-        self.transform = transform
-        self.unit_id_prefix_fn = unit_id_prefix_fn
+    ) -> Dataset:
+        """Creates a Dataset from a configuration file.
 
-        if config is not None:
-            assert (
-                recording_id is None
-            ), "Cannot specify recording_id when using config."
-
-            if isinstance(config, omegaconf.listconfig.ListConfig):
-                config = omegaconf.OmegaConf.to_container(config)
-            elif Path(config).is_file():
-                config = omegaconf.OmegaConf.load(config)
-            else:
-                raise ValueError(f"Could not open configuration file: '{config}'")
-
-            self.recording_dict = self._look_for_files(config)
-
-        elif recording_id is not None:
-            self.recording_dict = {
-                recording_id: {
-                    "filename": Path(self.root) / (recording_id + ".h5"),
-                    "config": {},
-                }
-            }
+        Args:
+            root: The root directory of the dataset.
+            config: The configuration file specifying the sessions to include.
+        """
+        # Parse config
+        if isinstance(config, omegaconf.listconfig.ListConfig):
+            config = omegaconf.OmegaConf.to_container(config)
+        elif Path(config).is_file():
+            config = omegaconf.OmegaConf.load(config)
         else:
-            raise ValueError("Please either specify a config file or a recording_id.")
+            raise ValueError(f"Could not open configuration file: '{config}'")
 
+        dataset = super().__new__(cls)
+        dataset.root = root
+        dataset.config = config
+        dataset.split = split
+        dataset.transform = transform
+        dataset.unit_id_prefix_fn = unit_id_prefix_fn
+        dataset.recording_dict = cls._look_for_files(root, config)
+        dataset._open_files_and_data_objects()
+
+        return dataset
+
+    @classmethod
+    def from_data_files(
+        cls,
+        filepath_dict: Dict[str, Path],
+        split: Optional[str] = None,
+        transform: Optional[TransformType] = None,
+        unit_id_prefix_fn: Optional[Callable[[Data], str]] = None,
+    ) -> Dataset:
+        r"""Create a dataset from Data h5 files.
+
+        Args:
+            filepath_dict: A dictionary mapping recording IDs (strings) to file paths containing `temporaldata.Data` objects.
+        """
+
+        dataset = super().__new__(cls)
+        dataset.split = split
+        dataset.transform = transform
+        dataset.unit_id_prefix_fn = unit_id_prefix_fn
+        dataset.recording_dict = {
+            recording_id: {"filename": filepath, "config": None}
+            for recording_id, filepath in filepath_dict.items()
+        }
+        dataset._open_files_and_data_objects()
+
+        return dataset
+
+    @classmethod
+    def from_data_objects(
+        cls,
+        data_dict: Dict[str, Data],
+        split: Optional[str] = None,
+        transform: Optional[TransformType] = None,
+        unit_id_prefix_fn: Optional[Callable[[Data], str]] = None,
+    ) -> Dataset:
+
+        dataset = super().__new__(cls)
+        dataset.split = split
+        dataset.transform = transform
+        dataset.unit_id_prefix_fn = unit_id_prefix_fn
+        dataset._data_objects = data_dict
+        dataset.recording_dict = {
+            recording_id: {"filename": None, "config": None}
+            for recording_id, _ in data_dict.items()
+        }
+
+        return dataset
+
+    def _open_files_and_data_objects(self):
         self._open_files = {
             recording_id: h5py.File(recording_info["filename"], "r")
             for recording_id, recording_info in self.recording_dict.items()
@@ -137,7 +183,10 @@ class Dataset(torch.utils.data.Dataset):
     def __del__(self):
         self._close_open_files()
 
-    def _look_for_files(self, config: omegaconf.DictConfig) -> Dict[str, Dict]:
+    @classmethod
+    def _look_for_files(
+        cls, root: str | Path, config: omegaconf.DictConfig
+    ) -> Dict[str, Dict]:
         recording_dict = {}
 
         for i, selection_list in enumerate(config):
@@ -154,7 +203,7 @@ class Dataset(torch.utils.data.Dataset):
                     raise ValueError(f"Please specify a brainset to include.")
 
                 # Get a list of all the potentially chunks in this dataset.
-                brainset_dir = Path(self.root) / subselection["brainset"]
+                brainset_dir = Path(root) / subselection["brainset"]
                 files = list(brainset_dir.glob("*.h5"))
                 session_ids = sorted([f.stem for f in files])
 
@@ -269,7 +318,7 @@ class Dataset(torch.utils.data.Dataset):
                         )
 
                     recording_dict[recording_id] = dict(
-                        filename=(Path(self.root) / (recording_id + ".h5")),
+                        filename=(Path(root) / (recording_id + ".h5")),
                         config=config,
                     )
 

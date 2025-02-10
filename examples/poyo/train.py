@@ -150,7 +150,7 @@ class DataModule(L.LightningDataModule):
 
     def setup(self, stage=None):
         train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
-        self.train_dataset = Dataset(
+        self.train_dataset = Dataset.from_config(
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="train",
@@ -160,7 +160,7 @@ class DataModule(L.LightningDataModule):
 
         eval_tokenizer = copy.copy(self.tokenizer)
         eval_tokenizer.eval = True
-        self.val_dataset = Dataset(
+        self.val_dataset = Dataset.from_config(
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="valid",
@@ -168,7 +168,7 @@ class DataModule(L.LightningDataModule):
         )
         self.val_dataset.disable_data_leakage_check()
 
-        self.test_dataset = Dataset(
+        self.test_dataset = Dataset.from_config(
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="test",
