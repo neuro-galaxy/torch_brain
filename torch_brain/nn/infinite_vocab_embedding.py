@@ -281,6 +281,9 @@ class InfiniteVocabEmbedding(nn.Module):
                 embedding.tokenizer(["apple", "cherry", "apple"])
                 >>> [1, 3, 1]
         """
+        if self.is_lazy():
+            raise ValueError("No vocabulary was initialized. Use initialize_vocab()")
+
         if isinstance(words, str):
             return self.vocab[words]
         return [self.vocab[w] for w in words]
@@ -306,6 +309,9 @@ class InfiniteVocabEmbedding(nn.Module):
                 embedding.detokenizer(2)
                 >>> 'banana'
         """
+        if self.is_lazy():
+            raise ValueError("No vocabulary was initialized. Use initialize_vocab()")
+
         return list(self.vocab.keys())[index]
 
     def is_lazy(self):
