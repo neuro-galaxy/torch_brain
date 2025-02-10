@@ -18,25 +18,30 @@ def concat(objs, sort=True):
         ValueError: If objects are not all of the same type or don't have matching keys.
         NotImplementedError: If concatenation is not implemented for the given object type.
 
-    .. code-block:: python
+    Example ::
 
-        import numpy as np
-        from temporaldata import IrregularTimeSeries, concat
+        >>> import numpy as np
+        >>> from temporaldata import IrregularTimeSeries, Interval, concat
 
-        ts1 = IrregularTimeSeries(
-            timestamps=np.array([0.0, 1.0]),
-            values=np.array([1.0, 2.0])
-        )
-        ts2 = IrregularTimeSeries(
-            timestamps=np.array([2.0, 3.0]),
-            values=np.array([3.0, 4.0])
-        )
+        >>> ts1 = IrregularTimeSeries(
+        ...     timestamps=np.array([0.0, 1.0]),
+        ...     values=np.array([1.0, 2.0]),
+        ...     domain="auto",
+        ... )
+        >>> ts2 = IrregularTimeSeries(
+        ...     timestamps=np.array([2.0, 3.0]),
+        ...     values=np.array([3.0, 4.0]),
+        ...     domain="auto",
+        ... )
 
-        ts_concat = concat([ts1, ts2])
-        >>> IrregularTimeSeries(
-            timestamps=[4],
-            values=[4]
+        >>> ts_concat = concat([ts1, ts2])
+        >>> ts_concat
+        IrregularTimeSeries(
+          timestamps=[4],
+          values=[4]
         )
+        >>> ts_concat.timestamps
+        array([0., 1., 2., 3.])
     """
     # check if all objects are of the same type
     obj_type = type(objs[0])
