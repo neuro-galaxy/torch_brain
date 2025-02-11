@@ -1,0 +1,5 @@
+encoder:
+  depth: 3
+  ffn_mult: 2
+  heads: 4
+  dropout: 0.1

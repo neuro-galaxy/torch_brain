@@ -1,0 +1,26 @@
+defaults:
+  - _default
+  - dataset: test.yaml
+  - _self_
+  
+batch_size: 64
+train_ratio: 0.8
+is_ssl: false
+
+is_eval: true
+limit_per_eval_session: 300
+eval_ratio: 0.1
+eval_seed: 0
+
+optimizer:
+  scheduler: false
+  lr: 1e-4 # [4e-5, 7e-5, 1e-4]
+  accelerate_factor: 10
+  weight_decay: 0.01  
+
+load_from_checkpoint: true
+checkpoint_path: "/nethome/aandre8/torch_brain/examples/ndt2/logs/reproduce_NDT2/xrk62j22/checkpoints/epoch=37-step=152.ckpt"
+
+new_decoder: true
+
+fragment_dataset: true

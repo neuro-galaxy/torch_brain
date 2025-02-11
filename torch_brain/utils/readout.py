@@ -1,10 +1,12 @@
 import numpy as np
 from temporaldata import Data
 
-from torch_brain.registry import ModalitySpec, MODALITIY_REGISTRY
-from torch_brain.utils import (
-    resolve_weights_based_on_interval_membership,
+from torch_brain.registry import MODALITIY_REGISTRY, ModalitySpec
+
+# here there was a circular import, might be due to isort ordering og imports (didn't dig on it)
+from torch_brain.utils.weights import (
     isin_interval,
+    resolve_weights_based_on_interval_membership,
 )
 
 

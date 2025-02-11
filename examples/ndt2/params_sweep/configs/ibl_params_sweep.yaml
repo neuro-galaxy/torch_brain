@@ -1,0 +1,80 @@
+defaults:
+  - dataset: ibl_small_10.yaml
+  - _self_
+
+wandb:
+  project: NDT2_IBL
+  enable: true
+  entity: aandre8-gatech
+  run_name: null
+
+name: ndt_ibl_sweep
+
+data_root: /home/aandre8/brainsets_private/processed/
+
+log_dir: /home/aandre8/torch_brain/examples/ndt2/logs
+
+log_every_n_steps: 1
+fast_dev_run: false
+num_sanity_val_steps: 0
+
+seed: 0
+
+is_ssl: true
+unsorted: false
+keep_M1_units: false
+
+ctx_time: 2.0
+bin_time: 0.02
+
+patch_size: [64, 1]
+pad_val: 64
+mask_ratio: 0.5
+
+model:
+  dim: 256
+  max_time_patches: 256
+  max_space_patches: 256
+  encoder:
+    depth: 3
+    ffn_mult: 2
+    heads: 4
+    dropout: 0.1
+  predictor:
+    depth: 2
+    heads: 4
+    dropout: 0.1
+    ffn_mult: 1 
+
+ctx_keys: ["session", "subject"]
+
+precision: bf16-mixed
+num_workers: 16
+batch_size: 128
+epochs: 500
+superv_batch_size: null  #  defaults to batch_size
+eval_epochs: 1
+
+optimizer:
+  lr: 0.0001
+  weight_decay: 0.001
+  scheduler: true
+  start_factor: 0.1
+  warmup_steps: 100
+  decay_steps: 2500
+  lr_min: 1e-6
+
+
+callbacks:
+  checkpoint: true
+  early_stop: true
+  patience: 100
+
+
+load_from_checkpoint: false
+
+
+custom_ndt2_data_spliter: false
+split_seed: 0
+train_ratio: 0.8
+

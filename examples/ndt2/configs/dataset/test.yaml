@@ -1,0 +1,8 @@
+- selection:
+  - brainset: odoherty_sabes_nonhuman_2017_v2
+    sessions:
+      - indy_20160407_02 # First indy session
+      - indy_20160627_01 # Original
+      - indy_20161005_06
+      - indy_20161026_03
+      - indy_20170131_02
