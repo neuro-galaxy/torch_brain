@@ -1,15 +1,8 @@
-from typing import TYPE_CHECKING
 import numpy as np
 from temporaldata import Data
 
-import torch_brain
-from torch_brain.utils import (
-    resolve_weights_based_on_interval_membership,
-    isin_interval,
-)
-
-if TYPE_CHECKING:
-    from torch_brain.registry import ModalitySpec
+from torch_brain.registry import MODALITIY_REGISTRY, ModalitySpec
+from torch_brain.utils import resolve_weights_based_on_interval_membership
 
 
 def prepare_for_readout(

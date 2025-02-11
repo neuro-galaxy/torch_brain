@@ -1,13 +1,14 @@
 import logging
-from collections import defaultdict
+from collections import defaultdict, deque
 from typing import Dict, List, Optional, Tuple
 
-import wandb
 import hydra
 import lightning as L
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn as nn
+import wandb
 from lightning.pytorch.callbacks import (
     EarlyStopping,
     LearningRateMonitor,
@@ -15,32 +16,28 @@ from lightning.pytorch.callbacks import (
     ModelSummary,
 )
 from lightning.pytorch.loggers import WandbLogger
-from torch_brain.models import (
-    BhvrDecoder,
-    ContextManager,
-    Encoder,
-    MaskManager,
-    NDT2,
-    SpikesPatchifier,
-    SslDecoder,
-)
 from omegaconf import OmegaConf, open_dict
+from temporaldata import Interval
 from torch import optim
 from torch.utils.data import DataLoader
-from transforms import FilterUnit, Ndt2Tokenizer
-from temporaldata import Interval
+
 from torch_brain.data import Dataset, collate
 from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )
-from collections import deque
-
-from torch_brain.transforms import Compose
+from torch_brain.models import (
+    NDT2,
+    BhvrDecoder,
+    ContextManager,
+    Encoder,
+    MaskManager,
+    NDT2Tokenizer,
+    SpikesPatchifier,
+    SslDecoder,
+)
+from torch_brain.transforms import Compose, FilterUnit
 from torch_brain.utils import seed_everything
-
-
-import torch.nn as nn
 
 
 class NDT2TrainWrapper(L.LightningModule):
@@ -220,7 +217,7 @@ class NDT2TrainWrapper(L.LightningModule):
 
 class DataModule(L.LightningDataModule):
     def __init__(
-        self, cfg, tokenizer: Ndt2Tokenizer, is_ssl: bool = True, unsorted: bool = True
+        self, cfg, tokenizer: NDT2Tokenizer, is_ssl: bool = True, unsorted: bool = True
     ):
         super().__init__()
 
@@ -540,7 +537,7 @@ def run_training(cfg):
             model.decoder.load_state_dict(ckpt["decoder_state_dict"])
 
     ctx_tokenizer = ctx_manager.get_ctx_tokenizer()
-    tokenizer = Ndt2Tokenizer(
+    tokenizer = NDT2Tokenizer(
         ctx_time=cfg.ctx_time,
         bin_time=cfg.bin_time,
         patch_size=cfg.patch_size,

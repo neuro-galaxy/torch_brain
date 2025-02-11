@@ -2,7 +2,6 @@ import re
 from typing import Callable, Pattern, Union
 
 import numpy as np
-
 from temporaldata import ArrayDict, Data, IrregularTimeSeries, RegularTimeSeries
 
 
