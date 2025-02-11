@@ -259,9 +259,7 @@ class DataModule(L.LightningDataModule):
 
         self.log.info(f"Training on {len(train_sampler)} samples")
         self.log.info(f"Training on {len(self.train_dataset.get_unit_ids())} units")
-        self.log.info(
-            f"Training on {len(self.train_dataset.get_session_ids())} sessions"
-        )
+        self.log.info(f"Training on {len(self.get_session_ids())} sessions")
 
         return train_loader
 

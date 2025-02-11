@@ -3,7 +3,7 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 import copy
 import numpy as np
 import omegaconf
@@ -23,6 +23,11 @@ class DatasetIndex:
     recording_id: str
     start: float
     end: float
+
+
+default_session_id_prefix_fn = lambda data: f"{data.brainset.id}/"
+default_unit_id_prefix_fn = lambda data: f"{data.brainset.id}/{data.session.id}/"
+default_subject_id_prefix_fn = lambda data: f"{data.brainset.id}/"
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -61,6 +66,15 @@ class Dataset(torch.utils.data.Dataset):
             in a session based on a predefined split.
         transform: A transform to apply to the data. This transform should be a callable
             that takes a Data object and returns a Data object.
+        unit_id_prefix_fn:
+            A function to generate prefix strings for unit IDs to ensure uniqueness across
+            the dataset. It takes a Data object as input and returns a string that would be
+            prefixed to all unit ids in that Data object.
+            Default corresponds to the function `lambda data: f"{data.brainset.id}/{data.session.id}/"`
+        session_id_prefix_fn: Same as unit_id_prefix_fn but for session ids.
+            Default corresponds to the function `lambda data: f"{data.brainset.id}/"`
+        subject_id_prefix_fn: Same as unit_id_prefix_fn but for subject ids.
+            Default corresponds to the function `lambda data: f"{data.brainset.id}/"`
     """
 
     _check_for_data_leakage_flag: bool = True
@@ -74,13 +88,19 @@ class Dataset(torch.utils.data.Dataset):
         config: Optional[str] = None,
         recording_id: Optional[str] = None,
         split: Optional[str] = None,
-        transform=None,
+        transform: Optional[Callable[[Data], Any]] = None,
+        unit_id_prefix_fn: Callable[[Data], str] = default_unit_id_prefix_fn,
+        session_id_prefix_fn: Callable[[Data], str] = default_session_id_prefix_fn,
+        subject_id_prefix_fn: Callable[[Data], str] = default_subject_id_prefix_fn,
     ):
         super().__init__()
         self.root = root
         self.config = config
         self.split = split
         self.transform = transform
+        self.unit_id_prefix_fn = unit_id_prefix_fn
+        self.session_id_prefix_fn = session_id_prefix_fn
+        self.subject_id_prefix_fn = subject_id_prefix_fn
 
         if config is not None:
             assert (
@@ -284,16 +304,12 @@ class Dataset(torch.utils.data.Dataset):
         # note there should be no issues as long as the self._data_objects stay lazy
         sample = data.slice(start, end)
 
-        sample.units.id = np.core.defchararray.add(
-            f"{sample.brainset.id}/{sample.session.id}/", sample.units.id.astype(str)
-        )
-        sample.subject.id = f"{data.brainset.id}/{data.subject.id}"
-
         if self._check_for_data_leakage_flag and self.split is not None:
             sample._check_for_data_leakage(self.split)
 
-        sample.session = recording_id  # TODO: update to recording
+        self._update_data_with_prefixed_ids(sample)
         sample.config = self.recording_dict[recording_id]["config"]
+
         return sample
 
     def get_recording_data(self, recording_id: str):
@@ -318,11 +334,7 @@ class Dataset(torch.utils.data.Dataset):
         else:
             data = copy.deepcopy(data)
 
-        data.units.id = np.core.defchararray.add(
-            f"{data.brainset.id}/{data.session.id}/", data.units.id.astype(str)
-        )
-        data.subject.id = f"{data.brainset.id}/{data.subject.id}"
-
+        self._update_data_with_prefixed_ids(data)
         return data
 
     def get_sampling_intervals(self):
@@ -375,61 +387,50 @@ class Dataset(torch.utils.data.Dataset):
             ans[recording_id] = self.recording_dict[recording_id]["config"]
         return ans
 
-    def get_session_ids(self):
-        r"""Returns the session ids of the dataset."""
-        return sorted(list(self.recording_dict.keys()))
+    def _get_unit_ids_with_prefix(self, data: Data) -> np.ndarray:
+        r"""Return unit ids with prefix applied"""
+        prefix_str = self.unit_id_prefix_fn(data)
+        return np.core.defchararray.add(prefix_str, data.units.id.astype(str))
 
-    # def get_unit_ids(self):
-    #     r"""Returns the unit ids of the dataset."""
-    #     unit_ids = []
-    #     for recording_id in self._data_objects.keys():
-    #         data = copy.copy(self._data_objects[recording_id])
+    def _get_session_id_with_prefix(self, data: Data) -> str:
+        r"""Return session id with prefix applied"""
+        return f"{self.session_id_prefix_fn(data)}{data.session.id}"
 
-    #         supported_formats = ["brainset/session/unit", "brainset/device/unit"]
-    #         unit_ids_format = self.recording_dict[recording_id]["config"].get(
-    #             "unit_ids_format", "brainset/session/unit"
-    #         )
-    #         if unit_ids_format == "brainset/session/unit":
-    #             unit_ids.extend(
-    #                 [
-    #                     f"{data.brainset.id}/{data.session.id}/{unit_id}"
-    #                     for unit_id in data.units.id
-    #                 ]
-    #             )
-    #         elif unit_ids_format == "brainset/device/unit":
-    #             unit_ids.extend(
-    #                 [
-    #                     f"{data.brainset.id}/{data.device.id}/{unit_id}"
-    #                     for unit_id in data.units.id
-    #                 ]
-    #             )
-    #         else:
-    #             raise ValueError(
-    #                 f"unit_ids_format {unit_ids_format} is not supported. Supported formats are: {supported_formats}"
-    #             )
+    def _get_subject_id_with_prefix(self, data: Data) -> str:
+        r"""Return subject with prefix applied"""
+        return f"{self.subject_id_prefix_fn(data)}{data.subject.id}"
 
-    #     unit_ids = sorted(list(set(unit_ids)))
-    #     return unit_ids
+    def _update_data_with_prefixed_ids(self, data: Data):
+        r"""Inplace add prefixes to unit ids, session id, and subect id"""
+        if hasattr(data, "units"):
+            data.units.id = self._get_unit_ids_with_prefix(data)
+
+        if hasattr(data, "session"):
+            data.session.id = self._get_session_id_with_prefix(data)
+
+        if hasattr(data, "subject"):
+            data.subject.id = self._get_subject_id_with_prefix(data)
 
     def get_unit_ids(self):
         r"""Returns all unit ids in the dataset."""
         unit_ids_list = []
-        for recording_id in self.recording_dict.keys():
-            data = self._data_objects[recording_id]
-            unit_ids = data.units.id
-            unit_ids = np.core.defchararray.add(
-                f"{data.brainset.id}/{data.session.id}/",
-                unit_ids.astype(str),
-            )
+        for data in self._data_objects.values():
+            unit_ids = self._get_unit_ids_with_prefix(data)
             unit_ids_list.extend(unit_ids)
         return unit_ids_list
+
+    def get_session_ids(self):
+        r"""Returns the session ids of the dataset."""
+        ans = []
+        for data in self._data_objects.values():
+            ans.append(self._get_session_id_with_prefix(data))
+        return sorted(ans)
 
     def get_subject_ids(self):
         r"""Returns all subject ids in the dataset."""
         subject_ids = []
-        for recording_id in self.recording_dict.keys():
-            data = self._data_objects[recording_id]
-            subject_ids.append(f"{data.brainset.id}/{data.subject.id}")
+        for data in self._data_objects.values():
+            subject_ids.append(self._get_subject_id_with_prefix(data))
         return sorted(list(set(subject_ids)))
 
     def disable_data_leakage_check(self):

@@ -1,6 +1,7 @@
 import pytest
 import torch
 import numpy as np
+from dataclasses import dataclass
 from unittest.mock import Mock
 from temporaldata import Data, IrregularTimeSeries, Interval, ArrayDict
 
@@ -45,6 +46,11 @@ def model(task_specs):
     model.session_emb.initialize_vocab(np.arange(10))
 
     return model
+
+
+@dataclass
+class SimpleSessionDescription:
+    id: str
 
 
 def test_poyo_plus_forward(model):
@@ -98,7 +104,7 @@ def test_poyo_plus_tokenizer(task_specs):
             domain="auto",
         ),
         units=ArrayDict(id=np.array(["unit1", "unit2", "unit3"])),
-        session="session1",
+        session=SimpleSessionDescription(id="session1"),
         # Add config matching the YAML structure
         config={
             "multitask_readout": [
@@ -179,7 +185,8 @@ def test_poyo_plus_tokenizer_to_model(task_specs, model):
             start=np.array([0, 0.5]),
             end=np.array([0.1, 0.55]),
         ),
-        session="session1",
+        recording_id="test/session1",
+        session=SimpleSessionDescription(id="session1"),
         config={
             "multitask_readout": [
                 {

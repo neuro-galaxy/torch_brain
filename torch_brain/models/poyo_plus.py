@@ -318,7 +318,7 @@ class POYOPlusTokenizer:
         )
 
         ### prepare outputs
-        session_index = self.session_tokenizer(data.session)
+        session_index = self.session_tokenizer(data.session.id)
 
         (
             output_timestamps,
@@ -353,7 +353,7 @@ class POYOPlusTokenizer:
 
         if self.eval:
             # we will add a few more fields needed for evaluation
-            batch["session_id"] = data.session
+            batch["session_id"] = data.session.id
             batch["absolute_start"] = data.absolute_start
             batch["eval_mask"] = chain(output_eval_mask, allow_missing_keys=True)
 
