@@ -45,3 +45,7 @@ jobs:
         source venv/bin/activate
         export WANDB_MODE=dryrun
         pytest tests/
+    - name: Test documentation
+      run: |
+        source venv/bin/activate
+        pytest --doctest-modules torch_brain/ -v

@@ -11,7 +11,7 @@ class RotaryEmbedding(nn.Module):
     The frequencies are computed as follows:
 
     .. math::
-        f(i) = {t_{\min}} \cdot \frac{t_{\max}}{t_\{min}}^{2i/dim}}
+        f(i) = {t_{\min}} \cdot \frac{t_{\max}}{t_{\min}}^{2i/dim}
 
     To rotate the input data, use :func:`apply_rotary_pos_emb`.
 

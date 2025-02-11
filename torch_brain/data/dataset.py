@@ -30,20 +30,21 @@ class Dataset(torch.utils.data.Dataset):
     corresponds to a full recording. It is never fully loaded into memory, but rather
     lazy-loaded on-the-fly from disk.
 
-    The dataset can be indexed by a recording id and a start and end time using the `get`
-    method, or by a DatasetIndex object. This definition is a deviation from the standard
-    PyTorch Dataset definition, which generally presents the dataset directly as samples.
+    The dataset can be indexed by a recording id and a start and end times using the `get`
+    method. This definition is a deviation from the standard PyTorch Dataset definition,
+    which generally presents the dataset directly as samples.
     In this case, the Dataset by itself does not provide you with samples, but rather the
-    means to flexibly work and access complete sessions.
+    means to flexibly work and access complete recordings.
+
     Within this framework, it is the job of the sampler to provide a list of
-    DatasetIndex objects that are used to slice the dataset into samples (see
-    `torch_brain.data.sampler`).
+    :class:`DatasetIndex` objects that are used to slice the dataset into samples (see
+    Samplers).
 
     The lazy loading is done both in:
-    - time: only the requested time interval is loaded, without having to load the entire
-      recording into memory, and
-    - attributes: attributes are not loaded until they are requested, this is useful when
-      only a small subset of the attributes are actually needed.
+        - time: only the requested time interval is loaded, without having to load the entire
+          recording into memory, and
+        - attributes: attributes are not loaded until they are requested, this is useful when
+          only a small subset of the attributes are actually needed.
 
     References to the underlying hdf5 files will be opened, and will only be closed when
     the Dataset object is destroyed.

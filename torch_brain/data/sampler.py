@@ -275,18 +275,25 @@ class DistributedSamplerWrapper(torch.utils.data.Sampler):
     r"""Wraps a sampler to be used in a distributed setting. This sampler will
     only return indices that are assigned to the current process based on the
     rank and num_replicas.
+
     Args:
         sampler (torch.utils.data.Sampler): The original sampler to wrap.
         num_replicas (int): Number of processes participating in the distributed
             training.
         rank (int): Rank of the current process.
-    Example:
-        >>> sampler = SequentialFixedWindowSampler(interval_dict, window_length=10)
+
+    Example ::
+
+        >>> from torch_brain.data.sampler import SequentialFixedWindowSampler, DistributedSamplerWrapper
+
+        >>> interval_dict = {
+        ...     "session_1": Interval(0, 100),
+        ...     "session_2": Interval(0, 100),
+        ... }
+
+        >>> sampler = SequentialFixedWindowSampler(interval_dict=interval_dict, window_length=10)
         >>> dist_sampler = DistributedSamplerWrapper(sampler)
-        >>> loader = torch.utils.data.DataLoader(dataset, sampler=dist_sampler)
-        # Before starting the training loop, set the rank and num_replicas attributes:
-        >>> dist_sampler.set_params(trainer.world_size, trainer.global_rank)
-        # Now use it
+
     """
 
     def __init__(self, sampler, num_replicas=None, rank=None):

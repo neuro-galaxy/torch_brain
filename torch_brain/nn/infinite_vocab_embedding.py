@@ -74,20 +74,20 @@ class InfiniteVocabEmbedding(nn.Module):
         Args:
             vocab (List[str]): A list of words to initialize the vocabulary.
 
-        .. code-block:: python
+        Example ::
 
-            from kirby.nn import InfiniteVocabEmbedding
+            >>> from torch_brain.nn import InfiniteVocabEmbedding
 
-            embedding = InfiniteVocabEmbedding(64)
+            >>> embedding = InfiniteVocabEmbedding(64)
 
-            vocab = ["apple", "banana", "cherry"]
-            embedding.initialize_vocab(vocab)
+            >>> vocab = ["apple", "banana", "cherry"]
+            >>> embedding.initialize_vocab(vocab)
 
-            embedding.vocab
-            >>> OrderedDict([('NA', 0), ('apple', 1), ('banana', 2), ('cherry', 3)])
+            >>> embedding.vocab
+            OrderedDict([('NA', 0), ('apple', 1), ('banana', 2), ('cherry', 3)])
 
-            embedding.weight.shape
-            >>> torch.Size([4, 64])
+            >>> embedding.weight.shape
+            torch.Size([4, 64])
         """
         assert (
             self.vocab is None
@@ -120,24 +120,26 @@ class InfiniteVocabEmbedding(nn.Module):
             exist_ok (bool): If True, the method will not raise an error if the new words
                 already exist in the vocabulary and will skip them. Default is False.
 
-        .. code-block:: python
+        Example ::
 
-            from kirby.nn import InfiniteVocabEmbedding
+            >>> from torch_brain.nn import InfiniteVocabEmbedding
 
-            embedding = InfiniteVocabEmbedding(64)
+            >>> embedding = InfiniteVocabEmbedding(64)
 
-            vocab = ["apple", "banana", "cherry"]
-            embedding.initialize_vocab(vocab)
+            >>> vocab = ["apple", "banana", "cherry"]
+            >>> embedding.initialize_vocab(vocab)
+            >>> embedding
+            InfiniteVocabEmbedding(embedding_dim=64, num_embeddings=4)
 
-            new_words = ["date", "elderberry", "fig"]
-            embedding.extend_vocab(new_words)
+            >>> new_words = ["date", "elderberry", "fig"]
+            >>> embedding.extend_vocab(new_words)
+            InfiniteVocabEmbedding(embedding_dim=64, num_embeddings=7)
 
-            embedding.vocab
-            >>> OrderedDict([('NA', 0), ('apple', 1), ('banana', 2), ('cherry', 3),
-            ('date', 4), ('elderberry', 5), ('fig', 6)])
+            >>> embedding.vocab
+            OrderedDict([('NA', 0), ('apple', 1), ('banana', 2), ('cherry', 3), ('date', 4), ('elderberry', 5), ('fig', 6)])
 
-            embedding.weight.shape
-            >>> torch.Size([7, 64])
+            >>> embedding.weight.shape
+            torch.Size([7, 64])
         """
         if self.is_lazy():
             raise ValueError("No vocabulary was initialized. Use initialize_vocab()")
@@ -203,23 +205,26 @@ class InfiniteVocabEmbedding(nn.Module):
                 matrix in place. If False, a new InfiniteVocabEmbedding will be returned
                 with the selected words. Default is True.
 
-        .. code-block:: python
+        Example ::
 
-            from kirby.nn import InfiniteVocabEmbedding
+            >>> from torch_brain.nn import InfiniteVocabEmbedding
 
-            embedding = InfiniteVocabEmbedding(64)
+            >>> embedding = InfiniteVocabEmbedding(64)
 
-            vocab = ["apple", "banana", "cherry"]
-            embedding.initialize_vocab(vocab)
+            >>> vocab = ["apple", "banana", "cherry"]
+            >>> embedding.initialize_vocab(vocab)
+            >>> embedding
+            InfiniteVocabEmbedding(embedding_dim=64, num_embeddings=4)
 
-            selected_words = ["banana", "cherry"]
-            embedding.subset_vocab(selected_words)
+            >>> selected_words = ["banana", "cherry"]
+            >>> embedding.subset_vocab(selected_words)
+            InfiniteVocabEmbedding(embedding_dim=64, num_embeddings=3)
 
-            embedding.vocab
-            >>> OrderedDict([('NA', 0), ('banana', 1), ('cherry', 2)])
+            >>> embedding.vocab
+            OrderedDict([('NA', 0), ('banana', 1), ('cherry', 2)])
 
-            embedding.weight.shape
-            >>> torch.Size([3, 64])
+            >>> embedding.weight.shape
+            torch.Size([3, 64])
         """
         if self.is_lazy():
             raise ValueError("No vocabulary was initialized. Use initialize_vocab()")
@@ -266,20 +271,20 @@ class InfiniteVocabEmbedding(nn.Module):
         Returns:
             Union[int, List[int]]: A token index or a list of token indices.
 
-        .. code-block:: python
+        Example ::
 
-                from kirby.nn import InfiniteVocabEmbedding
+            >>> from torch_brain.nn import InfiniteVocabEmbedding
 
-                embedding = InfiniteVocabEmbedding(64)
+            >>> embedding = InfiniteVocabEmbedding(64)
 
-                vocab = ["apple", "banana", "cherry"]
-                embedding.initialize_vocab(vocab)
+            >>> vocab = ["apple", "banana", "cherry"]
+            >>> embedding.initialize_vocab(vocab)
 
-                embedding.tokenizer("banana")
-                >>> 2
+            >>> embedding.tokenizer("banana")
+            2
 
-                embedding.tokenizer(["apple", "cherry", "apple"])
-                >>> [1, 3, 1]
+            >>> embedding.tokenizer(["apple", "cherry", "apple"])
+            [1, 3, 1]
         """
         if self.is_lazy():
             raise ValueError("No vocabulary was initialized. Use initialize_vocab()")
@@ -297,17 +302,17 @@ class InfiniteVocabEmbedding(nn.Module):
         Returns:
             str: A word.
 
-        .. code-block:: python
+        Example ::
 
-                from kirby.nn import InfiniteVocabEmbedding
+            >>> from torch_brain.nn import InfiniteVocabEmbedding
 
-                embedding = InfiniteVocabEmbedding(64)
+            >>> embedding = InfiniteVocabEmbedding(64)
 
-                vocab = ["apple", "banana", "cherry"]
-                embedding.initialize_vocab(vocab)
+            >>> vocab = ["apple", "banana", "cherry"]
+            >>> embedding.initialize_vocab(vocab)
 
-                embedding.detokenizer(2)
-                >>> 'banana'
+            >>> embedding.detokenizer(2)
+            'banana'
         """
         if self.is_lazy():
             raise ValueError("No vocabulary was initialized. Use initialize_vocab()")
@@ -317,20 +322,20 @@ class InfiniteVocabEmbedding(nn.Module):
     def is_lazy(self):
         r"""Returns True if the module is not initialized.
 
-        .. code-block:: python
+        Example ::
 
-            from kirby.nn import InfiniteVocabEmbedding
+            >>> from torch_brain.nn import InfiniteVocabEmbedding
 
-            embedding = InfiniteVocabEmbedding(64)
+            >>> embedding = InfiniteVocabEmbedding(64)
 
-            embedding.is_lazy()
-            >>> True
+            >>> embedding.is_lazy()
+            True
 
-            vocab = ["apple", "banana", "cherry"]
-            embedding.initialize_vocab(vocab)
+            >>> vocab = ["apple", "banana", "cherry"]
+            >>> embedding.initialize_vocab(vocab)
 
-            embedding.is_lazy()
-            >>> False
+            >>> embedding.is_lazy()
+            False
         """
         return isinstance(self.weight, UninitializedParameter)
 

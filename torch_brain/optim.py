@@ -25,13 +25,6 @@ class SparseLamb(Optimizer):
             into Adam. Useful for comparison purposes. (default: False)
         debias: debias adam by (1 - beta**step) (default: False)
 
-    Example:
-        >>> import torch_optimizer as optim
-        >>> optimizer = optim.Lamb(model.parameters(), lr=0.1)
-        >>> optimizer.zero_grad()
-        >>> loss_fn(model(input), target).backward()
-        >>> optimizer.step()
-
     __ https://arxiv.org/abs/1904.00962
 
     Note:

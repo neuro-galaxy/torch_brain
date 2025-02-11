@@ -24,8 +24,8 @@ from torch_brain.utils import (
 
 
 class POYO(nn.Module):
-    """POYO model from `"A Unified, Scalable Framework for Neural Population Decoding"
-    <https://arxiv.org/abs/2310.16046>`.
+    """POYO model from `Azabou et al. 2023, A Unified, Scalable Framework for Neural Population Decoding
+    <https://arxiv.org/abs/2310.16046>`_.
 
     POYO is a transformer-based model for neural decoding from electrophysiological
     recordings.
