@@ -7,7 +7,6 @@ import lightning as L
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torch_optimizer import Lamb
 from lightning.pytorch.callbacks import (
     LearningRateMonitor,
     ModelCheckpoint,
@@ -18,6 +17,7 @@ from temporaldata import Data
 
 from torch_brain.registry import MODALITIY_REGISTRY, ModalitySpec
 from torch_brain.models.poyo import POYOTokenizer, poyo_mp
+from torch_brain.optim import SparseLamb
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
 from torch_brain.utils.stitcher import DecodingStitchEvaluator
@@ -53,8 +53,21 @@ class TrainWrapper(L.LightningModule):
     def configure_optimizers(self):
         max_lr = self.cfg.optim.base_lr * self.cfg.batch_size  # linear scaling rule
 
-        optimizer = Lamb(
-            self.model.parameters(),
+        special_emb_params = list(self.model.unit_emb.parameters()) + list(
+            self.model.session_emb.parameters()
+        )
+
+        remaining_params = [
+            p
+            for n, p in self.model.named_parameters()
+            if "unit_emb" not in n and "session_emb" not in n
+        ]
+
+        optimizer = SparseLamb(
+            [
+                {"params": special_emb_params, "sparse": True},
+                {"params": remaining_params},
+            ],
             lr=max_lr,
             weight_decay=self.cfg.optim.weight_decay,
         )
