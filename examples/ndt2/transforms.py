@@ -14,7 +14,6 @@ from torch_brain.data import pad, track_mask
 from ibl.eval_utils import bin_behaviors
 
 
-# TODO rename
 class FilterUnit:
     r"""
     Drop (or keep) units whose ids has the `keyword` given in the constructor.
@@ -27,7 +26,6 @@ class FilterUnit:
         self.keep = keep
 
     def __call__(self, data: Data) -> Data:
-        # get units from data
         unit_ids = data.units.id
         num_units = len(unit_ids)
 
@@ -38,7 +36,6 @@ class FilterUnit:
             keep_unit_mask = no_keywork_unit
 
         if keep_unit_mask.all():
-            # Nothing to drop
             return data
 
         keep_indices = np.where(keep_unit_mask)[0]
@@ -50,8 +47,7 @@ class FilterUnit:
             # make a mask to select spikes that are from the units we want to keep
             spike_mask = np.isin(target_obj.unit_index, keep_indices)
 
-            # using lazy masking, we will apply the mask for all attributes from spikes
-            # and units.
+            # using lazy masking, we will apply the mask for all attributes from spikes and units
             setattr(data, self.field, target_obj.select_by_mask(spike_mask))
 
             relabel_map = np.zeros(num_units, dtype=int)
@@ -115,14 +111,18 @@ class Ndt2Tokenizer:
             # nb_units = chan_nb_mapper.max() + 1
             nb_units = 96
 
-        # TODO fix this need to call timestamsp
-        spikes.timestamps
+        # before was using this hack spikes.timestamps to load data
+        # do we agree using materialize is the clean way to do it?
+        # spikes.materialize()
 
         # -- Bin spikes
-        try:
-            t_binned = bin_spikes(spikes, nb_units, self.bin_time)
-        except:
-            t_binned = np.zeros((1, self.num_bins))
+        # try:
+        #     t_binned = bin_spikes(spikes, nb_units, self.bin_time)
+        # except:
+        #     print("Error in bin_spikes")
+        #     t_binned = np.zeros((1, self.num_bins))
+
+        t_binned = bin_spikes(spikes, nb_units, self.bin_time)
 
         t_binned = torch.tensor(t_binned, dtype=torch.int32)
 
@@ -130,9 +130,9 @@ class Ndt2Tokenizer:
         spikes, time_idx, space_idx, channel_counts = self.patchify(t_binned)
         spike_data = {
             "spike_tokens": pad(spikes),
+            "spike_tokens_mask": track_mask(spikes),
             "time_idx": pad(time_idx),
             "space_idx": pad(space_idx),
-            "spike_tokens_mask": track_mask(spikes),
             "channel_counts": pad(channel_counts),
         }
 

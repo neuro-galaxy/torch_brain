@@ -11,7 +11,7 @@ from sklearn.metrics import r2_score, accuracy_score, balanced_accuracy_score
 from torch_brain.nn import InfiniteVocabEmbedding
 
 
-class MaeMaskManager(nn.Module):
+class MaskManager(nn.Module):
     def __init__(self, mask_ratio: float):
         super().__init__()
         self.mask_ratio = mask_ratio
@@ -19,7 +19,6 @@ class MaeMaskManager(nn.Module):
     def forward(
         self, batch: Dict[str, torch.Tensor], eval_mode: bool = False
     ) -> Dict[str, torch.Tensor]:
-        # -- Mask
         if self.mask_ratio is None:
             return batch
 
@@ -46,30 +45,6 @@ class MaeMaskManager(nn.Module):
         return batch
 
 
-class SpikesPatchifier(nn.Module):
-    # TODO transfer at the cfg file
-    def __init__(self, dim, patch_size=(32, 1), max_neuron_count=100, pad=5):
-        """
-        Args:
-            dim (Int): Dimension of the output patchified tensor
-            patch_size (Tuple[Int, Int]): (num_neurons, num_time_bins)
-            max_time_patches (Int): Maximum number of time patches
-            max_space_patches (Int): Maximum number of space patches
-        """
-        super().__init__()
-        spike_embed_dim = round(dim / patch_size[0])
-        self.readin = nn.Embedding(max_neuron_count, spike_embed_dim, padding_idx=pad)
-
-    def forward(self, spikes):
-        """
-        Args:
-            x (torch.Tensor): Binned spikes (bs, T, patch_size[0], patch_size[1])
-        Returns: (NxT, D)
-        """
-        x = rearrange(spikes, "bs T Pn Pt -> bs T (Pn Pt)")
-        return self.readin(x).flatten(-2, -1)
-
-
 class ContextManager(nn.Module):
     def __init__(
         self,
@@ -78,7 +53,7 @@ class ContextManager(nn.Module):
     ):
         super().__init__()
         self.keys = ctx_keys
-        for k in self.keys:
+        for k in ctx_keys:
             setattr(self, f"{k}_emb", InfiniteVocabEmbedding(dim, init_scale=1.0))
             setattr(self, f"{k}_flag", nn.Parameter(torch.randn(dim) / math.sqrt(dim)))
 
@@ -109,6 +84,24 @@ class ContextManager(nn.Module):
         return torch.stack(ctx_emb, dim=1)
 
 
+class SpikesPatchifier(nn.Module):
+    # TODO patch_size could just be an int
+    def __init__(
+        self,
+        dim: int,
+        patch_size: Tuple[int, int],
+        max_neuron_count: int,
+        pad: int,
+    ):
+        super().__init__()
+        spike_embed_dim = round(dim / patch_size[0])
+        self.readin = nn.Embedding(max_neuron_count, spike_embed_dim, padding_idx=pad)
+
+    def forward(self, spikes):
+        x = rearrange(spikes, "bs T Pn Pt -> bs T (Pn Pt)")
+        return self.readin(x).flatten(-2, -1)
+
+
 class PositionalEncoding(nn.Module):
     def __init__(
         self,
@@ -117,7 +110,6 @@ class PositionalEncoding(nn.Module):
         max_space_patches: int,
         allow_embed_padding: bool,
     ):
-        # TODO make max_time_patches and max_space_patches in cfg
         super().__init__()
         if allow_embed_padding:
             self.time_emb = nn.Embedding(
@@ -149,14 +141,6 @@ class Transformer(nn.Module):
         pre_norm=False,
         allow_embed_padding=False,
     ):
-        """
-        Args:
-            dim (Int): Dimension of the input/output tensor
-            depth (Int): Number of Attention layers
-            heads (Int): Number of heads for MHA
-            inter_dim (Int): Dimension of the intermediate MLP layers
-            dropout (Float): Dropout rate in Attention layers
-        """
         super().__init__()
         self.dim = dim
         self.depth = depth
@@ -200,6 +184,7 @@ class Transformer(nn.Module):
         src = self.dropout_in(src)
         src = src + self.positional_encoding(times, spaces)
 
+        # TODO not a clean code
         try:
             nb_ctx_token = ctx_emb[0].shape[0]
             src = torch.cat([src, ctx_emb], dim=1)
@@ -226,8 +211,6 @@ class Transformer(nn.Module):
         src_mask = F.pad(src_mask, (0, 0, 0, nb_ctx_token), value=float("-inf"))
         src_mask = F.pad(src_mask, (0, nb_ctx_token), value=0)
 
-        # TODO check if this is needed
-        # expand along heads
         if src_mask.ndim == 3:
             src_mask = repeat(src_mask, "b t1 t2 -> (b h) t1 t2", h=self.heads)
         return src_mask
@@ -325,7 +308,7 @@ class SslDecoder(Decoder):
             pre_norm=pre_norm,
         )
 
-        self.mask_token = nn.Parameter(torch.randn(dim))
+        self.query_token = nn.Parameter(torch.randn(dim))
         self.out = nn.Sequential(nn.Linear(dim, self.neurons_per_token))
         self.loss = nn.PoissonNLLLoss(reduction="none", log_input=True)
 
@@ -340,8 +323,8 @@ class SslDecoder(Decoder):
         """
         # prepare decoder input
         b, t = batch["spike_tokens_target"].shape[:2]
-        decoder_mask_tokens = repeat(self.mask_token, "h -> b t h", b=b, t=t)
-        decoder_input = torch.cat([encoder_output, decoder_mask_tokens], dim=1)
+        decoder_query_tokens = repeat(self.query_token, "h -> b t h", b=b, t=t)
+        decoder_input = torch.cat([encoder_output, decoder_query_tokens], dim=1)
 
         # get time, space, and context
         time = torch.cat([batch["time_idx"], batch["time_idx_target"]], 1)
@@ -359,17 +342,17 @@ class SslDecoder(Decoder):
         target = batch["spike_tokens_target"].squeeze(-1)
 
         # compute rates
-        decoder_out = decoder_out[:, -target.size(1) :]
+        decoder_out = decoder_out[:, -target.shape[1] :]
         rates = self.out(decoder_out)
 
         # compute loss
-        loss: torch.Tensor = self.loss(rates, target)  # b t' c
+        loss: torch.Tensor = self.loss(rates, target)
         loss_mask = self.get_loss_mask(batch, loss)
         loss = loss[loss_mask]
         return {"loss": loss.mean()}
 
     def get_loss_mask(self, batch: Dict[str, torch.Tensor], loss: torch.Tensor):
-        loss_mask = torch.ones(loss.size(), device=loss.device, dtype=torch.bool)
+        loss_mask = torch.ones(loss.shape, device=loss.device, dtype=torch.bool)
 
         tmp = torch.arange(loss.shape[-1], device=loss.device)
         comparison = repeat(tmp, "c -> 1 t c", t=loss.shape[1])
@@ -437,14 +420,14 @@ class BhvrDecoder(Decoder):
         batch: Dict[str, torch.Tensor],
     ):
         # prepare decoder input and temporal padding mask
+
+        time = batch["time_idx"]
+        token_length = batch["spike_tokens_mask"].sum(1, keepdim=True)
+        pad_mask = self.temporal_pad_mask(encoder_out, token_length)
+        encoder_out, pad_mask = self.temporal_pool(time, encoder_out, pad_mask)
+
         bhvr_tgt = batch["bhvr"]
         bhvr_length = batch["bhvr_mask"].sum(1, keepdim=True)
-        token_length = batch["spike_tokens_mask"].sum(1, keepdim=True)
-        time = batch["time_idx"]
-
-        pad_mask = self.temporal_pad_mask(encoder_out, token_length)
-
-        encoder_out, pad_mask = self.temporal_pool(time, encoder_out, pad_mask)
         decoder_in, pad_mask = self.prepare_decoder_input(
             bhvr_tgt, encoder_out, pad_mask, bhvr_length
         )
@@ -454,6 +437,7 @@ class BhvrDecoder(Decoder):
 
         # decoder forward
         decoder_out: torch.Tensor
+        # detach context to avoid gradient flow and lose context calibradion from SSL
         ctx_emb = ctx_emb.detach()
 
         decoder_out = self.decoder(decoder_in, ctx_emb, time, space, pad_mask)
@@ -493,7 +477,6 @@ class BhvrDecoder(Decoder):
     def temporal_pad_mask(
         self, ref: torch.Tensor, max_lenght: torch.Tensor
     ) -> torch.Tensor:
-
         token_position = torch.arange(ref.shape[1], device=ref.device)
         token_position = rearrange(token_position, "t -> () t")
         return token_position >= max_lenght
@@ -539,7 +522,7 @@ class BhvrDecoder(Decoder):
         pad_mask: torch.Tensor,
         max_length: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        b, t = bhvr.size()[:2]
+        b, t = bhvr.shape[:2]
         query_tokens = repeat(self.query_token, "h -> b t h", b=b, t=t)
         if encoder_out.shape[1] < t:
             to_add = t - encoder_out.shape[1]
@@ -553,24 +536,6 @@ class BhvrDecoder(Decoder):
         pad_mask = torch.cat([pad_mask, query_pad_mask], dim=1)
 
         return decoder_in, pad_mask
-
-    # def get_time_space(self, bhvr: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-    #     b, t = bhvr.size()[:2]
-    #     dev = bhvr.device
-
-    #     time = repeat(torch.arange(t, device=dev), "t -> b t", b=b)
-    #     query_time = time
-    #     if self.causal and self.lag:
-    #         # allow looking N-bins of neural data into the "future";
-    #         # we back-shift during the actual decode comparison.
-    #         query_time = time + self.bhvr_lag_bins
-    #     time = torch.cat([time, query_time], dim=1)
-
-    #     # Do use space for this decoder
-    #     query_space = torch.zeros((b, t), device=dev, dtype=torch.long)
-    #     space = torch.cat([query_space, query_space], dim=1)
-
-    #     return time, space
 
     def get_time_space(
         self, encoder_out: torch.Tensor, bhvr: torch.Tensor
@@ -632,10 +597,10 @@ class BhvrDecoder(Decoder):
             raise NotImplementedError
 
 
-class NDT2Model(nn.Module):
+class NDT2(nn.Module):
     def __init__(
         self,
-        mae_mask_manager: Optional[MaeMaskManager] = None,
+        mae_mask_manager: Optional[MaskManager] = None,
         ctx_manager: Optional[ContextManager] = None,
         spikes_patchifier: Optional[SpikesPatchifier] = None,
         encoder: Optional[Encoder] = None,

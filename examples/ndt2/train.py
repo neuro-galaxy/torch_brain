@@ -9,19 +9,18 @@ import numpy as np
 import pandas as pd
 import torch
 from lightning.pytorch.callbacks import (
-    Callback,
     EarlyStopping,
     LearningRateMonitor,
     ModelCheckpoint,
     ModelSummary,
 )
 from lightning.pytorch.loggers import WandbLogger
-from model import (
+from torch_brain.models import (
     BhvrDecoder,
     ContextManager,
     Encoder,
-    MaeMaskManager,
-    NDT2Model,
+    MaskManager,
+    NDT2,
     SpikesPatchifier,
     SslDecoder,
 )
@@ -29,7 +28,6 @@ from omegaconf import OmegaConf, open_dict
 from torch import optim
 from torch.utils.data import DataLoader
 from transforms import FilterUnit, Ndt2Tokenizer
-import torch.functional as F
 from temporaldata import Interval
 from torch_brain.data import Dataset, collate
 from torch_brain.data.sampler import (
@@ -41,12 +39,11 @@ from collections import deque
 from torch_brain.transforms import Compose
 from torch_brain.utils import seed_everything
 
-log = logging.getLogger(__name__)
 
 import torch.nn as nn
 
 
-class TrainWrapper(L.LightningModule):
+class NDT2TrainWrapper(L.LightningModule):
     def __init__(self, cfg, model: nn.Module):
         super().__init__()
         self.model = model
@@ -57,13 +54,36 @@ class TrainWrapper(L.LightningModule):
             self.val_loss_smoothing = True
             self.window_size = 10
             self.loss_queue = deque(maxlen=self.window_size)
-                
-    def moving_average(self, x):
-        """
-        Computes a simple moving average over the last 'window_size' losses.
-        """
-        self.loss_queue.append(x.item())
-        return sum(self.loss_queue) / len(self.loss_queue) 
+
+    def configure_optimizers(self):
+        cfg = self.cfg.optimizer
+
+        params = self.parameters()
+        if cfg.get("accelerate_factor", 1) > 1:
+            params = self.split_params(self.named_parameters())
+        if cfg.get("freeze_encoder", False):
+            for _, param in self.model.encoder.named_parameters():
+                param.requires_grad = False
+            for _, param in self.model.spikes_patchifier.named_parameters():
+                param.requires_grad = False
+
+        optimizer = torch.optim.AdamW(params, lr=cfg.lr, weight_decay=cfg.weight_decay)
+
+        if not cfg.scheduler:
+            return {"optimizer": optimizer}
+
+        linearLR = optim.lr_scheduler.LinearLR(
+            optimizer, start_factor=cfg.start_factor, total_iters=cfg.warmup_steps
+        )
+        cosineAnnealingLR = optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=cfg.decay_steps, eta_min=cfg.lr_min
+        )
+        scheduler = optim.lr_scheduler.ChainedScheduler([linearLR, cosineAnnealingLR])
+
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {"scheduler": scheduler},
+        }
 
     def training_step(self, batch, batch_idx):
         ssl_loss = 0.0
@@ -161,6 +181,10 @@ class TrainWrapper(L.LightningModule):
             )
         return loss
 
+    # TODO not being used but could be implemented
+    # def test_step(self, batch, batch_idx):
+
+    # TODO move somewhere else
     def split_params(self, params):
         cfg = self.cfg.optimizer
         accel_flag = lambda n: "decoder" in n or "ctx_manager" in n and "_emb" in n
@@ -178,41 +202,20 @@ class TrainWrapper(L.LightningModule):
             },
         ]
 
-    def configure_optimizers(self):
-        cfg = self.cfg.optimizer
-
-        params = self.parameters()
-        if cfg.get("accelerate_factor", 1) > 1:
-            params = self.split_params(self.named_parameters())
-        if cfg.get("freeze_encoder", False):
-            for _, param in self.model.encoder.named_parameters():
-                param.requires_grad = False
-            for _, param in self.model.spikes_patchifier.named_parameters():
-                param.requires_grad = False
-
-        optimizer = torch.optim.AdamW(params, lr=cfg.lr, weight_decay=cfg.weight_decay)
-
-        if not cfg.scheduler:
-            return {"optimizer": optimizer}
-
-        linearLR = optim.lr_scheduler.LinearLR(
-            optimizer, start_factor=cfg.start_factor, total_iters=cfg.warmup_steps
-        )
-        cosineAnnealingLR = optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=cfg.decay_steps, eta_min=cfg.lr_min
-        )
-        scheduler = optim.lr_scheduler.ChainedScheduler([linearLR, cosineAnnealingLR])
-
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {"scheduler": scheduler},
-        }
-
+    # TODO move somewhere else
     def on_save_checkpoint(self, ckpt):
         ckpt["context_manager_state_dict"] = self.model.ctx_manager.state_dict()
         ckpt["spikes_patchifier_state_dict"] = self.model.spikes_patchifier.state_dict()
         ckpt["encoder_state_dict"] = self.model.encoder.state_dict()
         ckpt["decoder_state_dict"] = self.model.decoder.state_dict()
+
+    # TODO move somewhere else
+    def moving_average(self, x):
+        """
+        Computes a simple moving average over the last 'window_size' losses.
+        """
+        self.loss_queue.append(x.item())
+        return sum(self.loss_queue) / len(self.loss_queue)
 
 
 class DataModule(L.LightningDataModule):
@@ -337,6 +340,7 @@ class DataModule(L.LightningDataModule):
     def test_dataloader(self):
         return None
 
+    # TODO move somewhere else
     # The next function are utils for ndt2_custom_sampling_intervals
     def sort_sessions(self, res):
         ind = np.argsort([int(e.split("-")[1]) for e in res])
@@ -429,30 +433,6 @@ class DataModule(L.LightningDataModule):
         return train_sampling_intervals, val_sampling_intervals, eval_sampling_intervals
 
 
-def set_wandb(cfg, log) -> Optional[WandbLogger]:
-    if not cfg.wandb.enable:
-        return None
-
-    # Initialize wandb before anything else
-    wandb.init(
-        project=cfg.wandb.project,
-        entity=cfg.wandb.entity,
-        name=cfg.wandb.run_name,
-        config=OmegaConf.to_container(cfg, resolve=True),
-    )
-
-    wandb_logger = WandbLogger(
-        entity=cfg.wandb.entity,
-        project=cfg.wandb.project,
-        name=cfg.wandb.run_name,
-        save_dir=cfg.log_dir,
-        log_model=False,
-    )
-    log.info(f"Using wandb logger: {wandb_logger.version}")
-
-    return wandb_logger
-
-
 def get_ckpt(cfg):
     if cfg.get("fragment_checkpoint"):
         ses = cfg.dataset[0].selection[0]["sessions"][0]
@@ -464,13 +444,33 @@ def get_ckpt(cfg):
 
 
 def run_training(cfg):
+    # fix random seed, skipped if cfg.seed is None
     L.seed_everything(cfg.seed)
     seed_everything(cfg.seed)
 
-    if cfg.fast_dev_run:
-        cfg.wandb.enable = False
-        cfg.num_workers = 0
+    # setup loggers
+    log = logging.getLogger(__name__)
+    log.info("NDT2!")
+    wandb_logger = None
+    if cfg.wandb.enable:
+        # TODO can be reworked
+        wandb.init(
+            project=cfg.wandb.project,
+            entity=cfg.wandb.entity,
+            name=cfg.wandb.run_name,
+            config=OmegaConf.to_container(cfg, resolve=True),
+        )
 
+        wandb_logger = WandbLogger(
+            entity=cfg.wandb.entity,
+            project=cfg.wandb.project,
+            name=cfg.wandb.run_name,
+            save_dir=cfg.log_dir,
+            log_model=False,
+        )
+        log.info(f"Using wandb logger: {wandb_logger.version}")
+
+    # TODO check if needed
     with open_dict(cfg):
         # Adjust batch size for multi-gpu
         num_gpus = torch.cuda.device_count()
@@ -481,19 +481,20 @@ def run_training(cfg):
         log.info(f"Batch size per GPU: {cfg.batch_size_per_gpu}")
         log.info(f"Superv batch size per GPU: {cfg.superv_batch_size_per_gpu}")
 
-    wandb_logger = set_wandb(cfg, log)
     dim = cfg.model.dim
 
     # Mask manager (for MAE SSL)
     mae_mask_manager = None
     if cfg.is_ssl:
-        mae_mask_manager = MaeMaskManager(cfg.mask_ratio)
+        mae_mask_manager = MaskManager(cfg.mask_ratio)
 
     # Context manager
     ctx_manager = ContextManager(dim, cfg.ctx_keys)
 
     # Spikes patchifier
-    spikes_patchifier = SpikesPatchifier(dim, cfg.patch_size)
+    spikes_patchifier = SpikesPatchifier(
+        dim, cfg.patch_size, cfg.max_neuron_count, cfg.spike_pad
+    )
 
     # Encoder
     encoder = Encoder(
@@ -522,12 +523,7 @@ def run_training(cfg):
         )
 
     # Model wrap everithing
-    model = NDT2Model(
-        mae_mask_manager, ctx_manager, spikes_patchifier, encoder, decoder
-    )
-
-    # Train wrapper
-    train_wrapper = TrainWrapper(cfg, model)
+    model = NDT2(mae_mask_manager, ctx_manager, spikes_patchifier, encoder, decoder)
 
     # Tokenizer
     bhvr_dim = None
@@ -568,6 +564,9 @@ def run_training(cfg):
         # Register context
         ctx_manager.init_vocab(data_module.get_ctx_vocab(ctx_manager.keys))
 
+    # Train wrapper
+    train_wrapper = NDT2TrainWrapper(cfg, model)
+
     # Callbacks
     callbacks = [
         ModelSummary(max_depth=3),
@@ -577,6 +576,7 @@ def run_training(cfg):
         monitor = "val_loss"
         if cfg.callbacks.get("monitor_avg", False):
             monitor = "val_loss_avg"
+
         checkpoint_callback = ModelCheckpoint(
             dirpath=cfg.callbacks.checkpoint_path,
             filename=f"{cfg.wandb.run_name}",
@@ -586,6 +586,7 @@ def run_training(cfg):
             every_n_epochs=1,
         )
         callbacks.append(checkpoint_callback)
+
     if cfg.callbacks.early_stop:
         callbacks.append(
             EarlyStopping(
@@ -607,7 +608,6 @@ def run_training(cfg):
         callbacks=callbacks,
         accelerator="gpu",
         precision=cfg.precision,
-        fast_dev_run=cfg.fast_dev_run,
         num_sanity_val_steps=cfg.num_sanity_val_steps,
         strategy="ddp_find_unused_parameters_true",
     )

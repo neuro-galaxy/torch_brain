@@ -1,10 +1,10 @@
 wandb:
   project: NDT2_IBL
-  enable: true
+  enable: false
   entity: aandre8-gatech
 
-log_dir: /home/aandre8/torch_brain/examples/ndt2/logs
-data_root: /home/aandre8/brainsets_private/processed/
+log_dir: /home/hice1/aandre8/scratch/alex/logs
+data_root: /home/hice1/aandre8/scratch/alex/data/
   
 load_from_checkpoint: false
 
@@ -18,13 +18,15 @@ model:
   max_time_patches: 256
   max_space_patches: 256
 
+max_neuron_count: 100
+spike_pad: 5
+
 custom_ndt2_data_spliter: false
 unsorted: false
 keep_M1_units: false
 
 epochs: 500
 log_every_n_steps: 1
-fast_dev_run: false
 num_sanity_val_steps: 0
 
 seed: 0
@@ -38,4 +40,4 @@ callbacks:
   checkpoint: true
   early_stop: true
   patience: 100
-  checkpoint_path: /nethome/aandre8/torch_brain/examples/ndt2/logs/NDT2_IBL/checkpoints/
+  checkpoint_path: /home/hice1/aandre8/scratch/alex/checkpoints
