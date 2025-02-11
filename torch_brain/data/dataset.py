@@ -418,7 +418,7 @@ class Dataset(torch.utils.data.Dataset):
             unit_ids = data.units.id
             unit_ids = np.core.defchararray.add(
                 f"{data.brainset.id}/{data.session.id}/",
-                unit_ids.id.astype(str),
+                unit_ids.astype(str),
             )
             unit_ids_list.extend(unit_ids)
         return unit_ids_list

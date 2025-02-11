@@ -216,3 +216,117 @@ def test_get_subject_ids(dummy_data):
             "allen_neuropixels_mock/alice",
             "allen_neuropixels_mock/bob",
         ]
+
+
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
+def test_get_sampling_intervals(dummy_data):
+    ds = Dataset(
+        dummy_data,
+        split=None,
+        recording_id="allen_neuropixels_mock/20100102_1",
+    )
+
+    intervals = ds.get_sampling_intervals()
+    assert len(intervals) == 1
+    assert "allen_neuropixels_mock/20100102_1" in intervals
+
+
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
+def test_get_unit_ids(dummy_data):
+    ds = Dataset(
+        dummy_data,
+        split=None,
+        recording_id="allen_neuropixels_mock/20100102_1",
+    )
+    unit_ids = ds.get_unit_ids()
+    assert len(unit_ids) == 3
+    assert "allen_neuropixels_mock/20100102_1/unit1" in unit_ids
+    assert "allen_neuropixels_mock/20100102_1/unit2" in unit_ids
+
+
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
+def test_get_recording_config_dict(dummy_data):
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".yaml") as temp_config_file:
+        config = [
+            {
+                "selection": [{"brainset": "allen_neuropixels_mock"}],
+                "config": {"test_param": 123},
+            }
+        ]
+        yaml.dump(
+            config,
+            temp_config_file,
+            encoding="utf-8",
+            allow_unicode=True,
+        )
+        temp_config_file.flush()
+        ds = Dataset(
+            str(dummy_data),
+            split=None,
+            config=temp_config_file.name,
+        )
+        config_dict = ds.get_recording_config_dict()
+        assert "allen_neuropixels_mock/20100102_1" in config_dict
+        assert config_dict["allen_neuropixels_mock/20100102_1"]["test_param"] == 123
+
+
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
+def test_get_session_ids(dummy_data):
+    ds = Dataset(
+        dummy_data,
+        split=None,
+        recording_id="allen_neuropixels_mock/20100102_1",
+    )
+    session_ids = ds.get_session_ids()
+    assert len(session_ids) == 1
+    assert "allen_neuropixels_mock/20100102_1" in session_ids
+
+
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
+def test_get_recording_data(dummy_data):
+    ds = Dataset(
+        dummy_data,
+        split=None,
+        recording_id="allen_neuropixels_mock/20100102_1",
+    )
+    data = ds.get_recording_data("allen_neuropixels_mock/20100102_1")
+
+    # Check basic properties
+    assert data.brainset.id == "allen_neuropixels_mock"
+    assert data.session.id == "20100102_1"
+    assert data.subject.id == "allen_neuropixels_mock/alice"
+
+    # Check data fields
+    assert hasattr(data, "running_speed")
+    assert hasattr(data, "gabors")
+    assert hasattr(data, "spikes")
+
+
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
+def test_get_slice(dummy_data):
+    ds = Dataset(
+        dummy_data,
+        split=None,
+        recording_id="allen_neuropixels_mock/20100102_1",
+    )
+
+    # Get a slice from 0.2 to 0.4 seconds
+    data = ds.get("allen_neuropixels_mock/20100102_1", 0.2, 0.4)
+
+    # Check basic properties
+    assert data.brainset.id == "allen_neuropixels_mock"
+    assert data.session == "allen_neuropixels_mock/20100102_1"
+    assert data.subject.id == "allen_neuropixels_mock/alice"
+
+
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
+def test_disable_data_leakage_check(dummy_data):
+    ds = Dataset(
+        dummy_data,
+        split="train",
+        recording_id="allen_neuropixels_mock/20100102_1",
+    )
+
+    assert ds._check_for_data_leakage_flag == True
+    ds.disable_data_leakage_check()
+    assert ds._check_for_data_leakage_flag == False
