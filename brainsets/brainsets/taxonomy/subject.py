@@ -12,7 +12,7 @@ class Species(StringIntEnum):
 
 class Sex(StringIntEnum):
     r"""Follows the DANDI definition of sex.
-    [Link](https://www.dandiarchive.org/handbook/135_validation/#missing-dandi-metadata)
+    [Link](https://docs.dandiarchive.org/135_validation/#missing-dandi-metadata)
     """
 
     UNKNOWN = U = 0
