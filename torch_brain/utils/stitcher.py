@@ -96,32 +96,20 @@ class DecodingStitchEvaluator:
      3. (Optional) You are training on multiple sessions/recordings and want to
         compute metrics for each session individually.
 
-    This callback handles the stitching of the predictions and targets for each
+    This class handles stitching of the predictions and targets for each
     session and computes the metric for each session. The average metric value
     across all sessions is also computed and logged.
     Since the stitching is done only on tensors on the same GPU, sequences that are
     split across multiple GPUs will not be stitched together. In this case, it is
     recommended to use a stitching-aware sampler like
-    `DistributedStitchingFixedWindowSampler` which ensures that the sequences are
-    split across GPUs in a way that allows for correct stitching.
-
-    This callback is called _after_ the validation_step, and has two main inputs:
-    - The output of the validation_step function, which is expected to be the
-      model predictions. These should be a :class:`~torch.Tensor` of shape (B, N, ...),
-      where B is the batch size, N is the number of timestamps.
-    - The batch dictionary that should have atleast the following keys:
-        - "target_values": :class:`~torch.Tensor` of shape (B, N, ...)
-        - "output_timestamps": :class:`~torch.Tensor` of shape (B, N) and dtype float
-        - "output_mask": :class:`~torch.Tensor` of shape (B, N) and dtype bool
-        - "session_id": A list of session IDs for each sample in the batch
-        - "absolute_start": :class:`~torch.Tensor` of shape (B) and dtype float
-    Please refer to the examples/poyo/train.py script for an example of how to write
-    a validation_step(...) function that outputs the required tensors.
+    :class:`torch.data.sampler.DistributedStitchingFixedWindowSampler`
+    which ensures that the sequences are split across GPUs in a way that allows for
+    correct stitching.
 
     This callback operates by maintaining a cache of the predictions, targets, and
-    timestamps for each session. This cache is updated at the end of each batch.
-    Finally, at the end of the epoch, the cache is coalesced and the metric is
-    computed for each session.
+    timestamps for each session. The cache is updated using :meth:`.update`,
+    once you're ready to stitch and compute metrics, call :meth:`.compute`, and reset
+    the cache with :meth:`.reset`.
     """
 
     def __init__(
@@ -177,7 +165,21 @@ class DecodingStitchEvaluator:
         session_ids: List[str],
         absolute_starts: torch.Tensor,
     ):
-        r"""Update the validation cache with predictions, targets, and timestamps"""
+        r"""Update the validation cache with predictions, targets, and timestamps.
+
+        Args:
+            timestamps: A tensor of shape (batch_size, seq_len) containing timestamps
+                for each prediction
+            preds: A tensor of shape (batch_size, seq_len, dim) containing model predictions
+            targets: A tensor of shape (batch_size, seq_len, dim) containing target values
+            eval_masks: A tensor of shape (batch_size, seq_len) containing boolean masks
+                indicating which timesteps should be evaluated
+            session_ids: A list of strings of length batch_size containing session IDs
+                for each sequence
+            absolute_starts: A tensor of shape (batch_size,) containing the absolute start
+                time of each sequence (since timestamps are expected to be relative to
+                the sample start time)
+        """
         batch_size = len(timestamps)
         for i in range(batch_size):
             mask = eval_masks[i]
