@@ -230,7 +230,7 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
         self.metrics = metrics
 
     def on_validation_epoch_start(self, trainer, pl_module):
-        self._on_epoch_start_helper(trainer, mode="val")
+        self._setup_cache(trainer, mode="val")
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         target_values = batch.pop("target_values")
@@ -358,7 +358,7 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                     )
 
     def on_test_epoch_start(self, trainer, pl_module):
-        self._on_epoch_start_helper(trainer, mode="test")
+        self._setup_cache(trainer, mode="test")
 
     def on_test_batch_end(self, *args, **kwargs):
         self.on_validation_batch_end(*args, **kwargs)
@@ -366,7 +366,7 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
     def on_test_epoch_end(self, *args, **kwargs):
         self.on_validation_epoch_end(*args, **kwargs, prefix="test")
 
-    def _on_epoch_start_helper(self, trainer, mode: str = "val"):
+    def _setup_cache(self, trainer, mode: str = "val"):
         if mode == "val":
             self.sequence_index = trainer.datamodule.val_sequence_index
         elif mode == "test":

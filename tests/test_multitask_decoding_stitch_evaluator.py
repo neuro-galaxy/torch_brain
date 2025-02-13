@@ -8,14 +8,14 @@ from torch_brain.utils.stitcher import MultiTaskDecodingStitchEvaluator
 
 
 class MockDataModule:
-    def __init__(self, sequence_index):
-        self.val_sequence_index = sequence_index
-        self.test_sequence_index = sequence_index
+    def __init__(self, val_sequence_index, test_sequence_index):
+        self.val_sequence_index = val_sequence_index
+        self.test_sequence_index = test_sequence_index
 
 
 class MockTrainer:
-    def __init__(self, sequence_index):
-        self.datamodule = MockDataModule(sequence_index)
+    def __init__(self, val_sequence_index, test_sequence_index):
+        self.datamodule = MockDataModule(val_sequence_index, test_sequence_index)
         self.loggers = []
         self.is_global_zero = True
 
@@ -46,24 +46,26 @@ def test_initialization(evaluator):
 
 
 def test_on_validation_epoch_start(evaluator):
-    sequence_index = torch.tensor([0, 0, 1, 1, 1])
-    trainer = MockTrainer(sequence_index)
+    val_sequence_index = torch.tensor([0, 0, 1, 1, 1])
+    test_sequence_index = torch.tensor([0, 1, 1, 2, 2])  # different sequence
+    trainer = MockTrainer(val_sequence_index, test_sequence_index)
 
-    evaluator._on_epoch_start_helper(trainer, mode="val")
+    evaluator.on_validation_epoch_start(trainer, None)
 
     assert evaluator.sample_ptr == 0
-    assert len(evaluator.cache) == 2  # max sequence_index + 1
+    assert len(evaluator.cache) == 2  # max val_sequence_index + 1
     assert evaluator.counter == [0, 0]
     assert torch.equal(evaluator.cache_flush_threshold, torch.tensor([2, 3]))
 
 
 def test_on_test_epoch_start(evaluator):
-    sequence_index = torch.tensor([0, 0, 1, 1, 1])
-    trainer = MockTrainer(sequence_index)
+    val_sequence_index = torch.tensor([0, 0, 1, 1, 1])
+    test_sequence_index = torch.tensor([0, 1, 1, 2, 2])  # different sequence
+    trainer = MockTrainer(val_sequence_index, test_sequence_index)
 
-    evaluator._on_epoch_start_helper(trainer, mode="test")
+    evaluator.on_test_epoch_start(trainer, None)
 
     assert evaluator.sample_ptr == 0
-    assert len(evaluator.cache) == 2
-    assert evaluator.counter == [0, 0]
-    assert torch.equal(evaluator.cache_flush_threshold, torch.tensor([2, 3]))
+    assert len(evaluator.cache) == 3  # max test_sequence_index + 1
+    assert evaluator.counter == [0, 0, 0]  # three counters for three sequences
+    assert torch.equal(evaluator.cache_flush_threshold, torch.tensor([1, 2, 2]))
