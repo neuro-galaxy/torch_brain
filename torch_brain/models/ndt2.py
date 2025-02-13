@@ -7,9 +7,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, r2_score
-from temporaldata import ArrayDict, Data
 from torchtyping import TensorType
 
+from temporaldata import ArrayDict, Data
 from torch_brain.data import pad, track_mask
 from torch_brain.nn import InfiniteVocabEmbedding
 from torch_brain.utils.binning import bin_behaviors, bin_spikes
@@ -39,12 +39,14 @@ class NDT2(nn.Module):
         bhv_decoder_cfg: Dict = None,
     ):
         super().__init__()
+        # TODO should be changed for 1 int (we should only patch neurons not time)
         spike_embed_dim = round(dim / patch_size[0])
         self.bincount_emb = nn.Embedding(max_bincount, spike_embed_dim, padding_idx=pad)
         self.time_emb = nn.Embedding(max_time_patches, dim)
         self.space_emb = nn.Embedding(max_space_patches, dim)
         self.session_emb = InfiniteVocabEmbedding(dim)
         self.subject_emb = InfiniteVocabEmbedding(dim)
+        self.task_emb = InfiniteVocabEmbedding(dim)  # TODO more about dataset than task
 
         # Encoder
         enc_layer = nn.TransformerEncoderLayer(
@@ -88,8 +90,9 @@ class NDT2(nn.Module):
         input_space_index: TensorType["batch", "n_in", int],
         input_mask: TensorType["batch", "n_in", int],
         encoder_attn_mask: TensorType["batch", "n_in", "n_in", int],
-        session_index: TensorType["batch", int],
-        subject_index: TensorType["batch", int],
+        session_index: Optional[TensorType["batch", int]],
+        subject_index: Optional[TensorType["batch", int]],
+        task_index: Optional[TensorType["batch", int]],
     ):
         # make input tokens
         inputs = self.bincount_emb(input_patch_bincount).flatten(-2, -1)
@@ -98,21 +101,35 @@ class NDT2(nn.Module):
             inputs + self.time_emb(input_time_index) + self.space_emb(input_space_index)
         )
 
-        # add context tokens at the begining of the sequence
-        session_emb = self.session_emb(session_index)
-        subject_emb = self.subject_emb(subject_index)
-        context_emb = torch.stack([session_emb, subject_emb], dim=1)
-        inputs = torch.cat([inputs, context_emb], dim=1)
-        input_mask = F.pad(input_mask, (0, 2), value=True)
-        encoder_attn_mask = F.pad(encoder_attn_mask, (0, 2, 0, 2), value=True)
+        # add context tokens at the end of the sequence
+        nb_ctx_tokens = 0
+        ctx_tokens = []
+        if session_index is not None:
+            ctx_tokens.append(self.session_emb(session_index))
+            nb_ctx_tokens += 1
+        if subject_index is not None:
+            ctx_tokens.append(self.subject_emb(subject_index))
+            nb_ctx_tokens += 1
+        if task_index is not None:
+            ctx_tokens.append(self.subject_emb(task_index))
+            nb_ctx_tokens += 1
+
+        if nb_ctx_tokens > 0:
+            ctx_emb = torch.stack([ctx_tokens], dim=1)
+            inputs = torch.cat([inputs, ctx_emb], dim=1)
+            input_mask = F.pad(input_mask, (0, nb_ctx_tokens), value=True)
+            encoder_attn_mask = F.pad(
+                encoder_attn_mask, (0, nb_ctx_tokens, 0, nb_ctx_tokens), value=True
+            )
 
         # encoder forward pass
         latents = self.encoder(
             inputs, mask=encoder_attn_mask, src_key_padding_mask=input_mask
         )
-        latents = latents[:, :-2]
+        latents = latents[:, :-nb_ctx_tokens]
         latents = self.dropout_out(latents)
 
+        # TODO update this
         return self.decoder(latents, context_emb, batch)
 
 
@@ -133,7 +150,7 @@ class NDT2Tokenizer:
     ):
         self.bin_time: float = bin_time
         self.ctx_time: float = ctx_time
-        self.num_bins: int = int(np.round(ctx_time / bin_time))
+        self.bin_size: int = int(np.round(ctx_time / bin_time))
         self.patch_size: Tuple[int, int] = patch_size  # (num_neurons, num_time_bins)
 
         def float_modulo_test(x, y, eps=1e-6):
@@ -148,6 +165,9 @@ class NDT2Tokenizer:
         self.ibl_binning: bool = ibl_binning
         self.bhvr_dim: int = bhvr_dim
         self.ctx_tokenizer = ctx_tokenizer
+        self.session_tokenizer = None
+        self.subject_tokenizer = None
+        self.task_tokenizer = None
         self.eval = eval
 
     def __call__(self, data: Data) -> Dict:
@@ -160,16 +180,14 @@ class NDT2Tokenizer:
             # nb_units = chan_nb_mapper.max() + 1
             num_units = 96
 
-        binned_spikes = bin_spikes(
-            data.spikes, num_units, self.bin_time
-        )  # num_units, num_bins
-
+        binned_spikes = bin_spikes(data.spikes, num_units, self.bin_size)
         binned_spikes = np.clip(binned_spikes, 0, self.pad_value - 1)
 
         num_spatial_patches = int(np.ceil(binned_spikes.shape[0] / self.patch_size[0]))
         num_temporal_patches = int(np.ceil(binned_spikes.shape[1] / self.patch_size[1]))
 
         extra_units = num_spatial_patches * self.patch_size[0] - binned_spikes.shape[0]
+        # TODO should not be needed as we dont patch time
         extra_time = num_temporal_patches * self.patch_size[1] - binned_spikes.shape[1]
 
         if extra_units > 0 or extra_time > 0:
@@ -199,8 +217,12 @@ class NDT2Tokenizer:
         if self.mask_ratio is not None:
             keys = ["spike_tokens", "time_idx", "space_idx", "channel_counts"]
             spikes = batch["spike_tokens"]
+            # TODO should be carefull here
+
+            # TODO Check eval mode (not used for ibl)
             if self.eval:
                 batch["shuffle"] = torch.arange(spikes.size(1), device=spikes.device)
+
                 batch["encoder_frac"] = spikes.size(1)
                 for k in keys:
                     batch[f"{k}_target"] = batch[k]
@@ -209,11 +231,13 @@ class NDT2Tokenizer:
             shuffle = torch.randperm(spikes.size(1), device=spikes.device)
             encoder_frac = int((1 - self.mask_ratio) * spikes.size(1))
             for k in keys:
+                # applying mask at the sequence level (not batch)
                 t = batch[k].transpose(1, 0)[shuffle].transpose(1, 0)
 
                 batch[k] = t[:, :encoder_frac]
                 batch[f"{k}_target"] = t[:, encoder_frac:]
 
+            # TODO should be removed, we should have all necessary info in the batch
             batch["encoder_frac"] = encoder_frac
             batch["shuffle"] = shuffle
 
@@ -223,8 +247,8 @@ class NDT2Tokenizer:
 
         shape = (num_temporal_patches, num_spatial_patches)
         channel_counts = torch.full(shape, self.patch_size[0], dtype=torch.long)
-        if num_units % nb_units_per_patch != 0:
-            channel_counts[:, -1] = self.patch_size[0] - extra_neurons
+        if num_units % num_spatial_patches != 0:
+            channel_counts[:, -1] = self.patch_size[0] - extra_units
         channel_counts = rearrange(
             channel_counts,
             "t n -> (t n)",
@@ -232,8 +256,9 @@ class NDT2Tokenizer:
             t=num_temporal_patches,
         )
 
-        session_idx = self.session_tokenizer(data.session)
+        session_idx = self.session_tokenizer(data.session.id)
         subject_idx = self.subject_tokenizer(data.subject.id)
+        task_idx = self.task_tokenizer(data.id)
 
         batch = {
             "spike_tokens": pad(binned_spikes),
@@ -243,6 +268,7 @@ class NDT2Tokenizer:
             "channel_counts": pad(channel_counts),
             "session_idx": session_idx,
             "subject_idx": subject_idx,
+            "task_index": task_idx,
         }
 
         if not self.is_ssl:
