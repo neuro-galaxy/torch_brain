@@ -5,6 +5,8 @@ import copy
 
 import hydra
 import lightning as L
+import pandas as pd
+from rich import print as rprint
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -16,6 +18,7 @@ from lightning.pytorch.callbacks import (
 )
 from omegaconf import DictConfig, OmegaConf
 from temporaldata import Data
+import wandb
 
 from torch_brain.registry import MODALITIY_REGISTRY, ModalitySpec
 from torch_brain.models.poyo import POYO, poyo_mp
@@ -46,12 +49,14 @@ class TrainWrapper(L.LightningModule):
         cfg: DictConfig,
         model: nn.Module,
         modality_spec: ModalitySpec,
+        stitch_evaluator: DecodingStitchEvaluator,
     ):
         super().__init__()
 
         self.cfg = cfg
         self.model = model
         self.modality_spec = modality_spec
+        self.stitch_evaluator = stitch_evaluator
         self.save_hyperparameters(OmegaConf.to_container(cfg))
 
     def configure_optimizers(self):
@@ -122,9 +127,8 @@ class TrainWrapper(L.LightningModule):
         # forward pass
         output_values = self.model(**batch["model_inputs"])
 
-        # prepare data for evaluator
-        # (goes to DecodingStitchEvaluator.on_validation_batch_end)
-        data_for_eval = DataForDecodingStitchEvaluator(
+        # push data to stitch evaluator
+        self.stitch_evaluator.update(
             timestamps=batch["model_inputs"]["output_timestamps"],
             preds=output_values,
             targets=batch["target_values"],
@@ -133,10 +137,43 @@ class TrainWrapper(L.LightningModule):
             absolute_starts=batch["absolute_start"],
         )
 
-        return data_for_eval
+    def on_validation_epoch_end(self, log_prefix="val"):
+        metric_dict = self.stitch_evaluator.compute()
+        self._log_metric_dict(metric_dict, prefix=log_prefix)
+        self.stitch_evaluator.reset()
 
     def test_step(self, batch, batch_idx):
-        return self.validation_step(batch, batch_idx)
+        self.validation_step(batch, batch_idx)
+
+    def on_test_epoch_end(self, batch, batch_idx):
+        self.on_validation_epoch_end(log_prefix="test")
+
+    def _log_metric_dict(self, metric_dict: Dict[str, float], prefix: str = "val"):
+        metric_dict_with_prefix = {f"{prefix}/{k}": v for k, v in metric_dict.items()}
+        self.log_dict(metric_dict_with_prefix)
+
+        metric_df = pd.DataFrame(
+            {
+                "metric": metric_dict_with_prefix.keys(),
+                "value": metric_dict_with_prefix.values(),
+            }
+        )
+
+        if self.trainer.is_global_zero:
+            logging.info(f"Logged {len(metric_dict_with_prefix)} {prefix} metrics.")
+            rprint(metric_df)
+
+            for logger in self.trainer.loggers:
+                if isinstance(logger, L.pytorch.loggers.TensorBoardLogger):
+                    logger.experiment.add_text(
+                        f"{prefix}_metrics", metric_df.to_markdown()
+                    )
+                if isinstance(logger, L.pytorch.loggers.WandbLogger):
+                    logger.experiment.log(
+                        {f"{prefix}_metrics": wandb.Table(dataframe=metric_df)}
+                    )
+
+            logging.info("f")
 
 
 class DataModule(L.LightningDataModule):
@@ -295,20 +332,20 @@ def main(cfg: DictConfig):
     data_module = DataModule(cfg=cfg)
     data_module.setup_dataset_and_link_model(model)
 
-    # Lightning train wrapper
-    wrapper = TrainWrapper(
-        cfg=cfg,
-        model=model,
-        modality_spec=readout_spec,
-    )
-
     stitch_evaluator = DecodingStitchEvaluator(
         session_ids=data_module.get_session_ids(),
         modality_spec=readout_spec,
     )
 
+    # Lightning train wrapper
+    wrapper = TrainWrapper(
+        cfg=cfg,
+        model=model,
+        modality_spec=readout_spec,
+        stitch_evaluator=stitch_evaluator,
+    )
+
     callbacks = [
-        stitch_evaluator,
         ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
         ModelCheckpoint(
             save_last=True,

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import logging
 from collections import defaultdict
-from typing import Callable, Iterable, Optional
+from typing import Callable, Dict, Iterable, List, Optional
 
 import hydra
 import numpy as np
@@ -87,7 +87,7 @@ class DataForDecodingStitchEvaluator:
     absolute_starts: torch.Tensor  # Batch
 
 
-class DecodingStitchEvaluator(L.Callback):
+class DecodingStitchEvaluator:
     r"""A convenient stitching and evaluation framework to use when:
      1. Your model outputs have associated timestamps
      2. And your sampling strategy involves overlapping time windows, requiring
@@ -96,32 +96,20 @@ class DecodingStitchEvaluator(L.Callback):
      3. (Optional) You are training on multiple sessions/recordings and want to
         compute metrics for each session individually.
 
-    This callback handles the stitching of the predictions and targets for each
+    This class handles stitching of the predictions and targets for each
     session and computes the metric for each session. The average metric value
     across all sessions is also computed and logged.
     Since the stitching is done only on tensors on the same GPU, sequences that are
     split across multiple GPUs will not be stitched together. In this case, it is
     recommended to use a stitching-aware sampler like
-    `DistributedStitchingFixedWindowSampler` which ensures that the sequences are
-    split across GPUs in a way that allows for correct stitching.
-
-    This callback is called _after_ the validation_step, and has two main inputs:
-    - The output of the validation_step function, which is expected to be the
-      model predictions. These should be a :class:`~torch.Tensor` of shape (B, N, ...),
-      where B is the batch size, N is the number of timestamps.
-    - The batch dictionary that should have atleast the following keys:
-        - "target_values": :class:`~torch.Tensor` of shape (B, N, ...)
-        - "output_timestamps": :class:`~torch.Tensor` of shape (B, N) and dtype float
-        - "output_mask": :class:`~torch.Tensor` of shape (B, N) and dtype bool
-        - "session_id": A list of session IDs for each sample in the batch
-        - "absolute_start": :class:`~torch.Tensor` of shape (B) and dtype float
-    Please refer to the examples/poyo/train.py script for an example of how to write
-    a validation_step(...) function that outputs the required tensors.
+    :class:`torch.data.sampler.DistributedStitchingFixedWindowSampler`
+    which ensures that the sequences are split across GPUs in a way that allows for
+    correct stitching.
 
     This callback operates by maintaining a cache of the predictions, targets, and
-    timestamps for each session. This cache is updated at the end of each batch.
-    Finally, at the end of the epoch, the cache is coalesced and the metric is
-    computed for each session.
+    timestamps for each session. The cache is updated using :meth:`.update`,
+    once you're ready to stitch and compute metrics, call :meth:`.compute`, and reset
+    the cache with :meth:`.reset`.
     """
 
     def __init__(
@@ -154,10 +142,11 @@ class DecodingStitchEvaluator(L.Callback):
             raise ValueError(f"Unsupported datatype: {modality_spec.type}")
 
         self.metrics = {k: metric_factory() for k in session_ids}
+        self._init_cache()
 
-    def on_validation_epoch_start(self, trainer, pl_module):
+    def _init_cache(self):
         # Cache to store the predictions, targets, and timestamps for each
-        # validation step. This will be coalesced at the end of the validation,
+        # validation step. this will be coalesced at the end of the validation,
         # using the stitch function.
         self.cache = defaultdict(
             lambda: {
@@ -167,32 +156,48 @@ class DecodingStitchEvaluator(L.Callback):
             }
         )
 
-    def on_validation_batch_end(
+    def update(
         self,
-        trainer: L.Trainer,
-        pl_module: L.LightningModule,
-        data: DataForDecodingStitchEvaluator,
-        *args,
-        **kwargs,
+        timestamps: torch.Tensor,
+        preds: torch.Tensor,
+        targets: torch.Tensor,
+        eval_masks: torch.Tensor,
+        session_ids: List[str],
+        absolute_starts: torch.Tensor,
     ):
-        # Update the cache with the predictions, targets, and timestamps
-        batch_size = len(data.timestamps)
+        r"""Update the validation cache with predictions, targets, and timestamps.
+
+        Args:
+            timestamps: A tensor of shape (batch_size, seq_len) containing timestamps
+                for each prediction
+            preds: A tensor of shape (batch_size, seq_len, dim) containing model predictions
+            targets: A tensor of shape (batch_size, seq_len, dim) containing target values
+            eval_masks: A tensor of shape (batch_size, seq_len) containing boolean masks
+                indicating which timesteps should be evaluated
+            session_ids: A list of strings of length batch_size containing session IDs
+                for each sequence
+            absolute_starts: A tensor of shape (batch_size,) containing the absolute start
+                time of each sequence (since timestamps are expected to be relative to
+                the sample start time)
+        """
+        batch_size = len(timestamps)
         for i in range(batch_size):
-            mask = data.eval_masks[i]
-            session_id = data.session_ids[i]
-            absolute_start = data.absolute_starts[i]
+            mask = eval_masks[i]
+            session_id = session_ids[i]
 
-            pred = data.preds[i][mask]
-            target = data.targets[i][mask]
-            timestamps = data.timestamps[i][mask] + absolute_start
+            _preds = preds[i][mask]
+            _targets = targets[i][mask]
+            _timestamps = timestamps[i][mask] + absolute_starts[i]
 
-            self.cache[session_id]["pred"].append(pred.detach())
-            self.cache[session_id]["target"].append(target.detach())
-            self.cache[session_id]["timestamps"].append(timestamps.detach())
+            self.cache[session_id]["pred"].append(_preds.detach())
+            self.cache[session_id]["target"].append(_targets.detach())
+            self.cache[session_id]["timestamps"].append(_timestamps.detach())
 
-    def on_validation_epoch_end(self, trainer, pl_module, prefix="val"):
-        # compute metric for each session
-        metrics = {}
+    def compute(self):
+        r"""Stitch/Coalesce the cache using :function:`stitch`, and compute the metrics
+        based on the metric function provided.
+        """
+        metric_dict = {}
         for session_id, metric_fn in self.metrics.items():
             cache = self.cache[session_id]
             pred = torch.cat(cache["pred"])
@@ -202,47 +207,17 @@ class DecodingStitchEvaluator(L.Callback):
             stitched_pred = stitch(timestamps, pred)
             stitched_target = stitch(timestamps, target)
 
-            metric_fn.to(pl_module.device).update(stitched_pred, stitched_target)
-            metrics[session_id] = metric_fn.compute()
+            device = stitched_pred.device
+            metric_fn.to(device).update(stitched_pred, stitched_target)
+            metric_dict[session_id] = metric_fn.compute().item()
             metric_fn.reset()
 
-        # compute the average metric
-        metrics[f"average_{prefix}_metric"] = torch.tensor(
-            list(metrics.values())
-        ).mean()
+        metric_dict[f"average_metric"] = sum(metric_dict.values()) / len(metric_dict)
+        return metric_dict
 
-        # log the metrics
-        self.log_dict(metrics)
-
-        metrics_data = []
-        for metric_name, metric_value in metrics.items():
-            metrics_data.append({"metric": metric_name, "value": metric_value.item()})
-
-        metrics_df = pd.DataFrame(metrics_data)
-
-        if trainer.is_global_zero:
-            if not self.quiet:
-                logging.info(f"Logged {len(metrics)} {prefix} metrics.")
-                rprint(metrics_df)
-
-            for logger in trainer.loggers:
-                if isinstance(logger, L.pytorch.loggers.TensorBoardLogger):
-                    logger.experiment.add_text(
-                        f"{prefix}_metrics", metrics_df.to_markdown()
-                    )
-                if isinstance(logger, L.pytorch.loggers.WandbLogger):
-                    logger.experiment.log(
-                        {f"{prefix}_metrics": wandb.Table(dataframe=metrics_df)}
-                    )
-
-    def on_test_epoch_start(self, *args, **kwargs):
-        self.on_validation_epoch_start(*args, **kwargs)
-
-    def on_test_batch_end(self, *args, **kwargs):
-        self.on_validation_batch_end(*args, **kwargs)
-
-    def on_test_epoch_end(self, *args, **kwargs):
-        self.on_validation_epoch_end(*args, **kwargs, prefix="test")
+    def reset(self):
+        r"""Reset the cache"""
+        self._init_cache()
 
 
 class MultiTaskDecodingStitchEvaluator(L.Callback):
