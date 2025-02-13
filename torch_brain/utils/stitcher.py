@@ -230,26 +230,7 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
         self.metrics = metrics
 
     def on_validation_epoch_start(self, trainer, pl_module):
-        # prepare a cache for each contiguous sequence
-        self.sequence_index = trainer.datamodule.val_sequence_index
-        num_sequences = self.sequence_index.max().item() + 1
-        self.sample_ptr = 0
-
-        self.cache = [
-            {
-                "target": defaultdict(list),
-                "pred": defaultdict(list),
-                "timestamps": defaultdict(list),
-            }
-            for _ in range(num_sequences)
-        ]
-
-        self.counter = [0] * num_sequences
-        # set the target of the couter based on unique in sequence_index
-        # use torch.unique to get the count
-        _, self.cache_flush_threshold = torch.unique(
-            self.sequence_index, return_counts=True
-        )
+        self._on_epoch_start_helper(trainer, mode="val")
 
     def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
         target_values = batch.pop("target_values")
@@ -376,11 +357,38 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                         {f"{prefix}_metrics": wandb.Table(dataframe=metrics_df)}
                     )
 
-    def on_test_epoch_start(self, *args, **kwargs):
-        self.on_validation_epoch_start(*args, **kwargs)
+    def on_test_epoch_start(self, trainer, pl_module):
+        self._on_epoch_start_helper(trainer, mode="test")
 
     def on_test_batch_end(self, *args, **kwargs):
         self.on_validation_batch_end(*args, **kwargs)
 
     def on_test_epoch_end(self, *args, **kwargs):
         self.on_validation_epoch_end(*args, **kwargs, prefix="test")
+
+    def _on_epoch_start_helper(self, trainer, mode: str = "val"):
+        if mode == "val":
+            self.sequence_index = trainer.datamodule.val_sequence_index
+        elif mode == "test":
+            self.sequence_index = trainer.datamodule.test_sequence_index
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
+
+        num_sequences = self.sequence_index.max().item() + 1
+        self.sample_ptr = 0
+
+        self.cache = [
+            {
+                "target": defaultdict(list),
+                "pred": defaultdict(list),
+                "timestamps": defaultdict(list),
+            }
+            for _ in range(num_sequences)
+        ]
+
+        self.counter = [0] * num_sequences
+        # set the target of the couter based on unique in sequence_index
+        # use torch.unique to get the count
+        _, self.cache_flush_threshold = torch.unique(
+            self.sequence_index, return_counts=True
+        )
