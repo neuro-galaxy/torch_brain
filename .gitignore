@@ -160,3 +160,5 @@ data/raw
 
 .DS_Store
 **/.DS_Store
+
+checkpoint.pth
