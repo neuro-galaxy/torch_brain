@@ -77,7 +77,7 @@ def prepare_for_readout(
 
     # resolve eval mask
     eval_mask = None
-    eval_interval_key = data.config.get("eval_interval", None)
+    eval_interval_key = readout_config.get("eval_interval", None)
     if eval_interval_key is not None:
         eval_interval = data.get_nested_attribute(eval_interval_key)
         eval_mask = isin_interval(timestamps, eval_interval)

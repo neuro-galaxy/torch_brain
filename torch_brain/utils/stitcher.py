@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import logging
 from collections import defaultdict
 from typing import Callable, Iterable, Optional
@@ -72,6 +73,18 @@ def stitch(timestamps: torch.Tensor, values: torch.Tensor) -> torch.Tensor:
     averages = torch.div(pooled_sum, counts.unsqueeze(-1) + epsilon)
 
     return averages
+
+
+@dataclass
+class DataForDecodingStitchEvaluator:
+    r"""A batch's worth of data for :class:`DecodingStitchEvaluator`"""
+
+    timestamps: torch.FloatTensor  # B x T_max
+    preds: torch.FloatTensor  # B x T_max x D_output
+    targets: torch.FloatTensor  # B x T_max x D_output
+    eval_masks: torch.BoolTensor  # B x T_max
+    session_ids: list  # A list of session ID strings, 1 for each batch
+    absolute_starts: torch.Tensor  # Batch
 
 
 class DecodingStitchEvaluator(L.Callback):
@@ -154,17 +167,24 @@ class DecodingStitchEvaluator(L.Callback):
             }
         )
 
-    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+    def on_validation_batch_end(
+        self,
+        trainer: L.Trainer,
+        pl_module: L.LightningModule,
+        data: DataForDecodingStitchEvaluator,
+        *args,
+        **kwargs,
+    ):
         # Update the cache with the predictions, targets, and timestamps
-        batch_size = len(outputs)
+        batch_size = len(data.timestamps)
         for i in range(batch_size):
-            mask = batch["output_mask"][i]
-            session_id = batch["session_id"][i]
-            absolute_start = batch["absolute_start"][i]
+            mask = data.eval_masks[i]
+            session_id = data.session_ids[i]
+            absolute_start = data.absolute_starts[i]
 
-            pred = outputs[i][mask]
-            target = batch["target_values"][i][mask]
-            timestamps = batch["output_timestamps"][i][mask] + absolute_start
+            pred = data.preds[i][mask]
+            target = data.targets[i][mask]
+            timestamps = data.timestamps[i][mask] + absolute_start
 
             self.cache[session_id]["pred"].append(pred.detach())
             self.cache[session_id]["target"].append(target.detach())

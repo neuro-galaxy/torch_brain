@@ -1,2 +1,2 @@
-from .poyo import POYO, poyo_mp, POYOTokenizer
+from .poyo import POYO, poyo_mp
 from .poyo_plus import POYOPlus, POYOPlusTokenizer
