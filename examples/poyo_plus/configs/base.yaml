@@ -3,9 +3,6 @@
 data_root: ./data/processed/
 log_dir: ./logs
 
-sequence_length: 1.0  # in seconds
-latent_step: 0.125
-
 epochs: 1000
 eval_epochs: 1
 

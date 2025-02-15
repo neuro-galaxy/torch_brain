@@ -22,13 +22,16 @@ from torch_brain.data.sampler import (
     DistributedStitchingFixedWindowSampler,
     RandomFixedWindowSampler,
 )
-from torch_brain.models import POYOPlusTokenizer
+from torch_brain.models import POYOPlus
 from torch_brain.nn import compute_loss_or_metric
 from torch_brain.registry import MODALITIY_REGISTRY
 from torch_brain.transforms import Compose
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
-from torch_brain.utils.stitcher import MultiTaskDecodingStitchEvaluator
+from torch_brain.utils.stitcher import (
+    MultiTaskDecodingStitchEvaluator,
+    DataForMultiTaskDecodingStitchEvaluator,
+)
 
 
 # higher speed on machines with tensor cores
@@ -40,7 +43,7 @@ logger = logging.getLogger(__name__)
 class TrainWrapper(L.LightningModule):
     def __init__(
         self,
-        model: nn.Module,
+        model: POYOPlus,
         cfg: DictConfig,
     ):
         super().__init__()
@@ -76,13 +79,13 @@ class TrainWrapper(L.LightningModule):
         }
 
     def training_step(self, batch, batch_idx):
-        target_values = batch.pop("target_values")
-        target_weights = batch.pop("target_weights")
 
         # forward pass
-        output_values = self.model(**batch, unpack_output=False)
+        output_values = self.model(**batch["model_inputs"], unpack_output=False)
 
         # compute loss
+        target_values = batch["target_values"]
+        target_weights = batch["target_weights"]
         loss = torch.tensor(0, device=self.device, dtype=torch.float32)
         taskwise_loss = {}
         for readout_id in output_values.keys():
@@ -101,12 +104,13 @@ class TrainWrapper(L.LightningModule):
 
             # count the number of sequences in the batch that have the current task
             num_sequences_with_current_task = torch.any(
-                batch["output_decoder_index"] == MODALITIY_REGISTRY[readout_id].id,
+                batch["model_inputs"]["output_decoder_index"]
+                == MODALITIY_REGISTRY[readout_id].id,
                 dim=1,
             ).sum()
             loss = loss + taskwise_loss[readout_id] * num_sequences_with_current_task
 
-        batch_size = batch["input_unit_index"].shape[0]
+        batch_size = batch["model_inputs"]["input_unit_index"].shape[0]
         # TODO change batch_size when POYOPlusEfficient is used
         loss = loss / batch_size
 
@@ -123,53 +127,52 @@ class TrainWrapper(L.LightningModule):
         #     self.log(f"targets/mean_{name}", targets.mean())
         #     self.log(f"targets/std_{name}", targets.std())
 
-        unit_index = batch["input_unit_index"].float()
+        unit_index = batch["model_inputs"]["input_unit_index"].float()
         self.log("inputs/mean_unit_index", unit_index.mean())
         self.log("inputs/std_unit_index", unit_index.std())
 
         return loss
 
     def validation_step(self, batch, batch_idx):
-        target_values = batch.pop("target_values")
-        batch.pop("target_weights")
-        absolute_starts = batch.pop("absolute_start")
-        session_ids = batch.pop("session_id")
-        eval_mask = batch.pop("eval_mask")
 
         # forward pass
-        output_values = self.model(**batch, unpack_output=True)
+        output_values = self.model(**batch["model_inputs"], unpack_output=True)
 
-        # add removed elements back to batch
-        batch["target_values"] = target_values
-        batch["absolute_start"] = absolute_starts
-        batch["session_id"] = session_ids
-        batch["eval_mask"] = eval_mask
+        # prepare data for evaluator
+        # (goes to MultiTaskDecodingStitchEvaluator.on_validation_batch_end)
+        data_for_eval = DataForMultiTaskDecodingStitchEvaluator(
+            timestamps=batch["model_inputs"]["output_timestamps"],
+            preds=output_values,
+            targets=batch["target_values"],
+            decoder_indices=batch["model_inputs"]["output_decoder_index"],
+            eval_masks=batch["eval_mask"],
+            session_ids=batch["session_id"],
+            absolute_starts=batch["absolute_start"],
+        )
 
-        return output_values
+        return data_for_eval
 
     def test_step(self, batch, batch_idx):
         return self.validation_step(batch, batch_idx)
 
 
 class DataModule(L.LightningDataModule):
-    def __init__(
-        self,
-        cfg: DictConfig,
-        tokenizer: Callable[[Data], Dict],
-    ):
+    def __init__(self, cfg: DictConfig):
         super().__init__()
         self.cfg = cfg
-        self.tokenizer = tokenizer
-
-        self.train_dataset = None
         self.log = logging.getLogger(__name__)
 
-    def setup(self, stage=None):
+    def setup_dataset_and_link_model(self, model: POYOPlus):
+        r"""Setup Dataset objects, and update a given model's embedding vocabs (session
+        and unit_emb)
+        """
+        self.sequence_length = model.sequence_length
+
         # prepare transforms
         train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
 
         # compose transforms, tokenizer is always the last transform
-        train_transform = Compose([*train_transforms, self.tokenizer])
+        train_transform = Compose([*train_transforms, model.tokenize])
 
         self.train_dataset = Dataset(
             root=self.cfg.data_root,
@@ -179,15 +182,14 @@ class DataModule(L.LightningDataModule):
         )
         self.train_dataset.disable_data_leakage_check()
 
-        # validation and test datasets require a tokenizer that is in eval mode
-        eval_tokenizer = copy.copy(self.tokenizer)
-        eval_tokenizer.eval = True
+        self._init_model_vocab(model)
 
+        # validation and test datasets require a tokenizer that is in eval mode
         self.val_dataset = Dataset(
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="valid",
-            transform=eval_tokenizer,
+            transform=model.tokenize,
         )
         self.val_dataset.disable_data_leakage_check()
 
@@ -195,9 +197,14 @@ class DataModule(L.LightningDataModule):
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="test",
-            transform=eval_tokenizer,
+            transform=model.tokenize,
         )
         self.test_dataset.disable_data_leakage_check()
+
+    def _init_model_vocab(self, model: POYOPlus):
+        # TODO: Add code for finetuning situation (when model already has a vocab)
+        model.unit_emb.initialize_vocab(self.get_unit_ids())
+        model.session_emb.initialize_vocab(self.get_session_ids())
 
     def get_session_ids(self):
         return self.train_dataset.get_session_ids()
@@ -241,7 +248,7 @@ class DataModule(L.LightningDataModule):
     def train_dataloader(self):
         train_sampler = RandomFixedWindowSampler(
             interval_dict=self.train_dataset.get_sampling_intervals(),
-            window_length=self.cfg.sequence_length,
+            window_length=self.sequence_length,
             generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
 
@@ -268,8 +275,8 @@ class DataModule(L.LightningDataModule):
 
         val_sampler = DistributedStitchingFixedWindowSampler(
             interval_dict=self.val_dataset.get_sampling_intervals(),
-            window_length=self.cfg.sequence_length,
-            step=self.cfg.sequence_length / 2,
+            window_length=self.sequence_length,
+            step=self.sequence_length / 2,
             batch_size=batch_size,
             num_replicas=self.trainer.world_size,
             rank=self.trainer.global_rank,
@@ -295,8 +302,8 @@ class DataModule(L.LightningDataModule):
 
         test_sampler = DistributedStitchingFixedWindowSampler(
             interval_dict=self.test_dataset.get_sampling_intervals(),
-            window_length=self.cfg.sequence_length,
-            step=self.cfg.sequence_length / 2,
+            window_length=self.sequence_length,
+            step=self.sequence_length / 2,
             batch_size=batch_size,
             num_replicas=self.trainer.world_size,
             rank=self.trainer.global_rank,
@@ -335,25 +342,11 @@ def main(cfg: DictConfig):
             log_model=cfg.wandb.log_model,
         )
 
-    # make model
+    # make model and datamodule
     # TODO: resolve the readout_id from dataset, only build readouts needed
     model = hydra.utils.instantiate(cfg.model, readout_specs=MODALITIY_REGISTRY)
-
-    tokenizer = POYOPlusTokenizer(
-        model.unit_emb.tokenizer,
-        model.session_emb.tokenizer,
-        decoder_registry=MODALITIY_REGISTRY,
-        latent_step=cfg.latent_step,
-        num_latents_per_step=cfg.model.num_latents,
-    )
-
-    # setup data module
-    data_module = DataModule(cfg, tokenizer)
-    data_module.setup()
-
-    # register units and sessions
-    model.unit_emb.initialize_vocab(data_module.get_unit_ids())
-    model.session_emb.initialize_vocab(data_module.get_session_ids())
+    data_module = DataModule(cfg)
+    data_module.setup_dataset_and_link_model(model)
 
     # Lightning train wrapper
     wrapper = TrainWrapper(cfg=cfg, model=model)

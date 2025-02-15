@@ -1,4 +1,5 @@
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
+import logging
 
 import numpy as np
 import torch.nn as nn
@@ -44,11 +45,13 @@ class POYO(nn.Module):
         to the appropriate output dimension.
 
     Args:
+        sequence_length: Maximum duration of the input spike sequence (in seconds)
+        readout_spec: A :class:`torch_brain.registry.ModalitySpec` specifying readout properties
+        latent_step: Timestep of the latent grid (in seconds)
+        num_latents_per_step: Number of unique latent tokens (repeated at every latent step)
         dim: Hidden dimension of the model
-        dim_out: Dimension of the output
-        dim_head: Dimension of each attention head
-        num_latents: Number of unique latent tokens (repeated at every latent step)
         depth: Number of processing layers (self-attentions in the latent space)
+        dim_head: Dimension of each attention head
         cross_heads: Number of attention heads used in a cross-attention layer
         self_heads: Number of attention heads used in a self-attention layer
         ffn_dropout: Dropout rate for feed-forward networks
@@ -57,33 +60,43 @@ class POYO(nn.Module):
         emb_init_scale: Scale for embedding initialization
         t_min: Minimum timestamp resolution for rotary embeddings
         t_max: Maximum timestamp resolution for rotary embeddings
-        dim_out: Dimension of the output
     """
 
     def __init__(
         self,
         *,
-        dim=512,
-        dim_head=64,
-        num_latents=64,
-        depth=2,
-        cross_heads=1,
-        self_heads=8,
-        ffn_dropout=0.2,
-        lin_dropout=0.4,
-        atn_dropout=0.0,
-        emb_init_scale=0.02,
-        t_min=1e-4,
-        t_max=4.0,
-        dim_out,
+        sequence_length: float,
+        readout_spec: ModalitySpec,
+        latent_step: float,
+        num_latents_per_step: int = 64,
+        dim: int = 512,
+        depth: int = 2,
+        dim_head: int = 64,
+        cross_heads: int = 1,
+        self_heads: int = 8,
+        ffn_dropout: float = 0.2,
+        lin_dropout: float = 0.4,
+        atn_dropout: float = 0.0,
+        emb_init_scale: float = 0.02,
+        t_min: float = 1e-4,
+        t_max: float = 4.0,
     ):
         super().__init__()
+
+        self._validate_params(sequence_length, latent_step)
+
+        self.sequence_length = sequence_length
+        self.latent_step = latent_step
+        self.num_latents_per_step = num_latents_per_step
+        self.readout_spec = readout_spec
 
         # embeddings
         self.unit_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.session_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.token_type_emb = Embedding(4, dim, init_scale=emb_init_scale)
-        self.latent_emb = Embedding(num_latents, dim, init_scale=emb_init_scale)
+        self.latent_emb = Embedding(
+            num_latents_per_step, dim, init_scale=emb_init_scale
+        )
         self.rotary_emb = RotaryEmbedding(dim_head, t_min, t_max)
 
         self.dropout = nn.Dropout(p=lin_dropout)
@@ -132,7 +145,7 @@ class POYO(nn.Module):
         )
 
         # Output projections + loss
-        self.readout = nn.Linear(dim, dim_out)
+        self.readout = nn.Linear(dim, readout_spec.dim)
 
         self.dim = dim
 
@@ -239,80 +252,15 @@ class POYO(nn.Module):
 
         return output
 
+    def tokenize(self, data: Data) -> Dict:
+        r"""Tokenizer used to tokenize Data for the POYO model.
 
-def poyo_mp(dim_out, ckpt_path=None):
-    if ckpt_path is not None:
-        raise NotImplementedError("Loading from checkpoint is not supported yet.")
+        This tokenizer can be called as a transform. If you are applying multiple
+        transforms, make sure to apply this one last.
 
-    return POYO(
-        dim=64,
-        dim_out=dim_out,
-        dim_head=64,
-        num_latents=16,
-        depth=6,
-        cross_heads=2,
-        self_heads=8,
-        ffn_dropout=0.2,
-        lin_dropout=0.4,
-        atn_dropout=0.2,
-    )
+        This code runs on CPU. Do not access GPU tensors inside this function.
+        """
 
-
-class POYOTokenizer:
-    r"""Tokenizer used to tokenize Data for the POYO model.
-
-    This tokenizer can be called as a transform. If you are applying multiple
-    transforms, make sure to apply this one last.
-
-    Args:
-        unit_tokenizer (Callable): Tokenizer for the units.
-        session_tokenizer (Callable): Tokenizer for the sessions.
-        decoder_registry (Dict): Registry of the decoders.
-        weight_registry (Dict): Registry of the weights.
-        latent_step (float): Step size for generating latent tokens.
-        num_latents_per_step (int): Number of latents per step.
-    """
-
-    def __init__(
-        self,
-        unit_tokenizer: Callable,
-        session_tokenizer: Callable,
-        latent_step: float,
-        num_latents_per_step: int,
-        readout_spec: ModalitySpec,
-        sequence_length: float = 1.0,
-        eval: bool = False,
-    ):
-        self.unit_tokenizer = unit_tokenizer
-        self.session_tokenizer = session_tokenizer
-
-        self.readout_spec = readout_spec
-
-        if not isinstance(sequence_length, float):
-            raise ValueError("sequence_length must be a float")
-        if not sequence_length > 0:
-            raise ValueError("sequence_length must be greater than 0")
-        self.sequence_length = sequence_length
-
-        if not isinstance(latent_step, float):
-            raise ValueError("latent_step must be a float")
-        if not latent_step > 0:
-            raise ValueError("latent_step must be greater than 0")
-        self.latent_step = latent_step
-
-        # check if sequence_length is a multiple of latent_step
-        if abs(sequence_length % latent_step) > 1e-10:
-            self.log.warning(
-                f"sequence_length ({sequence_length}) is not a multiple of latent_step "
-                f"({latent_step}). This is a simple warning, and this behavior is allowed."
-            )
-
-        self.latent_step = latent_step
-        self.num_latents_per_step = num_latents_per_step
-        self.sequence_length = sequence_length
-        self.eval = eval
-
-    def __call__(self, data: Data) -> Dict:
         # context window
         start, end = 0, self.sequence_length
 
@@ -337,7 +285,7 @@ class POYOTokenizer:
 
         # unit_index is relative to the recording, so we want it to map it to
         # the global unit index
-        local_to_global_map = np.array(self.unit_tokenizer(unit_ids))
+        local_to_global_map = np.array(self.unit_emb.tokenizer(unit_ids))
         spike_unit_index = local_to_global_map[spike_unit_index]
 
         ### prepare latents
@@ -353,32 +301,78 @@ class POYOTokenizer:
         )
 
         # create session index for output
-        output_session_index = self.session_tokenizer(data.session.id)
+        output_session_index = self.session_emb.tokenizer(data.session.id)
         output_session_index = np.repeat(output_session_index, len(output_timestamps))
 
-        batch = {
-            # input sequence
-            "input_unit_index": pad8(spike_unit_index),
-            "input_timestamps": pad8(spike_timestamps),
-            "input_token_type": pad8(spike_token_type_index),
-            "input_mask": track_mask8(spike_unit_index),
-            # latent sequence
-            "latent_index": latent_index,
-            "latent_timestamps": latent_timestamps,
-            # output sequence
-            "output_session_index": pad8(output_session_index),
-            "output_timestamps": pad8(output_timestamps),
-            "output_mask": track_mask8(output_session_index),
+        data_dict = {
+            "model_inputs": {
+                # input sequence (keys/values for the encoder)
+                "input_unit_index": pad8(spike_unit_index),
+                "input_timestamps": pad8(spike_timestamps),
+                "input_token_type": pad8(spike_token_type_index),
+                "input_mask": track_mask8(spike_unit_index),
+                # latent sequence
+                "latent_index": latent_index,
+                "latent_timestamps": latent_timestamps,
+                # output query sequence (queries for the decoder)
+                "output_session_index": pad8(output_session_index),
+                "output_timestamps": pad8(output_timestamps),
+                "output_mask": track_mask8(output_session_index),
+            },
             # ground truth targets
             "target_values": pad8(output_values),
             "target_weights": pad8(output_weights),
+            # extra data needed for evaluation
+            "session_id": data.session.id,
+            "absolute_start": data.absolute_start,
+            "eval_mask": pad8(eval_mask) if eval_mask is not None else None,
         }
 
-        if self.eval:
-            batch["session_id"] = data.session.id
-            batch["absolute_start"] = data.absolute_start
+        return data_dict
 
-            if eval_mask is not None:
-                batch["output_mask"] = pad8(eval_mask)
+    def _validate_params(self, sequence_length, latent_step):
+        r"""Ensure: sequence_length, and latent_step are floating point numbers greater
+        than zero. And sequence_length is a multiple of latent_step.
+        """
 
-        return batch
+        if not isinstance(sequence_length, float):
+            raise ValueError("sequence_length must be a float")
+        if not sequence_length > 0:
+            raise ValueError("sequence_length must be greater than 0")
+        self.sequence_length = sequence_length
+
+        if not isinstance(latent_step, float):
+            raise ValueError("latent_step must be a float")
+        if not latent_step > 0:
+            raise ValueError("latent_step must be greater than 0")
+        self.latent_step = latent_step
+
+        # check if sequence_length is a multiple of latent_step
+        if abs(sequence_length % latent_step) > 1e-10:
+            logging.warning(
+                f"sequence_length ({sequence_length}) is not a multiple of latent_step "
+                f"({latent_step}). This is a simple warning, and this behavior is allowed."
+            )
+
+
+def poyo_mp(readout_spec: ModalitySpec, ckpt_path=None):
+    if ckpt_path is not None:
+        raise NotImplementedError("Loading from checkpoint is not supported yet.")
+
+    return POYO(
+        sequence_length=1.0,
+        latent_step=1.0 / 8,
+        dim=64,
+        readout_spec=readout_spec,
+        dim_head=64,
+        num_latents_per_step=16,
+        depth=6,
+        cross_heads=2,
+        self_heads=8,
+        ffn_dropout=0.2,
+        lin_dropout=0.4,
+        atn_dropout=0.2,
+        emb_init_scale=0.02,
+        t_min=1e-4,
+        t_max=4.0,
+    )

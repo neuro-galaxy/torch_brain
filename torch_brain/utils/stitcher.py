@@ -1,6 +1,7 @@
+from dataclasses import dataclass
 import logging
 from collections import defaultdict
-from typing import Callable, Iterable, Optional
+from typing import Callable, Dict, Iterable, List, Optional
 
 import hydra
 import numpy as np
@@ -74,6 +75,18 @@ def stitch(timestamps: torch.Tensor, values: torch.Tensor) -> torch.Tensor:
     return averages
 
 
+@dataclass
+class DataForDecodingStitchEvaluator:
+    r"""A batch's worth of data for :class:`DecodingStitchEvaluator`"""
+
+    timestamps: torch.FloatTensor  # B x T_max
+    preds: torch.FloatTensor  # B x T_max x D_output
+    targets: torch.FloatTensor  # B x T_max x D_output
+    eval_masks: torch.BoolTensor  # B x T_max
+    session_ids: List[str]  # A list of session ID strings, 1 for each sample in batch
+    absolute_starts: torch.Tensor  # Batch
+
+
 class DecodingStitchEvaluator(L.Callback):
     r"""A convenient stitching and evaluation framework to use when:
      1. Your model outputs have associated timestamps
@@ -89,21 +102,15 @@ class DecodingStitchEvaluator(L.Callback):
     Since the stitching is done only on tensors on the same GPU, sequences that are
     split across multiple GPUs will not be stitched together. In this case, it is
     recommended to use a stitching-aware sampler like
-    `DistributedStitchingFixedWindowSampler` which ensures that the sequences are
-    split across GPUs in a way that allows for correct stitching.
+    :class:`~torch_brain.data.sampler.DistributedStitchingFixedWindowSampler`
+    which ensures that the sequences are split across GPUs in a way that allows for
+    correct stitching.
 
-    This callback is called _after_ the validation_step, and has two main inputs:
-    - The output of the validation_step function, which is expected to be the
-      model predictions. These should be a :class:`~torch.Tensor` of shape (B, N, ...),
-      where B is the batch size, N is the number of timestamps.
-    - The batch dictionary that should have atleast the following keys:
-        - "target_values": :class:`~torch.Tensor` of shape (B, N, ...)
-        - "output_timestamps": :class:`~torch.Tensor` of shape (B, N) and dtype float
-        - "output_mask": :class:`~torch.Tensor` of shape (B, N) and dtype bool
-        - "session_id": A list of session IDs for each sample in the batch
-        - "absolute_start": :class:`~torch.Tensor` of shape (B) and dtype float
+    This callback is called _after_ the validation_step, and expects you to return a
+    :class:`~DataForDecodingStitchEvaluator` object from the validation_step lightning
+    module method.
     Please refer to the examples/poyo/train.py script for an example of how to write
-    a validation_step(...) function that outputs the required tensors.
+    such a validation_step(...) function.
 
     This callback operates by maintaining a cache of the predictions, targets, and
     timestamps for each session. This cache is updated at the end of each batch.
@@ -154,17 +161,24 @@ class DecodingStitchEvaluator(L.Callback):
             }
         )
 
-    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+    def on_validation_batch_end(
+        self,
+        trainer: L.Trainer,
+        pl_module: L.LightningModule,
+        data: DataForDecodingStitchEvaluator,
+        *args,
+        **kwargs,
+    ):
         # Update the cache with the predictions, targets, and timestamps
-        batch_size = len(outputs)
+        batch_size = len(data.timestamps)
         for i in range(batch_size):
-            mask = batch["output_mask"][i]
-            session_id = batch["session_id"][i]
-            absolute_start = batch["absolute_start"][i]
+            mask = data.eval_masks[i]
+            session_id = data.session_ids[i]
+            absolute_start = data.absolute_starts[i]
 
-            pred = outputs[i][mask]
-            target = batch["target_values"][i][mask]
-            timestamps = batch["output_timestamps"][i][mask] + absolute_start
+            pred = data.preds[i][mask]
+            target = data.targets[i][mask]
+            timestamps = data.timestamps[i][mask] + absolute_start
 
             self.cache[session_id]["pred"].append(pred.detach())
             self.cache[session_id]["target"].append(target.detach())
@@ -225,6 +239,22 @@ class DecodingStitchEvaluator(L.Callback):
         self.on_validation_epoch_end(*args, **kwargs, prefix="test")
 
 
+@dataclass
+class DataForMultiTaskDecodingStitchEvaluator:
+    r"""A batch's worth of data for :class:`MultiTaskDecodingStitchEvaluator`"""
+
+    timestamps: torch.FloatTensor  # B x T_max
+    preds: List[Dict[str, torch.Tensor]]  # B-long list, Dict keys are task names
+    targets: List[Dict[str, torch.Tensor]]  #  B-long list, Dict keys are task names
+    decoder_indices: torch.LongTensor  # B x T_max
+    # eval_masks: Keyed by task names, each tensor is mask that can be applied to a
+    # task-concatenated tensor of predictions (look at output format of
+    # `torch_brain.nn.multitask_readout.MultitaskReadout`)
+    eval_masks: Dict[str, torch.BoolTensor]
+    session_ids: List[str]  # A list of session ID strings, 1 for each sample in batch
+    absolute_starts: torch.Tensor  # Batch
+
+
 class MultiTaskDecodingStitchEvaluator(L.Callback):
     def __init__(self, metrics: dict):
         self.metrics = metrics
@@ -232,22 +262,21 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
     def on_validation_epoch_start(self, trainer, pl_module):
         self._setup_cache(trainer, mode="val")
 
-    def on_validation_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-        target_values = batch.pop("target_values")
-        absolute_starts = batch.pop("absolute_start")
-        session_ids = batch.pop("session_id")
-        eval_masks = batch.pop("eval_mask")
-
-        # forward pass
-        output_values = outputs  # pl_module.model(**batch, unpack_output=True)
-
+    def on_validation_batch_end(
+        self,
+        trainer: L.Trainer,
+        pl_module: L.LightningModule,
+        data: DataForMultiTaskDecodingStitchEvaluator,
+        *args,
+        **kwargs,
+    ):
         # update the cache with the predictions and targets
-        for readout_index in torch.unique(batch["output_decoder_index"]):
+        for readout_index in torch.unique(data.decoder_indices):
             if readout_index.item() == 0:
                 # skip the padding token
                 continue
 
-            mask = batch["output_decoder_index"] == readout_index
+            mask = data.decoder_indices == readout_index
             readout_id = torch_brain.get_modality_by_id(readout_index.item())
 
             token_sample_idx = torch.where(mask)[0]
@@ -255,13 +284,13 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
             curr_sample_ptr = self.sample_ptr
 
             for i in torch.unique(token_sample_idx):
-                pred = output_values[i][readout_id]
-                target = target_values[readout_id][token_sample_idx == i]
+                pred = data.preds[i][readout_id]
+                target = data.targets[readout_id][token_sample_idx == i]
                 timestamps = (
-                    batch["output_timestamps"][mask][token_sample_idx == i]
-                    + absolute_starts[i]
+                    data.timestamps[mask][token_sample_idx == i]
+                    + data.absolute_starts[i]
                 )
-                eval_mask = eval_masks[readout_id][token_sample_idx == i]
+                eval_mask = data.eval_masks[readout_id][token_sample_idx == i]
 
                 timestamps = timestamps[eval_mask]
                 pred = pred[eval_mask]
@@ -280,13 +309,13 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                 curr_sample_ptr += 1
 
         # update counter then check if the cache should be flushed
-        for i in range(len(output_values)):
+        for i in range(len(data.preds)):
             j = self.sequence_index[self.sample_ptr]
             self.counter[j] += 1
             self.sample_ptr += 1
 
             if self.counter[j] >= self.cache_flush_threshold[j]:
-                self.flush_cache(j, session_id=session_ids[i])
+                self.flush_cache(j, session_id=data.session_ids[i])
 
     def flush_cache(self, i, session_id):
         for task_name in self.cache[i]["pred"].keys():

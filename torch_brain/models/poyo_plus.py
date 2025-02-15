@@ -1,8 +1,10 @@
 from typing import Dict, List, Optional, Tuple
+import logging
 
 import numpy as np
 import torch.nn as nn
 from torchtyping import TensorType
+from temporaldata import Data
 
 from torch_brain.data import chain, pad8, track_mask8
 from torch_brain.nn import (
@@ -15,7 +17,7 @@ from torch_brain.nn import (
     RotaryEmbedding,
     prepare_for_multitask_readout,
 )
-from torch_brain.registry import ModalitySpec
+from torch_brain.registry import ModalitySpec, MODALITIY_REGISTRY
 
 from torch_brain.utils import (
     create_linspace_latent_tokens,
@@ -46,10 +48,15 @@ class POYOPlus(nn.Module):
         to the appropriate output dimension required by each task.
 
     Args:
+        sequence_length: Maximum duration of the input spike sequence (in seconds)
+        readout_specs: Specifications for each prediction task. This is a dictionary
+            with strings as keys (task names), and :class:`torch_brain.registry.ModalitySpec`
+            as values. One key-value pair for each prediction task.
+        latent_step: Timestep of the latent grid (in seconds)
+        num_latents_per_step: Number of unique latent tokens (repeated at every latent step)
         dim: Dimension of all embeddings
-        dim_head: Dimension of each attention head
-        num_latents: Number of unique latent tokens
         depth: Number of processing layers
+        dim_head: Dimension of each attention head
         cross_heads: Number of attention heads used in a cross-attention layer
         self_heads: Number of attention heads used in a self-attention layer
         ffn_dropout: Dropout rate for feed-forward networks
@@ -58,34 +65,44 @@ class POYOPlus(nn.Module):
         emb_init_scale: Scale for embedding initialization
         t_min: Minimum timestamp resolution for rotary embeddings
         t_max: Maximum timestamp resolution for rotary embeddings
-        readout_specs: Specifications for each prediction task
     """
 
     def __init__(
         self,
         *,
-        dim=512,
-        dim_head=64,
-        num_latents=64,
-        depth=2,
-        cross_heads=1,
-        self_heads=8,
-        ffn_dropout=0.2,
-        lin_dropout=0.4,
-        atn_dropout=0.0,
-        emb_init_scale=0.02,
-        t_min=1e-4,
-        t_max=4.0,
-        readout_specs: Dict[str, ModalitySpec],
+        sequence_length: float,
+        readout_specs: Dict[str, ModalitySpec] = MODALITIY_REGISTRY,
+        latent_step: float,
+        num_latents_per_step: int = 64,
+        dim: int = 512,
+        depth: int = 2,
+        dim_head: int = 64,
+        cross_heads: int = 1,
+        self_heads: int = 8,
+        ffn_dropout: float = 0.2,
+        lin_dropout: float = 0.4,
+        atn_dropout: float = 0.0,
+        emb_init_scale: float = 0.02,
+        t_min: float = 1e-4,
+        t_max: float = 4.0,
     ):
         super().__init__()
+
+        self._validate_params(sequence_length, latent_step)
+
+        self.latent_step = latent_step
+        self.num_latents_per_step = num_latents_per_step
+        self.sequence_length = sequence_length
+        self.readout_specs = readout_specs
 
         # embeddings
         self.unit_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.session_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.token_type_emb = Embedding(4, dim, init_scale=emb_init_scale)
         self.task_emb = Embedding(len(readout_specs), dim, init_scale=emb_init_scale)
-        self.latent_emb = Embedding(num_latents, dim, init_scale=emb_init_scale)
+        self.latent_emb = Embedding(
+            num_latents_per_step, dim, init_scale=emb_init_scale
+        )
         self.rotary_emb = RotaryEmbedding(dim_head, t_min, t_max)
 
         self.dropout = nn.Dropout(p=lin_dropout)
@@ -244,44 +261,15 @@ class POYOPlus(nn.Module):
 
         return output
 
+    def tokenize(self, data: Data) -> Dict:
+        r"""Tokenizer used to tokenize Data for the POYO+ model.
 
-class POYOPlusTokenizer:
-    r"""Tokenizer used to tokenize Data for the POYO1 model.
+        This tokenizer can be called as a transform. If you are applying multiple
+        transforms, make sure to apply this one last.
 
-    This tokenizer can be called as a transform. If you are applying multiple
-    transforms, make sure to apply this one last.
+        This code runs on CPU. Do not access GPU tensors inside this function.
+        """
 
-    Args:
-        unit_tokenizer (Callable): Tokenizer for the units.
-        session_tokenizer (Callable): Tokenizer for the sessions.
-        decoder_registry (Dict): Registry of the decoders.
-        weight_registry (Dict): Registry of the weights.
-        latent_step (float): Step size for generating latent tokens.
-        num_latents_per_step (int): Number of latents per step.
-    """
-
-    def __init__(
-        self,
-        unit_tokenizer,
-        session_tokenizer,
-        decoder_registry,
-        latent_step,
-        num_latents_per_step,
-        sequence_length=1.0,
-        eval=False,
-    ):
-        self.unit_tokenizer = unit_tokenizer
-        self.session_tokenizer = session_tokenizer
-
-        self.decoder_registry = decoder_registry
-
-        self.latent_step = latent_step
-        self.num_latents_per_step = num_latents_per_step
-        self.sequence_length = sequence_length
-
-        self.eval = eval
-
-    def __call__(self, data):
         # context window
         start, end = 0, self.sequence_length
 
@@ -306,7 +294,7 @@ class POYOPlusTokenizer:
 
         # unit_index is relative to the recording, so we want it to map it to
         # the global unit index
-        local_to_global_map = np.array(self.unit_tokenizer(unit_ids))
+        local_to_global_map = np.array(self.unit_emb.tokenizer(unit_ids))
         spike_unit_index = local_to_global_map[spike_unit_index]
 
         ### prepare latents
@@ -318,7 +306,7 @@ class POYOPlusTokenizer:
         )
 
         ### prepare outputs
-        session_index = self.session_tokenizer(data.session.id)
+        session_index = self.session_emb.tokenizer(data.session.id)
 
         (
             output_timestamps,
@@ -328,33 +316,57 @@ class POYOPlusTokenizer:
             output_eval_mask,
         ) = prepare_for_multitask_readout(
             data,
-            self.decoder_registry,
+            self.readout_specs,
         )
 
         session_index = np.repeat(session_index, len(output_timestamps))
 
-        batch = {
-            # input sequence
-            "input_unit_index": pad8(spike_unit_index),
-            "input_timestamps": pad8(spike_timestamps),
-            "input_token_type": pad8(spike_token_type_index),
-            "input_mask": track_mask8(spike_unit_index),
-            # latent sequence
-            "latent_index": latent_index,
-            "latent_timestamps": latent_timestamps,
-            # output sequence
-            "output_session_index": pad8(session_index),
-            "output_timestamps": pad8(output_timestamps),
-            "output_decoder_index": pad8(output_task_index),
+        data_dict = {
+            "model_inputs": {
+                # input sequence
+                "input_unit_index": pad8(spike_unit_index),
+                "input_timestamps": pad8(spike_timestamps),
+                "input_token_type": pad8(spike_token_type_index),
+                "input_mask": track_mask8(spike_unit_index),
+                # latent sequence
+                "latent_index": latent_index,
+                "latent_timestamps": latent_timestamps,
+                # output sequence
+                "output_session_index": pad8(session_index),
+                "output_timestamps": pad8(output_timestamps),
+                "output_decoder_index": pad8(output_task_index),
+            },
             # ground truth targets
             "target_values": chain(output_values, allow_missing_keys=True),
             "target_weights": chain(output_weights, allow_missing_keys=True),
+            # extra fields for evaluation
+            "session_id": data.session.id,
+            "absolute_start": data.absolute_start,
+            "eval_mask": chain(output_eval_mask, allow_missing_keys=True),
         }
 
-        if self.eval:
-            # we will add a few more fields needed for evaluation
-            batch["session_id"] = data.session.id
-            batch["absolute_start"] = data.absolute_start
-            batch["eval_mask"] = chain(output_eval_mask, allow_missing_keys=True)
+        return data_dict
 
-        return batch
+    def _validate_params(self, sequence_length, latent_step):
+        r"""Ensure: sequence_length, and latent_step are floating point numbers greater
+        than zero. And sequence_length is a multiple of latent_step.
+        """
+
+        if not isinstance(sequence_length, float):
+            raise ValueError("sequence_length must be a float")
+        if not sequence_length > 0:
+            raise ValueError("sequence_length must be greater than 0")
+        self.sequence_length = sequence_length
+
+        if not isinstance(latent_step, float):
+            raise ValueError("latent_step must be a float")
+        if not latent_step > 0:
+            raise ValueError("latent_step must be greater than 0")
+        self.latent_step = latent_step
+
+        # check if sequence_length is a multiple of latent_step
+        if abs(sequence_length % latent_step) > 1e-10:
+            logging.warning(
+                f"sequence_length ({sequence_length}) is not a multiple of latent_step "
+                f"({latent_step}). This is a simple warning, and this behavior is allowed."
+            )

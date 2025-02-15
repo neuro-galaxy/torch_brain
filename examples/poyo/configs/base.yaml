@@ -3,8 +3,6 @@
 data_root: ./data/processed/
 log_dir: ./logs
 
-sequence_length: 1.0  # in seconds
-latent_step: 0.125  # in seconds
 # TODO: resolve the readout_id from dataset, raise error if multiple found
 readout_id: cursor_velocity_2d
 

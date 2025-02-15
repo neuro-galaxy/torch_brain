@@ -17,10 +17,13 @@ from omegaconf import DictConfig, OmegaConf
 from temporaldata import Data
 
 from torch_brain.registry import MODALITIY_REGISTRY, ModalitySpec
-from torch_brain.models.poyo import POYOTokenizer, poyo_mp
+from torch_brain.models.poyo import POYO, poyo_mp
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
-from torch_brain.utils.stitcher import DecodingStitchEvaluator
+from torch_brain.utils.stitcher import (
+    DecodingStitchEvaluator,
+    DataForDecodingStitchEvaluator,
+)
 from torch_brain.data import Dataset, collate
 from torch_brain.nn import compute_loss_or_metric
 from torch_brain.data.sampler import (
@@ -77,17 +80,15 @@ class TrainWrapper(L.LightningModule):
         }
 
     def training_step(self, batch, batch_idx):
-        target_values = batch.pop("target_values")
-        target_weights = batch.pop("target_weights")
-        output_mask = batch.pop("output_mask")
 
         # forward pass
-        output_values = self.model(**batch)
+        output_values = self.model(**batch["model_inputs"])
 
         # compute loss
-        output_values = output_values[output_mask]
-        target_values = target_values[output_mask]
-        target_weights = target_weights[output_mask]
+        mask = batch["model_inputs"]["output_mask"]
+        output_values = output_values[mask]
+        target_values = batch["target_values"][mask]
+        target_weights = batch["target_weights"][mask]
 
         loss = compute_loss_or_metric(
             loss_or_metric=self.modality_spec.loss_fn,
@@ -109,62 +110,62 @@ class TrainWrapper(L.LightningModule):
         #     self.log(f"targets/mean_{name}", targets.mean())
         #     self.log(f"targets/std_{name}", targets.std())
 
-        unit_index = batch["input_unit_index"].float()
+        unit_index = batch["model_inputs"]["input_unit_index"].float()
         self.log("inputs/mean_unit_index", unit_index.mean())
         self.log("inputs/std_unit_index", unit_index.std())
 
         return loss
 
     def validation_step(self, batch, batch_idx):
-        target_values = batch.pop("target_values")
-        batch.pop("target_weights")
-        absolute_starts = batch.pop("absolute_start")
-        session_ids = batch.pop("session_id")
-        output_mask = batch.pop("output_mask")
 
         # forward pass
-        output_values = self.model(**batch)
+        output_values = self.model(**batch["model_inputs"])
 
-        # add removed elements back to batch
-        batch["target_values"] = target_values
-        batch["absolute_start"] = absolute_starts
-        batch["session_id"] = session_ids
-        batch["output_mask"] = output_mask
+        # prepare data for evaluator
+        # (goes to DecodingStitchEvaluator.on_validation_batch_end)
+        data_for_eval = DataForDecodingStitchEvaluator(
+            timestamps=batch["model_inputs"]["output_timestamps"],
+            preds=output_values,
+            targets=batch["target_values"],
+            eval_masks=batch["eval_mask"],
+            session_ids=batch["session_id"],
+            absolute_starts=batch["absolute_start"],
+        )
 
-        return output_values
+        return data_for_eval
 
     def test_step(self, batch, batch_idx):
         return self.validation_step(batch, batch_idx)
 
 
 class DataModule(L.LightningDataModule):
-    def __init__(self, cfg: DictConfig, tokenizer: Callable[[Data], Dict]):
+    def __init__(self, cfg: DictConfig):
         super().__init__()
         self.cfg = cfg
-        self.tokenizer = tokenizer
-
-        self.train_dataset = None
-        self.val_dataset = None
-        self.sequence_length = self.cfg.sequence_length
         self.log = logging.getLogger(__name__)
 
-    def setup(self, stage=None):
+    def setup_dataset_and_link_model(self, model: POYO):
+        r"""Setup Dataset objects, and update a given model's embedding vocabs (session
+        and unit_emb)
+        """
+        self.sequence_length = model.sequence_length
+
         train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
         self.train_dataset = Dataset(
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="train",
-            transform=Compose([*train_transforms, self.tokenizer]),
+            transform=Compose([*train_transforms, model.tokenize]),
         )
         self.train_dataset.disable_data_leakage_check()
 
-        eval_tokenizer = copy.copy(self.tokenizer)
-        eval_tokenizer.eval = True
+        self._init_model_vocab(model)
+
         self.val_dataset = Dataset(
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="valid",
-            transform=eval_tokenizer,
+            transform=model.tokenize,
         )
         self.val_dataset.disable_data_leakage_check()
 
@@ -172,9 +173,14 @@ class DataModule(L.LightningDataModule):
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="test",
-            transform=eval_tokenizer,
+            transform=model.tokenize,
         )
         self.test_dataset.disable_data_leakage_check()
+
+    def _init_model_vocab(self, model: POYO):
+        # TODO: Add code for finetuning situation (when model already has a vocab)
+        model.unit_emb.initialize_vocab(self.get_unit_ids())
+        model.session_emb.initialize_vocab(self.get_session_ids())
 
     def get_session_ids(self):
         return self.train_dataset.get_session_ids()
@@ -283,25 +289,10 @@ def main(cfg: DictConfig):
     # get modality details
     readout_spec = MODALITIY_REGISTRY[cfg.readout_id]
 
-    # make model and tokenizer
-    model = poyo_mp(dim_out=readout_spec.dim)
-
-    tokenizer = POYOTokenizer(
-        unit_tokenizer=model.unit_emb.tokenizer,
-        session_tokenizer=model.session_emb.tokenizer,
-        latent_step=cfg.latent_step,
-        num_latents_per_step=cfg.model.num_latents,
-        readout_spec=readout_spec,
-        sequence_length=cfg.sequence_length,
-    )
-
-    # setup data module
-    data_module = DataModule(cfg=cfg, tokenizer=tokenizer)
-    data_module.setup()
-
-    # register units and sessions
-    model.unit_emb.initialize_vocab(data_module.get_unit_ids())
-    model.session_emb.initialize_vocab(data_module.get_session_ids())
+    # make model and data module
+    model = poyo_mp(readout_spec=readout_spec)
+    data_module = DataModule(cfg=cfg)
+    data_module.setup_dataset_and_link_model(model)
 
     # Lightning train wrapper
     wrapper = TrainWrapper(

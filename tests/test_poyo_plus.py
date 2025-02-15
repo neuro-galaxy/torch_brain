@@ -7,7 +7,7 @@ from temporaldata import Data, IrregularTimeSeries, Interval, ArrayDict
 
 from torch_brain.data import collate
 from torch_brain.registry import DataType, register_modality
-from torch_brain.models.poyo_plus import POYOPlus, POYOPlusTokenizer
+from torch_brain.models.poyo_plus import POYOPlus
 
 
 def setup_module():
@@ -33,17 +33,19 @@ def task_specs():
 @pytest.fixture
 def model(task_specs):
     model = POYOPlus(
+        sequence_length=1.0,
+        latent_step=0.1,
+        num_latents_per_step=8,
         dim=32,
         dim_head=16,
-        num_latents=8,
         depth=2,
         readout_specs=task_specs,
     )
 
     # initialize unit vocab with 100 units labeled 0-99
-    model.unit_emb.initialize_vocab(np.arange(100))
+    # model.unit_emb.initialize_vocab(np.arange(100))
     # initialize session vocab with 10 sessions labeled 0-9
-    model.session_emb.initialize_vocab(np.arange(10))
+    # model.session_emb.initialize_vocab(np.arange(10))
 
     return model
 
@@ -58,6 +60,10 @@ def test_poyo_plus_forward(model):
     n_in = 10
     n_latent = 8
     n_out = 4
+
+    # Initialize dummy units and sessions
+    model.unit_emb.initialize_vocab(np.arange(100))
+    model.session_emb.initialize_vocab(np.arange(10))
 
     # Create dummy input data
     inputs = {
@@ -84,7 +90,7 @@ def test_poyo_plus_forward(model):
     assert outputs[0]["cursor_velocity_2d"].shape == (n_out, 2)
 
 
-def test_poyo_plus_tokenizer(task_specs):
+def test_poyo_plus_tokenizer(task_specs, model):
     # Create dummy data similar to test_dataset_sim.py
     data = Data(
         spikes=IrregularTimeSeries(
@@ -121,24 +127,26 @@ def test_poyo_plus_tokenizer(task_specs):
         },
     )
 
-    # Create mock tokenizers
-    unit_tokenizer = lambda x: np.arange(len(x))
-    session_tokenizer = lambda x: 0
-
-    # Initialize tokenizer
-    tokenizer = POYOPlusTokenizer(
-        unit_tokenizer=unit_tokenizer,
-        session_tokenizer=session_tokenizer,
-        decoder_registry=task_specs,
-        latent_step=0.1,
-        num_latents_per_step=8,
-    )
+    # Initialize vocabs (needed by the tokenizer)
+    model.unit_emb.initialize_vocab(data.units.id)
+    model.session_emb.initialize_vocab([data.session.id])
 
     # Apply tokenizer
-    batch = tokenizer(data)
+    batch = model.tokenize(data)
 
-    # Check that all expected keys are present
-    expected_keys = {
+    # Check that all expected keys are present in the top level
+    expected_top_level_keys = {
+        "model_inputs",
+        "target_values",
+        "target_weights",
+        "session_id",
+        "absolute_start",
+        "eval_mask",
+    }
+    assert set(batch.keys()) == expected_top_level_keys
+
+    # Check that all expected keys are present in model_inputs
+    expected_model_input_keys = {
         "input_unit_index",
         "input_timestamps",
         "input_token_type",
@@ -148,20 +156,23 @@ def test_poyo_plus_tokenizer(task_specs):
         "output_session_index",
         "output_timestamps",
         "output_decoder_index",
-        "target_values",
-        "target_weights",
     }
-    assert set(batch.keys()) == expected_keys
+    assert set(batch["model_inputs"].keys()) == expected_model_input_keys
 
     # Check that output values contain the expected tasks
     assert set(batch["target_values"].obj.keys()).issubset(set(task_specs.keys()))
 
     # Verify latent tokens
-    assert batch["latent_index"].shape[0] == len(np.arange(0, 1, 0.1)) * 8
-    assert batch["latent_timestamps"].shape[0] == len(np.arange(0, 1, 0.1)) * 8
+    assert (
+        batch["model_inputs"]["latent_index"].shape[0] == len(np.arange(0, 1, 0.1)) * 8
+    )
+    assert (
+        batch["model_inputs"]["latent_timestamps"].shape[0]
+        == len(np.arange(0, 1, 0.1)) * 8
+    )
 
 
-def test_poyo_plus_tokenizer_to_model(task_specs, model):
+def test_poyo_plus_tokenizer_to_model(model):
     # Create dummy data similar to test_dataset_sim.py
     data = Data(
         spikes=IrregularTimeSeries(
@@ -204,32 +215,21 @@ def test_poyo_plus_tokenizer_to_model(task_specs, model):
         },
     )
 
-    # Create mock tokenizers
-    unit_tokenizer = lambda x: np.arange(len(x))
-    session_tokenizer = lambda x: 0
-
-    # Initialize tokenizer
-    tokenizer = POYOPlusTokenizer(
-        unit_tokenizer=unit_tokenizer,
-        session_tokenizer=session_tokenizer,
-        decoder_registry=task_specs,
-        latent_step=0.1,
-        num_latents_per_step=8,
-    )
+    # Initialize vocabs (needed by the tokenizer)
+    model.unit_emb.initialize_vocab(data.units.id)
+    model.session_emb.initialize_vocab([data.session.id])
 
     # Apply tokenizer
-    batch = tokenizer(data)
+    batch = model.tokenize(data)
 
     # Create a batch list with a single element (simulating a batch size of 1)
     batch_list = [batch]
 
     # Use collate to properly batch the inputs
-    model_inputs = collate(batch_list)
+    collated_batch = collate(batch_list)
 
-    model_inputs.pop("target_values")
-    model_inputs.pop("target_weights")
     # Forward pass through model
-    outputs = model(**model_inputs)
+    outputs = model(**collated_batch["model_inputs"])
 
     # Basic checks
     assert isinstance(outputs, dict)
