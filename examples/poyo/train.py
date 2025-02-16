@@ -161,11 +161,13 @@ class DataModule(L.LightningDataModule):
 
         self._init_model_vocab(model)
 
+        eval_transforms = hydra.utils.instantiate(self.cfg.get("eval_transforms", []))
+
         self.val_dataset = Dataset(
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="valid",
-            transform=model.tokenize,
+            transform=Compose([*eval_transforms, model.tokenize]),
         )
         self.val_dataset.disable_data_leakage_check()
 
@@ -173,7 +175,7 @@ class DataModule(L.LightningDataModule):
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="test",
-            transform=model.tokenize,
+            transform=Compose([*eval_transforms, model.tokenize]),
         )
         self.test_dataset.disable_data_leakage_check()
 
