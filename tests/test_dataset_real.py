@@ -73,7 +73,7 @@
 #     sess_emb.initialize_vocab(ds.session_ids)
 
 #     sampler = SequentialFixedWindowSampler(
-#         interval_dict=ds.get_sampling_intervals(),
+#         sampling_intervals=ds.get_sampling_intervals(),
 #         window_length=1.0,
 #     )
 #     assert len(sampler) > 0
@@ -209,7 +209,7 @@
 #     model.session_emb.initialize_vocab(ds.session_ids)
 
 #     sampler = SequentialFixedWindowSampler(
-#         interval_dict=ds.get_sampling_intervals(),
+#         sampling_intervals=ds.get_sampling_intervals(),
 #         window_length=1.0,
 #     )
 #     assert len(sampler) > 0

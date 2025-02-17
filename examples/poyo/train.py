@@ -193,7 +193,7 @@ class DataModule(L.LightningDataModule):
 
     def train_dataloader(self):
         train_sampler = RandomFixedWindowSampler(
-            interval_dict=self.train_dataset.get_sampling_intervals(),
+            sampling_intervals=self.train_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
@@ -220,7 +220,7 @@ class DataModule(L.LightningDataModule):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
         val_sampler = DistributedStitchingFixedWindowSampler(
-            interval_dict=self.val_dataset.get_sampling_intervals(),
+            sampling_intervals=self.val_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
             batch_size=batch_size,
@@ -246,7 +246,7 @@ class DataModule(L.LightningDataModule):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
         test_sampler = DistributedStitchingFixedWindowSampler(
-            interval_dict=self.test_dataset.get_sampling_intervals(),
+            sampling_intervals=self.test_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
             batch_size=batch_size,

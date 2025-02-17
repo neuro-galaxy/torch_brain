@@ -7,7 +7,7 @@ from torch_brain.data.sampler import DistributedStitchingFixedWindowSampler
 
 def test_distributed_stitching_sampler():
     # create test interval dict
-    interval_dict = {
+    sampling_intervals = {
         "session1": Interval(start=np.array([0.0, 20.0]), end=np.array([10.0, 30.0])),
         "session2": Interval(start=np.array([0.0]), end=np.array([15.0])),
     }
@@ -19,7 +19,7 @@ def test_distributed_stitching_sampler():
 
     # Test rank 0
     sampler0 = DistributedStitchingFixedWindowSampler(
-        interval_dict=interval_dict,
+        sampling_intervals=sampling_intervals,
         window_length=window_length,
         step=step,
         batch_size=batch_size,
@@ -30,7 +30,7 @@ def test_distributed_stitching_sampler():
 
     # Test rank 1
     sampler1 = DistributedStitchingFixedWindowSampler(
-        interval_dict=interval_dict,
+        sampling_intervals=sampling_intervals,
         window_length=window_length,
         step=step,
         batch_size=batch_size,
