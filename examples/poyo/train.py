@@ -25,7 +25,6 @@ from torch_brain.utils.stitcher import (
     DataForDecodingStitchEvaluator,
 )
 from torch_brain.data import Dataset, collate
-from torch_brain.nn import compute_loss_or_metric
 from torch_brain.data.sampler import (
     DistributedStitchingFixedWindowSampler,
     RandomFixedWindowSampler,
@@ -90,13 +89,7 @@ class TrainWrapper(L.LightningModule):
         target_values = batch["target_values"][mask]
         target_weights = batch["target_weights"][mask]
 
-        loss = compute_loss_or_metric(
-            loss_or_metric=self.modality_spec.loss_fn,
-            output_type=self.modality_spec.type,
-            output=output_values,
-            target=target_values,
-            weights=target_weights,
-        )
+        loss = self.modality_spec.loss_fn(output_values, target_values, target_weights)
 
         self.log("train_loss", loss, prog_bar=True)
 
