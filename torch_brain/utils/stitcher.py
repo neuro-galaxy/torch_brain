@@ -14,6 +14,7 @@ import wandb
 
 import torch_brain
 from torch_brain.registry import ModalitySpec, DataType
+from torch_brain.data.sampler import OptimizedStitcherSamplerWrapper
 
 
 def stitch(timestamps: torch.Tensor, values: torch.Tensor) -> torch.Tensor:
@@ -255,6 +256,11 @@ class DataForMultiTaskDecodingStitchEvaluator:
 class MultiTaskDecodingStitchEvaluator(L.Callback):
     def __init__(self, metrics: dict):
         self.metrics = metrics
+
+    def convert_to_stitcher_sampler(self, sampler):
+        stitch_sampler = OptimizedStitcherSamplerWrapper(sampler)
+        self.sequence_index = stitch_sampler.sequence_index
+        return stitch_sampler
 
     def on_validation_epoch_start(self, trainer, pl_module):
         self._setup_cache(trainer, mode="val")
