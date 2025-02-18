@@ -287,6 +287,7 @@ def main(cfg: DictConfig):
         )
 
     # get modality details
+    # TODO: add test to verify that all recordings have the same readout
     readout_id = cfg.dataset[0].config.readout.readout_id
     readout_spec = MODALITIY_REGISTRY[readout_id]
 
