@@ -45,7 +45,10 @@ jobs:
     - name: Install brainsets
       run: |
         source venv/bin/activate
-        pip install git+https://github.com/neuro-galaxy/brainsets.git@main
+        git clone https://github.com/neuro-galaxy/brainsets.git
+        cd brainsets
+        pip install -e ".[dandi]"
+        cd ..
     - name: Download sample dataset
       run: |
         source venv/bin/activate
