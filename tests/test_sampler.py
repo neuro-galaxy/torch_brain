@@ -23,10 +23,10 @@ def compare_slice_indices(a, b):
 
 
 # helper
-def samples_in_interval_dict(samples, interval_dict):
+def samples_in_sampling_intervals(samples, sampling_intervals):
     for s in samples:
-        assert s.recording_id in interval_dict
-        allowed_intervals = interval_dict[s.recording_id]
+        assert s.recording_id in sampling_intervals
+        allowed_intervals = sampling_intervals[s.recording_id]
         if not (
             sum(
                 [
@@ -45,7 +45,7 @@ def samples_in_interval_dict(samples, interval_dict):
 
 def test_sequential_sampler():
     sampler = SequentialFixedWindowSampler(
-        interval_dict={
+        sampling_intervals={
             "session1": Interval(
                 start=np.array([0.0, 3.0]),
                 end=np.array([2.0, 4.5]),
@@ -91,7 +91,7 @@ def test_sequential_sampler():
 
 def test_random_sampler():
 
-    interval_dict = {
+    sampling_intervals = {
         "session1": Interval(
             start=np.array([0.0, 3.0]),
             end=np.array([2.0, 4.5]),
@@ -107,7 +107,7 @@ def test_random_sampler():
     }
 
     sampler = RandomFixedWindowSampler(
-        interval_dict=interval_dict,
+        sampling_intervals=sampling_intervals,
         window_length=1.1,
         generator=torch.Generator().manual_seed(42),
     )
@@ -116,7 +116,7 @@ def test_random_sampler():
     # sample and check that all indices are within the expected range
     samples = list(sampler)
     assert len(samples) == 9
-    assert samples_in_interval_dict(samples, interval_dict) == True
+    assert samples_in_sampling_intervals(samples, sampling_intervals) == True
 
     # sample again and check that the indices are different this time
     samples2 = list(sampler)
@@ -127,17 +127,17 @@ def test_random_sampler():
 
     # Test "index in valid range" when step > window_length
     sampler = RandomFixedWindowSampler(
-        interval_dict=interval_dict,
+        sampling_intervals=sampling_intervals,
         window_length=1.1,
         generator=torch.Generator().manual_seed(42),
     )
     samples = list(sampler)
-    assert samples_in_interval_dict(samples, interval_dict) == True
+    assert samples_in_sampling_intervals(samples, sampling_intervals) == True
 
     # Having window_length bigger than any interval should raise an error
     with pytest.raises(ValueError):
         sampler = RandomFixedWindowSampler(
-            interval_dict=interval_dict,
+            sampling_intervals=sampling_intervals,
             window_length=5,
             generator=torch.Generator().manual_seed(42),
         )
@@ -146,7 +146,7 @@ def test_random_sampler():
 
 
 def test_trial_sampler():
-    interval_dict = {
+    sampling_intervals = {
         "session1": Interval(
             start=np.array([0.0, 3.0]),
             end=np.array([2.0, 4.5]),
@@ -162,23 +162,26 @@ def test_trial_sampler():
     }
 
     sampler = TrialSampler(
-        interval_dict=interval_dict,
+        sampling_intervals=sampling_intervals,
+        shuffle=True,
     )
     assert len(sampler) == 7
 
     # Check that the sampled interval is within the expected range
     samples = list(sampler)
     assert len(samples) == 7
-    assert samples_in_interval_dict(samples, interval_dict)
+    assert samples_in_sampling_intervals(samples, sampling_intervals)
 
     # With the same seed, the sampler should always give the same outputs.
     sampler1 = TrialSampler(
-        interval_dict=interval_dict,
+        sampling_intervals=sampling_intervals,
         generator=torch.Generator().manual_seed(42),
+        shuffle=True,
     )
     sampler2 = TrialSampler(
-        interval_dict=interval_dict,
+        sampling_intervals=sampling_intervals,
         generator=torch.Generator().manual_seed(42),
+        shuffle=True,
     )
     samples1 = list(sampler1)
     samples2 = list(sampler2)
@@ -195,6 +198,6 @@ def test_trial_sampler():
     assert len([x for x in matches if x]) == 1 and not matches[0]
 
     # Do this again, with the sequential sampler
-    sampler1 = TrialSampler(interval_dict=interval_dict, shuffle=False)
+    sampler1 = TrialSampler(sampling_intervals=sampling_intervals, shuffle=False)
     samples1 = list(sampler1)
     assert compare_slice_indices(samples1[0], DatasetIndex("session1", 0.0, 2.0))

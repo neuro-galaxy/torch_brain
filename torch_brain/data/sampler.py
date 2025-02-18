@@ -5,7 +5,6 @@ from functools import cached_property
 
 import torch
 import torch.distributed as dist
-from torch.utils.data import Dataset, Sampler
 
 from temporaldata import Interval
 from torch_brain.data.dataset import DatasetIndex
@@ -13,7 +12,7 @@ from torch_brain.data.dataset import DatasetIndex
 
 class RandomFixedWindowSampler(torch.utils.data.Sampler):
     r"""Samples fixed-length windows randomly, given intervals defined in the
-    :obj:`interval_dict` parameter. :obj:`interval_dict` is a dictionary where the keys
+    :obj:`sampling_intervals` parameter. :obj:`sampling_intervals` is a dictionary where the keys
     are the session ids and the values are lists of tuples representing the
     start and end of the intervals from which to sample. The samples are shuffled, and
     random temporal jitter is applied.
@@ -26,22 +25,23 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
         N = \left\lfloor\frac{\text{interval_length}}{\text{window_length}}\right\rfloor
 
     Args:
-        interval_dict (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
+        sampling_intervals (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
             session in the dataset.
         window_length (float): Length of the window to sample.
         generator (Optional[torch.Generator], optional): Generator for shuffling.
             Defaults to None.
+        drop_short (bool, optional): Whether to drop short intervals. Defaults to True.
     """
 
     def __init__(
         self,
         *,
-        interval_dict: Dict[str, Interval],
+        sampling_intervals: Dict[str, Interval],
         window_length: float,
-        generator: Optional[torch.Generator],
+        generator: Optional[torch.Generator] = None,
         drop_short: bool = True,
     ):
-        self.interval_dict = interval_dict
+        self.sampling_intervals = sampling_intervals
         self.window_length = window_length
         self.generator = generator
         self.drop_short = drop_short
@@ -51,7 +51,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
         num_samples = 0
         total_short_dropped = 0.0
 
-        for session_name, sampling_intervals in self.interval_dict.items():
+        for session_name, sampling_intervals in self.sampling_intervals.items():
             for start, end in zip(sampling_intervals.start, sampling_intervals.end):
                 interval_length = end - start
                 if interval_length < self.window_length:
@@ -83,7 +83,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
             raise ValueError("All intervals are too short to sample from.")
 
         indices = []
-        for session_name, sampling_intervals in self.interval_dict.items():
+        for session_name, sampling_intervals in self.sampling_intervals.items():
             for start, end in zip(sampling_intervals.start, sampling_intervals.end):
                 interval_length = end - start
                 if interval_length < self.window_length:
@@ -140,8 +140,8 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
 
 class SequentialFixedWindowSampler(torch.utils.data.Sampler):
     r"""Samples fixed-length windows sequentially, always in the same order. The
-    sampling intervals are defined in the :obj:`interval_dict` parameter.
-    :obj:`interval_dict` is a dictionary where the keys are the session ids and the
+    sampling intervals are defined in the :obj:`sampling_intervals` parameter.
+    :obj:`sampling_intervals` is a dictionary where the keys are the session ids and the
     values are lists of tuples representing the start and end of the intervals
     from which to sample.
 
@@ -150,22 +150,23 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
     that the entire sequence is covered.
 
     Args:
-        interval_dict (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
+        sampling_intervals (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
             session in the dataset.
         window_length (float): Length of the window to sample.
         step (Optional[float], optional): Step size between windows. If None, it
             defaults to `window_length`. Defaults to None.
+        drop_short (bool, optional): Whether to drop short intervals. Defaults to False.
     """
 
     def __init__(
         self,
         *,
-        interval_dict: Dict[str, List[Tuple[float, float]]],
+        sampling_intervals: Dict[str, List[Tuple[float, float]]],
         window_length: float,
         step: Optional[float] = None,
         drop_short=False,
     ):
-        self.interval_dict = interval_dict
+        self.sampling_intervals = sampling_intervals
         self.window_length = window_length
         self.step = step or window_length
         self.drop_short = drop_short
@@ -179,7 +180,7 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
         indices = []
         total_short_dropped = 0.0
 
-        for session_name, sampling_intervals in self.interval_dict.items():
+        for session_name, sampling_intervals in self.sampling_intervals.items():
             for start, end in zip(sampling_intervals.start, sampling_intervals.end):
                 interval_length = end - start
                 if interval_length < self.window_length:
@@ -230,31 +231,32 @@ class TrialSampler(torch.utils.data.Sampler):
     r"""Randomly samples a single trial interval from the given intervals.
 
     Args:
-        interval_dict (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
+        sampling_intervals (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
             session in the dataset.
         generator (Optional[torch.Generator], optional): Generator for shuffling.
             Defaults to None.
+        shuffle (bool, optional): Whether to shuffle the indices. Defaults to False.
     """
 
     def __init__(
         self,
         *,
-        interval_dict: Dict[str, List[Tuple[float, float]]],
+        sampling_intervals: Dict[str, List[Tuple[float, float]]],
         generator: Optional[torch.Generator] = None,
-        shuffle: bool = True,
+        shuffle: bool = False,
     ):
-        self.interval_dict = interval_dict
+        self.sampling_intervals = sampling_intervals
         self.generator = generator
         self.shuffle = shuffle
 
     def __len__(self):
-        return sum(len(intervals) for intervals in self.interval_dict.values())
+        return sum(len(intervals) for intervals in self.sampling_intervals.values())
 
     def __iter__(self):
         # Flatten the intervals from all sessions into a single list
         all_intervals = [
             (session_id, start, end)
-            for session_id, intervals in self.interval_dict.items()
+            for session_id, intervals in self.sampling_intervals.items()
             for start, end in zip(intervals.start, intervals.end)
         ]
 
@@ -286,12 +288,12 @@ class DistributedSamplerWrapper(torch.utils.data.Sampler):
 
         >>> from torch_brain.data.sampler import SequentialFixedWindowSampler, DistributedSamplerWrapper
 
-        >>> interval_dict = {
+        >>> sampling_intervals = {
         ...     "session_1": Interval(0, 100),
         ...     "session_2": Interval(0, 100),
         ... }
 
-        >>> sampler = SequentialFixedWindowSampler(interval_dict=interval_dict, window_length=10)
+        >>> sampler = SequentialFixedWindowSampler(sampling_intervals=sampling_intervals, window_length=10)
         >>> dist_sampler = DistributedSamplerWrapper(sampler)
 
     """
@@ -353,7 +355,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
     allowing it to free up memory quickly.
 
     Args:
-        interval_dict (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
+        sampling_intervals (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
             session in the dataset. Each interval is defined by a start and end time.
         window_length (float): Length of the sliding window.
         step (Optional[float], optional): Step size between windows. If None, defaults
@@ -368,7 +370,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
     def __init__(
         self,
         *,
-        interval_dict: Dict[str, Interval],
+        sampling_intervals: Dict[str, Interval],
         window_length: float,
         step: Optional[float] = None,
         batch_size: int,
@@ -388,7 +390,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
                 f"Invalid rank {rank}, rank should be in the interval [0, {num_replicas - 1}]"
             )
 
-        self.interval_dict = interval_dict
+        self.sampling_intervals = sampling_intervals
         self.window_length = window_length
         self.step = step or window_length
         self.batch_size = batch_size
@@ -411,7 +413,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         # first, we will compute the number of contiguous windows across all intervals
         all_intervals = []
         interval_sizes = []
-        for session_name, intervals in self.interval_dict.items():
+        for session_name, intervals in self.sampling_intervals.items():
             for start, end in zip(intervals.start, intervals.end):
                 if end - start >= self.window_length:
                     # calculate number of windows in this interval
