@@ -23,7 +23,6 @@ from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
 )
 from torch_brain.models import POYOPlus
-from torch_brain.nn import compute_loss_or_metric
 from torch_brain.registry import MODALITIY_REGISTRY
 from torch_brain.transforms import Compose
 from torch_brain.utils import callbacks as tbrain_callbacks
@@ -98,9 +97,7 @@ class TrainWrapper(L.LightningModule):
             if readout_id in target_weights and target_weights[readout_id] is not None:
                 weights = target_weights[readout_id]
 
-            taskwise_loss[readout_id] = compute_loss_or_metric(
-                spec.loss_fn, spec.type, output, target, weights
-            )
+            taskwise_loss[readout_id] = spec.loss_fn(output, target, weights)
 
             # count the number of sequences in the batch that have the current task
             num_sequences_with_current_task = torch.any(
@@ -383,8 +380,8 @@ def main(cfg: DictConfig):
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=cfg.gpus,
         num_nodes=cfg.nodes,
-        num_sanity_val_steps=cfg.num_sanity_val_steps,
         limit_val_batches=None,  # Ensure no limit on validation batches
+        num_sanity_val_steps=-1 if cfg.sanity_check_validation else 0,
     )
 
     log.info(

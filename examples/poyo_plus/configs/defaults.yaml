@@ -1,24 +1,28 @@
-# Base config for training poyo_plus
+# defaults used for training POYO+
+# this file needs to be combined with a model config and a dataset config
 
+# Paths
 data_root: ./data/processed/
 log_dir: ./logs
 
-# TODO: resolve the readout_id from dataset, raise error if multiple found
-readout_id: cursor_velocity_2d
+# Transforms
+train_transforms: []
+eval_transforms: []
 
+# Training
 epochs: 1000
-eval_epochs: 1  # frequency for doing validation 
-
 batch_size: 128
+eval_epochs: 1
 eval_batch_size: null  # if null, will use batch_size
-num_workers: 4
-seed: 42
+seed: 42  # use to set random seed
+sanity_check_validation: false  # if true, will start the run with validation 
 
 optim:
   base_lr: 3.125e-5  # scaled linearly by batch size
   weight_decay: 1e-4
   lr_decay_start: 0.5  # fraction of epochs before starting LR decay
 
+# Logging
 wandb:
   enable: true
   entity: null
@@ -26,10 +30,11 @@ wandb:
   run_name: null
   log_model: false
 
+# GPU and CPU
 precision: 32
 nodes: 1
 gpus: 1
+num_workers: 4
 
+# Checkpointing
 ckpt_path: null  # for resuming training, or loading a model during finetuning
-
-num_sanity_val_steps: 0  # only supports 0 (none) and -1 (all) right now

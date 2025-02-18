@@ -1,6 +1,4 @@
 import logging
-from typing import Callable, Dict
-import copy
 
 import hydra
 import lightning as L
@@ -17,7 +15,7 @@ from omegaconf import DictConfig, OmegaConf
 from temporaldata import Data
 
 from torch_brain.registry import MODALITIY_REGISTRY, ModalitySpec
-from torch_brain.models.poyo import POYO, poyo_mp
+from torch_brain.models.poyo import POYO
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
 from torch_brain.utils.stitcher import (
@@ -25,7 +23,6 @@ from torch_brain.utils.stitcher import (
     DataForDecodingStitchEvaluator,
 )
 from torch_brain.data import Dataset, collate
-from torch_brain.nn import compute_loss_or_metric
 from torch_brain.data.sampler import (
     DistributedStitchingFixedWindowSampler,
     RandomFixedWindowSampler,
@@ -90,13 +87,7 @@ class TrainWrapper(L.LightningModule):
         target_values = batch["target_values"][mask]
         target_weights = batch["target_weights"][mask]
 
-        loss = compute_loss_or_metric(
-            loss_or_metric=self.modality_spec.loss_fn,
-            output_type=self.modality_spec.type,
-            output=output_values,
-            target=target_values,
-            weights=target_weights,
-        )
+        loss = self.modality_spec.loss_fn(output_values, target_values, target_weights)
 
         self.log("train_loss", loss, prog_bar=True)
 
@@ -287,10 +278,12 @@ def main(cfg: DictConfig):
         )
 
     # get modality details
-    readout_spec = MODALITIY_REGISTRY[cfg.readout_id]
+    # TODO: add test to verify that all recordings have the same readout
+    readout_id = cfg.dataset[0].config.readout.readout_id
+    readout_spec = MODALITIY_REGISTRY[readout_id]
 
     # make model and data module
-    model = poyo_mp(readout_spec=readout_spec)
+    model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)
     data_module = DataModule(cfg=cfg)
     data_module.setup_dataset_and_link_model(model)
 
@@ -332,7 +325,7 @@ def main(cfg: DictConfig):
         devices=cfg.gpus,
         num_nodes=cfg.nodes,
         limit_val_batches=None,  # Ensure no limit on validation batches
-        num_sanity_val_steps=cfg.num_sanity_val_steps,
+        num_sanity_val_steps=-1 if cfg.sanity_check_validation else 0,
     )
 
     # Train
