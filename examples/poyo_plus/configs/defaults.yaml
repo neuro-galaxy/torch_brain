@@ -6,8 +6,8 @@ data_root: ./data/processed/
 log_dir: ./logs
 
 # Transforms
-train_transforms: null
-eval_transforms: null
+train_transforms: []
+eval_transforms: []
 
 # Training
 epochs: 1000
