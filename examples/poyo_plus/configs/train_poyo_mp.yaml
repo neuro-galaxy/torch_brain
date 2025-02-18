@@ -1,5 +1,5 @@
 defaults:
-  - base.yaml
+  - defaults.yaml
   - model: poyo_single_session.yaml
   - dataset: perich_miller_population_2018.yaml
   - _self_
