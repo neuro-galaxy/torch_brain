@@ -22,11 +22,6 @@ jobs:
       run: |
         python -m venv venv
         source venv/bin/activate
-    - name: Install brainsets
-      run: |
-        source venv/bin/activate
-        python -m pip install --upgrade pip
-        pip install git+https://github.com/neuro-galaxy/brainsets.git@main
     - name: Install dependencies
       run: |
         source venv/bin/activate
@@ -47,6 +42,10 @@ jobs:
       run: |
         source venv/bin/activate
         pytest --doctest-modules torch_brain/ -v
+    - name: Install brainsets
+      run: |
+        source venv/bin/activate
+        pip install git+https://github.com/neuro-galaxy/brainsets.git@main
     - name: Download sample dataset
       run: |
         source venv/bin/activate
