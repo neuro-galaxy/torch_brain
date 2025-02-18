@@ -1,6 +1,4 @@
 import logging
-from typing import Callable, Dict
-import copy
 
 import hydra
 import lightning as L
@@ -17,7 +15,7 @@ from omegaconf import DictConfig, OmegaConf
 from temporaldata import Data
 
 from torch_brain.registry import MODALITIY_REGISTRY, ModalitySpec
-from torch_brain.models.poyo import POYO, poyo_mp
+from torch_brain.models.poyo import POYO
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
 from torch_brain.utils.stitcher import (
@@ -289,10 +287,11 @@ def main(cfg: DictConfig):
         )
 
     # get modality details
-    readout_spec = MODALITIY_REGISTRY[cfg.readout_id]
+    readout_id = cfg.dataset[0].config.readout.readout_id
+    readout_spec = MODALITIY_REGISTRY[readout_id]
 
     # make model and data module
-    model = poyo_mp(readout_spec=readout_spec)
+    model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)
     data_module = DataModule(cfg=cfg)
     data_module.setup_dataset_and_link_model(model)
 
@@ -334,7 +333,7 @@ def main(cfg: DictConfig):
         devices=cfg.gpus,
         num_nodes=cfg.nodes,
         limit_val_batches=None,  # Ensure no limit on validation batches
-        num_sanity_val_steps=cfg.num_sanity_val_steps,
+        num_sanity_val_steps=-1 if cfg.sanity_check_validation else 0,
     )
 
     # Train

@@ -1,0 +1,21 @@
+- selection:
+  - brainset: perich_miller_population_2018
+    sessions:
+      - c_20131003_center_out_reaching
+      # - c_20131022_center_out_reaching
+      # - c_20131023_center_out_reaching
+  config:
+    readout:
+      readout_id: cursor_velocity_2d
+      normalize_mean: 0.
+      normalize_std: 20.
+      weights:
+        movement_phases.random_period: 1.0
+        movement_phases.hold_period: 0.1
+        movement_phases.reach_period: 5.0
+        movement_phases.return_period: 1.0
+        cursor_outlier_segments: 0.0
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+      eval_interval: movement_phases.reach_period
