@@ -1,5 +1,5 @@
 - selection:
-  - brainset: "pei_pandarinath_nlb_2021"
+  - brainset: pei_pandarinath_nlb_2021
   config:
     readout:
       readout_id: cursor_velocity_2d

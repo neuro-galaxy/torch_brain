@@ -53,4 +53,8 @@ jobs:
     - name: Train a POYO model
       run: |
         source venv/bin/activate
-        python examples/poyo/train.py --config-name train_mc_maze.yaml data_root=data/processed wandb.enable=false epochs=40 eval_epochs=40
+        python examples/poyo/train.py --config-name train_mc_maze_small.yaml data_root=data/processed wandb.enable=false epochs=40 eval_epochs=40
+    - name: Train a POYO+ model
+      run: |
+        source venv/bin/activate
+        python examples/poyo_plus/train.py --config-name train_mc_maze_small.yaml data_root=data/processed wandb.enable=false epochs=40 eval_epochs=40
