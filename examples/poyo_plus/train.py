@@ -383,8 +383,8 @@ def main(cfg: DictConfig):
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         devices=cfg.gpus,
         num_nodes=cfg.nodes,
-        num_sanity_val_steps=cfg.num_sanity_val_steps,
         limit_val_batches=None,  # Ensure no limit on validation batches
+        num_sanity_val_steps=-1 if cfg.sanity_check_validation else 0,
     )
 
     log.info(
