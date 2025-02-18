@@ -23,7 +23,6 @@ from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
 )
 from torch_brain.models import POYOPlus
-from torch_brain.nn import compute_loss_or_metric
 from torch_brain.registry import MODALITIY_REGISTRY
 from torch_brain.transforms import Compose
 from torch_brain.utils import callbacks as tbrain_callbacks
@@ -98,9 +97,7 @@ class TrainWrapper(L.LightningModule):
             if readout_id in target_weights and target_weights[readout_id] is not None:
                 weights = target_weights[readout_id]
 
-            taskwise_loss[readout_id] = compute_loss_or_metric(
-                spec.loss_fn, spec.type, output, target, weights
-            )
+            taskwise_loss[readout_id] = spec.loss_fn(output, target, weights)
 
             # count the number of sequences in the batch that have the current task
             num_sequences_with_current_task = torch.any(

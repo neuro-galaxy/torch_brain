@@ -42,7 +42,7 @@ If you encounter any bugs or have feature requests, please submit them to our
    :caption: Package Reference
 
    package/data
-   package/nn
+   package/nn/index
    package/models
    package/registry
    package/optim
