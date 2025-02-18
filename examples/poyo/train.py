@@ -159,7 +159,7 @@ class DataModule(L.LightningDataModule):
 
         self._init_model_vocab(model)
 
-        eval_transforms = hydra.utils.instantiate(self.cfg.get("eval_transforms", []))
+        eval_transforms = hydra.utils.instantiate(self.cfg.get.eval_transforms)
 
         self.val_dataset = Dataset(
             root=self.cfg.data_root,
