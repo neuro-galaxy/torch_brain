@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from unittest.mock import Mock
 from temporaldata import Data, IrregularTimeSeries, Interval, ArrayDict
 
+import torch_brain
 from torch_brain.data import collate
 from torch_brain.registry import DataType, register_modality
 from torch_brain.models.poyo_plus import POYOPlus
@@ -17,7 +18,7 @@ def setup_module():
         "custom_gaze_pos_2d",
         dim=2,
         type=DataType.CONTINUOUS,
-        loss_fn="mse",
+        loss_fn=torch_brain.nn.loss.MSELoss(),
         timestamp_key="gaze.timestamps",
         value_key="gaze.position",
     )

@@ -23,7 +23,6 @@ from torch_brain.utils.stitcher import (
     DataForDecodingStitchEvaluator,
 )
 from torch_brain.data import Dataset, collate
-from torch_brain.nn import compute_loss_or_metric
 from torch_brain.data.sampler import (
     DistributedStitchingFixedWindowSampler,
     RandomFixedWindowSampler,
@@ -88,13 +87,7 @@ class TrainWrapper(L.LightningModule):
         target_values = batch["target_values"][mask]
         target_weights = batch["target_weights"][mask]
 
-        loss = compute_loss_or_metric(
-            loss_or_metric=self.modality_spec.loss_fn,
-            output_type=self.modality_spec.type,
-            output=output_values,
-            target=target_values,
-            weights=target_weights,
-        )
+        loss = self.modality_spec.loss_fn(output_values, target_values, target_weights)
 
         self.log("train_loss", loss, prog_bar=True)
 
@@ -193,7 +186,7 @@ class DataModule(L.LightningDataModule):
 
     def train_dataloader(self):
         train_sampler = RandomFixedWindowSampler(
-            interval_dict=self.train_dataset.get_sampling_intervals(),
+            sampling_intervals=self.train_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
@@ -220,7 +213,7 @@ class DataModule(L.LightningDataModule):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
         val_sampler = DistributedStitchingFixedWindowSampler(
-            interval_dict=self.val_dataset.get_sampling_intervals(),
+            sampling_intervals=self.val_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
             batch_size=batch_size,
@@ -246,7 +239,7 @@ class DataModule(L.LightningDataModule):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
         test_sampler = DistributedStitchingFixedWindowSampler(
-            interval_dict=self.test_dataset.get_sampling_intervals(),
+            sampling_intervals=self.test_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
             batch_size=batch_size,

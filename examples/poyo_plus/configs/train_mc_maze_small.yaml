@@ -1,5 +1,5 @@
 defaults:
-  - base.yaml
+  - defaults.yaml
   - model: poyo_single_session.yaml
   - dataset: mc_maze_small.yaml
   - _self_
