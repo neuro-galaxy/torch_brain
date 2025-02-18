@@ -2,13 +2,11 @@ import argparse
 import datetime
 import logging
 import os
+
 import h5py
-
-
-import numpy as np
 from pynwb import NWBHDF5IO
-
 from temporaldata import Data, IrregularTimeSeries, Interval
+
 from brainsets.descriptions import (
     BrainsetDescription,
     SessionDescription,
@@ -67,26 +65,20 @@ def extract_behavior(nwbfile, trials):
     hand_vel = nwbfile.processing["behavior"]["hand_vel"].data[:]
     eye_pos = nwbfile.processing["behavior"]["eye_pos"].data[:]
 
-    # report accuracy only on the evaluation intervals
-    eval_mask = np.zeros_like(timestamps, dtype=bool)
-
-    for i in range(len(trials)):
-
-        eval_mask[
-            (timestamps >= (trials.move_onset_time[i] - 0.05))
-            & (timestamps < (trials.move_onset_time[i] + 0.65))
-        ] = True
-
-    behavior = IrregularTimeSeries(
+    hand = IrregularTimeSeries(
         timestamps=timestamps,
-        hand_pos=hand_pos,
-        hand_vel=hand_vel,
-        eye_pos=eye_pos,
-        eval_mask=eval_mask,
+        pos=hand_pos,
+        vel=hand_vel,
         domain="auto",
     )
 
-    return behavior
+    eye = IrregularTimeSeries(
+        timestamps=timestamps,
+        pos=eye_pos,
+        domain="auto",
+    )
+
+    return hand, eye
 
 
 def main():
@@ -163,7 +155,13 @@ def main():
 
     if not "test" in args.input_file:
         # extract behavior
-        data.behavior = extract_behavior(nwbfile, trials)
+        data.hand, data.eye = extract_behavior(nwbfile, trials)
+
+        # report accuracy only on the evaluation intervals
+        data.nlb_eval_intervals = Interval(
+            start=trials.move_onset_time - 0.05,
+            end=trials.move_onset_time + 0.65,
+        )
 
         # split and register trials into train, validation and test
         train_trials, valid_trials = trials.select_by_mask(trials.train_mask_nwb).split(
@@ -171,9 +169,9 @@ def main():
         )
         test_trials = trials.select_by_mask(trials.test_mask_nwb)
 
-        data.train_domain = train_trials
-        data.valid_domain = valid_trials
-        data.test_domain = test_trials
+        data.set_train_domain(train_trials)
+        data.set_valid_domain(valid_trials)
+        data.set_test_domain(test_trials)
 
     # close file
     io.close()

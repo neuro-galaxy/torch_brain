@@ -33,7 +33,7 @@ rule prepare_data:
         """
 
 def aggregate_input(wildcards):
-    with checkpoints.mc_maze_small_download_data.get(**wildcards).output[0].open() as manifest:
+    with checkpoints.pei_pandarinath_nlb_2021_download_data.get(**wildcards).output[0].open() as manifest:
         files = [line.strip() for line in manifest]
     return expand(f"{PROCESSED_DIR}/{DATASET}/tmp/{{file}}.txt", file=files)
 
