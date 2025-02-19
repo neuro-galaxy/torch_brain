@@ -12,7 +12,7 @@ from lightning.pytorch.callbacks import (
 )
 from omegaconf import DictConfig
 
-from torch_brain.registry import MODALITIY_REGISTRY
+from torch_brain.registry import MODALITY_REGISTRY
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
 from torch_brain.utils.datamodules import DataModule
@@ -120,7 +120,7 @@ def main(cfg: DictConfig):
         )
 
     # make model
-    model = hydra.utils.instantiate(cfg.model, readout_specs=MODALITIY_REGISTRY)
+    model = hydra.utils.instantiate(cfg.model, readout_specs=MODALITY_REGISTRY)
     load_model_from_ckpt(model, cfg.ckpt_path)
     log.info(f"Loaded model weights from {cfg.ckpt_path}")
 
