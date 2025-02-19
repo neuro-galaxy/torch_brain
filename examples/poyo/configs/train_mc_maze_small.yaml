@@ -1,6 +1,6 @@
 defaults:
   - defaults.yaml
-  - model: poyo_single_session.yaml
+  - model: poyo_1.3M.yaml
   - dataset: pei_pandarinath_nlb_2021.yaml
   - _self_
 
@@ -11,12 +11,5 @@ train_transforms:
     mode_units: 300
     peak: 4
 
-batch_size: 128
-eval_epochs: 10
-
-optim:
-  base_lr: 1.5625e-5
-  weight_decay: 0.0001
-
 wandb:
-  run_name: poyo_nlb_mc_maze
+  run_name: poyo_nlb_mc_maze_small
