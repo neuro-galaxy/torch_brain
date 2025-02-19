@@ -29,7 +29,6 @@ jobs:
         uv pip install --upgrade pip 
         uv pip install torch==2.2.0
         uv pip install -e ".[dev]" 
-        uv pip install flake8 pytest
     - name: Install plugin
       run: |
         source venv/bin/activate
