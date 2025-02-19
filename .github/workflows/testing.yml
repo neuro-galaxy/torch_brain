@@ -22,17 +22,18 @@ jobs:
       run: |
         python -m venv venv
         source venv/bin/activate
+        pip install uv
     - name: Install dependencies
       run: |
         source venv/bin/activate
-        python -m pip install --upgrade pip 
-        pip install torch==2.2.0
-        pip install -e ".[dev]" 
-        pip install flake8 pytest
+        uv pip install --upgrade pip 
+        uv pip install torch==2.2.0
+        uv pip install -e ".[dev]" 
+        uv pip install flake8 pytest
     - name: Install plugin
       run: |
         source venv/bin/activate
-        pip install pytest-github-actions-annotate-failures
+        uv pip install pytest-github-actions-annotate-failures
     - name: Test with pytest
       run: |
         source venv/bin/activate
@@ -49,7 +50,7 @@ jobs:
         cd brainsets_tmp
         git clone https://github.com/neuro-galaxy/brainsets.git
         cd brainsets
-        pip install -e ".[dandi]"
+        uv pip install -e ".[dandi]"
         cd ../../ 
     - name: Download sample dataset
       run: |
