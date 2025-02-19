@@ -4,7 +4,7 @@ from torch_brain.registry import (
     DataType,
     ModalitySpec,
     register_modality,
-    MODALITIY_REGISTRY,
+    MODALITY_REGISTRY,
 )
 
 
@@ -41,9 +41,9 @@ def test_modality_spec_creation():
 @pytest.fixture
 def clear_registry():
     """Fixture to clear the registry before and after each test."""
-    MODALITIY_REGISTRY.clear()
+    MODALITY_REGISTRY.clear()
     yield
-    MODALITIY_REGISTRY.clear()
+    MODALITY_REGISTRY.clear()
 
 
 def test_register_modality(clear_registry):
@@ -58,9 +58,9 @@ def test_register_modality(clear_registry):
     )
 
     assert modality_id == 1
-    assert "test_modality" in MODALITIY_REGISTRY
-    assert MODALITIY_REGISTRY["test_modality"].id == 1
-    assert MODALITIY_REGISTRY["test_modality"].dim == 2
+    assert "test_modality" in MODALITY_REGISTRY
+    assert MODALITY_REGISTRY["test_modality"].id == 1
+    assert MODALITY_REGISTRY["test_modality"].dim == 2
 
 
 def test_register_duplicate_modality(clear_registry):
@@ -109,6 +109,6 @@ def test_register_multiple_modalities(clear_registry):
 
     assert id1 == 1
     assert id2 == 2
-    assert len(MODALITIY_REGISTRY) == 2
-    assert MODALITIY_REGISTRY["modality1"].id == 1
-    assert MODALITIY_REGISTRY["modality2"].id == 2
+    assert len(MODALITY_REGISTRY) == 2
+    assert MODALITY_REGISTRY["modality1"].id == 1
+    assert MODALITY_REGISTRY["modality2"].id == 2

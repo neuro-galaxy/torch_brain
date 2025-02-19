@@ -42,7 +42,7 @@ class ModalitySpec:
     loss_fn: Callable  # can be overwritten
 
 
-MODALITIY_REGISTRY: Dict[str, ModalitySpec] = {}
+MODALITY_REGISTRY: Dict[str, ModalitySpec] = {}
 _ID_TO_MODALITY: Dict[int, str] = {}
 
 
@@ -61,17 +61,17 @@ def register_modality(name: str, **kwargs: Any) -> int:
         ValueError: If a modality with the given name already exists
     """
     # Check if modality already exists
-    if name in MODALITIY_REGISTRY:
+    if name in MODALITY_REGISTRY:
         raise ValueError(f"Modality {name} already exists in registry")
 
     # Get next available ID
-    next_id = len(MODALITIY_REGISTRY) + 1
+    next_id = len(MODALITY_REGISTRY) + 1
 
     # Create DecoderSpec from kwargs and set ID
     decoder_spec = ModalitySpec(**kwargs, id=next_id)
 
     # Add to registries
-    MODALITIY_REGISTRY[name] = decoder_spec
+    MODALITY_REGISTRY[name] = decoder_spec
     _ID_TO_MODALITY[next_id] = name
 
     return next_id

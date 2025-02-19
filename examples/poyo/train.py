@@ -14,7 +14,7 @@ from lightning.pytorch.callbacks import (
 from omegaconf import DictConfig, OmegaConf
 from temporaldata import Data
 
-from torch_brain.registry import MODALITIY_REGISTRY, ModalitySpec
+from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
 from torch_brain.models.poyo import POYO
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
@@ -282,7 +282,7 @@ def main(cfg: DictConfig):
     # get modality details
     # TODO: add test to verify that all recordings have the same readout
     readout_id = cfg.dataset[0].config.readout.readout_id
-    readout_spec = MODALITIY_REGISTRY[readout_id]
+    readout_spec = MODALITY_REGISTRY[readout_id]
 
     # make model and data module
     model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)
