@@ -36,12 +36,12 @@ torch_brain.transforms
     :show-inheritance:
     :undoc-members:
 
-.. autoclass:: TriangleDistribution
+.. autoclass:: UnitDropout
     :members:
     :show-inheritance:
     :undoc-members:
 
-.. autoclass:: UnitDropout
+.. autoclass:: TriangleDistribution
     :members:
     :show-inheritance:
     :undoc-members:

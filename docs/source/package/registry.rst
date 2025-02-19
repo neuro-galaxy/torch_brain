@@ -5,6 +5,7 @@ torch_brain.registry
 
 .. list-table::
    :widths: 25 125
+   
    * - :py:class:`DataType`
      - Enum defining possible data types for modalities.
    * - :py:class:`ModalitySpec`

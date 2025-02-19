@@ -2,7 +2,7 @@
 Script that ingests a dataset config file, calculates the mean, std for all continous outputs across all sessions (respecting only the training interval splits).
 1. Gets the sessions, training intervals to be used from the dataset config file and dataset instance.
 3. Loads the data for each session.
-3. Looks at the various "decoder_ids" used in the "multitask_readout" section of the config file, and for each continuous decoder_id, aggregates the mean, std, and count of the tensors (specified by the "value_key" in the kirby.taxonomy.multitask_readout.decoder_registry).
+3. Looks at the various "decoder_ids" used in the "multitask_readout" section of the config file, and for each continuous decoder_id, aggregates the mean, std, and count of the tensors.
 4. Uses all the aggregated means, stds, and counts of all the sessions includes, to calculate the overall mean and std.
 5. The above is done for each decoder_id (that is continous, i.e. not categorical)
 """
