@@ -17,7 +17,7 @@ from torch_brain.nn import (
     RotaryEmbedding,
     prepare_for_multitask_readout,
 )
-from torch_brain.registry import ModalitySpec, MODALITIY_REGISTRY
+from torch_brain.registry import ModalitySpec, MODALITY_REGISTRY
 
 from torch_brain.utils import (
     create_linspace_latent_tokens,
@@ -71,7 +71,7 @@ class POYOPlus(nn.Module):
         self,
         *,
         sequence_length: float,
-        readout_specs: Dict[str, ModalitySpec] = MODALITIY_REGISTRY,
+        readout_specs: Dict[str, ModalitySpec] = MODALITY_REGISTRY,
         latent_step: float,
         num_latents_per_step: int = 64,
         dim: int = 512,
