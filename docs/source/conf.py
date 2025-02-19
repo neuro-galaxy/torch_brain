@@ -19,6 +19,7 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx_inline_tabs",
     "sphinx.ext.mathjax",
+    "bokeh.sphinxext.bokeh_plot",
 ]
 
 html_theme = "furo"
@@ -44,3 +45,7 @@ myst_enable_extensions = [
 ]
 
 pygments_style = "default"
+
+bokeh_plot_pyfile_include_dirs = [
+    "concepts/examples",
+]
