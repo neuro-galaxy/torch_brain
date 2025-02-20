@@ -2,12 +2,12 @@ import click
 import json
 from pathlib import Path
 import subprocess
+import brainsets_pipelines
 
 
 CONFIG_FILE = Path.home() / ".brainsets_config.json"
-
-# TODO: Implement a function to dynamically generate this list
-DATASETS = ["perich_miller_population_2018", "pei_pandarinath_nlb_2021"]
+PIPELINES_PATH = Path(brainsets_pipelines.__path__[0])
+DATASETS = [d.name for d in PIPELINES_PATH.iterdir() if d.is_dir()]
 
 
 def load_config():
