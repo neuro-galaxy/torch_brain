@@ -110,12 +110,16 @@ def config(raw, processed):
                 type=click.Path(file_okay=False, dir_okay=True),
             )
 
-    os.makedirs(raw, exist_ok=True)
-    os.makedirs(processed, exist_ok=True)
+    raw = Path(os.path.expanduser(raw))
+    processed = Path(os.path.expanduser(processed))
 
-    # Convert to absolute paths
-    raw = os.path.abspath(raw)
-    processed = os.path.abspath(processed)
+    # Create directories
+    raw.mkdir(parents=True, exist_ok=True)
+    processed.mkdir(parents=True, exist_ok=True)
+
+    # Save config
+    raw = str(raw)
+    processed = str(processed)
 
     config = load_config()
     config["raw_dir"] = raw
