@@ -293,7 +293,7 @@ def test_get_recording_data(dummy_data):
 
     # Check basic properties
     assert data.brainset.id == "allen_neuropixels_mock"
-    assert data.session.id == "20100102_1"
+    assert data.session.id == "allen_neuropixels_mock/20100102_1"
     assert data.subject.id == "allen_neuropixels_mock/alice"
 
     # Check data fields
@@ -315,7 +315,7 @@ def test_get_slice(dummy_data):
 
     # Check basic properties
     assert data.brainset.id == "allen_neuropixels_mock"
-    assert data.session == "allen_neuropixels_mock/20100102_1"
+    assert data.session.id == "allen_neuropixels_mock/20100102_1"
     assert data.subject.id == "allen_neuropixels_mock/alice"
 
 
