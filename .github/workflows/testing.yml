@@ -44,19 +44,21 @@ jobs:
         pytest --doctest-modules torch_brain/ -v
     - name: Install brainsets
       run: |
+        source venv/bin/activate
         mkdir -p brainsets_tmp 
         cd brainsets_tmp
         git clone https://github.com/neuro-galaxy/brainsets.git
         cd brainsets
-        python -m venv venv_brainsets
-        source venv_brainsets/bin/activate
-        pip install uv
-        uv pip install --upgrade pip
+        #python -m venv venv_brainsets
+        #source venv_brainsets/bin/activate
+        #pip install uv
+        #uv pip install --upgrade pip
         uv pip install -e .
     - name: Download sample dataset
       run: |
+        source venv/bin/activate
         cd brainsets_tmp/brainsets
-        source venv_brainsets/bin/activate
+        #source venv_brainsets/bin/activate
         brainsets config --raw ../../data/raw --processed ../../data/processed
         brainsets prepare pei_pandarinath_nlb_2021
     - name: Train a POYO model
