@@ -49,12 +49,12 @@ jobs:
         cd brainsets_tmp
         git clone https://github.com/neuro-galaxy/brainsets.git
         cd brainsets
-        uv pip install -e ".[dandi]"
-        cd ../../ 
+        uv pip install -e .
     - name: Download sample dataset
       run: |
         source venv/bin/activate
-        brainsets config --raw data/raw --processed data/processed
+        cd brainsets_tmp/brainsets
+        brainsets config --raw ../../data/raw --processed ../../data/processed
         brainsets prepare pei_pandarinath_nlb_2021
     - name: Train a POYO model
       run: |
