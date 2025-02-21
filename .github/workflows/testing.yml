@@ -50,6 +50,8 @@ jobs:
         cd brainsets
         python -m venv venv_brainsets
         source venv_brainsets/bin/activate
+        pip install uv
+        uv pip install --upgrade pip
         uv pip install -e ".[dandi]"
     - name: Download sample dataset
       run: |
