@@ -149,11 +149,7 @@ class TrainWrapper(L.LightningModule):
         self.test_metric_group.reset()
         self._log_metric_dict(metric_dict, prefix="test")
 
-    def _evaluation_step(
-        self,
-        batch: Dict,
-        metric_group: MetricGroupWithStitcher,
-    ):
+    def _evaluation_step(self, batch: Dict, metric_group: MetricGroupWithStitcher):
         # forward pass
         output_values = self.model(**batch["model_inputs"], unpack_output=False)
 
@@ -303,7 +299,6 @@ class DataModule(L.LightningDataModule):
         self.test_dataset.disable_data_leakage_check()
 
         self.val_metric_group = self.build_metric_group()
-
         self.test_metric_group = self.build_metric_group()
 
     def _init_model_vocab(self, model: POYOPlus):
