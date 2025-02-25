@@ -46,13 +46,15 @@ class MetricGroupWithStitcher:
             raise ValueError(
                 f"{__class__.__name__} requires a dictionary of metrics, got {type(metrics)}"
             )
+
+        self._depth = None
         for v in metrics.values():
-            if not isinstance(v, (torchmetrics.Metric, list, dict)):
-                raise ValueError(
-                    f"The values in `metrics` can be either a torchmetrics.Metric or a "
-                    f"list or dict of torchmetrics.Metric, got {type(v)}."
-                )
             if isinstance(v, dict):
+                if self._depth == 1:
+                    raise ValueError(
+                        f"{__class__.__name__} defineds a mixture of single and multi-task metrics, "
+                        f"this is not supported."
+                    )
                 self._depth = 2
                 for e in v.values():
                     if isinstance(e, list):
@@ -72,18 +74,30 @@ class MetricGroupWithStitcher:
                             f"torchmetrics.Metric, got {type(e)}."
                         )
             elif isinstance(v, list):
+                if self._depth == 2:
+                    raise ValueError(
+                        f"{__class__.__name__} defineds a mixture of single and multi-task metrics, "
+                        f"this is not supported."
+                    )
                 self._depth = 1
                 if any(not isinstance(e, torchmetrics.Metric) for e in v):
                     raise ValueError(
                         f"Found {v} in a list of metrics. All metrics in a group "
                         f"must be of type torchmetrics.Metric, got {type(v)}."
                     )
-            elif not isinstance(v, torchmetrics.Metric):
+            elif isinstance(v, torchmetrics.Metric):
+                if self._depth == 2:
+                    raise ValueError(
+                        f"{__class__.__name__} defineds a mixture of single and multi-task metrics, "
+                        f"this is not supported."
+                    )
                 self._depth = 1
+            else:
                 raise ValueError(
-                    f"Found {v} in metrics. All metrics in a group must be of type "
-                    f"torchmetrics.Metric, got {type(v)}."
+                    f"The values in `metrics` can be either a torchmetrics.Metric or a "
+                    f"list or dict of torchmetrics.Metric, got {type(v)}."
                 )
+        assert self._depth in [1, 2]
 
         self.metrics = metrics
 
@@ -241,7 +255,7 @@ class MetricGroupWithStitcher:
 
         _reset_metrics(self.metrics)
 
-    def convert_to_stitcher_sampler(self, sampler, num_replicas=None, rank=None):
+    def convert_to_stitcher_sampler(self, sampler, num_replicas=1, rank=0):
         stitch_sampler = StitcherSamplerWrapper(
             sampler, num_replicas=num_replicas, rank=rank
         )

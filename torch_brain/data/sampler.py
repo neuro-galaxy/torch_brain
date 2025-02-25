@@ -339,20 +339,7 @@ class DistributedSamplerWrapper(torch.utils.data.Sampler):
 
 
 class StitcherSamplerWrapper(torch.utils.data.Sampler):
-    def __init__(self, sampler, num_replicas=None, rank=None):
-
-        if num_replicas is None:
-            if not dist.is_available():
-                raise RuntimeError("Requires distributed package to be available")
-            num_replicas = dist.get_world_size()
-        if rank is None:
-            if not dist.is_available():
-                raise RuntimeError("Requires distributed package to be available")
-            rank = dist.get_rank()
-        if rank >= num_replicas or rank < 0:
-            raise ValueError(
-                f"Invalid rank {rank}, rank should be in the interval [0, {num_replicas - 1}]"
-            )
+    def __init__(self, sampler, num_replicas=1, rank=0):
 
         self.num_replicas = num_replicas
         self.rank = rank
@@ -364,6 +351,31 @@ class StitcherSamplerWrapper(torch.utils.data.Sampler):
                 f"distributed sampler. Sampler {sampler} has set_epoch method which "
                 f"implies that it is a distributed sampler."
             )
+
+        # if in distributed mode, check that the sampler is not random
+        if num_replicas > 1:
+            # run sampler twice to check if it's random
+            first_run = list(sampler)
+            second_run = list(sampler)
+
+            # verify each DatasetIndex object is identical between runs
+            is_random = len(first_run) != len(second_run)
+            if not is_random:
+                for idx1, idx2 in zip(first_run, second_run):
+                    if (
+                        idx1.recording_id != idx2.recording_id
+                        or idx1.start != idx2.start
+                        or idx1.end != idx2.end
+                    ):
+                        is_random = True
+                        break
+
+            if is_random:
+                raise ValueError(
+                    f"StitcherSamplerWrapper cannot wrap a random sampler. "
+                    f"Sampler {sampler} produced different samples on repeated calls, "
+                    f"which implies that it is a random sampler."
+                )
 
         self.indices, self.sequence_index = self._process_indices(list(sampler))
 
