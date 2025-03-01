@@ -82,6 +82,9 @@ def stitch(
         # 2. Accumulate and average values for each unique timestamp
         avg_values = values.new_zeros((len(unique_timestamps), *values.shape[1:]))
         avg_values.index_add_(0, indices, values).div_(counts)
+        # Regarding division by zero: all elements of counts will be >= 1.
+        # Reasoning: Since it was built using unique_timestamps, each index will have
+        # atleast must one timestamp attached to it.
 
         return unique_timestamps, avg_values
 
