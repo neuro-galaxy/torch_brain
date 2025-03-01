@@ -69,17 +69,11 @@ def stitch(
                 "Got values with shape {values.shape} instead."
             )
 
-        # 1. Construct a N x C class-wise vote tensor:
-        # (N = num unique timestamps, C = num class indices)
-        class_indices = torch.unique(values)
-        classwise_votes = values.new_zeros(
-            (len(unique_timestamps), class_indices.max() + 1)
-        )
-        for i in class_indices:
-            _indices = indices[values == i]
-            classwise_votes[:, i].index_add_(0, _indices, torch.ones_like(_indices))
+        # 1. Construct a N x C class-wise vote tensor
+        votes = values.new_zeros((len(unique_timestamps), values.max() + 1))
+        votes.index_put_((indices, values), torch.ones_like(indices), accumulate=True)
         # 2. Mode class is the one with most votes
-        mode_values = classwise_votes.argmax(dim=-1)
+        mode_values = votes.argmax(dim=-1)
         return unique_timestamps, mode_values
 
     elif torch.is_floating_point(values):
