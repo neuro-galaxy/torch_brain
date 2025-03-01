@@ -61,13 +61,22 @@ def stitch(
     )
 
     if values.dtype == torch.long:
-        # Use mode for integers
-        # NOT IDEAL, IT IS FASTER TO AVERAGE THE LOGITS THAN TO PERFORM A VOTE
-        mode_values = values.new_zeros((len(unique_timestamps), *values.shape[1:]))
-        for i, timestamp in enumerate(unique_timestamps):
-            group_values = values[timestamp == timestamps]
-            mode, _ = torch.mode(group_values, dim=0)
-            mode_values[i] = mode
+        # Use mode for categorical values
+
+        if values.ndim != 1:
+            raise ValueError(
+                "For categorical values (long type), only 1D tensors are supported. "
+                "Got values with shape {values.shape} instead."
+            )
+
+        class_indices = torch.unique(values)
+        classwise_votes = values.new_zeros(
+            (len(unique_timestamps), class_indices.max() + 1)
+        )
+        for i in class_indices:
+            _indices = indices[values == i]
+            classwise_votes[:, i].index_add_(0, _indices, torch.ones_like(_indices))
+        mode_values = classwise_votes.argmax(dim=-1)
         return unique_timestamps, mode_values
 
     elif torch.is_floating_point(values):
