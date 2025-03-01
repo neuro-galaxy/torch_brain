@@ -62,13 +62,10 @@ def stitch(
         timestamps, return_inverse=True, sorted=True
     )
 
-    # Prepare a tensor for summing values for each unique timestamp
-    pooled_sum = values.new_zeros((len(unique_timestamps), *values.shape[1:]))
-
     if values.dtype == torch.long:
         # Use mode for integers
         # NOT IDEAL, IT IS FASTER TO AVERAGE THE LOGITS THAN TO PERFORM A VOTE
-        mode_values = torch.zeros_like(pooled_sum)
+        mode_values = values.new_zeros((len(unique_timestamps), *values.shape[1:]))
         for i, timestamp in enumerate(unique_timestamps):
             group_values = values[timestamp == timestamps]
             mode, _ = torch.mode(group_values, dim=0)
@@ -77,19 +74,16 @@ def stitch(
 
     elif torch.is_floating_point(values):
         # Mean-pool for floating points
-        # Count occurrences of each unique timestamp
+        # 1. Count occurrences of each unique timestamp
         counts = torch.zeros_like(unique_timestamps, dtype=torch.long)
-        counts = counts.scatter_add_(0, indices, torch.ones_like(indices))
+        counts.index_add_(0, indices, torch.ones_like(indices))
         if values.dim() > 1:
-            indices = indices.unsqueeze(-1).expand_as(values)
             counts = counts.unsqueeze(-1)
-        # Accumulate values for each unique timestamp
-        pooled_sum.scatter_add_(0, indices, values)
-        # Calculate the average
-        epsilon = 1e-8  # small constant to prevent division by zero
-        averages = torch.div(pooled_sum, counts + epsilon)
+        # 2. Accumulate and average values for each unique timestamp
+        avg_values = values.new_zeros((len(unique_timestamps), *values.shape[1:]))
+        avg_values.index_add_(0, indices, values).div_(counts)
 
-        return unique_timestamps, averages
+        return unique_timestamps, avg_values
 
     else:
         raise TypeError(
