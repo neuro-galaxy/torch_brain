@@ -1,1 +1,2 @@
 dandi==0.61.2
+brainsets @ git+https://github.com/neuro-galaxy/brainsets@main

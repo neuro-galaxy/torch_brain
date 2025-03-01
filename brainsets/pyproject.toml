@@ -34,6 +34,7 @@ dependencies = [
     "pulp==2.7.0",
     "click~=8.1.3",
     "uv",
+    "prompt_toolkit",
 ]
 
 [project.optional-dependencies]
@@ -50,8 +51,15 @@ Issues = "https://github.com/neuro-galaxy/brainsets/issues"
 Documentation = "https://brainsets.readthedocs.io/en/latest/"
 
 [project.scripts]
-brainsets = "brainsets.cli:cli"
+brainsets = "brainsets._cli:cli"
 
 [tool.setuptools]
-packages = ["brainsets", "brainsets.utils", "brainsets_pipelines"]
+packages = [
+    "brainsets",
+    "brainsets.utils",
+    "brainsets.taxonomy",
+    "brainsets.processing",
+    "brainsets._cli",
+    "brainsets_pipelines",
+]
 include-package-data = true
