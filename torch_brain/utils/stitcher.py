@@ -66,7 +66,7 @@ def stitch(
         if values.ndim != 1:
             raise ValueError(
                 "For categorical values (long type), only 1D tensors are supported. "
-                "Got values with shape {values.shape} instead."
+                f"Got values with shape {values.shape} instead."
             )
 
         # 1. Construct a N x C class-wise vote tensor
