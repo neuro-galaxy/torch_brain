@@ -273,20 +273,27 @@ class TrialSampler(torch.utils.data.Sampler):
             yield from indices
 
 
-class DistributedSamplerWrapper(torch.utils.data.Sampler):
-    r"""Wraps a sampler to be used in a distributed setting. This sampler will
-    only return indices that are assigned to the current process based on the
-    rank and num_replicas.
+class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
+    r"""Wraps a sampler to be used in a distributed evaluation setting. Unlike the standard
+    distributed samplers from PyTorch and PyTorch Lightning which ensure equal samples per rank
+    by potentially dropping samples, this sampler preserves all samples by distributing them
+    across ranks without dropping any, which is important to guarantee that evaluation is done
+    on the complete dataset.
+
+    .. warning::
+        This wrapper assumes that there is no communication between ranks except at the
+        begining or end of the evaluation, so it is only suitable for standard evaluation.
+        This is because some ranks might end up performing more steps than others.
 
     Args:
         sampler (torch.utils.data.Sampler): The original sampler to wrap.
         num_replicas (int): Number of processes participating in the distributed
-            training.
+            evaluation.
         rank (int): Rank of the current process.
 
     Example ::
 
-        >>> from torch_brain.data.sampler import SequentialFixedWindowSampler, DistributedSamplerWrapper
+        >>> from torch_brain.data.sampler import SequentialFixedWindowSampler, DistributedEvaluationSamplerWrapper
 
         >>> sampling_intervals = {
         ...     "session_1": Interval(0, 100),
@@ -294,7 +301,7 @@ class DistributedSamplerWrapper(torch.utils.data.Sampler):
         ... }
 
         >>> sampler = SequentialFixedWindowSampler(sampling_intervals=sampling_intervals, window_length=10)
-        >>> dist_sampler = DistributedSamplerWrapper(sampler)
+        >>> dist_sampler = DistributedEvaluationSamplerWrapper(sampler)
 
     """
 
