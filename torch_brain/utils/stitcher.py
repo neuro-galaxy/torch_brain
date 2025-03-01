@@ -95,7 +95,8 @@ def stitch(
     else:
         raise TypeError(
             f"Unsupported dtype {values.dtype} for stitching. "
-            "Only float and long dtypes are supported."
+            "Only floating points supported for mean pooling, "
+            " and torch.long type supported for mode pooling."
         )
 
 
