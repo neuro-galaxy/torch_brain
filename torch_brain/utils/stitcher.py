@@ -25,9 +25,11 @@ def stitch(
     value per timestamp.
 
     Args:
-        timestamps (torch.Tensor): A 1D tensor containing timestamps.
+        timestamps (torch.Tensor): A 1D tensor containing timestamps. Shape: (N,)
         values (torch.Tensor): A tensor of values corresponding to the timestamps.
-            Shape: (N, ...) where N matches the length of timestamps.
+            Shape:
+                - For floating point types: (N, ...)
+                - For categorical types (torch.long only): (N,)
 
     Returns:
         tuple[torch.Tensor, torch.Tensor]: A tuple containing:
