@@ -29,5 +29,5 @@ jobs:
         pip install -e .
     - name: Download sample dataset
       run: |
-        brainsets config --raw data/raw --processed data/processed
+        brainsets config --raw-dir data/raw --processed-dir data/processed
         brainsets prepare pei_pandarinath_nlb_2021
