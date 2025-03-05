@@ -290,9 +290,9 @@ The modifier code should update the ``sampling_intervals`` variable with the mod
 
 .. note::
 
-    The ``&`` operator performs an intersection between intervals. **temporaldata** allows for 
+    The ``&`` operator performs an intersection between intervals. :obj:`temporaldata` allows for 
     powerful interval operations, such as union, intersection, difference, and more. Refer to 
-    the  **temporaldata** documentation for more information.
+    the  :obj:`temporaldata` documentation for more information.
 
 **Example 2**: Modify the sampling intervals to only include the first 10 intervals for the training split.
 
