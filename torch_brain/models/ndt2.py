@@ -6,13 +6,15 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
-from sklearn.metrics import accuracy_score, balanced_accuracy_score, r2_score
+from temporaldata import ArrayDict, Data
+
+# from sklearn.metrics import accuracy_score, balanced_accuracy_score, r2_score
 from torchtyping import TensorType
 
-from temporaldata import ArrayDict, Data
 from torch_brain.data import pad, track_mask
 from torch_brain.nn import InfiniteVocabEmbedding
-from torch_brain.utils.binning import bin_behaviors, bin_spikes
+
+# from torch_brain.utils.binning import bin_behaviors, bin_spikes
 
 
 class NDT2(nn.Module):
