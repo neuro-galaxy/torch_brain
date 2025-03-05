@@ -3,9 +3,8 @@
 
 Install requirements:
 ```bash
-pip install furo sphinx myst-parser sphinx-autodoc-typehints sphinx-inline-tabs sphinx-rtd-theme sphinx-tabs bokeh==3.4.3
+pip install -r requirements.txt
 ```
-
 
 To build the documentation, run the following from current directory:
 ```bash

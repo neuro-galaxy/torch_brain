@@ -42,7 +42,7 @@ def prepare_for_readout(
 
     key = readout_config["readout_id"]
 
-    if key not in torch_brain.MODALITIY_REGISTRY:
+    if key not in torch_brain.MODALITY_REGISTRY:
         raise ValueError(
             f"Readout {key} not found in modality registry, please register it "
             "using torch_brain.register_modality()"

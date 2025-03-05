@@ -37,10 +37,10 @@ If you encounter any bugs or have feature requests, please submit them to our
    concepts/sampler
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Package Reference
 
-   package/data
+   package/data/index
    package/nn/index
    package/models
    package/registry

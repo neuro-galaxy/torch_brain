@@ -6,3 +6,5 @@ sphinx-inline-tabs
 sphinx-rtd-theme
 sphinx-tabs
 bokeh==3.4.3
+sphinx-design
+sphinx-copybutton

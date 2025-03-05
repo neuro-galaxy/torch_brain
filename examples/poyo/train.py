@@ -14,7 +14,7 @@ from lightning.pytorch.callbacks import (
 from omegaconf import DictConfig, OmegaConf
 from temporaldata import Data
 
-from torch_brain.registry import MODALITIY_REGISTRY, ModalitySpec
+from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
 from torch_brain.models.poyo import POYO
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
@@ -152,11 +152,13 @@ class DataModule(L.LightningDataModule):
 
         self._init_model_vocab(model)
 
+        eval_transforms = hydra.utils.instantiate(self.cfg.eval_transforms)
+
         self.val_dataset = Dataset(
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="valid",
-            transform=model.tokenize,
+            transform=Compose([*eval_transforms, model.tokenize]),
         )
         self.val_dataset.disable_data_leakage_check()
 
@@ -164,7 +166,7 @@ class DataModule(L.LightningDataModule):
             root=self.cfg.data_root,
             config=self.cfg.dataset,
             split="test",
-            transform=model.tokenize,
+            transform=Compose([*eval_transforms, model.tokenize]),
         )
         self.test_dataset.disable_data_leakage_check()
 
@@ -280,7 +282,7 @@ def main(cfg: DictConfig):
     # get modality details
     # TODO: add test to verify that all recordings have the same readout
     readout_id = cfg.dataset[0].config.readout.readout_id
-    readout_spec = MODALITIY_REGISTRY[readout_id]
+    readout_spec = MODALITY_REGISTRY[readout_id]
 
     # make model and data module
     model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)

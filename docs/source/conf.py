@@ -20,6 +20,7 @@ extensions = [
     "sphinx_inline_tabs",
     "sphinx.ext.mathjax",
     "bokeh.sphinxext.bokeh_plot",
+    "sphinx_copybutton",
 ]
 
 html_theme = "furo"
@@ -49,3 +50,5 @@ pygments_style = "default"
 bokeh_plot_pyfile_include_dirs = [
     "concepts/examples",
 ]
+html_copy_source = False
+html_show_sourcelink = True

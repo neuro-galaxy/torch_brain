@@ -22,24 +22,17 @@ jobs:
       run: |
         python -m venv venv
         source venv/bin/activate
-    - name: Install brainsets
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      run: |
-        git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-        python -m pip install --no-user --upgrade pip
-        pip install --no-user "brainsets @ git+https://github.com/neuro-galaxy/brainsets.git@main#egg=brainsets-0.1.0[all]"
+        pip install uv
     - name: Install dependencies
       run: |
         source venv/bin/activate
-        python -m pip install --upgrade pip 
-        pip install torch==2.2.0
-        pip install -e ".[dev]" 
-        pip install flake8 pytest
+        uv pip install --upgrade pip 
+        uv pip install torch==2.2.0
+        uv pip install -e ".[dev]" 
     - name: Install plugin
       run: |
         source venv/bin/activate
-        pip install pytest-github-actions-annotate-failures
+        uv pip install pytest-github-actions-annotate-failures
     - name: Test with pytest
       run: |
         source venv/bin/activate
@@ -49,3 +42,20 @@ jobs:
       run: |
         source venv/bin/activate
         pytest --doctest-modules torch_brain/ -v
+    - name: Install brainsets
+      run: |
+        source venv/bin/activate
+        uv pip install git+https://github.com/neuro-galaxy/brainsets@main
+    - name: Download sample dataset
+      run: |
+        source venv/bin/activate
+        brainsets config --raw-dir data/raw --processed-dir data/processed
+        brainsets prepare pei_pandarinath_nlb_2021
+    - name: Train a POYO model
+      run: |
+        source venv/bin/activate
+        python examples/poyo/train.py --config-name train_mc_maze_small.yaml data_root=data/processed wandb.enable=false epochs=2 eval_epochs=2 optim.lr_decay_start=0.
+    - name: Train a POYO+ model
+      run: |
+        source venv/bin/activate
+        python examples/poyo_plus/train.py --config-name train_mc_maze_small.yaml data_root=data/processed wandb.enable=false epochs=2 eval_epochs=2 optim.lr_decay_start=0.
