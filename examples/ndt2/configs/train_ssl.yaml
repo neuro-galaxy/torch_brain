@@ -1,0 +1,13 @@
+defaults:
+  - defaults.yaml
+  - dataset: ibl.yaml
+  - model: ndt2_ssl.yaml
+  - _self_  # ensures current config overrides defaults
+
+is_ssl: true
+wandb:
+  run_name: pretrain
+
+load_from_checkpoint: true
+new_decoder: false
+checkpoint_path: /vast/projects/dyer1/lab/user/alex/torch_brain/examples/ndt2/ckpt/pretrain.ckpt
