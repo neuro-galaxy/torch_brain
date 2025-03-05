@@ -5,11 +5,18 @@ from bokeh.plotting import figure, show
 
 from torch_brain.data import Dataset
 
+from _utils import download_file_from_s3
 
-root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+root_dir = os.path.dirname(__file__)
+download_file_from_s3(
+    "_ressources/c_20131003_center_out_reaching.h5",
+    os.path.join(
+        root_dir, "perich_miller_population_2018/c_20131003_center_out_reaching.h5"
+    ),
+)
 
 dataset = Dataset(
-    os.path.join(root_dir, "_data"),
+    root_dir,
     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
     split="train",
 )

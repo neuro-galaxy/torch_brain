@@ -10,6 +10,7 @@ from omegaconf import OmegaConf
 from torch_brain.data import Dataset
 from torch_brain.data.sampler import RandomFixedWindowSampler
 
+from _utils import download_file_from_s3
 
 config_str = """
 - selection:
@@ -22,10 +23,33 @@ config_str = """
 
 config = OmegaConf.create(config_str)
 
-root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+root_dir = os.path.dirname(__file__)
+download_file_from_s3(
+    "_ressources/c_20131003_center_out_reaching.h5",
+    os.path.join(
+        root_dir, "perich_miller_population_2018/c_20131003_center_out_reaching.h5"
+    ),
+)
+download_file_from_s3(
+    "_ressources/c_20131022_center_out_reaching.h5",
+    os.path.join(
+        root_dir, "perich_miller_population_2018/c_20131022_center_out_reaching.h5"
+    ),
+)
+download_file_from_s3(
+    "_ressources/c_20131023_center_out_reaching.h5",
+    os.path.join(
+        root_dir, "perich_miller_population_2018/c_20131023_center_out_reaching.h5"
+    ),
+)
 
 dataset = Dataset(
-    os.path.join(root_dir, "_data"),
+    root_dir,
+    recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
+    split=None,
+)
+dataset = Dataset(
+    root_dir,
     config=config,
     split="train",
 )
