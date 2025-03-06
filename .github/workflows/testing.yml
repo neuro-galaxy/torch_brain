@@ -33,6 +33,10 @@ jobs:
       run: |
         source venv/bin/activate
         uv pip install pytest-github-actions-annotate-failures
+    - name: Install brainsets
+      run: |
+        source venv/bin/activate
+        uv pip install git+https://github.com/neuro-galaxy/brainsets@main
     - name: Test with pytest
       run: |
         source venv/bin/activate
@@ -42,10 +46,6 @@ jobs:
       run: |
         source venv/bin/activate
         pytest --doctest-modules torch_brain/ -v
-    - name: Install brainsets
-      run: |
-        source venv/bin/activate
-        uv pip install git+https://github.com/neuro-galaxy/brainsets@main
     - name: Download sample dataset
       run: |
         source venv/bin/activate
