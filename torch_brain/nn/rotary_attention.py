@@ -456,7 +456,7 @@ def rotary_attn_xformers_func(
         else None
     )
     attn_bias = (
-        attn_mask.float().masked_fill(attn_mask.logical_not(), float("-inf"))
+        attn_mask.to(query.dtype).masked_fill(attn_mask.logical_not(), float("-inf"))
         if attn_mask is not None
         else None
     )
