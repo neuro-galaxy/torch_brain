@@ -156,7 +156,14 @@ class NDT2(nn.Module):
             encoder_attn_mask = F.pad(
                 encoder_attn_mask, (0, nb_ctx_tokens, 0, nb_ctx_tokens), value=True
             )
-
+            # based on https://github.com/joel99/context_general_bci/blob/4995bea5004e4fe4ab4f23b6cf0fbc40ba28ef27/context_general_bci/components.py#L420
+            # Should be more (nothing can attend to the context but context can attend to everything)
+            # encoder_attn_mask = F.pad(
+            #     encoder_attn_mask, (0, 0, 0, nb_ctx_tokens), value=True
+            # )
+            # encoder_attn_mask = F.pad(
+            #     encoder_attn_mask, (0, nb_ctx_tokens), value=False
+            # )
         # encoder forward pass
         latents = self.encoder(
             inputs, mask=encoder_attn_mask, src_key_padding_mask=input_mask
@@ -177,7 +184,6 @@ class NDT2(nn.Module):
         #     # nb_units = chan_nb_mapper.max() + 1
         #     num_units = 96
 
-        # TODO cehck the bin_time
         units_bincount = bin_spikes(
             data.spikes, num_units, self.bin_time, dtype=np.int32
         )
@@ -231,20 +237,7 @@ class NDT2(nn.Module):
         if self.subject_emb is not None:
             subject_idx = self.subject_emb.tokenizer(data.subject.id)
         if self.task_emb is not None:
-            # TODO update this
-            task_idx = self.task_emb.tokenizer(data.id)
-
-        # # TODO Check eval mode (not used for ibl)
-        # if eval:
-        #     data_dict["shuffle"] = torch.arange(
-        #         spikes.size(1), device=spikes.device
-        #     )
-        #     data_dict["encoder_frac"] = spikes.size(1)
-
-        #     for k in keys:
-        #         data_dict[f"target_{k}"] = data_dict["model_inputs"][f"input_{k}"]
-
-        #     return data_dict
+            task_idx = self.task_emb.tokenizer(data.brainset.id)
 
         # TODO add channel_counts and should remove the shuffle and encoder_frac
         # TODO be careful of track_mask that might not be anymore valid
@@ -304,12 +297,14 @@ class NDT2(nn.Module):
         return data_dict
 
     # May not be optimal because it is done at the batch level and not at the dataset level.
-    # An example of problem is that it shuffle also pad tokens.
-    # this Follow the o.g. NDT2 implementation
+    # An example of problem that are induced is that it shuffle also pad tokens.
+    # However this implementation follows the o.g. NDT2 implementation
     def mae_masking(self, batch):
-        untits = batch["model_inputs"]["units_bincount"]
-        time_idx = batch["model_inputs"]["time_idx"]
-        space_idx = batch["model_inputs"]["space_idx"]
+        model_inputs = batch["model_inputs"]
+
+        untits = model_inputs["units_bincount"]
+        time_idx = model_inputs["time_idx"]
+        space_idx = model_inputs["space_idx"]
 
         shuffle = torch.randperm(untits.size(1), device=untits.device)
         encoder_frac = int((1 - self.mask_ratio) * untits.size(1))
@@ -322,21 +317,27 @@ class NDT2(nn.Module):
         input_time_idx, target_time_idx = split(time_idx, shuffle)
         input_space_idx, target_space_idx = split(space_idx, shuffle)
 
+        pad_mask, _ = split(model_inputs["units_bincount_mask"], shuffle)
+        input_mask = ~pad_mask
+
+        # # TODO Check eval mode (not used for ibl)
+        # if eval:
+        #     data_dict["shuffle"] = torch.arange(
+        #         spikes.size(1), device=spikes.device
+        #     )
+        #     data_dict["encoder_frac"] = spikes.size(1)
+
+        #     for k in keys:
+        #         data_dict[f"target_{k}"] = data_dict["model_inputs"][f"input_{k}"]
+
+        #     return data_dict
         # else:
         #     # TODO spike_tokens_mask can be returned directly
         #     token_position = torch.arange(ref.size(1), device=ref.device)
 
-        # TODO check if units_bincount_mask shuffle could not be used
-        token_position = shuffle[:encoder_frac]
-        token_position = rearrange(token_position, "t -> () t")
-        token_length = batch["model_inputs"]["units_bincount_mask"].sum(1, keepdim=True)
-        input_mask = token_position >= token_length
-
-        # TODO check the datatype bool or float
         causality = input_time_idx[:, :, None] >= input_time_idx[:, None, :]
-        attn_mask = torch.where(causality, 0.0, float("-inf"))
-        if attn_mask.ndim == 3:
-            attn_mask = repeat(attn_mask, "b t1 t2 -> (b h) t1 t2", h=self.heads)
+        attn_mask = ~causality
+        attn_mask = repeat(attn_mask, "b t1 t2 -> (b h) t1 t2", h=self.heads)
 
         batch["model_inputs"]["units_bincount"] = input_untits
         batch["model_inputs"]["time_idx"] = input_time_idx
