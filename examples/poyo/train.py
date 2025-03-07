@@ -268,18 +268,13 @@ class DataModule(L.LightningDataModule):
 
 
 class GradualUnfreezing(L.Callback):
-
     def __init__(self, unfreeze_at_epoch: int):
         self.enabled = unfreeze_at_epoch != 0
         self.unfreeze_at_epoch = unfreeze_at_epoch
         self.frozen_params = None
 
-    @classmethod
-    def freeze(cls, model: POYO):
-        r"""Freeze the model weights, except for the unit and session embeddings, and
-        return the list of frozen parameters.
-        """
-
+    @staticmethod
+    def freeze(model: POYO):
         layers_to_freeze = [
             model.token_type_emb,
             model.latent_emb,
