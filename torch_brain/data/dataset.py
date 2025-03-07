@@ -4,15 +4,11 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
-import copy
-import numpy as np
-import omegaconf
-
 
 import h5py
 import numpy as np
+import omegaconf
 import torch
-
 from temporaldata import Data, Interval
 
 
@@ -397,7 +393,7 @@ class Dataset(torch.utils.data.Dataset):
         return f"{self.session_id_prefix_fn(data)}{data.session.id}"
 
     def _get_subject_id_with_prefix(self, data: Data) -> str:
-        r"""Return subject with prefix applied"""
+        r"""Return subject id with prefix applied"""
         return f"{self.subject_id_prefix_fn(data)}{data.subject.id}"
 
     def _update_data_with_prefixed_ids(self, data: Data):
@@ -432,6 +428,13 @@ class Dataset(torch.utils.data.Dataset):
         for data in self._data_objects.values():
             subject_ids.append(self._get_subject_id_with_prefix(data))
         return sorted(list(set(subject_ids)))
+
+    def get_brainset_ids(self):
+        r"""Returns all brainset ids in the dataset."""
+        brainset_ids = []
+        for data in self._data_objects.values():
+            brainset_ids.append(data.brainset.id)
+        return sorted(list(set(brainset_ids)))
 
     def disable_data_leakage_check(self):
         r"""Disables the data leakage check.
