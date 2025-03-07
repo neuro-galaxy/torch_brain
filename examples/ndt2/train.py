@@ -400,7 +400,7 @@ def run_training(cfg):
         )
         log.info(f"Using wandb logger: {wandb_logger.version}")
 
-    # TODO check if needed
+    # TODO check if needed (need to be better)
     with open_dict(cfg):
         # Adjust batch size for multi-gpu
         num_gpus = torch.cuda.device_count()
@@ -446,9 +446,9 @@ def run_training(cfg):
     #     if not cfg.get("new_decoder", False):
     #         model.decoder.load_state_dict(ckpt["decoder_state_dict"])
 
-    # TODO add an link_model
     data_module.setup_dataset_and_link_model(model)
 
+    # TODO must add the extension of the vocab in case we load the model from a checkpoint
     # if cfg.get("load_from_checkpoint", False):
     #     # Register new context
     #     ctx_manager.extend_vocab(data_module.get_ctx_vocab(ctx_manager.keys))
