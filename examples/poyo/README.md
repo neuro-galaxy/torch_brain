@@ -9,7 +9,7 @@ To train POYO-MP you can run:
 python train.py --config-name train_poyo_mp.yaml
 ```
 
-Checkout `configs/base.yaml` and `configs/train_poyo_mp.yaml` for all configurations
+Checkout `configs/defaults.yaml` and `configs/train_poyo_mp.yaml` for all configurations
 available.
 
 ### Finetuning
