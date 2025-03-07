@@ -18,7 +18,7 @@ To finetune POYO-MP you can run:
 python train.py --config-name train_poyo_mp.yaml \
     ckpt_path=<path-to-checkpoint> \
     finetuning.enable=true \
-    finetuning.freeze_perceveiver_until_epoch=10  # set to -1 to do unit-identification
+    finetuning.freeze_perceiver_until_epoch=10  # set to -1 to do unit-identification
 ```
 
 
