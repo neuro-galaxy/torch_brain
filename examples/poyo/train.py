@@ -1,5 +1,4 @@
 import logging
-from typing import List, Optional
 
 import hydra
 import lightning as L
@@ -13,7 +12,6 @@ from lightning.pytorch.callbacks import (
     ModelSummary,
 )
 from omegaconf import DictConfig, OmegaConf
-from temporaldata import Data
 
 from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
 from torch_brain.models.poyo import POYO
