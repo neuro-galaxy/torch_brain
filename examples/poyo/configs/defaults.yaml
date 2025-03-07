@@ -38,3 +38,12 @@ num_workers: 4
 
 # Checkpointing
 ckpt_path: null  # for resuming training, or loading a model during finetuning
+
+finetuning:
+  enable: false  # must specify ckpt_path if you want to finetune
+  freeze_perceiver_until_epoch: 2
+  # ^ Num of epochs to freeze perceiver network while finetuning
+  # -1 => Keep frozen, i.e. perform Unit-identification
+  #  0 => Train everything
+  # >0 => Only train unit/session embeddings for first few epochs,
+  #       and then train everything

@@ -1,4 +1,5 @@
 import logging
+from typing import List, Optional
 
 import hydra
 import lightning as L
@@ -135,7 +136,7 @@ class DataModule(L.LightningDataModule):
         self.cfg = cfg
         self.log = logging.getLogger(__name__)
 
-    def setup_dataset_and_link_model(self, model: POYO):
+    def setup_dataset_and_link_model(self, model: POYO, finetuning: bool):
         r"""Setup Dataset objects, and update a given model's embedding vocabs (session
         and unit_emb)
         """
@@ -150,7 +151,7 @@ class DataModule(L.LightningDataModule):
         )
         self.train_dataset.disable_data_leakage_check()
 
-        self._init_model_vocab(model)
+        self._init_model_vocab(model, finetuning)
 
         eval_transforms = hydra.utils.instantiate(self.cfg.eval_transforms)
 
@@ -170,10 +171,17 @@ class DataModule(L.LightningDataModule):
         )
         self.test_dataset.disable_data_leakage_check()
 
-    def _init_model_vocab(self, model: POYO):
-        # TODO: Add code for finetuning situation (when model already has a vocab)
-        model.unit_emb.initialize_vocab(self.get_unit_ids())
-        model.session_emb.initialize_vocab(self.get_session_ids())
+    def _init_model_vocab(self, model: POYO, finetuning: bool):
+        unit_ids, session_ids = self.get_unit_ids(), self.get_session_ids()
+
+        if not finetuning:
+            model.unit_emb.initialize_vocab(unit_ids)
+            model.session_emb.initialize_vocab(session_ids)
+        else:
+            model.unit_emb.extend_vocab(unit_ids)
+            model.unit_emb.subset_vocab(unit_ids)
+            model.session_emb.extend_vocab(session_ids)
+            model.session_emb.subset_vocab(session_ids)
 
     def get_session_ids(self):
         return self.train_dataset.get_session_ids()
@@ -261,6 +269,76 @@ class DataModule(L.LightningDataModule):
         return test_loader
 
 
+class GradualUnfreezing(L.Callback):
+
+    def __init__(self, unfreeze_at_epoch: int):
+        self.enabled = unfreeze_at_epoch != 0
+        self.unfreeze_at_epoch = unfreeze_at_epoch
+        self.frozen_params = None
+
+    @classmethod
+    def freeze(cls, model: POYO):
+        r"""Freeze the model weights, except for the unit and session embeddings, and
+        return the list of frozen parameters.
+        """
+
+        layers_to_freeze = [
+            model.token_type_emb,
+            model.latent_emb,
+            model.enc_atn,
+            model.enc_ffn,
+            model.proc_layers,
+            model.dec_atn,
+            model.dec_ffn,
+            model.readout,
+        ]
+
+        frozen_params = []
+        for layer in layers_to_freeze:
+            for param in layer.parameters():
+                if param.requires_grad:
+                    param.requires_grad = False
+                    frozen_params.append(param)
+
+        return frozen_params
+
+    def on_train_start(self, trainer, pl_module):
+        if self.enabled:
+            self.frozen_params = self.freeze(pl_module.model)
+            logger.info(
+                f"Perceiver frozen at epoch 0. "
+                f"Will stay frozen until epoch {self.unfreeze_at_epoch}."
+            )
+
+    def on_train_epoch_start(self, trainer, pl_module):
+        if self.enabled and (trainer.current_epoch == self.unfreeze_at_epoch):
+            if self.frozen_params is None:
+                raise RuntimeError("Model has not been frozen yet.")
+
+            for param in self.frozen_params:
+                param.requires_grad = True
+
+            self.frozen_params = None
+            logger.info(f"Perceiver unfrozen at epoch {trainer.current_epoch}")
+
+
+def load_model_from_ckpt(model: nn.Module, ckpt_path: str) -> None:
+    if ckpt_path is None:
+        raise ValueError(
+            "No checkpoint path provided. Setting 'ckpt_path' is necessary when "
+            "finetuning."
+        )
+
+    ckpt = torch.load(ckpt_path, map_location="cpu")
+    state_dict = ckpt["state_dict"]
+    state_dict = {
+        k.replace("model.", ""): v
+        for k, v in state_dict.items()
+        if k.startswith("model.")
+    }
+    model.load_state_dict(state_dict)
+
+
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
 def main(cfg: DictConfig):
     logger.info("POYO!")
@@ -284,10 +362,17 @@ def main(cfg: DictConfig):
     readout_id = cfg.dataset[0].config.readout.readout_id
     readout_spec = MODALITY_REGISTRY[readout_id]
 
-    # make model and data module
+    # initialize model
     model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)
+    if cfg.finetuning.enable:
+        load_model_from_ckpt(model, cfg.ckpt_path)
+
+    # setup datamodule and model vocabs
     data_module = DataModule(cfg=cfg)
-    data_module.setup_dataset_and_link_model(model)
+    data_module.setup_dataset_and_link_model(
+        model=model,
+        finetuning=cfg.finetuning.enable,
+    )
 
     # Lightning train wrapper
     wrapper = TrainWrapper(
@@ -315,6 +400,9 @@ def main(cfg: DictConfig):
         tbrain_callbacks.ModelWeightStatsLogger(),
     ]
 
+    if cfg.finetuning.enable:
+        callbacks.append(GradualUnfreezing(cfg.finetuning.freeze_perceiver_until_epoch))
+
     trainer = L.Trainer(
         logger=wandb_logger,
         default_root_dir=cfg.log_dir,
@@ -331,7 +419,8 @@ def main(cfg: DictConfig):
     )
 
     # Train
-    trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path)
+    resume_ckpt_path = cfg.ckpt_path if not cfg.finetuning.enable else None
+    trainer.fit(wrapper, data_module, ckpt_path=resume_ckpt_path)
 
     # Test
     trainer.test(wrapper, data_module)
