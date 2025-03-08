@@ -1,9 +1,11 @@
 import logging
+from typing import Dict
 
 import hydra
 import lightning as L
+import pandas as pd
+from rich import print as rprint
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch_optimizer import Lamb
 from lightning.pytorch.callbacks import (
@@ -12,16 +14,13 @@ from lightning.pytorch.callbacks import (
     ModelSummary,
 )
 from omegaconf import DictConfig, OmegaConf
-from temporaldata import Data
+import wandb
 
-from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
+from torch_brain.registry import MODALITY_REGISTRY
 from torch_brain.models.poyo import POYO
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
-from torch_brain.utils.stitcher import (
-    DecodingStitchEvaluator,
-    DataForDecodingStitchEvaluator,
-)
+from torch_brain.utils.stitcher import DecodingStitchEvaluator
 from torch_brain.data import Dataset, collate
 from torch_brain.data.sampler import (
     DistributedStitchingFixedWindowSampler,
@@ -40,14 +39,15 @@ class TrainWrapper(L.LightningModule):
     def __init__(
         self,
         cfg: DictConfig,
-        model: nn.Module,
-        modality_spec: ModalitySpec,
+        model: POYO,
+        stitch_evaluator: DecodingStitchEvaluator,
     ):
         super().__init__()
 
         self.cfg = cfg
         self.model = model
-        self.modality_spec = modality_spec
+        self.modality_spec = model.readout_spec
+        self.stitch_evaluator = stitch_evaluator
         self.save_hyperparameters(OmegaConf.to_container(cfg))
 
     def configure_optimizers(self):
@@ -108,13 +108,28 @@ class TrainWrapper(L.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
+        self._evaluation_step(batch)
+
+    def on_validation_epoch_end(self):
+        metric_dict = self.stitch_evaluator.compute()
+        self.stitch_evaluator.reset()
+        self._log_metric_dict(metric_dict, prefix="val")
+
+    def test_step(self, batch, batch_idx):
+        self._evaluation_step(batch)
+
+    def on_test_epoch_end(self):
+        metric_dict = self.stitch_evaluator.compute()
+        self.stitch_evaluator.reset()
+        self._log_metric_dict(metric_dict, prefix="test")
+
+    def _evaluation_step(self, batch: Dict):
 
         # forward pass
         output_values = self.model(**batch["model_inputs"])
 
-        # prepare data for evaluator
-        # (goes to DecodingStitchEvaluator.on_validation_batch_end)
-        data_for_eval = DataForDecodingStitchEvaluator(
+        # push data to stitch evaluator
+        self.stitch_evaluator.update(
             timestamps=batch["model_inputs"]["output_timestamps"],
             preds=output_values,
             targets=batch["target_values"],
@@ -123,10 +138,27 @@ class TrainWrapper(L.LightningModule):
             absolute_starts=batch["absolute_start"],
         )
 
-        return data_for_eval
+    def _log_metric_dict(self, metric_dict: Dict[str, float], prefix: str):
+        metric_dict["average_metric"] = sum(metric_dict.values()) / len(metric_dict)
+        metric_dict_with_prefix = {f"{prefix}/{k}": v for k, v in metric_dict.items()}
+        self.log_dict(metric_dict_with_prefix)
 
-    def test_step(self, batch, batch_idx):
-        return self.validation_step(batch, batch_idx)
+        metric_df = pd.DataFrame(
+            {
+                "metric": metric_dict_with_prefix.keys(),
+                "value": metric_dict_with_prefix.values(),
+            }
+        )
+
+        if self.trainer.is_global_zero:
+            logging.info(f"Logged {len(metric_dict_with_prefix)} {prefix} metrics.")
+            rprint(metric_df)
+
+            for logger in self.trainer.loggers:
+                if isinstance(logger, L.pytorch.loggers.WandbLogger):
+                    logger.experiment.log(
+                        {f"{prefix}_metrics": wandb.Table(dataframe=metric_df)}
+                    )
 
 
 class DataModule(L.LightningDataModule):
@@ -289,20 +321,16 @@ def main(cfg: DictConfig):
     data_module = DataModule(cfg=cfg)
     data_module.setup_dataset_and_link_model(model)
 
-    # Lightning train wrapper
-    wrapper = TrainWrapper(
-        cfg=cfg,
-        model=model,
-        modality_spec=readout_spec,
-    )
-
+    # setup the stitching evaluator
     stitch_evaluator = DecodingStitchEvaluator(
         session_ids=data_module.get_session_ids(),
         modality_spec=readout_spec,
     )
 
+    # Lightning train wrapper
+    wrapper = TrainWrapper(cfg=cfg, model=model, stitch_evaluator=stitch_evaluator)
+
     callbacks = [
-        stitch_evaluator,
         ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
         ModelCheckpoint(
             save_last=True,
