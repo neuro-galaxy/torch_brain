@@ -1,0 +1,53 @@
+######################################################
+# Churchland & Shenoy (2012)
+######################################################
+
+DATASET = "churchland_shenoy_neural_2012"
+DANDI_ID = "000070"
+
+RAW_DIR = config["RAW_DIR"]
+PROCESSED_DIR = config["PROCESSED_DIR"]
+
+
+checkpoint churchland_shenoy_neural_2012_download_data:
+    output:
+        f"{RAW_DIR}/{DATASET}/manifest.txt"
+    shell:
+        f"""
+        mkdir -p {RAW_DIR}/{DATASET}
+        dandi download -o {RAW_DIR}/{DATASET} -e refresh DANDI:000070/draft
+        find {RAW_DIR}/{DATASET}/ -type f -name "*.nwb" | sed "s|^{RAW_DIR}/{DATASET}/||" | sed "s|^/*||" > {{output}}
+        """
+
+rule prepare_data:
+    input:
+        nwb_file = f"{RAW_DIR}/{DATASET}/{{file}}"
+    output:
+        temp(f"{PROCESSED_DIR}/{DATASET}/tmp/{{file}}.txt")
+    log:
+        f".snakemake/logs/{DATASET}/prepare_data.{{file}}.log"
+    shell:
+        f"""
+        mkdir -p {PROCESSED_DIR}/{DATASET}/tmp
+        python -m brainsets_pipelines.{DATASET}.prepare_data --input_file {{input.nwb_file}} --output_dir {PROCESSED_DIR}/{DATASET} 2>&1 | tee {{log}}
+        find {PROCESSED_DIR}/{DATASET}/ -type f -name "*.h5" | sed "s|^{PROCESSED_DIR}/{DATASET}//||" > {{output}}
+        """
+
+def aggregate_input(wildcards):
+    with checkpoints.churchland_shenoy_neural_2012_download_data.get(**wildcards).output[0].open() as manifest:
+        files = [line.strip() for line in manifest]
+    return expand(f"{PROCESSED_DIR}/{DATASET}/tmp/{{file}}.txt", file=files)
+
+rule merge_manifests:
+    input:
+        aggregate_input
+    output:
+        f"{PROCESSED_DIR}/{DATASET}/manifest.txt"
+    shell:
+        f"""
+        find {PROCESSED_DIR}/{DATASET}/ -type f -name "*.h5" | sed "s|^{PROCESSED_DIR}/{DATASET}//||" > {{output}}        
+        """
+
+rule all:
+    input:
+        f"{PROCESSED_DIR}/{DATASET}/manifest.txt"
