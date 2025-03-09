@@ -20,6 +20,14 @@ To install the package, run the following command:
 pip install brainsets
 ```
 
+## List of available brainsets
+
+| brainset_id | Brainset Card | Raw Data Size | Processed Data Size |
+|-------------|---------------|---------------|--------------------|
+| pei_pandarinath_nlb_2021  | [Link](https://brainsets.readthedocs.io/en/latest/glossary/brainsets.html#pei-pandarinath-nlb-2021) | 688 KB | 22 MB |
+| perich_miller_population_2018 | [Link](https://brainsets.readthedocs.io/en/latest/glossary/brainsets.html#perich-miller-population-2018) | 13 GB | 2.9 GB |
+
+
 ## Using the brainsets CLI
 
 ### Configuring data directories

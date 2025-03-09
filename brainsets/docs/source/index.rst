@@ -40,14 +40,14 @@ If you encounter any bugs or have feature requests, please submit them to our
    
    concepts/using_existing_data
    concepts/prepare_data
-   .. concepts/metadata
-   .. concepts/split
 
-.. .. toctree::
-..    :maxdepth: 1
-..    :caption: Example Gallery
-   
-..    concepts/
+.. toctree::
+   :maxdepth: 1
+   :caption: Glossary
+
+   glossary/brainsets
+   glossary/modalities
+
 
 .. toctree::
    :maxdepth: 2
