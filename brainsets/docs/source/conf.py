@@ -44,3 +44,6 @@ myst_enable_extensions = [
 ]
 
 pygments_style = "default"
+
+html_logo = "_static/brainsets_logo.png"
+html_favicon = "_static/brainsets_logo.png"
