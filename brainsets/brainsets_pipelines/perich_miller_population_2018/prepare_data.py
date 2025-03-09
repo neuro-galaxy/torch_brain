@@ -7,6 +7,7 @@ import os
 import numpy as np
 from pynwb import NWBHDF5IO
 from scipy.ndimage import binary_dilation, binary_erosion
+from sklearn.model_selection import train_test_split
 
 from temporaldata import Data, IrregularTimeSeries, Interval
 from brainsets.descriptions import (
@@ -47,7 +48,63 @@ def extract_behavior(nwbfile):
     return cursor
 
 
-def extract_trials(nwbfile, task, cursor):
+def extract_center_out_reaching_trials(nwbfile, cursor):
+    r"""Extract trial information from the NWB file. Trials that are flagged as
+    "to discard" or where the monkey failed are marked as invalid."""
+    trial_table = nwbfile.trials.to_dataframe()
+
+    # infer the trial structure from the trial table
+    trial_grid = np.append(
+        trial_table.target_on_time.iloc[:],
+        min(trial_table.stop_time.iloc[-1] + 1.0, cursor.domain.end[-1]),
+    )
+    default_value = np.append(
+        trial_table.start_time.iloc[0], trial_table.stop_time.values + 1.0
+    )
+    default_value[1:-1] = np.minimum(
+        default_value[1:-1], trial_table.stop_time.values[1:]
+    )
+    nan_mask = np.isnan(trial_grid)
+    trial_grid[nan_mask] = default_value[nan_mask]
+    trial_grid = trial_grid.astype(np.float64)
+    trial_table["end"] = trial_grid[1:]
+    trial_table["start"] = trial_grid[:-1]
+
+    trials = Interval.from_dataframe(trial_table)
+    assert trials.is_disjoint()
+
+    # find valid trials
+    success_mask = trials.result == "R"
+    valid_target_mask = ~np.isnan(trials.target_id)
+    max_duration_mask = (trials.end - trials.start) < 6.0
+    min_duration_mask = (trials.end - trials.start) > 0.5
+
+    trials.is_valid = (
+        success_mask & valid_target_mask & max_duration_mask & min_duration_mask
+    )
+
+    valid_trials = trials.select_by_mask(trials.is_valid)
+
+    # isolate movement phases
+    movement_phases = Data(
+        hold_period=Interval(
+            start=valid_trials.target_on_time, end=valid_trials.go_cue_time
+        ),
+        reach_period=Interval(
+            start=valid_trials.go_cue_time, end=valid_trials.stop_time
+        ),
+        return_period=Interval(start=valid_trials.stop_time, end=valid_trials.end),
+        invalid=trials.select_by_mask(~trials.is_valid),
+        domain="auto",
+    )
+
+    # everything outside of the different identified periods will be marked as random
+    movement_phases.random_period = cursor.domain.difference(movement_phases.domain)
+
+    return trials, movement_phases
+
+
+def extract_random_target_reaching_trials(nwbfile, cursor):
     r"""Extract trial information from the NWB file. Trials that are flagged as
     "to discard" or where the monkey failed are marked as invalid."""
     trial_table = nwbfile.trials.to_dataframe()
@@ -59,42 +116,27 @@ def extract_trials(nwbfile, task, cursor):
             "stop_time": "end",
         }
     )
+
     trials = Interval.from_dataframe(trial_table)
 
-    # next we extract the different periods in the trials
-    if task == "center_out_reaching":
-        # isolate valid trials based on success
-        trials.is_valid = np.logical_and(
-            np.logical_and(trials.result == "R", ~(np.isnan(trials.target_id))),
-            (trials.end - trials.start) < 6.0,
-        )
-        valid_trials = trials.select_by_mask(trials.is_valid)
+    # find valid trials
+    success_mask = trials.result == "R"
+    valid_num_attempts = trials.num_attempted == 4
+    max_duration_mask = (trials.end - trials.start) < 10.0
+    min_duration_mask = (trials.end - trials.start) > 2.0
 
-        movement_phases = Data(
-            hold_period=Interval(
-                start=valid_trials.target_on_time, end=valid_trials.go_cue_time
-            ),
-            reach_period=Interval(start=valid_trials.go_cue_time, end=valid_trials.end),
-            return_period=Interval(
-                start=valid_trials.start, end=valid_trials.target_on_time
-            ),
-            domain="auto",
-        )
+    trials.is_valid = (
+        success_mask & valid_num_attempts & max_duration_mask & min_duration_mask
+    )
 
-    elif task == "random_target_reaching":
-        # isolate valid trials based on success
-        trials.is_valid = np.logical_and(
-            np.logical_and(trials.result == "R", trials.num_attempted == 4),
-            (trials.end - trials.start) < 10.0,
-        )
-        valid_trials = trials.select_by_mask(trials.is_valid)
+    valid_trials = trials.select_by_mask(~np.isnan(trials.go_cue_time_array[:, 0]))
 
-        movement_phases = Data(
-            hold_period=Interval(
-                start=valid_trials.start, end=valid_trials.go_cue_time_array[:, 0]
-            ),
-            domain="auto",
-        )
+    movement_phases = Data(
+        hold_period=Interval(
+            start=valid_trials.start, end=valid_trials.go_cue_time_array[:, 0]
+        ),
+        domain="auto",
+    )
 
     # everything outside of the different identified periods will be marked as random
     movement_phases.random_period = cursor.domain.difference(movement_phases.domain)
@@ -129,11 +171,31 @@ def detect_outliers(cursor):
 
     end = cursor.timestamps[np.where(np.diff(outlier_mask.astype(int)) == -1)[0]]
     if outlier_mask[-1]:
-        end = np.insert(end, 0, cursor.timestamps[-1])
+        end = np.append(end, cursor.timestamps[-1])
 
     cursor_outlier_segments = Interval(start=start, end=end)
-
+    assert cursor_outlier_segments.is_disjoint()
     return cursor_outlier_segments
+
+
+def split_trials(trials, test_size=0.2, valid_size=0.1, random_state=42):
+    num_trials = len(trials)
+    train_size = 1.0 - test_size - valid_size
+
+    train_valid_ids, test_ids = train_test_split(
+        np.arange(num_trials), test_size=test_size, random_state=random_state
+    )
+    train_ids, valid_ids = train_test_split(
+        train_valid_ids,
+        test_size=valid_size / (train_size + valid_size),
+        random_state=random_state,
+    )
+
+    train_trials = trials.select_by_mask(np.isin(np.arange(num_trials), train_ids))
+    valid_trials = trials.select_by_mask(np.isin(np.arange(num_trials), valid_ids))
+    test_trials = trials.select_by_mask(np.isin(np.arange(num_trials), test_ids))
+
+    return train_trials, valid_trials, test_trials
 
 
 def main():
@@ -144,7 +206,6 @@ def main():
 
     args = parser.parse_args()
 
-    # intiantiate a DatasetBuilder which provides utilities for processing data
     brainset_description = BrainsetDescription(
         id="perich_miller_population_2018",
         origin_version="dandi/000688/draft",
@@ -204,7 +265,17 @@ def main():
     cursor_outlier_segments = detect_outliers(cursor)
 
     # extract data about trial structure
-    trials, movement_phases = extract_trials(nwbfile, task, cursor)
+    if task == "center_out_reaching":
+        trials, movement_phases = extract_center_out_reaching_trials(nwbfile, cursor)
+    else:
+        trials, movement_phases = extract_random_target_reaching_trials(nwbfile, cursor)
+
+    for key in movement_phases.keys():
+        setattr(
+            movement_phases,
+            key,
+            getattr(movement_phases, key).difference(cursor_outlier_segments),
+        )
 
     # close file
     io.close()
@@ -228,13 +299,12 @@ def main():
     )
 
     # split trials into train, validation and test
-    successful_trials = trials.select_by_mask(trials.is_valid)
-    _, valid_trials, test_trials = successful_trials.split(
-        [0.7, 0.1, 0.2], shuffle=True, random_seed=42
+    _, valid_trials, test_trials = split_trials(
+        trials, test_size=0.2, valid_size=0.1, random_state=42
     )
 
     train_sampling_intervals = data.domain.difference(
-        (valid_trials | test_trials).dilate(3.0)
+        (valid_trials | test_trials).dilate(1.0)
     )
 
     data.set_train_domain(train_sampling_intervals)
