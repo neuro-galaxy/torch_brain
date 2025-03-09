@@ -19,6 +19,7 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx_inline_tabs",
     "sphinx.ext.mathjax",
+    "sphinx_copybutton",
 ]
 
 html_theme = "furo"
@@ -45,5 +46,15 @@ myst_enable_extensions = [
 
 pygments_style = "default"
 
+html_css_files = [
+    "style.css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css",
+]
+
+html_js_files = [
+    "citation.js",
+]
+html_copy_source = False
+html_show_sourcelink = True
 html_logo = "_static/brainsets_logo.png"
 html_favicon = "_static/brainsets_logo.png"

@@ -1,0 +1,197 @@
+/* Custom styling for dataset tables */
+table {
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 8px;
+    overflow: hidden;
+    width: 100%;
+    margin-bottom: 20px;
+    border: 1px solid var(--color-foreground-border);
+    table-layout: fixed;
+    /* This ensures column widths are respected */
+}
+
+/* Force column widths explicitly */
+table colgroup {
+    display: table-column-group;
+}
+
+table col:first-child {
+    width: 30% !important;
+}
+
+table col:last-child {
+    width: 70% !important;
+}
+
+/* Directly target the td elements as a backup */
+table td:first-child {
+    width: 30% !important;
+}
+
+table td:last-child {
+    width: 70% !important;
+}
+
+/* Title row styling (first row) */
+table tr:first-child td {
+    background-color: var(--color-background-secondary);
+    font-weight: bold;
+    padding: 10px;
+}
+
+/* Section header rows styling (Subjects, Neural Data, etc.) */
+table th[colspan="2"] {
+    background-color: var(--color-background-secondary);
+    padding: 8px;
+    text-align: center;
+}
+
+/* Regular cell styling */
+td,
+th {
+    padding: 8px;
+    border-bottom: 1px solid var(--color-foreground-border);
+    vertical-align: top;
+    /* Align content to top */
+}
+
+/* Add padding to first and last columns */
+td:first-child,
+th:first-child {
+    padding-left: 15px;
+}
+
+td:last-child,
+th:last-child {
+    padding-right: 15px;
+}
+
+/* Strong element styling */
+strong {
+    font-weight: bold;
+}
+
+/* Add padding between icons and text in section headers */
+table th[colspan="2"] i {
+    margin-right: 6px;
+}
+
+/* Citation button and popup styles */
+.citation-container {
+    position: relative;
+    display: inline-block;
+}
+
+.cite-button {
+    margin-left: 8px;
+    padding: 2px 8px;
+    background-color: var(--color-background-secondary);
+    border: 1px solid var(--color-foreground-border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+    color: var(--color-foreground-primary);
+}
+
+.cite-button:hover {
+    background-color: var(--color-background-hover);
+}
+
+.citation-popup {
+    position: absolute;
+    background-color: var(--color-background-primary);
+    border: 1px solid var(--color-foreground-border);
+    border-radius: 4px;
+    box-shadow: 0 2px 5px var(--color-background-border);
+    margin-top: 5px;
+    padding: 10px;
+    width: 500px;
+    z-index: 1000;
+    left: 0;
+    /* Adjust popup position to prevent it from going off-screen */
+    transform: translateX(-70%);
+}
+
+.citation-section {
+    margin-bottom: 15px;
+    position: relative;
+    /* For absolute positioning of copy button */
+}
+
+.citation-section h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+.citation-content {
+    position: relative;
+    background-color: var(--color-background-secondary);
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-family: monospace;
+}
+
+.citation-content pre {
+    background-color: transparent;
+    padding: 0;
+    margin: 0;
+    white-space: pre-wrap;
+    font-size: 0.8em;
+    overflow: auto;
+    max-height: 120px;
+    font-family: inherit;
+}
+
+.citation-content p {
+    margin: 0;
+    padding: 0;
+    font-size: 0.8em;
+    white-space: pre-wrap;
+    font-family: inherit;
+}
+
+.copy-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 1em;
+    z-index: 2;
+}
+
+/* Update SVG colors for dark mode compatibility */
+.copy-button svg {
+    stroke: var(--color-foreground-primary);
+}
+
+.copy-button:hover {
+    color: var(--color-brand-primary);
+}
+
+.copy-button:hover svg {
+    stroke: var(--color-brand-primary);
+}
+
+/* When showing success checkmark */
+.copy-button .fa-check {
+    color: var(--color-foreground-primary);
+}
+
+/* Code tag styling */
+.code-tag {
+    display: inline-block;
+    background-color: var(--color-background-secondary);
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin: 0 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+    border: 1px solid var(--color-foreground-border);
+}
