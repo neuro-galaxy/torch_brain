@@ -10,7 +10,11 @@ from rich import print as rprint
 import torch
 import lightning as L
 import torchmetrics
-import wandb
+
+try:
+    import wandb
+except ImportError:
+    wandb = None
 
 import torch_brain
 from torch_brain.registry import ModalitySpec, DataType
@@ -224,7 +228,10 @@ class DecodingStitchEvaluator(L.Callback):
                     logger.experiment.add_text(
                         f"{prefix}_metrics", metrics_df.to_markdown()
                     )
-                if isinstance(logger, L.pytorch.loggers.WandbLogger):
+                if (
+                    isinstance(logger, L.pytorch.loggers.WandbLogger)
+                    and wandb is not None
+                ):
                     logger.experiment.log(
                         {f"{prefix}_metrics": wandb.Table(dataframe=metrics_df)}
                     )
@@ -381,7 +388,10 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                     logger.experiment.add_text(
                         f"{prefix}_metrics", metrics_df.to_markdown()
                     )
-                if isinstance(logger, L.pytorch.loggers.WandbLogger):
+                if (
+                    isinstance(logger, L.pytorch.loggers.WandbLogger)
+                    and wandb is not None
+                ):
                     logger.experiment.log(
                         {f"{prefix}_metrics": wandb.Table(dataframe=metrics_df)}
                     )
