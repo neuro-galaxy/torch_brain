@@ -321,12 +321,14 @@ class ArrayDict(object):
                 result.__dict__[k] = copy.deepcopy(v, memo)
         return result
 
-    def materialize(self):
+    def materialize(self) -> ArrayDict:
         r"""Materializes the data object, i.e., loads into memory all of the data that
         is still referenced in the HDF5 file."""
         for key in self.keys():
             # simply access all attributes to trigger the lazy loading
             getattr(self, key)
+
+        return self
 
 
 class LazyArrayDict(ArrayDict):
@@ -3089,13 +3091,15 @@ class Data(object):
                 setattr(result, k, copy.deepcopy(v, memo))
         return result
 
-    def materialize(self):
+    def materialize(self) -> Data:
         r"""Materializes the data object, i.e., loads into memory all of the data that
         is still referenced in the HDF5 file."""
         for key in self.keys():
             # simply access all attributes to trigger the lazy loading
             if isinstance(getattr(self, key), (Data, ArrayDict)):
                 getattr(self, key).materialize()
+
+        return self
 
 
 def size_repr(key: Any, value: Any, indent: int = 0) -> str:
