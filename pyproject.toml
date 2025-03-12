@@ -25,7 +25,6 @@ dependencies = [
     "einops~=0.6.0",
     "hydra-core~=1.3.2",
     "torchtyping~=0.1",
-    "lightning~=2.3",
     "torchmetrics>=1.6.0",
     "pydantic~=2.0",
 ]
