@@ -20,6 +20,9 @@ def prepare_for_readout(
     readout_config = dict(readout_spec)
 
     if "readout" in data.config:
+        # Ensure readout config contains valid keys and merge it with the
+        # default config provided by readout_spec
+
         _readout_config = data.config["readout"]
 
         required_keys = ["readout_id"]
