@@ -52,3 +52,8 @@ bokeh_plot_pyfile_include_dirs = [
 ]
 html_copy_source = False
 html_show_sourcelink = True
+
+html_copy_source = False
+html_show_sourcelink = True
+html_logo = "_static/torch_brain_logo.png"
+html_favicon = "_static/torch_brain_logo.png"
