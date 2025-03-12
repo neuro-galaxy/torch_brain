@@ -1,0 +1,189 @@
+# perich_miller_population_2018 - CO sessions 
+- selection:
+  - brainset: perich_miller_population_2018
+    sessions:
+      - c_20131003_center_out_reaching
+      - c_20131022_center_out_reaching
+      - c_20131023_center_out_reaching
+      - c_20131031_center_out_reaching
+      - c_20131101_center_out_reaching
+      - c_20131203_center_out_reaching
+      - c_20131204_center_out_reaching
+      - c_20131219_center_out_reaching
+      - c_20131220_center_out_reaching
+      - c_20150309_center_out_reaching
+      - c_20150311_center_out_reaching
+      - c_20150312_center_out_reaching
+      - c_20150313_center_out_reaching
+      - c_20150319_center_out_reaching
+      - c_20150629_center_out_reaching
+      - c_20150630_center_out_reaching
+      - c_20150701_center_out_reaching
+      - c_20150703_center_out_reaching
+      - c_20150706_center_out_reaching
+      - c_20150707_center_out_reaching
+      - c_20150708_center_out_reaching
+      - c_20150709_center_out_reaching
+      - c_20150710_center_out_reaching
+      - c_20150713_center_out_reaching
+      - c_20150714_center_out_reaching
+      - c_20150715_center_out_reaching
+      - c_20150716_center_out_reaching
+      - c_20151103_center_out_reaching
+      - c_20151104_center_out_reaching
+      - c_20151106_center_out_reaching
+      - c_20151109_center_out_reaching
+      - c_20151110_center_out_reaching
+      - c_20151112_center_out_reaching
+      - c_20151113_center_out_reaching
+      - c_20151116_center_out_reaching
+      - c_20151117_center_out_reaching
+      - c_20151119_center_out_reaching
+      - c_20151120_center_out_reaching
+      - c_20151201_center_out_reaching
+      - c_20160909_center_out_reaching
+      - c_20160912_center_out_reaching
+      - c_20160914_center_out_reaching
+      - c_20160915_center_out_reaching
+      - c_20160919_center_out_reaching
+      - c_20160921_center_out_reaching
+      - c_20160923_center_out_reaching
+      - c_20160929_center_out_reaching
+      - c_20161005_center_out_reaching
+      - c_20161006_center_out_reaching
+      - c_20161007_center_out_reaching
+      - c_20161011_center_out_reaching
+      - c_20161013_center_out_reaching
+      - c_20161021_center_out_reaching
+      - j_20160405_center_out_reaching
+      - j_20160406_center_out_reaching
+      - j_20160407_center_out_reaching
+      - m_20140203_center_out_reaching
+      - m_20140217_center_out_reaching
+      - m_20140218_center_out_reaching
+      - m_20140303_center_out_reaching
+      - m_20140304_center_out_reaching
+      - m_20140306_center_out_reaching
+      - m_20140307_center_out_reaching
+      - m_20140626_center_out_reaching
+      - m_20140627_center_out_reaching
+      - m_20140929_center_out_reaching
+      - m_20141203_center_out_reaching
+      - m_20150511_center_out_reaching
+      - m_20150512_center_out_reaching
+      - m_20150610_center_out_reaching
+      - m_20150611_center_out_reaching
+      - m_20150612_center_out_reaching
+      - m_20150615_center_out_reaching
+      - m_20150616_center_out_reaching
+      - m_20150617_center_out_reaching
+      - m_20150623_center_out_reaching
+      - m_20150625_center_out_reaching
+      - m_20150626_center_out_reaching
+  config:
+    readout:
+      readout_id: cursor_velocity_2d
+      normalize_mean: 0.
+      normalize_std: 20.
+      weights:
+        movement_phases.random_period: 1.0
+        movement_phases.hold_period: 0.1
+        movement_phases.reach_period: 5.0
+        movement_phases.return_period: 1.0
+        movement_phases.invalid: 0.1
+        cursor_outlier_segments: 0.0
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+      eval_interval: movement_phases.reach_period
+
+# perich_miller_population_2018 - RT sessions
+- selection:
+  - brainset: perich_miller_population_2018
+    sessions:
+    - c_20131009_random_target_reaching
+    - c_20131010_random_target_reaching
+    - c_20131011_random_target_reaching
+    - c_20131028_random_target_reaching
+    - c_20131029_random_target_reaching
+    - c_20131209_random_target_reaching
+    - c_20131210_random_target_reaching
+    - c_20131212_random_target_reaching
+    - c_20131213_random_target_reaching
+    - c_20131217_random_target_reaching
+    - c_20131218_random_target_reaching
+    - c_20150316_random_target_reaching
+    - c_20150317_random_target_reaching
+    - c_20150318_random_target_reaching
+    - c_20150320_random_target_reaching
+    - m_20140114_random_target_reaching
+    - m_20140115_random_target_reaching
+    - m_20140116_random_target_reaching
+    - m_20140214_random_target_reaching
+    - m_20140221_random_target_reaching
+    - m_20140224_random_target_reaching
+  config:
+    readout:
+      readout_id: cursor_velocity_2d
+      normalize_mean: 0.
+      normalize_std: 20.
+      weights:
+        movement_phases.random_period: 1.0
+        movement_phases.hold_period: 0.1
+        cursor_outlier_segments: 0.0
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+      eval_interval: movement_phases.random_period
+
+# churchland_shenoy_neural_2012
+- selection:
+  - brainset: churchland_shenoy_neural_2012
+  config:
+    sampling_intervals_modifier: |
+      sampling_intervals = sampling_intervals & data.cursor.domain & data.spikes.domain
+    readout:
+      readout_id: cursor_velocity_2d
+      normalize_mean: 0.
+      normalize_std: 800.
+      weights:
+        movement_phases.hold_period: 0.1
+        movement_phases.reach_period: 5.0
+        movement_phases.return_period: 1.0
+        cursor_outlier_segments: 1.0
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+
+
+# odoherty_sabes_nonhuman_2017
+- selection:
+  - brainset: odoherty_sabes_nonhuman_2017
+  config:
+    sampling_intervals_modifier: |
+      sampling_intervals = sampling_intervals & data.cursor.domain & data.spikes.domain
+    readout:
+      readout_id: cursor_velocity_2d
+      normalize_mean: 0.
+      normalize_std: 200.
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+
+
+# flint_slutzky_accurate_2012
+- selection:
+  - brainset: flint_slutzky_accurate_2012
+  config:
+    sampling_intervals_modifier: |
+      sampling_intervals = sampling_intervals & data.cursor.domain & data.spikes.domain
+    readout:
+      readout_id: cursor_velocity_2d
+      # we will use the hand velocity for this dataset
+      timestamp_key: hand.timestamp
+      value_key: hand.vel
+      normalize_mean: 0.
+      normalize_std: 0.4
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
