@@ -33,6 +33,7 @@ def prepare_for_readout(
             "eval_interval",
         ]
 
+        # check that the readout config contains all required keys
         for key in required_keys:
             if key not in _readout_config:
                 raise ValueError(f"readout config is missing required key: {key}")
