@@ -28,7 +28,8 @@ jobs:
         source venv/bin/activate
         uv pip install --upgrade pip 
         uv pip install torch==2.2.0
-        uv pip install -e ".[dev]" 
+        uv pip install -e ".[dev]"
+        uv pip install lightning==2.3.3
     - name: Install plugin
       run: |
         source venv/bin/activate
