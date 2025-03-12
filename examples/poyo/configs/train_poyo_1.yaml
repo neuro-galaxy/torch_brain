@@ -1,7 +1,7 @@
 defaults:
   - defaults.yaml
   - model: poyo_11.8M.yaml
-  - dataset: perich_miller_population_2018.yaml
+  - dataset: poyo_1.yaml
   - _self_  # ensures current config overrides defaults
 
 train_transforms:
@@ -12,4 +12,4 @@ train_transforms:
     peak: 4
 
 wandb:
-  run_name: poyo_mp
+  run_name: poyo_1

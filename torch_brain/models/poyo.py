@@ -325,7 +325,7 @@ class POYO(nn.Module):
             # extra data needed for evaluation
             "session_id": data.session.id,
             "absolute_start": data.absolute_start,
-            "eval_mask": pad8(eval_mask) if eval_mask is not None else None,
+            "eval_mask": pad8(eval_mask),
         }
 
         return data_dict

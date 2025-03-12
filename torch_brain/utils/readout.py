@@ -80,7 +80,7 @@ def prepare_for_readout(
     )
 
     # resolve eval mask
-    eval_mask = None
+    eval_mask = np.ones(len(timestamps), dtype=np.bool_)
     eval_interval_key = readout_config.get("eval_interval", None)
     if eval_interval_key is not None:
         eval_interval = data.get_nested_attribute(eval_interval_key)
