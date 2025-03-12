@@ -18,7 +18,7 @@ def prepare_for_readout(
 ):
 
     readout_config = dict(readout_spec)
-    
+
     if "readout" in data.config:
         _readout_config = data.config["readout"]
 
@@ -33,8 +33,8 @@ def prepare_for_readout(
             "eval_interval",
         ]
 
-        for key in required_keys:                                                 
-            if key not in _readout_config:                                         
+        for key in required_keys:
+            if key not in _readout_config:
                 raise ValueError(f"readout config is missing required key: {key}")
 
         # check that the readout config contains only valid keys
@@ -46,7 +46,7 @@ def prepare_for_readout(
                     f"Readout {_readout_config} contains invalid key: {key}.\n"
                     f"Please use only {required_keys + optional_keys}."
                 )
-        
+
         readout_config.update(_readout_config)
 
     value_key = readout_config["value_key"]
