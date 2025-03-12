@@ -16,40 +16,41 @@ def prepare_for_readout(
     data: Data,
     readout_spec: "ModalitySpec",
 ):
-    required_keys = ["readout_id"]
-    optional_keys = [
-        "weights",
-        "normalize_mean",
-        "normalize_std",
-        "timestamp_key",
-        "value_key",
-        "metrics",
-        "eval_interval",
-    ]
 
-    readout_config = data.config["readout"]
+    readout_config = dict(readout_spec)
+    
+    if "readout" in data.config:
+        _readout_config = data.config["readout"]
 
-    # check that the readout config contains all required keys
-    for key in required_keys:
-        if key not in readout_config:
-            raise ValueError(f"readout config is missing required key: {key}")
+        required_keys = ["readout_id"]
+        optional_keys = [
+            "weights",
+            "normalize_mean",
+            "normalize_std",
+            "timestamp_key",
+            "value_key",
+            "metrics",
+            "eval_interval",
+        ]
 
-    # check that the readout config contains only valid keys
-    if not all(key in required_keys + optional_keys for key in readout_config.keys()):
-        raise ValueError(
-            f"Readout {readout_config} contains invalid keys, please use only {required_keys + optional_keys}"
-        )
+        for key in required_keys:                                                 
+            if key not in _readout_config:                                         
+                raise ValueError(f"readout config is missing required key: {key}")
 
-    key = readout_config["readout_id"]
+        # check that the readout config contains only valid keys
+        for key in _readout_config.keys():
+            if key in required_keys:
+                continue
+            elif key not in optional_keys:
+                raise ValueError(
+                    f"Readout {_readout_config} contains invalid key: {key}.\n"
+                    f"Please use only {required_keys + optional_keys}."
+                )
+        
+        readout_config.update(_readout_config)
 
-    if key not in torch_brain.MODALITY_REGISTRY:
-        raise ValueError(
-            f"Readout {key} not found in modality registry, please register it "
-            "using torch_brain.register_modality()"
-        )
-
-    value_key = readout_config.get("value_key", readout_spec.value_key)
-    timestamp_key = readout_config.get("timestamp_key", readout_spec.timestamp_key)
+    value_key = readout_config["value_key"]
+    timestamp_key = readout_config["timestamp_key"]
 
     timestamps = data.get_nested_attribute(timestamp_key)
     values = data.get_nested_attribute(value_key)
@@ -80,7 +81,7 @@ def prepare_for_readout(
     )
 
     # resolve eval mask
-    eval_mask = None
+    eval_mask = np.ones(len(timestamps), dtype=np.bool_)
     eval_interval_key = readout_config.get("eval_interval", None)
     if eval_interval_key is not None:
         eval_interval = data.get_nested_attribute(eval_interval_key)
