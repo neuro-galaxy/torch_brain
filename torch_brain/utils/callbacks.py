@@ -1,7 +1,27 @@
 import time
 import subprocess
 import logging
-import lightning as L
+
+try:
+    import lightning as L
+
+    LIGHTNING_AVAILABLE = True
+except ImportError:
+    LIGHTNING_AVAILABLE = False
+
+    class DummyCallback:
+        pass
+
+    L = type("L", (), {"Callback": DummyCallback})
+
+
+def _check_lightning_available(cls):
+    """Raise an error if Lightning is not available."""
+    if not LIGHTNING_AVAILABLE:
+        raise ImportError(
+            f"Lightning is not installed. Please install it with "
+            f"`pip install lightning~=2.3` to use {cls.__name__}."
+        )
 
 
 class EpochTimeLogger(L.Callback):
@@ -11,6 +31,7 @@ class EpochTimeLogger(L.Callback):
     """
 
     def __init__(self, enable=True):
+        _check_lightning_available(self.__class__)
         self.enable = enable
 
     def on_train_epoch_start(self, trainer, pl_module):
@@ -37,6 +58,7 @@ class ModelWeightStatsLogger(L.Callback):
     """
 
     def __init__(self, enable=True, grads=True, module_name="model", every_n_epoch=1):
+        _check_lightning_available(self.__class__)
         self.enable = enable
         self.grads = grads
         self.module_name = module_name
@@ -75,6 +97,7 @@ class MemInfo(L.Callback):
     """
 
     def on_train_start(self, trainer, pl_module):
+        _check_lightning_available(self.__class__)
         # Log the output of `cat /proc/meminfo` using a shell script.
         try:
             # Execute the command and capture its output
