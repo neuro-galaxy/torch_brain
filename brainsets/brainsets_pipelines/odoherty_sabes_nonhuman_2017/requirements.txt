@@ -1,0 +1,2 @@
+brainsets @ git+https://github.com/neuro-galaxy/brainsets@main
+zenodo_get==1.6.1

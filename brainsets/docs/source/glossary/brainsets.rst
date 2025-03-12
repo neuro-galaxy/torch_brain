@@ -33,7 +33,7 @@ churchland_shenoy_neural_2012
                      <div class="citation-section">
                        <h4>BibTeX</h4>
                        <div class="citation-content">
-                         <pre>@@article{churchland2012neural,
+                         <pre>@article{churchland2012neural,
     title={Neural population dynamics during reaching},
     author={Churchland, Mark M and Cunningham, John P and Kaufman, Matthew T and Foster, Justin D and Nuyujukian, Paul and Ryu, Stephen I and Shenoy, Krishna V},
     journal={Nature},
@@ -129,7 +129,7 @@ churchland_shenoy_neural_2012
        </tr>
        <tr>
            <td><strong>Available fields</strong></td>
-           <td><span class="code-tag">data.spikes</span>, <span class="code-tag">data.units</span></td>
+           <td><span class="code-tag">data.spikes</span><span class="code-tag">data.units</span></td>
        </tr>
        <tr>
            <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral Data</th>
@@ -144,7 +144,7 @@ churchland_shenoy_neural_2012
        </tr>
        <tr>
            <td><strong>Available fields</strong></td>
-           <td><span class="code-tag">data.cursor.pos</span>, <span class="code-tag">data.cursor.vel</span>, <span class="code-tag">data.cursor.acc</span>, <span class="code-tag">data.hand.pos_2d</span>, <span class="code-tag">data.hand.vel_2d</span>, <span class="code-tag">data.hand.acc_2d</span>, <span class="code-tag">data.eye.pos</span></td>
+           <td><span class="code-tag">data.cursor.pos</span><span class="code-tag">data.cursor.vel</span><span class="code-tag">data.cursor.acc</span><span class="code-tag">data.hand.pos_2d</span><span class="code-tag">data.hand.vel_2d</span><span class="code-tag">data.hand.acc_2d</span><span class="code-tag">data.eye.pos</span></td>
        </tr>
        <tr>
            <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
@@ -163,6 +163,162 @@ churchland_shenoy_neural_2012
        <tr>
            <td><strong>Warning</strong></td>
            <td>The data is not contiguous. Neural and behavior data are provided only during the trials, and not between trials. Additionally, the raw data contains artifacts that were removed during processing. </td>
+       </tr>
+   </table>
+
+
+odoherty_sabes_nonhuman_2017
+----------------------------
+
+**Downloading data using brainsets cli** ::
+
+
+    brainsets prepare odoherty_sabes_nonhuman_2017
+
+
+**Brainset Card**
+
+.. raw:: html
+
+   <table>
+       <colgroup>
+           <col style="width: 30%">
+           <col style="width: 70%">
+       </colgroup>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-circle-info"></i>Data Source</th>
+       </tr>
+       <tr>
+           <td><strong>Publication(s)</strong></td>
+           <td>
+               <div>
+                 <a href="https://doi.org/10.5281/zenodo.3854034">10.5281/zenodo.3854034</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="10.5281/zenodo.3854034">Cite</button>
+                   <div class="citation-popup" id="popup-10.5281/zenodo.3854034" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@article{odoherty2017nonhuman,
+    title={Nonhuman Primate Reaching with Multichannel Sensorimotor Cortex Electrophysiology [Data set]},
+    author={O'Doherty, Joseph E and Cardoso, Maria M B and Makin, John G and Sabes, Paul N},
+    journal={Zenodo},
+    year={2017},
+    url={https://doi.org/10.5281/zenodo.3854034}
+    }
+    </pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                     <div class="citation-section">
+                       <h4>APA Style</h4>
+                       <div class="citation-content">
+                         <pre>O'Doherty, J. E., Cardoso, M. M. B., Makin, J. G., & Sabes, P. N. (2020). Nonhuman Primate Reaching with Multichannel Sensorimotor Cortex Electrophysiology [Data set]. Zenodo. https://doi.org/10.5281/zenodo.3854034</pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+           </td>
+       </tr>
+       <tr>
+           <td><strong>Data Source</strong></td>
+           <td><a href="https://zenodo.org/records/3854034">https://zenodo.org/records/3854034</a></td>
+       </tr>
+       <tr>
+           <td><strong>License</strong></td>
+           <td><a href="https://spdx.org/licenses/CC-BY-4.0.html">Creative Commons Attribution 4.0 International</a></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-user"></i>Subjects</th>
+       </tr>
+       <tr>
+           <td><strong>Number of subjects</strong></td>
+           <td>2</td>
+       </tr>
+       <tr>
+           <td><strong>Species</strong></td>
+           <td>Macaca mulatta</td>
+       </tr>
+        <tr>
+           <td><strong>Number of recordings</strong></td>
+           <td>47</td>
+       </tr>
+       <tr>
+           <td><strong>Total recording time</strong></td>
+           <td>13.74 hours</td>
+       </tr>
+       <tr>
+           <td><strong>Distribution of recording lengths (in minutes)</strong></td>
+           <td><div><img src="../_static/odoherty_sabes_nonhuman_2017_recording_lengths_histogram.svg" alt="Histogram showing distribution of recording lengths"></div></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-brain"></i> Neural Data</th>
+       </tr>
+       <tr>
+           <td><strong>Neural Modality</strong></td>
+           <td>EPhys, spiking</td>
+       </tr>
+       <tr>
+           <td><strong>Device</strong></td>
+           <td>Utah Array</td>
+       </tr>
+       <tr>
+           <td><strong>Total number of units</strong></td>
+           <td>16,566</td>
+       </tr>
+        <tr>
+           <td><strong>Distribution of number of units per recording</strong></td>
+           <td><div><img src="../_static/odoherty_sabes_nonhuman_2017_num_units_histogram.svg" alt="Histogram showing distribution of number of units"></div></td>
+       </tr>
+       <tr>
+           <td><strong>Total number of spikes</strong></td>
+           <td>105.15M</td>
+       </tr>
+       <tr>
+           <td><strong>Brain regions</strong></td>
+           <td>M1, S1</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.spikes</span><span class="code-tag">data.units</span><span class="code-tag">data.units.waveforms</span><span class="code-tag">data.units.average_waveform</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral Data</th>
+       </tr>
+        <tr>
+           <td><strong>Description</strong></td>
+           <td>The animal is performing reaching tasks with right hand.</td>
+       </tr>
+       <tr>
+           <td><strong>Task</strong></td>
+           <td>Reaching task</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.cursor.pos</span><span class="code-tag">data.cursor.vel</span><span class="code-tag">data.cursor.acc</span><span class="code-tag">data.finger.pos_3d</span><span class="code-tag">data.finger.vel_3d</span><span class="code-tag">data.finger.orientation</span><span class="code-tag">data.finger.angular_vel</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
+       </tr>
+       <tr>
+           <td><strong>Raw data size</strong></td>
+           <td>22 GB</td>
+       </tr>
+       <tr>
+           <td><strong>Processed data size</strong></td>
+           <td>26 GB</td>
        </tr>
    </table>
 
@@ -292,7 +448,7 @@ pei_pandarinath_nlb_2021
        </tr>
        <tr>
            <td><strong>Available fields</strong></td>
-           <td><span class="code-tag">data.spikes</span>, <span class="code-tag">data.units</span></td>
+           <td><span class="code-tag">data.spikes</span><span class="code-tag">data.units</span></td>
        </tr>
        <tr>
            <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral Data</th>
@@ -307,7 +463,7 @@ pei_pandarinath_nlb_2021
        </tr>
        <tr>
            <td><strong>Available fields</strong></td>
-           <td><span class="code-tag">data.cursor.pos</span>, <span class="code-tag">data.cursor.vel</span>, <span class="code-tag">data.cursor.acc</span></td>
+           <td><span class="code-tag">data.cursor.pos</span><span class="code-tag">data.cursor.vel</span><span class="code-tag">data.cursor.acc</span></td>
        </tr>
        <tr>
            <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
@@ -491,7 +647,7 @@ perich_miller_population_2018
        </tr>
        <tr>
            <td><strong>Available fields</strong></td>
-           <td><span class="code-tag">data.spikes</span>, <span class="code-tag">data.units</span></td>
+           <td><span class="code-tag">data.spikes</span><span class="code-tag">data.units</span></td>
        </tr>
        <tr>
            <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral Data</th>
@@ -506,7 +662,7 @@ perich_miller_population_2018
        </tr>
        <tr>
            <td><strong>Available fields</strong></td>
-           <td><span class="code-tag">data.cursor.pos</span>, <span class="code-tag">data.cursor.vel</span>, <span class="code-tag">data.cursor.acc</span></td>
+           <td><span class="code-tag">data.cursor.pos</span><span class="code-tag">data.cursor.vel</span><span class="code-tag">data.cursor.acc</span></td>
        </tr>
        <tr>
            <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
