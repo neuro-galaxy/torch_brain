@@ -1,0 +1,2 @@
+brainsets @ git+https://github.com/neuro-galaxy/brainsets@main
+scipy==1.10.1

@@ -167,6 +167,210 @@ churchland_shenoy_neural_2012
    </table>
 
 
+flint_slutzky_accurate_2012
+-----------------------------
+
+**Downloading data using brainsets cli** ::
+
+
+    brainsets prepare flint_slutzky_accurate_2012
+
+
+**Brainset Card**
+
+.. raw:: html
+
+   <table>
+       <colgroup>
+           <col style="width: 30%">
+           <col style="width: 70%">
+       </colgroup>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-circle-info"></i>Data Source</th>
+       </tr>
+       <tr>
+           <td><strong>Publication(s)</strong></td>
+           <td>
+               <div>
+                 <a href="https://doi.org/10.1088/1741-2560/9/4/046006">10.1088/1741-2560/9/4/046006</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="10.1088/1741-2560/9/4/046006">Cite</button>
+                   <div class="citation-popup" id="popup-10.1088/1741-2560/9/4/046006" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@article{flint2012accurate,
+        title={Accurate decoding of reaching movements from field potentials in the absence of spikes},
+        author={Flint, Robert D and Lindberg, Eric W and Jordan, Luke R and Miller, Lee E and Slutzky, Marc W},
+        journal={Journal of neural engineering},
+        volume={9},
+        number={4},
+        pages={046006},
+        year={2012},
+        publisher={IOP Publishing}
+    }
+    </pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                     <div class="citation-section">
+                       <h4>APA Style</h4>
+                       <div class="citation-content">
+                         <pre>Flint, R. D., Lindberg, E. W., Jordan, L. R., Miller, L. E., & Slutzky, M. W. (2012). Accurate decoding of reaching movements from field potentials in the absence of spikes. Journal of neural engineering, 9(4), 046006. https://doi.org/10.1088/1741-2560/9/4/046006</pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+            <div>
+                 <a href="https://doi.org/10.1371/journal.pone.0078747">10.1371/journal.pone.0078747</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="10.1371/journal.pone.0078747">Cite</button>
+                   <div class="citation-popup" id="popup-10.1371/journal.pone.0078747" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@article{10.1371/journal.pone.0078747,
+        doi = {10.1371/journal.pone.0078747},
+        author = {Walker, Ben AND Kording, Konrad},
+        journal = {PLOS ONE},
+        publisher = {Public Library of Science},
+        title = {The Database for Reaching Experiments and Models},
+        year = {2013},
+        month = {11},
+        volume = {8},
+        url = {https://doi.org/10.1371/journal.pone.0078747},
+        pages = {1-10}
+    }
+    </pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                     <div class="citation-section">
+                       <h4>APA Style</h4>
+                       <div class="citation-content">
+                         <pre>Walker, B., Kording, K. The Database for Reaching Experiments and Models. PLOS ONE 8, e78747 (2013). https://doi.org/10.1371/journal.pone.0078747</pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+           </td>
+       </tr>
+       <tr>
+           <td><strong>Data Source</strong></td>
+           <td><a href="https://crcns.org/data-sets/movements/dream/">https://crcns.org/data-sets/movements/dream/</a></td>
+       </tr>
+       <tr>
+           <td><strong>License</strong></td>
+           <td>Unclear, see <a href="https://portal.nersc.gov/project/crcns/download/dream/documentation/DREAMUserManual.pdf">DREAM User Manual</a></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-user"></i>Subjects</th>
+       </tr>
+       <tr>
+           <td><strong>Number of subjects</strong></td>
+           <td>1</td>
+       </tr>
+       <tr>
+           <td><strong>Species</strong></td>
+           <td>Monkey</td>
+       </tr>
+        <tr>
+           <td><strong>Number of recordings</strong></td>
+           <td>5</td>
+       </tr>
+       <tr>
+           <td><strong>Total recording time</strong></td>
+           <td>0.88 hours</td>
+       </tr>
+       <tr>
+           <td><strong>Distribution of recording lengths (in minutes)</strong></td>
+           <td><div><img src="../_static/flint_slutzky_accurate_2012_recording_lengths_histogram.svg" alt="Histogram showing distribution of recording lengths"></div></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-brain"></i> Neural Data</th>
+       </tr>
+       <tr>
+           <td><strong>Neural Modality</strong></td>
+           <td>EPhys, spiking</td>
+       </tr>
+       <tr>
+           <td><strong>Device</strong></td>
+           <td>Utah Array</td>
+       </tr>
+       <tr>
+           <td><strong>Total number of units</strong></td>
+           <td>957</td>
+       </tr>
+        <tr>
+           <td><strong>Distribution of number of units per recording</strong></td>
+           <td><div><img src="../_static/flint_slutzky_accurate_2012_num_units_histogram.svg" alt="Histogram showing distribution of number of units"></div></td>
+       </tr>
+       <tr>
+           <td><strong>Total number of spikes</strong></td>
+           <td>7.88M</td>
+       </tr>
+       <tr>
+           <td><strong>Brain regions</strong></td>
+           <td>M1</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.spikes</span><span class="code-tag">data.units</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral Data</th>
+       </tr>
+        <tr>
+           <td><strong>Description</strong></td>
+           <td>The animal is performing a center-out reaching task.</td>
+       </tr>
+       <tr>
+           <td><strong>Task</strong></td>
+           <td>Center-out reaching</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.hand.vel</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
+       </tr>
+       <tr>
+           <td><strong>Raw data size</strong></td>
+           <td>3.2 GB</td>
+       </tr>
+       <tr>
+           <td><strong>Processed data size</strong></td>
+           <td>151 MB</td>
+       </tr>
+   </table>
+
+
+
 odoherty_sabes_nonhuman_2017
 ----------------------------
 
