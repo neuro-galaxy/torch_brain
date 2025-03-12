@@ -20,11 +20,10 @@ To install the package, run the following command:
 pip install -e .
 ```
 
-To avoid conflicts between different packages, you can specify the packages that will be
-used as follows:
-```bash
-pip install -e ".[xformers]"
-```
+### List of implemented models
+
++ [POYO: A Unified, Scalable Framework for Neural Population Decoding (Azabou et al. 2023)](examples/poyo)
++ More coming soon...
 
 ## Contributing
 If you are planning to contribute to the package, you can install the package in
