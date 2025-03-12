@@ -176,11 +176,11 @@
   - brainset: flint_slutzky_accurate_2012
   config:
     sampling_intervals_modifier: |
-      sampling_intervals = sampling_intervals & data.cursor.domain & data.spikes.domain
+      sampling_intervals = sampling_intervals & data.hand.domain & data.spikes.domain
     readout:
       readout_id: cursor_velocity_2d
       # we will use the hand velocity for this dataset
-      timestamp_key: hand.timestamp
+      timestamp_key: hand.timestamps
       value_key: hand.vel
       normalize_mean: 0.
       normalize_std: 0.4
