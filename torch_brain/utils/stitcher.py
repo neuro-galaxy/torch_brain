@@ -50,12 +50,6 @@ def stitch(
         >>> values = torch.tensor([1, 1, 2, 3, 3, 1], dtype=torch.long)
         >>> stitch(timestamps, values)
         (tensor([1, 2, 3]), tensor([1, 2, 3]))
-
-    Note:
-        - For continuous values (float types), uses efficient scatter_add_ operations
-        - For categorical values (long type), computes mode for each timestamp
-        - Timestamps must be 1-dimensional
-        - The first dimension of values must match the length of timestamps
     """
     # Find unique timestamps and their inverse indices
     unique_timestamps, indices = torch.unique(
@@ -90,7 +84,7 @@ def stitch(
         avg_values.index_add_(0, indices, values).div_(counts)
         # Regarding division by zero: all elements of counts will be >= 1.
         # Reasoning: Since it was built using unique_timestamps, each index will have
-        # atleast must one timestamp attached to it.
+        # atleast one timestamp attached to it.
 
         return unique_timestamps, avg_values
 
