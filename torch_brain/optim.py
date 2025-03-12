@@ -5,10 +5,14 @@ from torch.optim.optimizer import Optimizer
 
 
 class SparseLamb(Optimizer):
-    r"""Implements Lamb algorithm.
+    r"""Implements the sparse variant of the Lamb algorithm.
 
-    It has been proposed in `Large Batch Optimization for Deep Learning:
-    Training BERT in 76 minutes`__.
+    SparseLamb is a variant of the Lamb optimizer that only updates the parameters
+    for which the gradient is non-zero. This is useful for models that do not always
+    use all parameters during a single forward pass.
+
+    By default, SparseLamb is equivalent to Lamb. To activate the sparse variant,
+    set the `sparse` argument to `True`.
 
     Arguments:
         params: iterable of parameters to optimize or dicts defining
@@ -24,6 +28,7 @@ class SparseLamb(Optimizer):
         adam: always use trust ratio = 1, which turns this
             into Adam. Useful for comparison purposes. (default: False)
         debias: debias adam by (1 - beta**step) (default: False)
+        sparse: only update the parameters that have non-zero gradients (default: False)
 
     __ https://arxiv.org/abs/1904.00962
 
