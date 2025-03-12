@@ -162,7 +162,7 @@ class DataModule(L.LightningDataModule):
             split="train",
             transform=Compose([*train_transforms, model.tokenize]),
         )
-        self.train_dataset.disable_data_leakage_check()
+        # self.train_dataset.disable_data_leakage_check()
 
         self._init_model_vocab(model)
 
@@ -174,7 +174,7 @@ class DataModule(L.LightningDataModule):
             split="valid",
             transform=Compose([*eval_transforms, model.tokenize]),
         )
-        self.val_dataset.disable_data_leakage_check()
+        # self.val_dataset.disable_data_leakage_check()
 
         self.test_dataset = Dataset(
             root=self.cfg.data_root,
@@ -182,7 +182,7 @@ class DataModule(L.LightningDataModule):
             split="test",
             transform=Compose([*eval_transforms, model.tokenize]),
         )
-        self.test_dataset.disable_data_leakage_check()
+        # self.test_dataset.disable_data_leakage_check()
 
     def _init_model_vocab(self, model: POYO):
         # TODO: Add code for finetuning situation (when model already has a vocab)
