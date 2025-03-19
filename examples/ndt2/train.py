@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict, deque
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import hydra
 import lightning as L
@@ -25,13 +25,19 @@ from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )
-from torch_brain.models import NDT2
+from torch_brain.models import NDT2, NDT2_SSL
+from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
 from torch_brain.transforms import Compose
 from torch_brain.utils import seed_everything
 
 
 class NDT2TrainWrapper(L.LightningModule):
-    def __init__(self, cfg, model: NDT2):
+    def __init__(
+        self,
+        cfg,
+        model: Union[NDT2_SSL, NDT2],
+        modality_spec: ModalitySpec,
+    ):
         super().__init__()
         self.model = model
         self.cfg = cfg
@@ -42,10 +48,15 @@ class NDT2TrainWrapper(L.LightningModule):
             self.window_size = 10
             self.loss_queue = deque(maxlen=self.window_size)
 
+        self.modality_spec = modality_spec
+        if self.cfg.is_ssl:
+            self.loss_fn = nn.PoissonNLLLoss(reduction="none", log_input=True)
+
     def configure_optimizers(self):
         cfg = self.cfg.optimizer
 
         params = self.parameters()
+
         if cfg.get("accelerate_factor", 1) > 1:
             params = self.split_params(self.named_parameters())
         if cfg.get("freeze_encoder", False):
@@ -74,22 +85,26 @@ class NDT2TrainWrapper(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         model_inputs = batch["model_inputs"]
-        decoder_out = self.model(
-            model_inputs["units_bincount"],
-            model_inputs["time_idx"],
-            model_inputs["space_idx"],
-            model_inputs["input_mask"],
-            model_inputs["encoder_attn_mask"],
-            model_inputs["session_idx"],
-            model_inputs["subject_idx"],
-            model_inputs["task_idx"],
-        )
+        model_out = self.model(**model_inputs)
 
-        loss = decoder_out["loss"]
-        if self.is_ssl:
-            self.log("train_shuffle_infill_loss", loss)
+        if self.cfg.is_ssl:
+            rates = model_out["rates"]
+            target = batch["target"]
+            extra_units_mask = batch["extra_units_mask"]
+            loss = self.loss_fn(rates, target)[extra_units_mask].mean()
         else:
-            self.log("train_kinematic_decoding_loss", loss)
+            output = model_out["output"].flatten(1, -1)
+            target = batch["target"].flatten(1, -1)
+            loss = self.modality_spec.loss_fn(output, target)
+
+            for metric in self.modality_spec.metrics:
+                print(metric)
+
+            exit(0)
+
+        self.log("train_loss", loss, prog_bar=True)
+
+        #  self.log("train_kinematic_decoding_loss", loss)
 
         #     task = self.cfg.model.bhv_decoder.get("task", "regression")
         #     if task == "regression":
@@ -111,50 +126,44 @@ class NDT2TrainWrapper(L.LightningModule):
 
     @torch.inference_mode()
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        ssl_loss = 0.0
-        superv_loss = 0.0
-
         prefix = "val_"
         if dataloader_idx == 1:
             prefix = "eval_"
 
-        if self.is_ssl:
-            decoder_out = self.model(batch, "ssl")
-            ssl_loss = decoder_out["loss"]
-            self.log(
-                f"{prefix}shuffle_infill_loss",
-                decoder_out["loss"],
-                add_dataloader_idx=False,
-            )
+        model_inputs = batch["model_inputs"]
+        model_out = self.model(**model_inputs)
 
+        if self.cfg.is_ssl:
+            rates = model_out["rates"]
+            target = batch["target"]
+            extra_units_mask = batch["extra_units_mask"]
+            loss = self.loss_fn(rates, target)[extra_units_mask].mean()
         else:
-            decoder_out = self.model(batch, "bhv")
-            superv_loss = decoder_out["loss"]
-            self.log(
-                f"{prefix}kinematic_decoding_loss",
-                decoder_out["loss"],
-                add_dataloader_idx=False,
-            )
+            output = model_out["output"].flatten(1, -1)
+            target = batch["target"].flatten(1, -1)
+            loss = self.modality_spec.loss_fn(output, target)
 
-            task = self.cfg.model.bhv_decoder.get("task", "regression")
-            if task == "regression":
-                self.log(
-                    f"{prefix}kinematic_r2",
-                    decoder_out["r2"].mean(),
-                    add_dataloader_idx=False,
-                )
-            elif task == "classification":
-                self.log(
-                    f"{prefix}acc",
-                    decoder_out["acc"].mean(),
-                    add_dataloader_idx=False,
-                )
-                self.log(
-                    f"{prefix}balanced_acc",
-                    decoder_out["balanced_acc"].mean(),
-                    add_dataloader_idx=False,
-                )
-        loss = ssl_loss + superv_loss
+            # self.log(f"{prefix}kinematic_decoding_loss", loss, add_dataloader_idx=False)
+
+            # task = self.cfg.model.bhv_decoder.get("task", "regression")
+            # if task == "regression":
+            #     self.log(
+            #         f"{prefix}kinematic_r2",
+            #         decoder_out["r2"].mean(),
+            #         add_dataloader_idx=False,
+            #     )
+            # elif task == "classification":
+            #     self.log(
+            #         f"{prefix}acc",
+            #         decoder_out["acc"].mean(),
+            #         add_dataloader_idx=False,
+            #     )
+            #     self.log(
+            #         f"{prefix}balanced_acc",
+            #         decoder_out["balanced_acc"].mean(),
+            #         add_dataloader_idx=False,
+            #     )
+
         self.log(
             f"{prefix}loss",
             loss,
@@ -163,14 +172,14 @@ class NDT2TrainWrapper(L.LightningModule):
             add_dataloader_idx=False,
         )
 
-        if self.val_loss_smoothing:
-            avg_loss = self.moving_average(loss)
-            self.log(
-                f"{prefix}loss_avg",
-                avg_loss,
-                sync_dist=True,
-                add_dataloader_idx=False,
-            )
+        # if self.val_loss_smoothing:
+        #     avg_loss = self.moving_average(loss)
+        #     self.log(
+        #         f"{prefix}loss_avg",
+        #         avg_loss,
+        #         sync_dist=True,
+        #         add_dataloader_idx=False,
+        #     )
         return loss
 
     # TODO not being used but could be implemented
@@ -209,9 +218,6 @@ class NDT2TrainWrapper(L.LightningModule):
         self.loss_queue.append(x.item())
         return sum(self.loss_queue) / len(self.loss_queue)
 
-    def on_before_batch_transfer(self, batch, dataloader_idx):
-        return self.model.mae_masking(batch)
-
 
 class DataModule(L.LightningDataModule):
     def __init__(self, cfg, is_ssl: bool = True, unsorted: bool = True):
@@ -219,7 +225,6 @@ class DataModule(L.LightningDataModule):
 
         self.cfg = cfg
         self.is_ssl = is_ssl
-        self.dataset_cfg = cfg.dataset
 
     # TODO Use FilterUnit("/M1", keep=True)
     # train_transforms:
@@ -229,7 +234,7 @@ class DataModule(L.LightningDataModule):
     #     mode_units: 300
     #     peak: 4
 
-    def setup_dataset_and_link_model(self, model: NDT2):
+    def setup_dataset_and_link_model(self, model: NDT2_SSL):
         cfg = self.cfg
 
         #  Do not use split for dataset because is handle at sampler level
@@ -240,7 +245,7 @@ class DataModule(L.LightningDataModule):
         self.dataset = Dataset(
             root=cfg.data_root,
             split=None,
-            config=self.dataset_cfg,
+            config=cfg.dataset,
             transform=Compose([*transforms, model.tokenize]),
         )
 
@@ -249,6 +254,7 @@ class DataModule(L.LightningDataModule):
             train_transforms = []
             if cfg.get("train_transforms"):
                 train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
+
             self.train_dataset = Dataset(
                 root=cfg.data_root,
                 config=cfg.dataset,
@@ -288,12 +294,12 @@ class DataModule(L.LightningDataModule):
         #     intervals = self.ndt2_custom_sampling_intervals()
         #     self.train_intervals, self.val_intervals, self.eval_intervals = intervals
 
-    def _init_model_vocab(self, model: NDT2):
-        if model.session_emb is not None:
+    def _init_model_vocab(self, model: NDT2_SSL):
+        if model.tokenize_session:
             model.session_emb.initialize_vocab(self.get_session_ids())
-        if model.subject_emb is not None:
+        if model.tokenize_subject:
             model.subject_emb.initialize_vocab(self.get_subject_ids())
-        if model.task_emb is not None:
+        if model.tokenize_task:
             model.task_emb.initialize_vocab(self.get_task_ids())
 
     def get_session_ids(self):
@@ -309,7 +315,7 @@ class DataModule(L.LightningDataModule):
         cfg = self.cfg
         train_sampler = RandomFixedWindowSampler(
             sampling_intervals=self.train_intervals,
-            window_length=cfg.ctx_time,
+            window_length=cfg.model.ctx_time,
             generator=torch.Generator(),
         )
 
@@ -329,7 +335,7 @@ class DataModule(L.LightningDataModule):
 
         val_sampler = SequentialFixedWindowSampler(
             sampling_intervals=self.val_intervals,
-            window_length=cfg.ctx_time,
+            window_length=cfg.model.ctx_time,
             drop_short=True,
         )
 
@@ -346,7 +352,7 @@ class DataModule(L.LightningDataModule):
 
         eval_sampler = SequentialFixedWindowSampler(
             sampling_intervals=self.eval_intervals,
-            window_length=cfg.ctx_time,
+            window_length=cfg.model.ctx_time,
             drop_short=True,
         )
         eval_loader = DataLoader(
@@ -411,31 +417,19 @@ def run_training(cfg):
         log.info(f"Batch size per GPU: {cfg.batch_size_per_gpu}")
         log.info(f"Superv batch size per GPU: {cfg.superv_batch_size_per_gpu}")
 
-    dim = cfg.model.dim
+    readout_cfg = cfg.dataset[0].config.readout
+    readout_id = readout_cfg.readout_id
+    readout_spec = MODALITY_REGISTRY[readout_id]
+    # readout_spec.timestamp_key = readout_cfg.timestamp_key
+    # readout_spec.value_key = readout_cfg.value_key
 
     # Set up data module
     data_module = DataModule(cfg, cfg.is_ssl)
 
-    model = NDT2(
-        is_ssl=cfg.is_ssl,
-        dim=dim,
-        units_per_patch=cfg.units_per_patch,
-        max_units_bincount=cfg.max_units_bincount,
-        spike_pad=cfg.spike_pad,
-        pad_value=cfg.pad_val,
-        max_time_patches=cfg.model.max_time_patches,
-        max_space_patches=cfg.model.max_space_patches,
-        bin_time=cfg.bin_time,
-        ctx_time=cfg.ctx_time,
-        mask_ratio=cfg.mask_ratio,
-        tokenize_session=cfg.tokenize_session,
-        tokenize_subject=cfg.tokenize_subject,
-        tokenize_task=cfg.tokenize_task,
-        depth=cfg.model.encoder.depth,
-        heads=cfg.model.encoder.heads,
-        dropout=cfg.model.encoder.dropout,
-        ffn_mult=cfg.model.encoder.ffn_mult,
-    )
+    if cfg.is_ssl:
+        model = hydra.utils.instantiate(cfg.model)
+    else:
+        model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)
 
     # # Load from checkpoint TODO update
     # if cfg.get("load_from_checkpoint", False):
@@ -454,7 +448,7 @@ def run_training(cfg):
     #     ctx_manager.extend_vocab(data_module.get_ctx_vocab(ctx_manager.keys))
 
     # Train wrapper
-    train_wrapper = NDT2TrainWrapper(cfg, model)
+    train_wrapper = NDT2TrainWrapper(cfg=cfg, model=model, modality_spec=readout_spec)
 
     # Callbacks
     callbacks = [
