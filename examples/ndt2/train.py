@@ -74,18 +74,27 @@ class NDT2TrainWrapper(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         model_inputs = batch["model_inputs"]
+        model_latents = batch["model_latents"]
+        model_tagets = batch["model_tagets"]
         decoder_out = self.model(
-            model_inputs["units_bincount"],
+            model_inputs["units_patch"],
             model_inputs["time_idx"],
             model_inputs["space_idx"],
             model_inputs["input_mask"],
             model_inputs["encoder_attn_mask"],
-            model_inputs["session_idx"],
-            model_inputs["subject_idx"],
-            model_inputs["task_idx"],
+            model_latents["time_idx"],
+            model_latents["space_idx"],
+            model_latents["latent_mask"],
+            model_latents["decoder_attn_mask"],
+            batch["session_idx"],
+            batch["subject_idx"],
+            batch["task_idx"],
+            model_tagets["target"],
+            model_tagets["pad_mask"],
+            model_tagets["extra_units_mask"],
         )
-
         loss = decoder_out["loss"]
+
         if self.is_ssl:
             self.log("train_shuffle_infill_loss", loss)
         else:
@@ -111,50 +120,56 @@ class NDT2TrainWrapper(L.LightningModule):
 
     @torch.inference_mode()
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        ssl_loss = 0.0
-        superv_loss = 0.0
+        model_inputs = batch["model_inputs"]
+        model_latents = batch["model_latents"]
+        model_tagets = batch["model_tagets"]
+        decoder_out = self.model(
+            model_inputs["units_patch"],
+            model_inputs["time_idx"],
+            model_inputs["space_idx"],
+            model_inputs["input_mask"],
+            model_inputs["encoder_attn_mask"],
+            model_latents["time_idx"],
+            model_latents["space_idx"],
+            model_latents["latent_mask"],
+            model_latents["decoder_attn_mask"],
+            batch["session_idx"],
+            batch["subject_idx"],
+            batch["task_idx"],
+            model_tagets["target"],
+            model_tagets["pad_mask"],
+            model_tagets["extra_units_mask"],
+        )
+        loss = decoder_out["loss"]
 
         prefix = "val_"
         if dataloader_idx == 1:
             prefix = "eval_"
 
         if self.is_ssl:
-            decoder_out = self.model(batch, "ssl")
-            ssl_loss = decoder_out["loss"]
-            self.log(
-                f"{prefix}shuffle_infill_loss",
-                decoder_out["loss"],
-                add_dataloader_idx=False,
-            )
-
+            self.log(f"{prefix}shuffle_infill_loss", loss, add_dataloader_idx=False)
         else:
-            decoder_out = self.model(batch, "bhv")
-            superv_loss = decoder_out["loss"]
-            self.log(
-                f"{prefix}kinematic_decoding_loss",
-                decoder_out["loss"],
-                add_dataloader_idx=False,
-            )
+            self.log(f"{prefix}kinematic_decoding_loss", loss, add_dataloader_idx=False)
 
-            task = self.cfg.model.bhv_decoder.get("task", "regression")
-            if task == "regression":
-                self.log(
-                    f"{prefix}kinematic_r2",
-                    decoder_out["r2"].mean(),
-                    add_dataloader_idx=False,
-                )
-            elif task == "classification":
-                self.log(
-                    f"{prefix}acc",
-                    decoder_out["acc"].mean(),
-                    add_dataloader_idx=False,
-                )
-                self.log(
-                    f"{prefix}balanced_acc",
-                    decoder_out["balanced_acc"].mean(),
-                    add_dataloader_idx=False,
-                )
-        loss = ssl_loss + superv_loss
+            # task = self.cfg.model.bhv_decoder.get("task", "regression")
+            # if task == "regression":
+            #     self.log(
+            #         f"{prefix}kinematic_r2",
+            #         decoder_out["r2"].mean(),
+            #         add_dataloader_idx=False,
+            #     )
+            # elif task == "classification":
+            #     self.log(
+            #         f"{prefix}acc",
+            #         decoder_out["acc"].mean(),
+            #         add_dataloader_idx=False,
+            #     )
+            #     self.log(
+            #         f"{prefix}balanced_acc",
+            #         decoder_out["balanced_acc"].mean(),
+            #         add_dataloader_idx=False,
+            #     )
+
         self.log(
             f"{prefix}loss",
             loss,
@@ -163,14 +178,14 @@ class NDT2TrainWrapper(L.LightningModule):
             add_dataloader_idx=False,
         )
 
-        if self.val_loss_smoothing:
-            avg_loss = self.moving_average(loss)
-            self.log(
-                f"{prefix}loss_avg",
-                avg_loss,
-                sync_dist=True,
-                add_dataloader_idx=False,
-            )
+        # if self.val_loss_smoothing:
+        #     avg_loss = self.moving_average(loss)
+        #     self.log(
+        #         f"{prefix}loss_avg",
+        #         avg_loss,
+        #         sync_dist=True,
+        #         add_dataloader_idx=False,
+        #     )
         return loss
 
     # TODO not being used but could be implemented
@@ -210,7 +225,29 @@ class NDT2TrainWrapper(L.LightningModule):
         return sum(self.loss_queue) / len(self.loss_queue)
 
     def on_before_batch_transfer(self, batch, dataloader_idx):
-        return self.model.mae_masking(batch)
+        # TODO make it cleaner
+        nb_ctx_tokens = 0
+        if self.cfg.tokenize_session:
+            nb_ctx_tokens += 1
+        if self.cfg.tokenize_subject:
+            nb_ctx_tokens += 1
+        if self.cfg.tokenize_task:
+            nb_ctx_tokens += 1
+
+        encoder_heads = self.cfg.model.encoder.heads
+        decoder_heads = self.cfg.model.decoder.heads
+        encoder_attn_mask, decoder_attn_mask = self.model.attn_mask(
+            batch, nb_ctx_tokens, encoder_heads, decoder_heads
+        )
+        input_mask, latent_mask = self.model.pad_mask(batch, nb_ctx_tokens)
+
+        batch["model_inputs"]["input_mask"] = input_mask
+        batch["model_latents"]["latent_mask"] = latent_mask
+
+        batch["model_inputs"]["encoder_attn_mask"] = encoder_attn_mask
+        batch["model_latents"]["decoder_attn_mask"] = decoder_attn_mask
+
+        return batch
 
 
 class DataModule(L.LightningDataModule):
@@ -420,8 +457,7 @@ def run_training(cfg):
         is_ssl=cfg.is_ssl,
         dim=dim,
         units_per_patch=cfg.units_per_patch,
-        max_units_bincount=cfg.max_units_bincount,
-        spike_pad=cfg.spike_pad,
+        max_bincount=cfg.max_bincount,
         pad_value=cfg.pad_val,
         max_time_patches=cfg.model.max_time_patches,
         max_space_patches=cfg.model.max_space_patches,
