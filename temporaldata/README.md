@@ -1,4 +1,6 @@
-# ⏳ temporaldata
+<p align="left">
+    <img height="250" src="docs/source/_static/temporaldata_logo.png" />
+</p>
 
 [Documentation](https://temporaldata.readthedocs.io/en/latest/) | [Paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca113d122584f12a6727341aaf58887-Abstract-Conference.html)
 

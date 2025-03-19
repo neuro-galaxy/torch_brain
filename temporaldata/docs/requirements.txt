@@ -6,3 +6,4 @@ sphinx-inline-tabs
 sphinx-rtd-theme
 sphinx-tabs
 sphinx-design
+sphinx-copybutton

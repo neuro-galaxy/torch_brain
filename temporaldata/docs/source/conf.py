@@ -19,6 +19,7 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx_inline_tabs",
     "sphinx.ext.mathjax",
+    "sphinx_copybutton",
 ]
 
 html_theme = "furo"
@@ -43,3 +44,7 @@ myst_enable_extensions = [
 ]
 
 pygments_style = "default"
+html_copy_source = False
+html_show_sourcelink = True
+html_logo = "_static/temporaldata_logo.png"
+html_favicon = "_static/temporaldata_logo.png"
