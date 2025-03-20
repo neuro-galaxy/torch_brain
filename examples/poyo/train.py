@@ -384,6 +384,8 @@ def main(cfg: DictConfig):
         ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
         ModelCheckpoint(
             save_last=True,
+            monitor="average_val_metric",
+            mode="max",
             save_on_train_epoch_end=True,
             every_n_epochs=cfg.eval_epochs,
         ),
@@ -416,7 +418,7 @@ def main(cfg: DictConfig):
     trainer.fit(wrapper, data_module, ckpt_path=resume_ckpt_path)
 
     # Test
-    trainer.test(wrapper, data_module)
+    trainer.test(wrapper, data_module, ckpt_path="best")
 
 
 if __name__ == "__main__":
