@@ -300,7 +300,10 @@ def main():
 
     # split trials into train, validation and test
     _, valid_trials, test_trials = split_trials(
-        trials, test_size=0.2, valid_size=0.1, random_state=42
+        trials.select_by_mask(trials.is_valid),
+        test_size=0.2,
+        valid_size=0.1,
+        random_state=42,
     )
 
     train_sampling_intervals = data.domain.difference(
