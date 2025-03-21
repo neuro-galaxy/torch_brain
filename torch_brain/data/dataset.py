@@ -71,6 +71,8 @@ class Dataset(torch.utils.data.Dataset):
             Default corresponds to the function `lambda data: f"{data.brainset.id}/"`
         subject_id_prefix_fn: Same as unit_id_prefix_fn but for subject ids.
             Default corresponds to the function `lambda data: f"{data.brainset.id}/"`
+        keep_files_open: Whether to keep the hdf5 files open. This only keeps references
+            to the files, and does not load the data into memory.
     """
 
     _check_for_data_leakage_flag: bool = True
@@ -88,6 +90,7 @@ class Dataset(torch.utils.data.Dataset):
         unit_id_prefix_fn: Callable[[Data], str] = default_unit_id_prefix_fn,
         session_id_prefix_fn: Callable[[Data], str] = default_session_id_prefix_fn,
         subject_id_prefix_fn: Callable[[Data], str] = default_subject_id_prefix_fn,
+        keep_files_open: bool = True,
     ):
         super().__init__()
         self.root = root
@@ -97,6 +100,7 @@ class Dataset(torch.utils.data.Dataset):
         self.unit_id_prefix_fn = unit_id_prefix_fn
         self.session_id_prefix_fn = session_id_prefix_fn
         self.subject_id_prefix_fn = subject_id_prefix_fn
+        self.keep_files_open = keep_files_open
 
         if config is not None:
             assert (
@@ -122,15 +126,17 @@ class Dataset(torch.utils.data.Dataset):
         else:
             raise ValueError("Please either specify a config file or a recording_id.")
 
-        self._open_files = {
-            recording_id: h5py.File(recording_info["filename"], "r")
-            for recording_id, recording_info in self.recording_dict.items()
-        }
+        if self.keep_files_open:
+            # open files lazily
+            self._open_files = {
+                recording_id: h5py.File(recording_info["filename"], "r")
+                for recording_id, recording_info in self.recording_dict.items()
+            }
 
-        self._data_objects = {
-            recording_id: Data.from_hdf5(f, lazy=True)
-            for recording_id, f in self._open_files.items()
-        }
+            self._data_objects = {
+                recording_id: Data.from_hdf5(f, lazy=True)
+                for recording_id, f in self._open_files.items()
+            }
 
     def _close_open_files(self):
         """Closes the open files and deletes open data objects.
@@ -295,9 +301,7 @@ class Dataset(torch.utils.data.Dataset):
             start: The start time of the slice.
             end: The end time of the slice.
         """
-        data = copy.copy(self._data_objects[recording_id])
-        # TODO: add more tests to make sure that slice does not modify the original data object
-        # note there should be no issues as long as the self._data_objects stay lazy
+        data = self._get_data_object(recording_id)
         sample = data.slice(start, end)
 
         if self._check_for_data_leakage_flag and self.split is not None:
@@ -307,6 +311,13 @@ class Dataset(torch.utils.data.Dataset):
         sample.config = self.recording_dict[recording_id]["config"]
 
         return sample
+
+    def _get_data_object(self, recording_id: str):
+        if self.keep_files_open:
+            return copy.copy(self._data_objects[recording_id])
+        else:
+            file = h5py.File(self.recording_dict[recording_id]["filename"], "r")
+            return Data.from_hdf5(file, lazy=True)
 
     def get_recording_data(self, recording_id: str):
         r"""Returns the data object corresponding to the recording :obj:`recording_id`.
@@ -319,7 +330,7 @@ class Dataset(torch.utils.data.Dataset):
             This method might load the full data object in memory, avoid multiple calls
             to this method if possible.
         """
-        data = copy.copy(self._data_objects[recording_id])
+        data = self._get_data_object(recording_id)
 
         # get allowed sampling intervals
         if self.split is not None:
@@ -346,14 +357,14 @@ class Dataset(torch.utils.data.Dataset):
                 f"{self.split}_domain" if self.split is not None else "domain"
             )
             sampling_intervals = getattr(
-                self._data_objects[recording_id], sampling_domain
+                self._get_data_object(recording_id), sampling_domain
             )
             sampling_intervals_modifier_code = self.recording_dict[recording_id][
                 "config"
             ].get("sampling_intervals_modifier", None)
             if sampling_intervals_modifier_code is not None:
                 local_vars = {
-                    "data": copy.deepcopy(self._data_objects[recording_id]),
+                    "data": self._get_data_object(recording_id),
                     "sampling_intervals": sampling_intervals,
                     "split": self.split,
                 }
@@ -410,7 +421,8 @@ class Dataset(torch.utils.data.Dataset):
     def get_unit_ids(self):
         r"""Returns all unit ids in the dataset."""
         unit_ids_list = []
-        for data in self._data_objects.values():
+        for recording_id in self.recording_dict.keys():
+            data = self._get_data_object(recording_id)
             unit_ids = self._get_unit_ids_with_prefix(data)
             unit_ids_list.extend(unit_ids)
         return unit_ids_list
@@ -418,21 +430,24 @@ class Dataset(torch.utils.data.Dataset):
     def get_session_ids(self):
         r"""Returns the session ids of the dataset."""
         ans = []
-        for data in self._data_objects.values():
+        for recording_id in self.recording_dict.keys():
+            data = self._get_data_object(recording_id)
             ans.append(self._get_session_id_with_prefix(data))
         return sorted(ans)
 
     def get_subject_ids(self):
         r"""Returns all subject ids in the dataset."""
         subject_ids = []
-        for data in self._data_objects.values():
+        for recording_id in self.recording_dict.keys():
+            data = self._get_data_object(recording_id)
             subject_ids.append(self._get_subject_id_with_prefix(data))
         return sorted(list(set(subject_ids)))
 
     def get_brainset_ids(self):
         r"""Returns all brainset ids in the dataset."""
         brainset_ids = []
-        for data in self._data_objects.values():
+        for recording_id in self.recording_dict.keys():
+            data = self._get_data_object(recording_id)
             brainset_ids.append(data.brainset.id)
         return sorted(list(set(brainset_ids)))
 
