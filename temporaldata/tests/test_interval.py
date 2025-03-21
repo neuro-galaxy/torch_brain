@@ -349,6 +349,14 @@ def test_dilate():
         result.end, expected.end
     )
 
+    data = Interval(np.array([]), np.array([]))
+
+    result = data.dilate(0.5)
+    expected = Interval(np.array([]), np.array([]))
+    assert np.allclose(result.start, expected.start) and np.allclose(
+        result.end, expected.end
+    )
+
 
 def test_is_dijoint_is_sorted():
     # Test sorted and disjoint interval
