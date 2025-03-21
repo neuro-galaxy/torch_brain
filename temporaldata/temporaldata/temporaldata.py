@@ -2289,13 +2289,16 @@ class Interval(ArrayDict):
                 else:
                     assert current_start is not None
                     if not end_still_coming:
-                        # we have an opening and a closing paranthesis
-                        if current_start != current_end:
-                            # we have a non-zero interval
-                            start = np.append(start, current_start)
-                            end = np.append(end, current_end)
-                        current_start = ptime
-                        current_end = None
+                        # Check if this opening time matches the previous closing time
+                        # If they match, continue the current interval instead of creating a new one
+                        if ptime != current_end:
+                            # we have an opening and a closing paranthesis
+                            if current_start != current_end:
+                                # we have a non-zero interval
+                                start = np.append(start, current_start)
+                                end = np.append(end, current_end)
+                            current_start = ptime
+                            current_end = None
                         end_still_coming = True
                         current_start_is_from_left = pl
             else:
@@ -2565,7 +2568,7 @@ def sorted_traversal(lintervals, rintervals):
             rtime = np.inf
 
         # figure out which is the next pointer to process
-        if (ltime < rtime) or (ltime == rtime and lop):
+        if ltime < rtime:
             # the next timestamps to consider is from the left object
             ptime = ltime  # time of the current pointer
             pop = lop  # True if pointer is opening
@@ -2580,7 +2583,7 @@ def sorted_traversal(lintervals, rintervals):
                 # move to the next interval
                 lop = True
                 lidx += 1
-        else:
+        elif rtime < ltime:
             # the next timestamps to consider is from the right object
             ptime = rtime
             pop = rop
@@ -2590,6 +2593,33 @@ def sorted_traversal(lintervals, rintervals):
             else:
                 rop = True
                 ridx += 1
+        else:  # ltime == rtime
+            # When times are equal, prioritize closings over openings for union operations
+            if not lop and rop:  # left is closing, right is opening
+                ptime = ltime
+                pop = lop  # False (closing)
+                pl = True
+                lop = True
+                lidx += 1
+            elif lop and not rop:  # left is opening, right is closing
+                ptime = rtime
+                pop = rop  # False (closing)
+                pl = False
+                rop = True
+                ridx += 1
+            elif lop and rop:  # both are openings
+                # Process left opening first (arbitrary but consistent)
+                ptime = ltime
+                pop = lop
+                pl = True
+                lop = False
+            else:  # both are closings
+                # Process left closing first (arbitrary but consistent)
+                ptime = ltime
+                pop = lop
+                pl = True
+                lop = True
+                lidx += 1
         yield ptime, pop, pl
 
 
@@ -2996,27 +3026,15 @@ class Data(object):
                 assert isinstance(getattr(self, key), Interval)
                 continue
             obj = getattr(self, key)
-            if isinstance(obj, (RegularTimeSeries, IrregularTimeSeries, Interval)):
+            if isinstance(
+                obj, (Data, RegularTimeSeries, IrregularTimeSeries, Interval)
+            ):
                 obj.add_split_mask(name, interval)
 
     def _check_for_data_leakage(self, name):
         """Ensure that split masks are all True"""
         for key in self.keys():
             if key.endswith("_domain"):
-                continue
-            if key == "trials":
-                # raise deprecation warning
-                if (
-                    not hasattr(obj, f"{name}_mask")
-                    or not getattr(obj, f"{name}_mask").all()
-                ):
-                    warnings.warn(
-                        "Data leakage was detected in 'trials'. This is a warning, but"
-                        "in the future, this will raise an error. Please update your "
-                        "prepare_data.py script to fix this issue.",
-                        DeprecationWarning,
-                        stacklevel=2,
-                    )
                 continue
             obj = getattr(self, key)
             if isinstance(obj, (IrregularTimeSeries, Interval)):

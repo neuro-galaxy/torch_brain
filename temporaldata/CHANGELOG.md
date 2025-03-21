@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+### Fixed
+- Fixed a bug where `Interval` unions fails when two intervals share the same start and end. ([#32](https://github.com/neuro-galaxy/temporaldata/pull/32))
+- Fixed a bug where `Data.add_split_mask` does not propagate to nested `Data` objects. ([#32](https://github.com/neuro-galaxy/temporaldata/pull/32))
+
+
 ## [0.1.2] - 2025-01-22
 ### Added 
 - Added documentation. ([#24](https://github.com/neuro-galaxy/temporaldata/pull/24), [#25](https://github.com/neuro-galaxy/temporaldata/pull/25), [#26](https://github.com/neuro-galaxy/temporaldata/pull/26))
