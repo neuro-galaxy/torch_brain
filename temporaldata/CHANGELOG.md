@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 - Fixed a bug where `Interval` unions fails when two intervals share the same start and end. ([#32](https://github.com/neuro-galaxy/temporaldata/pull/32))
 - Fixed a bug where `Data.add_split_mask` does not propagate to nested `Data` objects. ([#32](https://github.com/neuro-galaxy/temporaldata/pull/32))
+- Fixed a bug where `Interval.dilate` fails when the interval is empty. ([#35](https://github.com/neuro-galaxy/temporaldata/pull/35))
 
 
 ## [0.1.2] - 2025-01-22

@@ -1811,6 +1811,10 @@ class Interval(ArrayDict):
         """
         out = copy.deepcopy(self)
 
+        if len(out) == 0:
+            # empty interval, nothing to dilate
+            return out
+
         dilation_size = size
         size = np.full_like(out.start, dilation_size)
         if max_len is not None:
