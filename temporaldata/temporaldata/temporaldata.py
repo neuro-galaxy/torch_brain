@@ -1684,6 +1684,30 @@ class Interval(ArrayDict):
             # or not
             self._sorted = None
 
+    def __iter__(self):
+        r"""Iterates over the intervals. Will return a tuple of (start, end).
+        This iterator will not include other optional attributes.
+
+        .. Example ::
+
+            >>> import numpy as np
+            >>> from temporaldata import Interval
+
+            >>> intervals = Interval(
+            ...     start=np.array([0., 1., 2.]),
+            ...     end=np.array([1., 2., 3.]),
+            ...     some_other_attribute=np.array([0, 1, 2]),
+            ... )
+
+            >>> for start, end in intervals:
+            ...     print(start, end)
+            0.0 1.0
+            1.0 2.0
+            2.0 3.0
+        """
+        for s, e in zip(self.start, self.end):
+            yield (s, e)
+
     def is_disjoint(self):
         r"""Returns :obj:`True` if the intervals are disjoint, i.e. if no two intervals
         overlap."""
