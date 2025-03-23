@@ -384,6 +384,24 @@ def test_interval_select_by_interval():
     assert np.allclose(data.drifting_gratings_dir, np.array([0, 90]))
 
 
+def test_interval_iter():
+    data = Interval(
+        start=np.array([0.0, 1, 2]),
+        end=np.array([1, 2, 3]),
+        some_other_attribute=np.array([0, 1, 2]),
+    )
+
+    assert list(data) == [(0.0, 1.0), (1.0, 2.0), (2.0, 3.0)]
+
+    # test a single interval
+    data = Interval(0.0, 1.0)
+    assert list(data) == [(0.0, 1.0)]
+
+    # test an empty interval
+    data = Interval(np.array([]), np.array([]))
+    assert list(data) == []
+
+
 def test_irregular_timeseries_lazy_select_by_interval(test_filepath):
     data = IrregularTimeSeries(
         unit_index=np.array([0, 0, 1, 0, 1, 2]),
