@@ -109,7 +109,7 @@ def pad8_collate_object_fn(
     return _collate([e.obj for e in batch], collate_fn_map=pad8_collate_fn_map)
 
 
-# pad8
+# pad2d
 Padded2dObject = namedtuple("Padded2dObject", ["obj"])
 
 

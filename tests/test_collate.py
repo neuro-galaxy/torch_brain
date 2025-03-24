@@ -70,6 +70,18 @@ def test_pad2d():
     )
     assert torch.allclose(batch, batch_expected)
 
+    # padding applied to bool
+    x = pad2d(np.ones((3, 3), dtype=bool))
+    y = pad2d(np.ones((2, 2), dtype=bool))
+    batch = collate([x, y])
+    batch_expected = torch.BoolTensor(
+        [
+            [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            [[1, 1, 0], [1, 1, 0], [0, 0, 0]],
+        ]
+    )
+    assert torch.allclose(batch, batch_expected)
+
 
 def test_track_mask():
     # padding applied to np.ndarrays
