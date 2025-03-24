@@ -7,15 +7,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
 from temporaldata import ArrayDict, Data
-from torch.nn import Transformer
 
 # from sklearn.metrics import accuracy_score, balanced_accuracy_score, r2_score
 from torchtyping import TensorType
 
-from torch_brain.data import chain, pad, track_mask
+from torch_brain.data import pad, pad2d, track_mask
 from torch_brain.nn import Embedding, InfiniteVocabEmbedding
-
-# from torch_brain.utils.binning import bin_behaviors, bin_spikes
+from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
+from torch_brain.utils import prepare_for_readout
 from torch_brain.utils.binning import bin_spikes
 
 
@@ -50,8 +49,8 @@ class NDT2(nn.Module):
         ibl_binning=False,
     ):
         super().__init__()
-        # not sure about this TODO check
         self.max_bincount = max_bincount
+        # TODO Check NDT2 init_scale
         self.patch_emb = Embedding(
             max_bincount + 1, dim // units_per_patch, padding_idx=max_bincount
         )
@@ -61,13 +60,13 @@ class NDT2(nn.Module):
         self.session_emb, self.subject_emb, self.task_emb = None, None, None
         if tokenize_session:
             self.session_emb = InfiniteVocabEmbedding(dim)
-            self.session_flag = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
+            self.session_bias = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
         if tokenize_subject:
             self.subject_emb = InfiniteVocabEmbedding(dim)
-            self.subject_flag = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
+            self.subject_bias = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
         if tokenize_task:  # more about dataset than task
             self.task_emb = InfiniteVocabEmbedding(dim)
-            self.task_flag = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
+            self.task_bias = nn.Parameter(torch.randn(dim) / math.sqrt(dim))
 
         self.query_emb = nn.Parameter(torch.randn(dim))
 
@@ -87,15 +86,14 @@ class NDT2(nn.Module):
         self.dropout_in = nn.Dropout(dropout)
         self.dropout_out = nn.Dropout(dropout)
 
-        self.bin_time = bin_time
         self.ctx_time = ctx_time
+        self.bin_time = bin_time
         float_modulo_test = lambda x, y, eps=1e-6: np.abs(x - y * np.round(x / y)) < eps
         assert float_modulo_test(ctx_time, bin_time)
 
         self.bin_size = int(np.round(ctx_time / bin_time))
         self.units_per_patch = units_per_patch
         self.mask_ratio = mask_ratio
-        self.pad_value = pad_value
 
         self.unsorted = unsorted
         self.is_ssl = is_ssl
@@ -128,20 +126,15 @@ class NDT2(nn.Module):
         units_patch: TensorType["b", "n_in", "patch_dim", int],
         input_time_idx: TensorType["b", "n_in", int],
         input_space_idx: TensorType["b", "n_in", int],
-        input_mask: TensorType["b", "n_in", int],
-        encoder_attn_mask: TensorType["b x encoder_heads", "n_in", "n_in", int],
+        encoder_attn_mask: TensorType["b", "n_in", "n_in", int],
         latent_time_idx: TensorType["b", "n_lat", int],
         latent_space_idx: TensorType["b", "n_lat", int],
-        latent_mask: TensorType["b", "n_in + n_lat", int],
-        decoder_attn_mask: TensorType[
-            "b x decoder_heads", "n_in + n_lat", "n_in + n_lat", int
-        ],
+        decoder_attn_mask: TensorType["b", "n_in + n_lat", "n_in + n_lat", int],
         session_idx: Optional[TensorType["b", int]],
         subject_idx: Optional[TensorType["b", int]],
         task_idx: Optional[TensorType["b", int]],
         target: TensorType["b", "n_lat", "tgt_dim", int],
-        target_mask: TensorType["b", "n_lat", int],
-        channel_mask: Optional[TensorType["b", "n_lat", "n_unit_patch", bool]],
+        channel_mask: Optional[TensorType["b", "n_lat", "patch_dim", bool]],
     ) -> Dict:
         # make input tokens
         inputs = self.patch_emb(units_patch).flatten(-2, -1)
@@ -153,23 +146,26 @@ class NDT2(nn.Module):
         # add context tokens at the end of the sequence
         ctx_tokens = []
         if self.session_emb is not None:
-            ctx_tokens.append(self.session_emb(session_idx) + self.session_flag)
+            ctx_tokens.append(self.session_emb(session_idx) + self.session_bias)
         if self.subject_emb is not None:
-            ctx_tokens.append(self.subject_emb(subject_idx) + self.subject_flag)
+            ctx_tokens.append(self.subject_emb(subject_idx) + self.subject_bias)
         if self.task_emb is not None:
-            ctx_tokens.append(self.task_emb(task_idx) + self.task_flag)
+            ctx_tokens.append(self.task_emb(task_idx) + self.task_bias)
 
         nb_ctx_tokens = len(ctx_tokens)
         if nb_ctx_tokens > 0:
             ctx_emb = torch.stack(ctx_tokens, dim=1)
-            inputs = torch.cat([inputs, ctx_emb], dim=1)
+            inputs = torch.cat([ctx_emb, inputs], dim=1)
 
         # encoder forward pass
-        latents = self.encoder(
-            inputs, mask=encoder_attn_mask, src_key_padding_mask=input_mask
+        encoder_attn_mask = repeat(
+            encoder_attn_mask,
+            "b n_in_1 n_in_2 -> (b enc_heads) n_in_1 n_in_2",
+            enc_heads=self.heads,
         )
+        latents = self.encoder(inputs, mask=encoder_attn_mask)
 
-        latents = latents[:, :-nb_ctx_tokens]
+        latents = latents[:, nb_ctx_tokens:]
         latents = self.dropout_out(latents)
 
         b, t = latent_time_idx.size(0), latent_time_idx.size(1)
@@ -182,25 +178,18 @@ class NDT2(nn.Module):
             latents,
             latents_time_idx,
             latents_space_idx,
-            latent_mask,
             decoder_attn_mask,
             ctx_emb,
             target,
-            target_mask,
             channel_mask,
         )
 
     def tokenize(self, data: Data) -> Dict:
         num_units = len(data.units.id)
 
-        # if self.unsorted:
-        #     chan_nb_mapper = self.extract_chan_nb(data.units)
-        #     spikes.unit_index = chan_nb_mapper.take(spikes.unit_index)
-        #     # TODO do not work need to find an hack
-        #     # nb_units = chan_nb_mapper.max() + 1
-        #     num_units = 96
+        # self.max_bincount is used as the padding input
         units_bincount = bin_spikes(
-            data.spikes, num_units, self.bin_time, dtype=np.int32
+            data.spikes, num_units, self.bin_time, right=True, dtype=np.int32
         )
         units_bincount = np.clip(units_bincount, 0, self.max_bincount - 1)
 
@@ -211,15 +200,14 @@ class NDT2(nn.Module):
         if extra_units > 0:
             units_bincount = np.pad(
                 units_bincount,
-                [(0, extra_units), (0, 0)],
+                ((0, extra_units), (0, 0)),
                 mode="constant",
                 constant_values=self.max_bincount,
             )
 
         nb_bins = units_bincount.shape[1]
 
-        # major hack to have time before space, as in o.g. NDT2 (nb_units, time_length)
-        # TODO could be mutch more cleaner
+        # flattened patches, here major hack to have time before space, as in o.g. NDT2 (nb_units, time_length)
         units_patch = rearrange(
             units_bincount,
             "(n pn) t -> (t n) pn",
@@ -228,25 +216,33 @@ class NDT2(nn.Module):
             t=nb_bins,
         )
 
+        # last patches may have fewer units
+        extra_units_mask = np.ones(
+            (nb_bins, nb_units_patches, self.units_per_patch), dtype=np.bool8
+        )
+        extra_units_mask[:, -1, -extra_units:] = False
+        extra_units_mask = rearrange(
+            extra_units_mask,
+            "t n pn -> (t n) pn",
+            t=nb_bins,
+            n=nb_units_patches,
+            pn=self.units_per_patch,
+        )
+
         # time and space indices for flattened patches
         time_idx = np.arange(nb_bins, dtype=np.int32)
         time_idx = repeat(time_idx, "t -> (t n)", n=nb_units_patches)
         space_idx = np.arange(nb_units_patches, dtype=np.int32)
         space_idx = repeat(space_idx, "n -> (t n)", t=nb_bins)
 
-        extra_units_mask = np.ones((nb_bins, self.units_per_patch), dtype=np.bool8)
+        total_bins = nb_bins * nb_units_patches
 
-        # last patch may have fewer units
-        if extra_units > 0:
-            first_idx = nb_units_patches - 1
-            stride = nb_units_patches
-            extra_units_mask[first_idx::stride, -extra_units:] = False
+        encoder_frac = int((1 - self.mask_ratio) * total_bins)
 
-        encoder_frac = int((1 - self.mask_ratio) * nb_bins)
-        target_frac = nb_bins - encoder_frac
+        target_frac = total_bins - encoder_frac
 
         if self.is_ssl:
-            shuffle = torch.randperm(nb_bins)
+            shuffle = torch.randperm(total_bins)
 
             units_patch_shuffled = units_patch[shuffle]
             time_idx_shuffled = time_idx[shuffle]
@@ -257,42 +253,70 @@ class NDT2(nn.Module):
             in_time_idx = time_idx_shuffled[:encoder_frac]
             in_space_idx = space_idx_shuffled[:encoder_frac]
 
-            model_inputs = {
+            nb_ctx_tokens = 2
+            enc_enc_attn_mask = in_time_idx[:, None] < in_time_idx[None, :]
+            up_pad = ((nb_ctx_tokens, 0), (0, 0))
+            enc_enc_attn_mask = np.pad(
+                enc_enc_attn_mask, up_pad, "constant", constant_values=True
+            )
+            left_pad = ((0, 0), (nb_ctx_tokens, 0))
+            enc_enc_attn_mask = np.pad(
+                enc_enc_attn_mask, left_pad, "constant", constant_values=False
+            )
+
+            encoder_tokens = {
                 "units_patch": pad(in_units_patch),
                 "time_idx": pad(in_time_idx),
                 "space_idx": pad(in_space_idx),
-                "pad_mask": track_mask(in_units_patch),
+                "attn_mask": pad2d(enc_enc_attn_mask),
             }
 
             lat_time_idx = time_idx_shuffled[encoder_frac:]
             lat_space_idx = space_idx_shuffled[encoder_frac:]
 
-            model_latents = {
+            enc_dec_attn_mask = in_time_idx[:, None] < lat_time_idx[None, :]
+            enc_dec_attn_mask = np.pad(
+                enc_dec_attn_mask,
+                ((nb_ctx_tokens, 0), (0, 0)),
+                "constant",
+                constant_values=True,
+            )
+
+            dec_enc_attn_mask = lat_time_idx[:, None] < in_time_idx[None, :]
+            dec_enc_attn_mask = np.pad(
+                dec_enc_attn_mask,
+                ((0, 0), (nb_ctx_tokens, 0)),
+                "constant",
+                constant_values=False,
+            )
+
+            dec_dec_attn_mask = lat_time_idx[:, None] < lat_time_idx[None, :]
+
+            # decoder_attn_mask = [ enc_enc_attn_mask, enc_dec_attn_mask
+            #                       dec_enc_attn_mask, decoder_attn_mask_up]
+            encoder_attn_mask_low = np.concatenate(
+                [enc_enc_attn_mask, enc_dec_attn_mask], axis=1
+            )
+            decoder_attn_mask_up = np.concatenate(
+                [dec_enc_attn_mask, dec_dec_attn_mask], axis=1
+            )
+            decoder_attn_mask = np.concatenate(
+                [encoder_attn_mask_low, decoder_attn_mask_up], axis=0
+            )
+
+            masked_tokens = {
                 "time_idx": pad(lat_time_idx),
                 "space_idx": pad(lat_space_idx),
-                "pad_mask": track_mask(lat_time_idx),
+                "attn_mask": pad2d(decoder_attn_mask),
             }
 
             tgt_units_patch = units_patch_shuffled[encoder_frac:]
             extra_units_mask = extra_units_mask_shuffled[encoder_frac:]
 
-            # TODO need to check that target_units has shape t' c
-            # loss_mask = torch.ones(target_units.size(), dtype=torch.bool)
-
-            # tmp = torch.arange(target_units.size(-1))
-            # comparison = repeat(tmp, "c -> 1 t c", t=target_frac)
-            # channel_mask = comparison < batch["channel_counts_target"].unsqueeze(-1)
-            # loss_mask = loss_mask & channel_mask
-
-            # target_mask = units_mask_shuffled[:, encoder_frac:]
-            # loss_mask = loss_mask & target_mask.unsqueeze(-1)
-
-            model_tagets = {
+            target_tokens = {
                 "target": pad(tgt_units_patch),
-                "pad_mask": track_mask(tgt_units_patch),
-                "extra_units_mask": extra_units_mask,
+                "extra_units_mask": pad(extra_units_mask),
             }
-
         else:
             pass
             # # b, t_enc = encoder_out.size()[:2]
@@ -342,12 +366,10 @@ class NDT2(nn.Module):
 
             # decoder_attn_mask = ~input_causality
 
-        # TODO add channel_counts
-        # TODO be careful of track_mask that might not be anymore valid
         data_dict = {
-            "model_inputs": model_inputs,
-            "model_latents": model_latents,
-            "model_tagets": model_tagets,
+            "encoder_tokens": encoder_tokens,
+            "masked_tokens": masked_tokens,
+            "target_tokens": target_tokens,
         }
 
         session_idx, subject_idx, task_idx = [], [], []
@@ -361,10 +383,6 @@ class NDT2(nn.Module):
         data_dict["session_idx"] = session_idx
         data_dict["subject_idx"] = subject_idx
         data_dict["task_idx"] = task_idx
-
-        # output_timestamps, output_values, output_weights, eval_mask = (
-        #     prepare_for_readout(data, self.readout_spec)
-        # )
 
         # if not self.is_ssl:
         #     # -- Behavior
@@ -407,46 +425,6 @@ class NDT2(nn.Module):
 
         return data_dict
 
-    def attn_mask(self, batch, nb_ctx_tokens, encoder_heads, decoder_heads):
-        input_time_idx = batch["model_inputs"]["time_idx"]
-        latent_time_idx = batch["model_latents"]["time_idx"]
-        latent_time_idx = torch.cat([input_time_idx, latent_time_idx], dim=1)
-
-        encoder_attn_mask = input_time_idx[:, :, None] < input_time_idx[:, None, :]
-        encoder_attn_mask = F.pad(
-            encoder_attn_mask, (0, 0, 0, nb_ctx_tokens), value=True
-        )
-        encoder_attn_mask = F.pad(encoder_attn_mask, (0, nb_ctx_tokens), value=False)
-        encoder_attn_mask = repeat(
-            encoder_attn_mask, "b t1 t2 -> (b h) t1 t2", h=encoder_heads
-        )
-
-        decoder_attn_mask = latent_time_idx[:, :, None] < latent_time_idx[:, None, :]
-        decoder_attn_mask = F.pad(
-            decoder_attn_mask, (0, 0, 0, nb_ctx_tokens), value=True
-        )
-        decoder_attn_mask = F.pad(decoder_attn_mask, (0, nb_ctx_tokens), value=False)
-        decoder_attn_mask = repeat(
-            decoder_attn_mask, "b t1 t2-> (b h) t1 t2", h=decoder_heads
-        )
-
-        return encoder_attn_mask, decoder_attn_mask
-
-    def pad_mask(self, batch, nb_ctx_tokens):
-        input_mask = batch["model_inputs"]["pad_mask"]
-        latent_mask = batch["model_latents"]["pad_mask"]
-        latent_mask = torch.cat([input_mask, latent_mask], dim=1)
-
-        input_mask = F.pad(input_mask, (0, nb_ctx_tokens), value=False)
-        latent_mask = F.pad(latent_mask, (0, nb_ctx_tokens), value=False)
-
-        return input_mask, latent_mask
-
-    def extract_chan_nb(self, units: ArrayDict):
-        channel_names = units.channel_name
-        res = [int(chan_name.split(b" ")[-1]) for chan_name in channel_names]
-        return np.array(res) - 1
-
 
 class Decoder(nn.Module):
     def __init__(
@@ -471,6 +449,7 @@ class Decoder(nn.Module):
         super().__init__()
         self.is_ssl = True
         self.dim = dim
+        self.heads = heads
         self.units_per_patch = units_per_patch
 
         self.time_emb = nn.Embedding(max_time_patches, dim)
@@ -531,20 +510,15 @@ class Decoder(nn.Module):
         latents: TensorType["b", "n_in + n_lat", "dim", int],
         time_idx: TensorType["b", "n_in + n_lat", int],
         space_idx: TensorType["b", "n_in + n_lat", int],
-        latent_mask: TensorType["b", "n_in + n_lat", bool],
-        decoder_attn_mask: TensorType[
-            "b x decoder_heads", "n_in + n_lat", "n_in + n_lat", bool
-        ],
+        decoder_attn_mask: TensorType["b", "n_in + n_lat", "n_in + n_lat", bool],
         ctx_emb: Optional[TensorType["b", "n_ctx", "dim", float]],
-        target: TensorType["b", "n_lat", "n_unit_patch", int],
-        target_mask: TensorType["b", "n_lat", bool],
-        extra_units_mask: Optional[TensorType["b", "n_lat", "n_unit_patch", bool]],
+        target: TensorType["b", "n_lat", "patch_dim", int],
+        extra_units_mask: Optional[TensorType["b", "n_lat", "patch_dim", bool]],
     ) -> Dict:
         """
         TODO update w/ eval_mode if needed
         """
         # prepare decoder input
-        # TODO should be considering computing query_tokens on the fly
 
         # TODO for bhvr
         # latent_time_idx: torch.Tensor
@@ -589,16 +563,20 @@ class Decoder(nn.Module):
         if ctx_emb is not None:
             nb_ctx_tokens = ctx_emb.size(1)  # TODO check
 
-            # detach context to avoid losing context calibradion from SSL
+            # detach context to avoid loosing context calibradion from SSL
             if not self.is_ssl:
                 ctx_emb = ctx_emb.detach()
-            latents = torch.cat([latents, ctx_emb], dim=1)
+            latents = torch.cat([ctx_emb, latents], dim=1)
 
-        decoder_out = self.decoder(
-            latents, mask=decoder_attn_mask, src_key_padding_mask=latent_mask
+        decoder_attn_mask = repeat(
+            decoder_attn_mask,
+            "b n_in_1 n_in_2 -> (b dec_heads) n_in_1 n_in_2",
+            dec_heads=self.heads,
         )
 
-        output = decoder_out[:, :-nb_ctx_tokens]
+        decoder_out = self.decoder(latents, mask=decoder_attn_mask)
+
+        output = decoder_out[:, nb_ctx_tokens:]
         output = self.dropout_out(output)
 
         if self.is_ssl:
@@ -609,7 +587,8 @@ class Decoder(nn.Module):
 
             # compute loss
             loss = self.ssl_loss(rates, target)
-            loss_mask = target_mask.unsqueeze(-1) & extra_units_mask
+            loss_mask = extra_units_mask
+
             loss = loss[loss_mask].mean()
 
             return {"loss": loss}
@@ -657,5 +636,4 @@ class Decoder(nn.Module):
                     "pred": bhvr,
                 }
 
-            raise NotImplementedError
             raise NotImplementedError

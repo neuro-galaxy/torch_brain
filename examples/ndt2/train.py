@@ -73,25 +73,22 @@ class NDT2TrainWrapper(L.LightningModule):
         }
 
     def training_step(self, batch, batch_idx):
-        model_inputs = batch["model_inputs"]
-        model_latents = batch["model_latents"]
-        model_tagets = batch["model_tagets"]
+        encoder = batch["encoder_tokens"]
+        masked = batch["masked_tokens"]
+        target = batch["target_tokens"]
         decoder_out = self.model(
-            model_inputs["units_patch"],
-            model_inputs["time_idx"],
-            model_inputs["space_idx"],
-            model_inputs["input_mask"],
-            model_inputs["encoder_attn_mask"],
-            model_latents["time_idx"],
-            model_latents["space_idx"],
-            model_latents["latent_mask"],
-            model_latents["decoder_attn_mask"],
+            encoder["units_patch"],
+            encoder["time_idx"],
+            encoder["space_idx"],
+            encoder["attn_mask"],
+            masked["time_idx"],
+            masked["space_idx"],
+            masked["attn_mask"],
             batch["session_idx"],
             batch["subject_idx"],
             batch["task_idx"],
-            model_tagets["target"],
-            model_tagets["pad_mask"],
-            model_tagets["extra_units_mask"],
+            target["target"],
+            target["extra_units_mask"],
         )
         loss = decoder_out["loss"]
 
@@ -120,25 +117,22 @@ class NDT2TrainWrapper(L.LightningModule):
 
     @torch.inference_mode()
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        model_inputs = batch["model_inputs"]
-        model_latents = batch["model_latents"]
-        model_tagets = batch["model_tagets"]
+        encoder = batch["encoder_tokens"]
+        masked = batch["masked_tokens"]
+        target = batch["target_tokens"]
         decoder_out = self.model(
-            model_inputs["units_patch"],
-            model_inputs["time_idx"],
-            model_inputs["space_idx"],
-            model_inputs["input_mask"],
-            model_inputs["encoder_attn_mask"],
-            model_latents["time_idx"],
-            model_latents["space_idx"],
-            model_latents["latent_mask"],
-            model_latents["decoder_attn_mask"],
+            encoder["units_patch"],
+            encoder["time_idx"],
+            encoder["space_idx"],
+            encoder["attn_mask"],
+            masked["time_idx"],
+            masked["space_idx"],
+            masked["attn_mask"],
             batch["session_idx"],
             batch["subject_idx"],
             batch["task_idx"],
-            model_tagets["target"],
-            model_tagets["pad_mask"],
-            model_tagets["extra_units_mask"],
+            target["target"],
+            target["extra_units_mask"],
         )
         loss = decoder_out["loss"]
 
@@ -224,31 +218,6 @@ class NDT2TrainWrapper(L.LightningModule):
         self.loss_queue.append(x.item())
         return sum(self.loss_queue) / len(self.loss_queue)
 
-    def on_before_batch_transfer(self, batch, dataloader_idx):
-        # TODO make it cleaner
-        nb_ctx_tokens = 0
-        if self.cfg.tokenize_session:
-            nb_ctx_tokens += 1
-        if self.cfg.tokenize_subject:
-            nb_ctx_tokens += 1
-        if self.cfg.tokenize_task:
-            nb_ctx_tokens += 1
-
-        encoder_heads = self.cfg.model.encoder.heads
-        decoder_heads = self.cfg.model.decoder.heads
-        encoder_attn_mask, decoder_attn_mask = self.model.attn_mask(
-            batch, nb_ctx_tokens, encoder_heads, decoder_heads
-        )
-        input_mask, latent_mask = self.model.pad_mask(batch, nb_ctx_tokens)
-
-        batch["model_inputs"]["input_mask"] = input_mask
-        batch["model_latents"]["latent_mask"] = latent_mask
-
-        batch["model_inputs"]["encoder_attn_mask"] = encoder_attn_mask
-        batch["model_latents"]["decoder_attn_mask"] = decoder_attn_mask
-
-        return batch
-
 
 class DataModule(L.LightningDataModule):
     def __init__(self, cfg, is_ssl: bool = True, unsorted: bool = True):
@@ -256,7 +225,6 @@ class DataModule(L.LightningDataModule):
 
         self.cfg = cfg
         self.is_ssl = is_ssl
-        self.dataset_cfg = cfg.dataset
 
     # TODO Use FilterUnit("/M1", keep=True)
     # train_transforms:
@@ -277,7 +245,7 @@ class DataModule(L.LightningDataModule):
         self.dataset = Dataset(
             root=cfg.data_root,
             split=None,
-            config=self.dataset_cfg,
+            config=cfg.dataset,
             transform=Compose([*transforms, model.tokenize]),
         )
 
