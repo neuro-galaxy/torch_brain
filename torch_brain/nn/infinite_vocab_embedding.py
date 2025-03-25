@@ -57,8 +57,8 @@ class InfiniteVocabEmbedding(nn.Module):
         self.weight = UninitializedParameter()
         self.vocab = None
 
-        # Unfortunately, this hook is private, though there has been a PR to make it
-        # public: https://github.com/pytorch/pytorch/issues/75287
+        # Unfortunately, this hook is private for torch<=2.4; and was made public in
+        # torch 2.5.
         self._register_load_state_dict_pre_hook(
             self._hook_vocab_on_load_state_dict, with_module=False
         )
