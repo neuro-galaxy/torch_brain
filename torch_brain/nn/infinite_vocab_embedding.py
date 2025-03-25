@@ -109,6 +109,34 @@ class InfiniteVocabEmbedding(nn.Module):
 
         self.initialize_parameters(len(self.vocab))
 
+    def reinitialize_vocab(self, vocab: List[str]):
+        r"""Reinitialize the vocabulary with a new list of words. This method will clear
+        the existing vocabulary and embeddings, and initialize a new vocabulary.
+
+        Args:
+            vocab (List[str]): A list of words to initialize the new vocabulary.
+
+        Example ::
+
+            >>> from torch_brain.nn import InfiniteVocabEmbedding
+
+            >>> embedding = InfiniteVocabEmbedding(64)
+            >>> vocab = ["apple", "banana", "cherry"]
+            >>> embedding.initialize_vocab(vocab)
+
+            >>> new_vocab = ["dog", "cat", "bird"]
+            >>> embedding.reinitialize_vocab(new_vocab)
+
+            >>> embedding.vocab
+            OrderedDict([('NA', 0), ('dog', 1), ('cat', 2), ('bird', 3)])
+
+            >>> embedding.weight.shape
+            torch.Size([4, 64])
+        """
+        self.weight = UninitializedParameter()
+        self.vocab = None
+        self.initialize_vocab(vocab)
+
     def extend_vocab(self, vocab: List[str], exist_ok=False):
         r"""Extend the vocabulary with a list of words. If a word already exists in the
         vocabulary, an error will be raised. The embeddings for the new words will be
