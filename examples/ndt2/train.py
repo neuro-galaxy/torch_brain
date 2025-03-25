@@ -1,6 +1,6 @@
 import logging
 from collections import defaultdict, deque
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import hydra
 import lightning as L
@@ -25,13 +25,14 @@ from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )
-from torch_brain.models import NDT2
+from torch_brain.models import NDT2, NDT2_SSL
+from torch_brain.registry import MODALITY_REGISTRY
 from torch_brain.transforms import Compose
 from torch_brain.utils import seed_everything
 
 
 class NDT2TrainWrapper(L.LightningModule):
-    def __init__(self, cfg, model: NDT2):
+    def __init__(self, cfg, model: Union[NDT2_SSL, NDT2]):
         super().__init__()
         self.model = model
         self.cfg = cfg
@@ -73,29 +74,32 @@ class NDT2TrainWrapper(L.LightningModule):
         }
 
     def training_step(self, batch, batch_idx):
+        context = batch["context_tokens"]
         encoder = batch["encoder_tokens"]
-        masked = batch["masked_tokens"]
+        decoder = batch["decoder_tokens"]
         target = batch["target_tokens"]
-        decoder_out = self.model(
-            encoder["units_patch"],
-            encoder["time_idx"],
-            encoder["space_idx"],
-            encoder["attn_mask"],
-            masked["time_idx"],
-            masked["space_idx"],
-            masked["attn_mask"],
-            batch["session_idx"],
-            batch["subject_idx"],
-            batch["task_idx"],
-            target["target"],
-            target["extra_units_mask"],
-        )
-        loss = decoder_out["loss"]
 
         if self.is_ssl:
+            decoder_out = self.model(
+                context["session_idx"],
+                context["subject_idx"],
+                context["task_idx"],
+                encoder["units_patch"],
+                encoder["time_idx"],
+                encoder["space_idx"],
+                encoder["attn_mask"],
+                decoder["masked_time_idx"],
+                decoder["masked_space_idx"],
+                decoder["attn_mask"],
+                target["target"],
+                target["extra_units_mask"],
+            )
+            loss = decoder_out["loss"]
             self.log("train_shuffle_infill_loss", loss)
         else:
-            self.log("train_kinematic_decoding_loss", loss)
+            # TODO
+            pass
+            #  self.log("train_kinematic_decoding_loss", loss)
 
         #     task = self.cfg.model.bhv_decoder.get("task", "regression")
         #     if task == "regression":
@@ -117,33 +121,37 @@ class NDT2TrainWrapper(L.LightningModule):
 
     @torch.inference_mode()
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        encoder = batch["encoder_tokens"]
-        masked = batch["masked_tokens"]
-        target = batch["target_tokens"]
-        decoder_out = self.model(
-            encoder["units_patch"],
-            encoder["time_idx"],
-            encoder["space_idx"],
-            encoder["attn_mask"],
-            masked["time_idx"],
-            masked["space_idx"],
-            masked["attn_mask"],
-            batch["session_idx"],
-            batch["subject_idx"],
-            batch["task_idx"],
-            target["target"],
-            target["extra_units_mask"],
-        )
-        loss = decoder_out["loss"]
-
         prefix = "val_"
         if dataloader_idx == 1:
             prefix = "eval_"
 
+        context = batch["context_tokens"]
+        encoder = batch["encoder_tokens"]
+        decoder = batch["decoder_tokens"]
+        target = batch["target_tokens"]
+
         if self.is_ssl:
+            decoder_out = self.model(
+                context["session_idx"],
+                context["subject_idx"],
+                context["task_idx"],
+                encoder["units_patch"],
+                encoder["time_idx"],
+                encoder["space_idx"],
+                encoder["attn_mask"],
+                decoder["masked_time_idx"],
+                decoder["masked_space_idx"],
+                decoder["attn_mask"],
+                target["target"],
+                target["extra_units_mask"],
+            )
+            loss = decoder_out["loss"]
             self.log(f"{prefix}shuffle_infill_loss", loss, add_dataloader_idx=False)
+
         else:
-            self.log(f"{prefix}kinematic_decoding_loss", loss, add_dataloader_idx=False)
+            # TODO
+            pass
+            # self.log(f"{prefix}kinematic_decoding_loss", loss, add_dataloader_idx=False)
 
             # task = self.cfg.model.bhv_decoder.get("task", "regression")
             # if task == "regression":
@@ -234,7 +242,7 @@ class DataModule(L.LightningDataModule):
     #     mode_units: 300
     #     peak: 4
 
-    def setup_dataset_and_link_model(self, model: NDT2):
+    def setup_dataset_and_link_model(self, model: NDT2_SSL):
         cfg = self.cfg
 
         #  Do not use split for dataset because is handle at sampler level
@@ -293,7 +301,7 @@ class DataModule(L.LightningDataModule):
         #     intervals = self.ndt2_custom_sampling_intervals()
         #     self.train_intervals, self.val_intervals, self.eval_intervals = intervals
 
-    def _init_model_vocab(self, model: NDT2):
+    def _init_model_vocab(self, model: NDT2_SSL):
         if model.session_emb is not None:
             model.session_emb.initialize_vocab(self.get_session_ids())
         if model.subject_emb is not None:
@@ -421,12 +429,10 @@ def run_training(cfg):
     # Set up data module
     data_module = DataModule(cfg, cfg.is_ssl)
 
-    model = NDT2(
-        is_ssl=cfg.is_ssl,
+    model = NDT2_SSL(
         dim=dim,
         units_per_patch=cfg.units_per_patch,
         max_bincount=cfg.max_bincount,
-        pad_value=cfg.pad_val,
         max_time_patches=cfg.model.max_time_patches,
         max_space_patches=cfg.model.max_space_patches,
         bin_time=cfg.bin_time,
@@ -435,11 +441,16 @@ def run_training(cfg):
         tokenize_session=cfg.tokenize_session,
         tokenize_subject=cfg.tokenize_subject,
         tokenize_task=cfg.tokenize_task,
-        depth=cfg.model.encoder.depth,
-        heads=cfg.model.encoder.heads,
+        enc_depth=cfg.model.encoder.depth,
+        enc_heads=cfg.model.encoder.heads,
+        dec_depth=cfg.model.decoder.depth,
+        dec_heads=cfg.model.decoder.heads,
         dropout=cfg.model.encoder.dropout,
         ffn_mult=cfg.model.encoder.ffn_mult,
     )
+
+    # readout_id = cfg.dataset[0].selection[0].config.readout.readout_id
+    # readout_spec = MODALITY_REGISTRY[readout_id]
 
     # # Load from checkpoint TODO update
     # if cfg.get("load_from_checkpoint", False):
