@@ -33,7 +33,7 @@ torch_brain is available for Python 3.9 to Python 3.11
 
 To install the package, run the following command:
 ```bash
-pip install torch_brain
+pip install pytorch_brain
 ```
 
 ## Contributing

@@ -3,7 +3,7 @@ requires = ["setuptools>=60.2.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "torch_brain"
+name = "pytorch_brain"
 version = "0.1.0"
 description = "A package for deep learning models for neuroscience"
 readme = "README.md"
