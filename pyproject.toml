@@ -27,6 +27,7 @@ dependencies = [
     "torchtyping~=0.1",
     "torchmetrics>=1.6.0",
     "pydantic~=2.0",
+    "rich",
 ]
 
 [project.optional-dependencies]
