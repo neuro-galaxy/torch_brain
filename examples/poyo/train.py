@@ -13,11 +13,9 @@ from lightning.pytorch.callbacks import (
 from omegaconf import DictConfig, OmegaConf
 from temporaldata import Data
 
-
 from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
 from torch_brain.optim import SparseLamb
 from torch_brain.models.poyo import POYO
-from torch_brain.optim import SparseLamb
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
 from torch_brain.utils.stitcher import (
