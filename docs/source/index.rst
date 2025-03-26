@@ -3,8 +3,8 @@
 **torch_brain**
 ============================
 
-.. image:: https://img.shields.io/pypi/v/torch_brain?color=blue&logo=pypi&logoColor=white
-   :target: https://pypi.org/project/torch_brain/
+.. image:: https://img.shields.io/pypi/v/pytorch_brain?color=blue&logo=pypi&logoColor=white
+   :target: https://pypi.org/project/pytorch_brain/
    :alt: PyPI Package
 
 .. image:: https://img.shields.io/badge/GitHub-Repository-black?logo=github&logoColor=white

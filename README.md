@@ -4,7 +4,7 @@
 
 [Documentation](https://torch-brain.readthedocs.io/en/latest/) | [Paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca113d122584f12a6727341aaf58887-Abstract-Conference.html)
 
-[![PyPI version](https://badge.fury.io/py/torch_brain.svg)](https://badge.fury.io/py/torch_brain)
+[![PyPI version](https://badge.fury.io/py/pytorch_brain.svg)](https://badge.fury.io/py/pytorch_brain)
 [![Documentation Status](https://readthedocs.org/projects/torch-brain/badge/?version=latest)](https://torch-brain.readthedocs.io/en/latest/?badge=latest)
 [![Tests](https://github.com/neuro-galaxy/torch_brain/actions/workflows/testing.yml/badge.svg)](https://github.com/neuro-galaxy/torch_brain/actions/workflows/testing.yml)
 [![Linting](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml/badge.svg)](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml)
