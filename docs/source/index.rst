@@ -29,19 +29,18 @@ If you encounter any bugs or have feature requests, please submit them to our
    :caption: Get Started
 
    concepts/installation
-   .. concepts/getting_started
-
-.. .. toctree::
-..    :maxdepth: 1
-..    :caption: Tutorials
-
-
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
+   :caption: Concepts
+
+   concepts/sampler
+
+.. toctree::
+   :maxdepth: 1
    :caption: Package Reference
 
-   package/data
+   package/data/index
    package/nn/index
    package/models
    package/registry

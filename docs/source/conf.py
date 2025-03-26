@@ -19,6 +19,8 @@ extensions = [
     "sphinx_autodoc_typehints",
     "sphinx_inline_tabs",
     "sphinx.ext.mathjax",
+    "bokeh.sphinxext.bokeh_plot",
+    "sphinx_copybutton",
 ]
 
 html_theme = "furo"
@@ -44,3 +46,14 @@ myst_enable_extensions = [
 ]
 
 pygments_style = "default"
+
+bokeh_plot_pyfile_include_dirs = [
+    "concepts/examples",
+]
+html_copy_source = False
+html_show_sourcelink = True
+
+html_copy_source = False
+html_show_sourcelink = True
+html_logo = "_static/torch_brain_logo.png"
+html_favicon = "_static/torch_brain_logo.png"

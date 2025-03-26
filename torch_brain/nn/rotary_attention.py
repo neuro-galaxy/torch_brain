@@ -23,6 +23,7 @@ class RotaryCrossAttention(nn.Module):
     embeddings and attention, then projects back to the original dimension.
 
     The layer provides two forward methods:
+
     - forward(): This is the default, and is used for sequences in a batch that are of
       the same length, or are padded to the same length. When padding is used, attention
       masks need to be provided.
@@ -79,7 +80,7 @@ class RotaryCrossAttention(nn.Module):
             - x_context: (B, N_c, D_c)
             - query_pos_emb: (B, N_q, D_h)
             - context_pos_emb: (B, N_c, D_h)
-            - context_mask: Optional[Union[None, Tensor[B, N_c]]]
+            - context_mask: Optional[Tensor[B, N_c]]
             - Output: (B, N_q, D)
 
             where B is batch size, N_q is query sequence length, N_c is context sequence
@@ -427,7 +428,8 @@ def rotary_attn_xformers_func(
         value: The value tensor, with shape (b n (h d))
         q_pos_emb: The query rotary position embedding, with shape (b n d)
         kv_pos_emb: The key rotary position embedding, with shape (b n d)
-        attn_mask: The attention mask, with shape (b, n_kv)
+        attn_mask: The attention mask, with shape (b, n_kv). A value of True indicates
+            that the element should take part in attention.
         num_heads: The number of attention heads
         dropout_p: The dropout probability
         rotate_value: Whether to rotate the value in addition to the query and key
@@ -454,7 +456,7 @@ def rotary_attn_xformers_func(
         else None
     )
     attn_bias = (
-        attn_mask.float().masked_fill(attn_mask, float("-inf"))
+        attn_mask.to(query.dtype).masked_fill(attn_mask.logical_not(), float("-inf"))
         if attn_mask is not None
         else None
     )

@@ -1,7 +1,7 @@
 defaults:
   - defaults.yaml
   - model: poyo_single_session.yaml
-  - dataset: mc_maze_small.yaml
+  - dataset: pei_pandarinath_nlb_2021.yaml
   - _self_
 
 train_transforms:
@@ -19,4 +19,4 @@ optim:
   weight_decay: 0.0001
 
 wandb:
-  run_name: mc_maze_small
+  run_name: poyo_nlb_mc_maze

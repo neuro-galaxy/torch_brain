@@ -19,7 +19,6 @@ class InfiniteVocabEmbedding(nn.Module):
     matrix is initialized when:
 
     - The vocabulary is initialized via :meth:`initialize_vocab()`.
-
     - or The model is loaded from a checkpoint that contains the vocabulary.
 
     If the vocabulary is initialized before :meth:`load_state_dict` is called,

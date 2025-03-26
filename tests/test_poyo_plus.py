@@ -26,9 +26,9 @@ def setup_module():
 
 @pytest.fixture
 def task_specs():
-    from torch_brain.registry import MODALITIY_REGISTRY
+    from torch_brain.registry import MODALITY_REGISTRY
 
-    return MODALITIY_REGISTRY
+    return MODALITY_REGISTRY
 
 
 @pytest.fixture

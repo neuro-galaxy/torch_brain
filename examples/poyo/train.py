@@ -14,7 +14,7 @@ from lightning.pytorch.callbacks import (
 from omegaconf import DictConfig, OmegaConf
 from temporaldata import Data
 
-from torch_brain.registry import MODALITIY_REGISTRY, ModalitySpec
+from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
 from torch_brain.models.poyo import POYO
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
@@ -282,7 +282,7 @@ def main(cfg: DictConfig):
     # get modality details
     # TODO: add test to verify that all recordings have the same readout
     readout_id = cfg.dataset[0].config.readout.readout_id
-    readout_spec = MODALITIY_REGISTRY[readout_id]
+    readout_spec = MODALITY_REGISTRY[readout_id]
 
     # make model and data module
     model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)
@@ -306,6 +306,8 @@ def main(cfg: DictConfig):
         ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
         ModelCheckpoint(
             save_last=True,
+            monitor="average_val_metric",
+            mode="max",
             save_on_train_epoch_end=True,
             every_n_epochs=cfg.eval_epochs,
         ),
@@ -334,7 +336,7 @@ def main(cfg: DictConfig):
     trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path)
 
     # Test
-    trainer.test(wrapper, data_module)
+    trainer.test(wrapper, data_module, ckpt_path="best")
 
 
 if __name__ == "__main__":
