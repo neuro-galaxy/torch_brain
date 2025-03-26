@@ -1,8 +1,7 @@
-import pytest
-
 import numpy as np
+import pytest
+from temporaldata import Interval, IrregularTimeSeries
 
-from temporaldata import IrregularTimeSeries, Interval
 from torch_brain.utils.binning import bin_spikes
 
 
@@ -19,6 +18,13 @@ def test_bin_data():
     )
     assert binned_data.shape == expected.shape
     assert np.allclose(binned_data, expected)
+    assert binned_data.dtype == np.float32
+
+    # test with np.int32
+    binned_data = bin_spikes(
+        spikes, num_units=2, bin_size=1.0, right=True, dtype=np.int32
+    )
+    assert binned_data.dtype == np.int32
 
     # larger bin size
     spikes = IrregularTimeSeries(

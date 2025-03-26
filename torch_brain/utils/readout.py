@@ -1,16 +1,20 @@
+from typing import TYPE_CHECKING
 import numpy as np
 from temporaldata import Data
 
-from torch_brain.registry import ModalitySpec, MODALITIY_REGISTRY
+import torch_brain
 from torch_brain.utils import (
     resolve_weights_based_on_interval_membership,
     isin_interval,
 )
 
+if TYPE_CHECKING:
+    from torch_brain.registry import ModalitySpec
+
 
 def prepare_for_readout(
     data: Data,
-    readout_spec: ModalitySpec,
+    readout_spec: "ModalitySpec",
 ):
     required_keys = ["readout_id"]
     optional_keys = [
@@ -38,7 +42,7 @@ def prepare_for_readout(
 
     key = readout_config["readout_id"]
 
-    if key not in MODALITIY_REGISTRY:
+    if key not in torch_brain.MODALITY_REGISTRY:
         raise ValueError(
             f"Readout {key} not found in modality registry, please register it "
             "using torch_brain.register_modality()"

@@ -1,14 +1,14 @@
 defaults:
-  - base.yaml
-  - model: poyo_single_session.yaml
+  - defaults.yaml
+  - model: poyo_1.3M.yaml
   - dataset: perich_miller_population_2018.yaml
-  - _self_
+  - _self_  # ensures current config overrides defaults
 
 train_transforms:
   - _target_: torch_brain.transforms.UnitDropout
-    max_units: 1000
-    min_units: 60
-    mode_units: 300
+    max_units: 300
+    min_units: 30
+    mode_units: 100
     peak: 4
 
 wandb:

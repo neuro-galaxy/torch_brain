@@ -1,7 +1,8 @@
 from enum import Enum
-from typing import Dict, Tuple, Optional, Any
+from typing import Dict, Tuple, Optional, Any, Callable
 
 from pydantic.dataclasses import dataclass
+import torch_brain
 
 
 class DataType(Enum):
@@ -36,12 +37,12 @@ class ModalitySpec:
     id: int
     dim: int
     type: DataType
-    loss_fn: str
     timestamp_key: str  # can be overwritten
     value_key: str  # can be overwritten
+    loss_fn: Callable  # can be overwritten
 
 
-MODALITIY_REGISTRY: Dict[str, ModalitySpec] = {}
+MODALITY_REGISTRY: Dict[str, ModalitySpec] = {}
 _ID_TO_MODALITY: Dict[int, str] = {}
 
 
@@ -60,17 +61,17 @@ def register_modality(name: str, **kwargs: Any) -> int:
         ValueError: If a modality with the given name already exists
     """
     # Check if modality already exists
-    if name in MODALITIY_REGISTRY:
+    if name in MODALITY_REGISTRY:
         raise ValueError(f"Modality {name} already exists in registry")
 
     # Get next available ID
-    next_id = len(MODALITIY_REGISTRY) + 1
+    next_id = len(MODALITY_REGISTRY) + 1
 
     # Create DecoderSpec from kwargs and set ID
     decoder_spec = ModalitySpec(**kwargs, id=next_id)
 
     # Add to registries
-    MODALITIY_REGISTRY[name] = decoder_spec
+    MODALITY_REGISTRY[name] = decoder_spec
     _ID_TO_MODALITY[next_id] = name
 
     return next_id
@@ -99,7 +100,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="cursor.timestamps",
     value_key="cursor.vel",
-    loss_fn="mse",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
 )
 
 register_modality(
@@ -108,7 +109,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="cursor.timestamps",
     value_key="cursor.pos",
-    loss_fn="mse",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
 )
 
 register_modality(
@@ -117,7 +118,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="behavior.timestamps",
     value_key="behavior.hand_vel",
-    loss_fn="mse",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
 )
 
 register_modality(
@@ -126,7 +127,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="drifting_gratings.timestamps",
     value_key="drifting_gratings.orientation_id",
-    loss_fn="bce",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(
@@ -135,7 +136,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="drifting_gratings.timestamps",
     value_key="drifting_gratings.temporal_frequency_id",
-    loss_fn="bce",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(
@@ -144,7 +145,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_movie_one.timestamps",
     value_key="natural_movie_one.frame",
-    loss_fn="bce",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(
@@ -153,7 +154,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_movie_two.timestamps",
     value_key="natural_movie_two.frame",
-    loss_fn="bce",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(
@@ -162,7 +163,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_movie_three.timestamps",
     value_key="natural_movie_three.frame",
-    loss_fn="bce",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(
@@ -171,7 +172,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="locally_sparse_noise.timestamps",
     value_key="locally_sparse_noise.frame",
-    loss_fn="bce",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(
@@ -180,7 +181,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="static_gratings.timestamps",
     value_key="static_gratings.orientation_id",
-    loss_fn="bce",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(
@@ -189,7 +190,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="static_gratings.timestamps",
     value_key="static_gratings.spatial_frequency_id",
-    loss_fn="bce",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(
@@ -198,7 +199,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="static_gratings.timestamps",
     value_key="static_gratings.phase_id",
-    loss_fn="bce",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(
@@ -207,7 +208,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_scenes.timestamps",
     value_key="natural_scenes.frame",
-    loss_fn="bce",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(
@@ -216,7 +217,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="gabors.timestamps",
     value_key="gabors.gabors_orientation",
-    loss_fn="bce",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(
@@ -225,7 +226,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="gabors.timestamps",
     value_key="gabors.pos_2d",
-    loss_fn="mse",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
 )
 
 register_modality(
@@ -234,7 +235,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="running.timestamps",
     value_key="running.running_speed",
-    loss_fn="mse",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
 )
 
 register_modality(
@@ -243,7 +244,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="gaze.timestamps",
     value_key="gaze.pos_2d",
-    loss_fn="mse",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
 )
 
 register_modality(
@@ -252,7 +253,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="pupil.timestamps",
     value_key="pupil.location",
-    loss_fn="mse",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
 )
 
 register_modality(
@@ -261,5 +262,5 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="pupil.timestamps",
     value_key="pupil.size_2d",
-    loss_fn="mse",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
 )

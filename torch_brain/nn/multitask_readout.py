@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -6,12 +6,15 @@ import torch.nn as nn
 from torchtyping import TensorType
 from temporaldata import Data
 
+import torch_brain
 from torch_brain.data.collate import collate, chain, track_batch
-from torch_brain.registry import ModalitySpec, MODALITIY_REGISTRY
 from torch_brain.utils import (
     resolve_weights_based_on_interval_membership,
     isin_interval,
 )
+
+if TYPE_CHECKING:
+    from torch_brain.registry import ModalitySpec
 
 
 class MultitaskReadout(nn.Module):
@@ -20,7 +23,7 @@ class MultitaskReadout(nn.Module):
     def __init__(
         self,
         dim: int,
-        readout_specs: Dict[str, ModalitySpec],
+        readout_specs: Dict[str, "ModalitySpec"],
     ):
         super().__init__()
 
@@ -154,7 +157,7 @@ class MultitaskReadout(nn.Module):
 
 def prepare_for_multitask_readout(
     data: Data,
-    readout_registry: Dict[str, ModalitySpec],
+    readout_registry: Dict[str, "ModalitySpec"],
 ):
     required_keys = ["readout_id"]
     optional_keys = [
@@ -191,7 +194,7 @@ def prepare_for_multitask_readout(
 
         key = readout_config["readout_id"]
 
-        if key not in MODALITIY_REGISTRY:
+        if key not in torch_brain.MODALITY_REGISTRY:
             raise ValueError(
                 f"Readout {key} not found in modality registry, please register it "
                 "using torch_brain.register_modality()"
