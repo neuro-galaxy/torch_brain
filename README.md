@@ -1,5 +1,6 @@
-# torch_brain
-
+<p align="left">
+    <img height="250" src="docs/source/_static/torch_brain_logo.png" />
+</p>
 
 [Documentation](https://torch-brain.readthedocs.io/en/latest/) | [Paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca113d122584f12a6727341aaf58887-Abstract-Conference.html)
 
@@ -11,18 +12,28 @@
 
 **torch_brain** is a Python library for various deep learning models designed for neuroscience.
 
+### Features
++ Multi-recording training
++ Optimized data loading with with on-demand data access -- only loads data when needed
++ Advanced samplers that enable arbitrary slicing of data on the fly
++ Advanced data collation strategies including chaining and padding
++ Support for arbitrary neural and behavioral modalities
++ Collection of useful nn.Modules like stitchers, multi-output readouts, infinite vocab embeddings, etc.
++ Collection of neural and behavioral transforms and augmentation strategies
++ Implementations of various deep learning models for neuroscience
+
+### List of implemented models
+
++ [POYO: A Unified, Scalable Framework for Neural Population Decoding (Azabou et al. 2023)](examples/poyo)
++ More coming soon...
+
+
 ## Installation
 torch_brain is available for Python 3.9 to Python 3.11
 
 To install the package, run the following command:
 ```bash
 pip install -e .
-```
-
-To avoid conflicts between different packages, you can specify the packages that will be
-used as follows:
-```bash
-pip install -e ".[xformers]"
 ```
 
 ## Contributing

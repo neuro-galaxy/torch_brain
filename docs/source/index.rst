@@ -30,12 +30,11 @@ If you encounter any bugs or have feature requests, please submit them to our
 
    concepts/installation
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Concepts
 
-.. .. toctree::
-..    :maxdepth: 1
-..    :caption: Tutorials
-
-
+   concepts/sampler
 
 .. toctree::
    :maxdepth: 1
