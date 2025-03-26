@@ -44,4 +44,13 @@ Issues = "https://github.com/neuro-galaxy/torch_brain/issues"
 Documentation = "https://torch-brain.readthedocs.io/en/latest/"
 
 [tool.setuptools]
-packages = ["torch_brain"]
+packages = [
+    "torch_brain",
+    "torch_brain.data",
+    "torch_brain.nn",
+    "torch_brain.models",
+    "torch_brain.optim",
+    "torch_brain.utils",
+    "torch_brain.transforms",
+    "torch_brain.registry"
+]
