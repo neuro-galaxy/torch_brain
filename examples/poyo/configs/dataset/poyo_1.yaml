@@ -1,4 +1,4 @@
-# Center-out reaching 
+# perich_miller_population_2018 - CO sessions 
 - selection:
   - brainset: perich_miller_population_2018
     sessions:
@@ -97,7 +97,7 @@
             _target_: torchmetrics.R2Score
       eval_interval: movement_phases.reach_period
 
-# Random target reaching
+# perich_miller_population_2018 - RT sessions
 - selection:
   - brainset: perich_miller_population_2018
     sessions:
@@ -135,3 +135,55 @@
         - metric:
             _target_: torchmetrics.R2Score
       eval_interval: movement_phases.random_period
+
+# churchland_shenoy_neural_2012
+- selection:
+  - brainset: churchland_shenoy_neural_2012
+  config:
+    sampling_intervals_modifier: |
+      sampling_intervals = sampling_intervals & data.cursor.domain & data.spikes.domain
+    readout:
+      readout_id: cursor_velocity_2d
+      normalize_mean: 0.
+      normalize_std: 800.
+      weights:
+        movement_phases.hold_period: 0.1
+        movement_phases.reach_period: 5.0
+        movement_phases.return_period: 1.0
+        cursor_outlier_segments: 1.0
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+
+
+# odoherty_sabes_nonhuman_2017
+- selection:
+  - brainset: odoherty_sabes_nonhuman_2017
+  config:
+    sampling_intervals_modifier: |
+      sampling_intervals = sampling_intervals & data.cursor.domain & data.spikes.domain
+    readout:
+      readout_id: cursor_velocity_2d
+      normalize_mean: 0.
+      normalize_std: 200.
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+
+
+# flint_slutzky_accurate_2012
+- selection:
+  - brainset: flint_slutzky_accurate_2012
+  config:
+    sampling_intervals_modifier: |
+      sampling_intervals = sampling_intervals & data.hand.domain & data.spikes.domain
+    readout:
+      readout_id: cursor_velocity_2d
+      # we will use the hand velocity for this dataset
+      timestamp_key: hand.timestamps
+      value_key: hand.vel
+      normalize_mean: 0.
+      normalize_std: 0.4
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
