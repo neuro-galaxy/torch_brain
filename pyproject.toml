@@ -49,8 +49,6 @@ packages = [
     "torch_brain.data",
     "torch_brain.nn",
     "torch_brain.models",
-    "torch_brain.optim",
     "torch_brain.utils",
     "torch_brain.transforms",
-    "torch_brain.registry"
 ]
