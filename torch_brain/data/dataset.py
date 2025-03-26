@@ -386,7 +386,11 @@ class Dataset(torch.utils.data.Dataset):
     def _get_unit_ids_with_prefix(self, data: Data) -> np.ndarray:
         r"""Return unit ids with prefix applied"""
         prefix_str = self.unit_id_prefix_fn(data)
-        return np.core.defchararray.add(prefix_str, data.units.id.astype(str))
+        # Check numpy version and use appropriate function
+        if np.__version__ >= "2.0":
+            return np.strings.add(prefix_str, data.units.id.astype(str))
+        else:
+            return np.core.defchararray.add(prefix_str, data.units.id.astype(str))
 
     def _get_session_id_with_prefix(self, data: Data) -> str:
         r"""Return session id with prefix applied"""
