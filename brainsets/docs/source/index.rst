@@ -18,6 +18,9 @@
    :target: https://github.com/neuro-galaxy/brainsets/issues
    :alt: GitHub Issues
 
+.. image:: https://img.shields.io/discord/1338561153089146962?label=Discord&logo=discord
+   :target: https://discord.gg/kQNKA6B8ZC
+   :alt: Discord
 
 **brainsets** is a Python package for processing neural data into a standardized format.
 
