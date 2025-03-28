@@ -79,8 +79,10 @@ class NDT2TrainWrapper(L.LightningModule):
         decoder = batch["decoder_tokens"]
         target = batch["target_tokens"]
 
-        if self.is_ssl:
-            decoder_out = self.model(
+        is_ssl = False
+        # if self.is_ssl:
+        if is_ssl:
+            model_out = self.model(
                 context["session_idx"],
                 context["subject_idx"],
                 context["task_idx"],
@@ -90,15 +92,30 @@ class NDT2TrainWrapper(L.LightningModule):
                 encoder["attn_mask"],
                 decoder["masked_time_idx"],
                 decoder["masked_space_idx"],
-                decoder["attn_mask"],
+                decoder["enc_dec_attn_mask"],
+                decoder["dec_enc_attn_mask"],
+                decoder["dec_dec_attn_mask"],
                 target["target"],
                 target["extra_units_mask"],
             )
-            loss = decoder_out["loss"]
+            loss = model_out["loss"]
             self.log("train_shuffle_infill_loss", loss)
         else:
-            # TODO
-            pass
+            model_out = self.model(
+                context["session_idx"],
+                context["subject_idx"],
+                context["task_idx"],
+                encoder["units_patch"],
+                encoder["time_idx"],
+                encoder["space_idx"],
+                encoder["attn_mask"],
+                encoder["time_pad_idx"],
+                decoder["dec_time_idx"],
+                decoder["dec_attn_mask"],
+                target["target"],
+            )
+            loss = model_out["loss"]
+
             #  self.log("train_kinematic_decoding_loss", loss)
 
         #     task = self.cfg.model.bhv_decoder.get("task", "regression")
@@ -141,7 +158,9 @@ class NDT2TrainWrapper(L.LightningModule):
                 encoder["attn_mask"],
                 decoder["masked_time_idx"],
                 decoder["masked_space_idx"],
-                decoder["attn_mask"],
+                decoder["enc_dec_attn_mask"],
+                decoder["dec_enc_attn_mask"],
+                decoder["dec_dec_attn_mask"],
                 target["target"],
                 target["extra_units_mask"],
             )
@@ -424,30 +443,49 @@ def run_training(cfg):
         log.info(f"Batch size per GPU: {cfg.batch_size_per_gpu}")
         log.info(f"Superv batch size per GPU: {cfg.superv_batch_size_per_gpu}")
 
-    dim = cfg.model.dim
-
     # Set up data module
     data_module = DataModule(cfg, cfg.is_ssl)
 
-    model = NDT2_SSL(
-        dim=dim,
-        units_per_patch=cfg.units_per_patch,
-        max_bincount=cfg.max_bincount,
-        max_time_patches=cfg.model.max_time_patches,
-        max_space_patches=cfg.model.max_space_patches,
-        bin_time=cfg.bin_time,
-        ctx_time=cfg.ctx_time,
-        mask_ratio=cfg.mask_ratio,
-        tokenize_session=cfg.tokenize_session,
-        tokenize_subject=cfg.tokenize_subject,
-        tokenize_task=cfg.tokenize_task,
-        enc_depth=cfg.model.encoder.depth,
-        enc_heads=cfg.model.encoder.heads,
-        dec_depth=cfg.model.decoder.depth,
-        dec_heads=cfg.model.decoder.heads,
-        dropout=cfg.model.encoder.dropout,
-        ffn_mult=cfg.model.encoder.ffn_mult,
-    )
+    is_ssl = False
+    if is_ssl:
+        model = NDT2_SSL(
+            dim=cfg.model.dim,
+            units_per_patch=cfg.units_per_patch,
+            max_bincount=cfg.max_bincount,
+            max_time_patches=cfg.model.max_time_patches,
+            max_space_patches=cfg.model.max_space_patches,
+            bin_time=cfg.bin_time,
+            ctx_time=cfg.ctx_time,
+            mask_ratio=cfg.mask_ratio,
+            tokenize_session=cfg.tokenize_session,
+            tokenize_subject=cfg.tokenize_subject,
+            tokenize_task=cfg.tokenize_task,
+            enc_depth=cfg.model.encoder.depth,
+            enc_heads=cfg.model.encoder.heads,
+            dec_depth=cfg.model.decoder.depth,
+            dec_heads=cfg.model.decoder.heads,
+            dropout=cfg.model.encoder.dropout,
+            ffn_mult=cfg.model.encoder.ffn_mult,
+        )
+    else:
+        model = NDT2(
+            dim=cfg.model.dim,
+            units_per_patch=cfg.units_per_patch,
+            max_bincount=cfg.max_bincount,
+            max_time_patches=cfg.model.max_time_patches,
+            max_space_patches=cfg.model.max_space_patches,
+            bin_time=cfg.bin_time,
+            ctx_time=cfg.ctx_time,
+            tokenize_session=cfg.tokenize_session,
+            tokenize_subject=cfg.tokenize_subject,
+            tokenize_task=cfg.tokenize_task,
+            enc_depth=cfg.model.encoder.depth,
+            enc_heads=cfg.model.encoder.heads,
+            dec_depth=cfg.model.decoder.depth,
+            dec_heads=cfg.model.decoder.heads,
+            dropout=cfg.model.encoder.dropout,
+            ffn_mult=cfg.model.encoder.ffn_mult,
+        )
 
     # readout_id = cfg.dataset[0].selection[0].config.readout.readout_id
     # readout_spec = MODALITY_REGISTRY[readout_id]
