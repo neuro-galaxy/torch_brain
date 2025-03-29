@@ -7,13 +7,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange, repeat
 from temporaldata import ArrayDict, Data
-
-# from sklearn.metrics import accuracy_score, balanced_accuracy_score, r2_score
 from torchtyping import TensorType
 
 from torch_brain.data import pad, pad2d, track_mask
 from torch_brain.nn import Embedding, InfiniteVocabEmbedding
-from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
+from torch_brain.registry import ModalitySpec
 from torch_brain.utils import prepare_for_readout
 from torch_brain.utils.binning import bin_spikes
 
@@ -34,10 +32,11 @@ class NDT2_SSL(nn.Module):
         tokenize_task: bool,
         enc_depth: int,
         enc_heads: int,
+        enc_ffn_mult: float,
         dec_depth: int,
         dec_heads: int,
+        dec_ffn_mult: float,
         dropout: float,
-        ffn_mult: float,
         activation: str = "gelu",
         pre_norm: bool = False,
     ):
@@ -83,7 +82,7 @@ class NDT2_SSL(nn.Module):
         enc_layer = nn.TransformerEncoderLayer(
             d_model=dim,
             nhead=enc_heads,
-            dim_feedforward=int(dim * ffn_mult),
+            dim_feedforward=int(dim * enc_ffn_mult),
             dropout=dropout,
             batch_first=True,
             activation=activation,
@@ -106,7 +105,7 @@ class NDT2_SSL(nn.Module):
         self.decoder_layer = nn.TransformerEncoderLayer(
             d_model=dim,
             nhead=dec_heads,
-            dim_feedforward=int(dim * ffn_mult),
+            dim_feedforward=int(dim * dec_ffn_mult),
             dropout=dropout,
             activation=activation,
             batch_first=True,
@@ -116,7 +115,6 @@ class NDT2_SSL(nn.Module):
 
         # SSL readout and loss
         self.output_to_units = nn.Linear(dim, units_per_patch)
-        self.ssl_loss = nn.PoissonNLLLoss(reduction="none", log_input=True)
 
     def tokenize(self, data: Data) -> Dict:
         # Context tokens
@@ -215,9 +213,9 @@ class NDT2_SSL(nn.Module):
 
         encoder_tokens = {
             "units_patch": pad(enc_units_patch),
-            "time_idx": pad(enc_time_idx),
-            "space_idx": pad(enc_space_idx),
-            "attn_mask": pad2d(enc_attn_mask),
+            "enc_time_idx": pad(enc_time_idx),
+            "enc_space_idx": pad(enc_space_idx),
+            "enc_attn_mask": pad2d(enc_attn_mask),
         }
 
         # Decoder tokens
@@ -276,8 +274,6 @@ class NDT2_SSL(nn.Module):
         enc_dec_attn_mask: TensorType["b", "n_ctx + r * max_l", "(1-r) * max_l", int],
         dec_enc_attn_mask: TensorType["b", "(1-r) * max_l", "n_ctx + r * max_l", int],
         dec_dec_attn_mask: TensorType["b", "(1-r) * max_l", "(1-r) * max_l", int],
-        target: TensorType["b", "(1-r) * max_l", "tgt_dim", int],
-        extra_units_mask: Optional[TensorType["b", "(1-r) * max_l", "patch_dim", bool]],
     ) -> Dict:
         # Prepare context tokens
         ctx_tokens = []
@@ -308,7 +304,7 @@ class NDT2_SSL(nn.Module):
         # Encoder forward pass
         attn_mask = repeat(
             enc_attn_mask,
-            "b n_in_1 n_in_2 -> (b enc_heads) n_in_1 n_in_2",
+            "b n_1 n_2 -> (b enc_heads) n_1 n_2",
             enc_heads=self.enc_heads,
         )
         enc_output = self.encoder(inputs, mask=attn_mask)
@@ -318,8 +314,8 @@ class NDT2_SSL(nn.Module):
         latents = self.enc_dropout_out(latents)
 
         # append the masked tokens to the encoder output (i.e. latents)
-        b, t = masked_time_idx.size(0), masked_time_idx.size(1)
-        masked_tokens = repeat(self.masked_emb, "h -> b t h", b=b, t=t)
+        b, nb_masked_tokens = masked_time_idx.size(0), masked_time_idx.size(1)
+        masked_tokens = repeat(self.masked_emb, "h -> b n h", b=b, n=nb_masked_tokens)
         latents = torch.cat([latents, masked_tokens], dim=1)
         dec_time_idx = torch.cat([enc_time_idx, masked_time_idx], dim=1)
         dec_space_idx = torch.cat([enc_space_idx, masked_space_idx], dim=1)
@@ -346,7 +342,7 @@ class NDT2_SSL(nn.Module):
 
         dec_attn_mask = repeat(
             dec_attn_mask,
-            "b n_in_1 n_in_2 -> (b dec_heads) n_in_1 n_in_2",
+            "b n_1 n_2 -> (b dec_heads) n_1 n_2",
             dec_heads=self.dec_heads,
         )
         dec_output = self.decoder(latents, mask=dec_attn_mask)
@@ -356,15 +352,10 @@ class NDT2_SSL(nn.Module):
         output = self.dec_dropout_out(output)
 
         # compute rates
-        nb_masked_tokens = target.size(1)
         output = output[:, -nb_masked_tokens:]
         rates = self.output_to_units(output)
 
-        # compute loss
-        loss = self.ssl_loss(rates, target)
-        loss = loss[extra_units_mask].mean()
-
-        return {"loss": loss}
+        return {"rates": rates}
 
 
 class NDT2(nn.Module):
@@ -382,12 +373,15 @@ class NDT2(nn.Module):
         tokenize_task: bool,
         enc_depth: int,
         enc_heads: int,
+        enc_ffn_mult: float,
         dec_depth: int,
         dec_heads: int,
+        dec_ffn_mult: float,
         dropout: float,
-        ffn_mult: float,
+        readout_spec: ModalitySpec,
         activation: str = "gelu",
         pre_norm: bool = False,
+        pool="mean",
     ):
         super().__init__()
         self.ctx_time = ctx_time
@@ -430,7 +424,7 @@ class NDT2(nn.Module):
         enc_layer = nn.TransformerEncoderLayer(
             d_model=dim,
             nhead=enc_heads,
-            dim_feedforward=int(dim * ffn_mult),
+            dim_feedforward=int(dim * enc_ffn_mult),
             dropout=dropout,
             batch_first=True,
             activation=activation,
@@ -453,7 +447,7 @@ class NDT2(nn.Module):
         self.decoder_layer = nn.TransformerEncoderLayer(
             d_model=dim,
             nhead=dec_heads,
-            dim_feedforward=int(dim * ffn_mult),
+            dim_feedforward=int(dim * dec_ffn_mult),
             dropout=dropout,
             activation=activation,
             batch_first=True,
@@ -462,12 +456,11 @@ class NDT2(nn.Module):
         self.decoder = nn.TransformerEncoder(self.decoder_layer, dec_depth)
 
         self.task = "regression"
+        self.pool = pool
+        self.readout_spec = readout_spec
 
-        # Bhvr readout and loss
-        # TODO
-        bhvr_dim = 2
-        self.output_to_bhvr = nn.Linear(dim, bhvr_dim)
-        self.loss = nn.MSELoss(reduce="none")
+        # Bhvr readout
+        self.output_to_bhvr = nn.Linear(dim, readout_spec.dim)
 
     def tokenize(self, data: Data) -> Dict:
         # Context tokens
@@ -550,10 +543,10 @@ class NDT2(nn.Module):
 
         encoder_tokens = {
             "units_patch": pad(units_patch),
-            "time_idx": pad(time_idx),
-            "time_pad_idx": track_mask(time_idx),
-            "space_idx": pad(space_idx),
-            "attn_mask": pad2d(enc_attn_mask),
+            "enc_time_idx": pad(time_idx),
+            "enc_space_idx": pad(space_idx),
+            "enc_attn_mask": pad2d(enc_attn_mask),
+            "enc_time_pad_idx": track_mask(time_idx),
         }
 
         # Decoder tokens
@@ -568,6 +561,12 @@ class NDT2(nn.Module):
             #     # allow looking N-bins of neural data into the "future";
             #     # we back-shift during the actual decode comparison.
             #     bhvr_time_idx = bhvr_time_idx + self.bhvr_lag_bins
+            # TODO move it before (tokenizer)
+            # if self.lag:
+            #     # exclude the last N-bins
+            #     bhvr = bhvr[:, : -self.bhvr_lag_bins]
+            #     # add to the left N-bins to match the lag
+            #     bhvr = F.pad(bhvr, (0, 0, self.bhvr_lag_bins, 0), value=0)
 
         dec_time_idx = np.concatenate([time_idx, bhvr_time_idx], axis=0)
 
@@ -603,10 +602,14 @@ class NDT2(nn.Module):
             "dec_attn_mask": dec_attn_mask,
         }
 
-        # TODO readout
+        # Readout
+        output_timestamps, output_values, output_weights, eval_mask = (
+            prepare_for_readout(data, self.readout_spec)
+        )
+        # TODO binning (with interpolation)
+        bin = lambda x, t: x[::20]
 
-        # TODO Binning
-        tgt = data.wheel.values[::20]
+        tgt = bin(output_values, output_timestamps)
         target_tokens = {"target": tgt}
 
         return {
@@ -625,7 +628,7 @@ class NDT2(nn.Module):
         enc_time_idx: TensorType["b", "max_l", int],
         enc_space_idx: TensorType["b", "max_l", int],
         enc_attn_mask: TensorType["b", "n_ctx + max_l", "n_ctx + max_l", int],
-        time_pad_idx: TensorType["b", "max_l", int],
+        enc_time_pad_idx: TensorType["b", "max_l", int],
         dec_time_idx: TensorType["b", "nb_bins + tgt_l", int],
         dec_attn_mask: TensorType["b", "n_ctx + 2*tgt_l", "n_ctx + 2*tgt_l", int],
         target: TensorType["b", "tgt_l", "tgt_dim", int],
@@ -674,11 +677,10 @@ class NDT2(nn.Module):
         # Pooling
         b, _, h = latents.size()
         size = (b, self.bin_size, h)
-        pool = "mean"
         pooled_latents = torch.zeros(size, device=latents.device, dtype=latents.dtype)
-        index = repeat(time_pad_idx, "b max_l -> b max_l h", h=h).to(torch.long)
+        index = repeat(enc_time_pad_idx, "b max_l -> b max_l h", h=h).to(torch.long)
         pooled_latents = pooled_latents.scatter_reduce(
-            src=latents, dim=1, index=index, reduce=pool, include_self=False
+            dim=1, index=index, src=latents, reduce=self.pool, include_self=False
         )
 
         b, bhv_l = target.size()[:2]
@@ -693,6 +695,7 @@ class NDT2(nn.Module):
 
         # append context tokens at the start of the sequence
         if nb_ctx_tokens > 0:
+            # detach the context tokens because don't to uncalibrate the ctx_emb from the SSL pretraining
             ctx_emb = ctx_emb.detach()
             latents = torch.cat([ctx_emb, latents], dim=1)
 
@@ -709,36 +712,14 @@ class NDT2(nn.Module):
         output = output[:, -bhv_l:]
         bhvr = self.output_to_bhvr(output)
 
-        # add the bhrv readout
-        # prepare decoder input
-
-        # bhvr_tgt = batch["bhvr"]
-
-        # TODO move it before (tokenizer)
+        # TODO if lagging
         # if self.lag:
         #     # exclude the last N-bins
         #     bhvr = bhvr[:, : -self.bhvr_lag_bins]
         #     # add to the left N-bins to match the lag
         #     bhvr = F.pad(bhvr, (0, 0, self.bhvr_lag_bins, 0), value=0)
 
-        # Compute loss & r2
-        loss = self.loss(bhvr, target)
-        return {"loss": loss}
-
-        loss_mask = loss_mask
-
-        loss = self.loss(bhvr, target)
-        # TODO this way of computing a loss
-        # self.modality_spec.loss_fn
-        loss = loss[loss_mask].mean()
-
-        if self.task == "regression":
-            tgt = bhvr_tgt[loss_mask].float().detach().cpu()
-            pred = bhvr[loss_mask].float().detach().cpu()
-            r2 = r2_score(tgt, pred, multioutput="raw_values")
-            if r2.mean() < -10:
-                r2 = np.zeros_like(r2)
-            return {"loss": loss, "r2": r2, "pred": bhvr}
+        return {"output": bhvr}
 
         if self.task == "classification":
             tgt = bhvr_tgt.argmax(dim=-1).cpu()
@@ -841,38 +822,6 @@ class NDT2(nn.Module):
         #     batch["bhvr"] = pad(bhvr)
         #     batch["bhvr_mask"] = track_mask(bhvr)
 
-        # self.dim = dim
-        # self.causal = causal
-        # self.bin_time = bin_time
-        # self.lag = behavior_lag
-        # self.decode_time_pool = decode_time_pool
-        # self.behavior_dim = behavior_dim
-        # self.task = task
-        # if self.lag:
-        #     self.bhvr_lag_bins = round(self.lag / bin_time)
-
-        # self.query_token = nn.Parameter(torch.randn(dim))
-
-        # self.decoder = Transformer(
-        #     dim=dim,
-        #     depth=depth,
-        #     heads=heads,
-        #     dropout=dropout,
-        #     max_time_patches=max_time_patches,
-        #     max_space_patches=max_space_patches,
-        #     ffn_mult=ffn_mult,
-        #     causal=causal,
-        #     activation=activation,
-        #     pre_norm=pre_norm,
-        #     allow_embed_padding=True,
-        # )
-        # self.out = nn.Linear(dim, self.behavior_dim)
-
-        # if self.task == "regression":
-        #     self.loss = nn.MSELoss(reduction="none")
-        # elif self.task == "classification":
-        #     self.loss = nn.BCEWithLogitsLoss(reduction="none")
-
     # def forward(
     #     self,
     #     latents: TensorType["b", "n_in + n_lat", "dim", int],
@@ -969,35 +918,3 @@ class NDT2(nn.Module):
     #         }
 
     #     raise NotImplementedError
-
-    # self.dim = dim
-    # self.causal = causal
-    # self.bin_time = bin_time
-    # self.lag = behavior_lag
-    # self.decode_time_pool = decode_time_pool
-    # self.behavior_dim = behavior_dim
-    # self.task = task
-    # if self.lag:
-    #     self.bhvr_lag_bins = round(self.lag / bin_time)
-
-    # self.query_token = nn.Parameter(torch.randn(dim))
-
-    # self.decoder = Transformer(
-    #     dim=dim,
-    #     depth=depth,
-    #     heads=heads,
-    #     dropout=dropout,
-    #     max_time_patches=max_time_patches,
-    #     max_space_patches=max_space_patches,
-    #     ffn_mult=ffn_mult,
-    #     causal=causal,
-    #     activation=activation,
-    #     pre_norm=pre_norm,
-    #     allow_embed_padding=True,
-    # )
-    # self.out = nn.Linear(dim, self.behavior_dim)
-
-    # if self.task == "regression":
-    #     self.loss = nn.MSELoss(reduction="none")
-    # elif self.task == "classification":
-    #     self.loss = nn.BCEWithLogitsLoss(reduction="none")
