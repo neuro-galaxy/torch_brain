@@ -1,8 +1,8 @@
-import pytest
 import numpy as np
+import pytest
 import torch
 
-from torch_brain.data import collate, pad, pad8, chain, track_mask, track_batch
+from torch_brain.data import chain, collate, pad, pad2d, pad8, track_batch, track_mask
 
 
 def test_pad():
@@ -39,6 +39,48 @@ def test_pad8():
     assert torch.allclose(
         batch, torch.tensor([[1, 2, 3, 0, 0, 0, 0, 0], [4, 5, 0, 0, 0, 0, 0, 0]])
     )
+
+
+def test_pad2d():
+    # padding applied to np.ndarrays
+    x = pad2d(np.array([[11, 12, 13], [21, 22, 23], [31, 32, 33]]))
+    y = pad2d(np.array([[14, 15], [24, 25]]))
+
+    batch = collate([x, y])
+    batch_expected = torch.tensor(
+        [
+            [[11, 12, 13], [21, 22, 23], [31, 32, 33]],
+            [[14, 15, 0], [24, 25, 0], [0, 0, 0]],
+        ]
+    )
+    assert torch.allclose(batch, batch_expected)
+
+    # padding applied to torch.Tensors
+    x = pad2d(
+        torch.tensor([[[11], [12], [13]], [[21], [22], [23]], [[31], [32], [33]]])
+    )
+    y = pad2d(torch.tensor([[[14], [15]], [[24], [25]]]))
+
+    batch = collate([x, y])
+    batch_expected = torch.tensor(
+        [
+            [[[11], [12], [13]], [[21], [22], [23]], [[31], [32], [33]]],
+            [[[14], [15], [0]], [[24], [25], [0]], [[0], [0], [0]]],
+        ]
+    )
+    assert torch.allclose(batch, batch_expected)
+
+    # padding applied to bool
+    x = pad2d(np.ones((3, 3), dtype=bool))
+    y = pad2d(np.ones((2, 2), dtype=bool))
+    batch = collate([x, y])
+    batch_expected = torch.BoolTensor(
+        [
+            [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+            [[1, 1, 0], [1, 1, 0], [0, 0, 0]],
+        ]
+    )
+    assert torch.allclose(batch, batch_expected)
 
 
 def test_track_mask():
