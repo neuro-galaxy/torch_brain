@@ -1287,22 +1287,26 @@ class RegularTimeSeries(ArrayDict):
         # we allow the start and end to be outside the domain of the time series
         if start < self.domain.start[0]:
             start_id = 0
+            out_start = self.domain.start[0]
         else:
             start_id = int(np.ceil((start - self.domain.start[0]) * self.sampling_rate))
+            out_start = self.domain.start[0] + start_id * 1.0 / self.sampling_rate
 
         if end > self.domain.end[0]:
             end_id = len(self) + 1
+            out_end = self.domain.end[0]
         else:
             end_id = int(np.floor((end - self.domain.start[0]) * self.sampling_rate))
+            out_end = self.domain.start[0] + (end_id - 1) * 1.0 / self.sampling_rate
 
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
-        out._domain = copy.deepcopy(self._domain)
+
+        out._domain = Interval(start=out_start, end=out_end)
+
         if reset_origin:
-            out._domain.start, out._domain.end = (
-                out._domain.start - start,
-                out._domain.end - start,
-            )
+            out._domain.start = out._domain.start - start
+            out._domain.end = out._domain.end - start
 
         for key in self.keys():
             out.__dict__[key] = self.__dict__[key][start_id:end_id].copy()
@@ -1460,12 +1464,8 @@ class LazyRegularTimeSeries(RegularTimeSeries):
                 # TODO it is always better to resolve another attribute before timestamps
                 # this is because we are dealing with numerical noise
                 # we know the domain and the sampling rate, we can infer the number of pts
-                return int(
-                    np.round(
-                        (self.domain.end[-1] - self.domain.start[0])
-                        * self.sampling_rate
-                    )
-                )
+                domain_length = self.domain.end[-1] - self.domain.start[0]
+                return int(np.round(domain_length * self.sampling_rate)) + 1
 
             # otherwise nothing was loaded, return the first dim of the h5py dataset
             return self.__dict__[self.keys()[0]].shape[0]
@@ -1502,23 +1502,36 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         r"""Returns a new :obj:`RegularTimeSeries` object that contains the data between
         the start and end times.
         """
+        if start < self.domain.start[0]:
+            start_id = 0
+            out_start = self.domain.start[0]
+        else:
+            start_id = int(np.ceil((start - self.domain.start[0]) * self.sampling_rate))
+            out_start = self.domain.start[0] + start_id * 1.0 / self.sampling_rate
 
-        start_id = int(np.floor((start - self.domain.start[0]) * self.sampling_rate))
-        end_id = int(np.floor((end - self.domain.start[0]) * self.sampling_rate))
+        if end > self.domain.end[0]:
+            end_id = len(self) + 1
+            out_end = self.domain.end[0]
+        else:
+            end_id = int(np.floor((end - self.domain.start[0]) * self.sampling_rate))
+            out_end = self.domain.start[0] + (end_id - 1) * 1.0 / self.sampling_rate
 
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
-        out._lazy_ops = {}
+
+        out._domain = Interval(start=out_start, end=out_end)
+
         if reset_origin:
-            out._domain = Interval(start=np.array([0.0]), end=np.array([end - start]))
-        else:
-            out._domain = self._domain & Interval(start=start, end=end)
+            out._domain.start = out._domain.start - start
+            out._domain.end = out._domain.end - start
 
         for key in self.keys():
             if isinstance(self.__dict__[key], h5py.Dataset):
                 out.__dict__[key] = self.__dict__[key]
             else:
                 out.__dict__[key] = self.__dict__[key][start_id:end_id].copy()
+
+        out._lazy_ops = {}
 
         if "slice" not in self._lazy_ops:
             out._lazy_ops["slice"] = (start_id, end_id)
