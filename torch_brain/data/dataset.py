@@ -85,6 +85,7 @@ class Dataset(torch.utils.data.Dataset):
         recording_id: Optional[str] = None,
         split: Optional[str] = None,
         transform: Optional[Callable[[Data], Any]] = None,
+        pre_slice_transform: Optional[Callable[[Data], Any]] = None,
         unit_id_prefix_fn: Callable[[Data], str] = default_unit_id_prefix_fn,
         session_id_prefix_fn: Callable[[Data], str] = default_session_id_prefix_fn,
         subject_id_prefix_fn: Callable[[Data], str] = default_subject_id_prefix_fn,
@@ -94,6 +95,7 @@ class Dataset(torch.utils.data.Dataset):
         self.config = config
         self.split = split
         self.transform = transform
+        self.pre_slice_transform = pre_slice_transform
         self.unit_id_prefix_fn = unit_id_prefix_fn
         self.session_id_prefix_fn = session_id_prefix_fn
         self.subject_id_prefix_fn = subject_id_prefix_fn
@@ -296,6 +298,10 @@ class Dataset(torch.utils.data.Dataset):
             end: The end time of the slice.
         """
         data = copy.copy(self._data_objects[recording_id])
+
+        if self.pre_slice_transform is not None:
+            data = self.pre_slice_transform(data, start, end)
+
         # TODO: add more tests to make sure that slice does not modify the original data object
         # note there should be no issues as long as the self._data_objects stay lazy
         sample = data.slice(start, end)
