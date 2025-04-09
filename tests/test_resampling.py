@@ -3,7 +3,13 @@ import logging
 import numpy as np
 import pytest
 from scipy.signal import resample
-from temporaldata import ArrayDict, Data, IrregularTimeSeries
+from temporaldata import (
+    ArrayDict,
+    Data,
+    Interval,
+    IrregularTimeSeries,
+    RegularTimeSeries,
+)
 
 from torch_brain.transforms import Resampler
 
@@ -11,14 +17,36 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def mock_data_1():
-    timestamps = np.arange(200, dtype=np.float64)
-    values = np.arange(200, 400, dtype=np.float64)
+def base_frequency():
+    return 1.0
 
+
+@pytest.fixture
+def downsampling_frequency():
+    return 0.5
+
+
+@pytest.fixture
+def upsampling_frequency():
+    return 2.0
+
+
+@pytest.fixture
+def center_window():
+    return {"start": 20.0, "end": 30.0}
+
+
+@pytest.fixture
+def even_window():
+    return {"start": 0.0, "end": 12.0}
+
+
+@pytest.fixture
+def irregular_data():
     data = Data(
         att1=IrregularTimeSeries(
-            timestamps=timestamps,
-            values=values,
+            timestamps=np.arange(50, dtype=np.float64),
+            values=np.arange(100, 150, dtype=np.float64),
             timekeys=["timestamps", "values"],
             domain="auto",
         ),
@@ -28,26 +56,95 @@ def mock_data_1():
 
 
 @pytest.fixture
-def base_frequency_1():
-    return 1.0
+def regular_data(base_frequency):
+    data = Data(
+        att1=RegularTimeSeries(
+            sampling_rate=base_frequency,
+            values=np.arange(100, 150, dtype=np.float64),
+            domain=Interval(0.0, 50.0),
+        ),
+        domain="auto",
+    )
+    return data
 
 
-@pytest.fixture
-def resample_frequency_1():
-    return 0.5
-
-
-def test_downsampling(mock_data_1, base_frequency_1, resample_frequency_1):
-    pre_slice_transform = Resampler(base_frequency_1, resample_frequency_1)
-    data = pre_slice_transform(mock_data_1, 0.0, 10.0)
-    print(data.att1.timestamps)
+def test_downsampling_irregular(
+    irregular_data, base_frequency, downsampling_frequency, center_window
+):
+    pre_slice_transform = Resampler(base_frequency, downsampling_frequency)
+    start = center_window["start"]
+    end = center_window["end"]
+    data = pre_slice_transform(irregular_data, start, end)
 
     expected_timestamps = np.arange(
-        0.0, 10.0 + pre_slice_transform.extra_window_length, 1 / resample_frequency_1
+        start,
+        end,
+        1 / downsampling_frequency,
     )
-    print(expected_timestamps)
-
     assert np.array_equal(data.att1.timestamps, expected_timestamps)
 
-    expected_values = resample(mock_data_1.att1.values[:15], len(expected_timestamps))
+    window_start = 10
+    window_end = 40
+    num = int((window_end - window_start) * downsampling_frequency)
+    unsliced_expected_values = resample(
+        irregular_data.att1.values[window_start:window_end], num
+    )
+    expected_values = unsliced_expected_values[5:10]
     assert np.array_equal(data.att1.values, expected_values)
+
+
+# def test_downsampling_regular(
+#     regular_data, base_frequency, downsampling_frequency, center_window, even_window
+# ):
+#     pre_slice_transform = Resampler(base_frequency, downsampling_frequency)
+#     start = center_window["start"]
+#     end = center_window["end"]
+#     data = pre_slice_transform(regular_data, start, end)
+
+#     expected_timestamps = np.arange(
+#         start,
+#         end,
+#         1 / downsampling_frequency,
+#     )
+#     assert np.array_equal(data.att1.timestamps, expected_timestamps)
+
+#     window_start = 10
+#     window_end = 40
+#     num = int((window_end - window_start) * downsampling_frequency)
+#     unsliced_expected_values = resample(
+#         irregular_data.att1.values[window_start:window_end], num
+#     )
+#     expected_values = unsliced_expected_values[5:10]
+#     print(expected_values)
+#     print(data.att1.values)
+#     assert np.array_equal(data.att1.values, expected_values)
+
+
+# def test_upsampling_irregular(irregular_data, base_frequency, upsampling_frequency):
+#     pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
+#     data = pre_slice_transform(irregular_data, 0.0, 10.0)
+
+#     expected_timestamps = np.arange(
+#         0.0, 10.0 + pre_slice_transform.extra_window_length, 1 / upsampling_frequency
+#     )
+#     assert np.array_equal(data.att1.timestamps, expected_timestamps)
+
+#     expected_values = resample(
+#         irregular_data.att1.values[:30], len(expected_timestamps)
+#     )
+#     assert np.array_equal(data.att1.values, expected_values)
+
+
+# def test_upsampling_regular(regular_data, base_frequency, upsampling_frequency):
+#     pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
+#     data = pre_slice_transform(regular_data, 0.0, 10.0)
+
+#     expected_timestamps = np.arange(
+#         0.0, 10.0 + pre_slice_transform.extra_window_length, 1 / upsampling_frequency
+#     )
+#     print("expected_timestamps", expected_timestamps.shape)
+#     print("data.att1.timestamps", data.att1.timestamps.shape)
+#     assert np.array_equal(data.att1.timestamps, expected_timestamps)
+
+#     expected_values = resample(regular_data.att1.values[:30], len(expected_timestamps))
+#     assert np.array_equal(data.att1.values, expected_values)
