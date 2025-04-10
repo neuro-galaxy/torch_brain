@@ -63,18 +63,18 @@ class Resampler:
                 num = int((window_end - window_start) * self.resample_frequency)
                 t_in = val.timestamps
 
-                resampled_time_values = {}
+                resampled_time_based_values = {}
                 for timekey in val._timekeys:
                     if timekey == "timestamps":
                         continue
 
                     x_in = getattr(val, timekey)
                     x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
-                    resampled_time_values[timekey] = x_out
+                    resampled_time_based_values[timekey] = x_out
 
                 unsliced_value = IrregularTimeSeries(
                     timestamps=t_out,
-                    **resampled_time_values,
+                    **resampled_time_based_values,
                     timekeys=val._timekeys,
                     domain="auto",
                 )
@@ -86,17 +86,20 @@ class Resampler:
 
             elif isinstance(value, RegularTimeSeries):
                 val = copy.copy(value)
-                window_length = window_start - window_start
-                num = int(window_length * self.resample_frequency)
-                tmp = {}
+                num = int((window_end - window_start) * self.resample_frequency)
+
+                resampled_time_based_values = {}
                 for timekey in val.keys():
-                    tmp[timekey] = resample(getattr(val, timekey), num)
+                    x_in = getattr(val, timekey)
+                    x_out = resample(x_in, num, window="hamming")
+                    resampled_time_based_values[timekey] = x_out
 
                 val_unsliced = RegularTimeSeries(
                     sampling_rate=self.resample_frequency,
-                    **tmp,
+                    **resampled_time_based_values,
                     domain=copy.copy(val._domain),
                 )
+                # same as above
                 out.__dict__[key] = val_unsliced.slice(start, end, reset_origin=False)
 
             else:
