@@ -14,18 +14,13 @@ class Resampler:
     ):
         self.base_frequency = base_frequency
         self.resample_frequency = resample_frequency
-        # TODO add the ref from where this come from
+        # TODO add a ref from where this comes from
         if extra_window_factor < 4 or 10 < extra_window_factor:
             raise ValueError("extra_window_factor must be between 4 and 10, inclusive.")
         self.extra_window_factor = extra_window_factor
-        # TODO not sure of this check
-        if self.base_frequency / self.resample_frequency % 1 != 0:
-            raise ValueError(
-                "The base frequency must be a multiple of the resample frequency."
-            )
-        self.extra_window_length = (
-            extra_window_factor * self.base_frequency / self.resample_frequency
-        )
+
+        b_f, r_f = self.base_frequency, self.resample_frequency
+        self.extra_window_length = extra_window_factor * max(b_f / r_f, r_f / b_f)
 
     def __call__(self, data: Data, start: float, end: float):
         return self.resample(data, start, end)
@@ -42,8 +37,7 @@ class Resampler:
         data = copy.deepcopy(data)
 
         # TODO: intersting in you opinion about this
-        # When we are in a center window, because we divide by two the extra_window_length we could
-        # be benefical to ensure we are using an offset to keep start and end in the sampled point in the new window
+        # This design ensure us to keep start as the first up/down sampled point
         offsett = self.extra_window_length / 2 % self.resample_frequency
         if (
             data.domain.start <= start - self.extra_window_length / 2 - offsett
@@ -66,30 +60,29 @@ class Resampler:
         for key, value in new_data.__dict__.items():
             if isinstance(value, IrregularTimeSeries):
                 val = copy.copy(value)
-                timestamps = np.arange(
-                    window_start,
-                    window_end,
-                    1 / self.resample_frequency,
-                    dtype=np.float64,
-                )
-                num = len(timestamps)
-                tmp = {}
+                num = int((window_end - window_start) * self.resample_frequency)
+                t_in = val.timestamps
+
+                resampled_time_values = {}
                 for timekey in val._timekeys:
                     if timekey == "timestamps":
                         continue
 
-                    tmp[timekey] = resample(getattr(val, timekey), num)
+                    x_in = getattr(val, timekey)
+                    x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
+                    resampled_time_values[timekey] = x_out
 
-                val_unsliced = IrregularTimeSeries(
-                    timestamps=timestamps,
-                    **tmp,
+                unsliced_value = IrregularTimeSeries(
+                    timestamps=t_out,
+                    **resampled_time_values,
+                    timekeys=val._timekeys,
                     domain="auto",
                 )
 
-                # TODO the slicing will be process after anyway and could be ommited
+                # TODO the slicing will be process after anyway, here it could be ommited for enficency purpose
                 # However it could be clean to have it already sliced (and optimized memory in case of big window_length)
                 # Intersted about feedback here
-                out.__dict__[key] = val_unsliced.slice(start, end, reset_origin=False)
+                out.__dict__[key] = unsliced_value.slice(start, end, reset_origin=False)
 
             elif isinstance(value, RegularTimeSeries):
                 val = copy.copy(value)

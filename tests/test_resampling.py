@@ -37,8 +37,13 @@ def center_window():
 
 
 @pytest.fixture
-def even_window():
-    return {"start": 0.0, "end": 12.0}
+def right_window():
+    return {"start": 0.0, "end": 10.0}
+
+
+@pytest.fixture
+def left_window():
+    return {"start": 40.0, "end": 50.0}
 
 
 @pytest.fixture
@@ -69,28 +74,129 @@ def regular_data(base_frequency):
 
 
 def test_downsampling_irregular(
-    irregular_data, base_frequency, downsampling_frequency, center_window
+    irregular_data,
+    base_frequency,
+    downsampling_frequency,
+    center_window,
+    right_window,
+    left_window,
 ):
+    # 1 case: centered window
     pre_slice_transform = Resampler(base_frequency, downsampling_frequency)
     start = center_window["start"]
     end = center_window["end"]
     data = pre_slice_transform(irregular_data, start, end)
 
-    expected_timestamps = np.arange(
-        start,
-        end,
-        1 / downsampling_frequency,
-    )
-    assert np.array_equal(data.att1.timestamps, expected_timestamps)
-
-    window_start = 10
-    window_end = 40
+    extra_window_length = pre_slice_transform.extra_window_length
+    window_start = int(start - extra_window_length / 2)
+    window_end = int(end + extra_window_length / 2)
+    x_in = irregular_data.att1.values[window_start:window_end]
     num = int((window_end - window_start) * downsampling_frequency)
-    unsliced_expected_values = resample(
-        irregular_data.att1.values[window_start:window_end], num
-    )
-    expected_values = unsliced_expected_values[5:10]
-    assert np.array_equal(data.att1.values, expected_values)
+    t_in = irregular_data.att1.timestamps[window_start:window_end]
+    x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
+
+    N = int(extra_window_length * downsampling_frequency / 2)
+    assert np.array_equal(data.att1.timestamps, t_out[N:-N])
+    assert np.array_equal(data.att1.values, x_out[N:-N])
+
+    # 2 case: right window
+    pre_slice_transform = Resampler(base_frequency, downsampling_frequency)
+    start = right_window["start"]
+    end = right_window["end"]
+    data = pre_slice_transform(irregular_data, start, end)
+
+    extra_window_length = pre_slice_transform.extra_window_length
+    window_start = int(start)
+    window_end = int(end + extra_window_length)
+    x_in = irregular_data.att1.values[window_start:window_end]
+    num = int((window_end - window_start) * downsampling_frequency)
+    t_in = irregular_data.att1.timestamps[window_start:window_end]
+    x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
+
+    N = int(extra_window_length * downsampling_frequency)
+    assert np.array_equal(data.att1.timestamps, t_out[:-N])
+    assert np.array_equal(data.att1.values, x_out[:-N])
+
+    # 3 case: left window
+    pre_slice_transform = Resampler(base_frequency, downsampling_frequency)
+    start = left_window["start"]
+    end = left_window["end"]
+    data = pre_slice_transform(irregular_data, start, end)
+
+    extra_window_length = pre_slice_transform.extra_window_length
+    window_start = int(start - extra_window_length)
+    window_end = int(end)
+    x_in = irregular_data.att1.values[window_start:window_end]
+    num = int((window_end - window_start) * downsampling_frequency)
+    t_in = irregular_data.att1.timestamps[window_start:window_end]
+    x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
+
+    N = int(extra_window_length * downsampling_frequency)
+    assert np.array_equal(data.att1.timestamps, t_out[N:])
+    assert np.array_equal(data.att1.values, x_out[N:])
+
+
+def test_upsampling_irregular(
+    irregular_data,
+    base_frequency,
+    upsampling_frequency,
+    center_window,
+    right_window,
+    left_window,
+):
+    # 1 case: centered window
+    pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
+    start = center_window["start"]
+    end = center_window["end"]
+    data = pre_slice_transform(irregular_data, start, end)
+
+    extra_window_length = pre_slice_transform.extra_window_length
+    window_start = int(start - extra_window_length / 2)
+    window_end = int(end + extra_window_length / 2)
+    x_in = irregular_data.att1.values[window_start:window_end]
+    num = int((window_end - window_start) * upsampling_frequency)
+    t_in = irregular_data.att1.timestamps[window_start:window_end]
+    x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
+
+    N = int(extra_window_length * upsampling_frequency / 2)
+    assert np.array_equal(data.att1.timestamps, t_out[N:-N])
+    assert np.array_equal(data.att1.values, x_out[N:-N])
+
+    # 2 case: right window
+    pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
+    start = right_window["start"]
+    end = right_window["end"]
+    data = pre_slice_transform(irregular_data, start, end)
+
+    extra_window_length = pre_slice_transform.extra_window_length
+    window_start = int(start)
+    window_end = int(end + extra_window_length)
+    x_in = irregular_data.att1.values[window_start:window_end]
+    num = int((window_end - window_start) * upsampling_frequency)
+    t_in = irregular_data.att1.timestamps[window_start:window_end]
+    x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
+
+    N = int(extra_window_length * upsampling_frequency)
+    assert np.array_equal(data.att1.timestamps, t_out[:-N])
+    assert np.array_equal(data.att1.values, x_out[:-N])
+
+    # 3 case: left window
+    pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
+    start = left_window["start"]
+    end = left_window["end"]
+    data = pre_slice_transform(irregular_data, start, end)
+
+    extra_window_length = pre_slice_transform.extra_window_length
+    window_start = int(start - extra_window_length)
+    window_end = int(end)
+    x_in = irregular_data.att1.values[window_start:window_end]
+    num = int((window_end - window_start) * upsampling_frequency)
+    t_in = irregular_data.att1.timestamps[window_start:window_end]
+    x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
+
+    N = int(extra_window_length * upsampling_frequency)
+    assert np.array_equal(data.att1.timestamps, t_out[N:])
+    assert np.array_equal(data.att1.values, x_out[N:])
 
 
 # def test_downsampling_regular(
@@ -117,21 +223,6 @@ def test_downsampling_irregular(
 #     expected_values = unsliced_expected_values[5:10]
 #     print(expected_values)
 #     print(data.att1.values)
-#     assert np.array_equal(data.att1.values, expected_values)
-
-
-# def test_upsampling_irregular(irregular_data, base_frequency, upsampling_frequency):
-#     pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
-#     data = pre_slice_transform(irregular_data, 0.0, 10.0)
-
-#     expected_timestamps = np.arange(
-#         0.0, 10.0 + pre_slice_transform.extra_window_length, 1 / upsampling_frequency
-#     )
-#     assert np.array_equal(data.att1.timestamps, expected_timestamps)
-
-#     expected_values = resample(
-#         irregular_data.att1.values[:30], len(expected_timestamps)
-#     )
 #     assert np.array_equal(data.att1.values, expected_values)
 
 
