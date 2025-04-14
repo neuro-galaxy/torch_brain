@@ -300,7 +300,13 @@ class Dataset(torch.utils.data.Dataset):
         data = copy.copy(self._data_objects[recording_id])
 
         if self.pre_slice_transform is not None:
-            data = self.pre_slice_transform(data, start, end)
+            # Had this idea to eventually use target_domain or not
+            if self.pre_slice_transform.needs_target_domain:
+                data = self.pre_slice_transform(
+                    data, target_domain=Interval(start, end)
+                )
+            else:
+                data = self.pre_slice_transform(data)
 
         # TODO: add more tests to make sure that slice does not modify the original data object
         # note there should be no issues as long as the self._data_objects stay lazy
