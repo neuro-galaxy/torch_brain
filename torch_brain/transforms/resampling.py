@@ -1,3 +1,4 @@
+import copy
 import logging
 from typing import List
 
@@ -19,6 +20,8 @@ class Resampler:
         # To avoid aliasing, we add a buffer of 10 * sampling_rate / target_sampling_rate
         # points on left/right side, which is equivalent to 10 / target_sampling_rate seconds
         self._anti_aliasing_buffer = 10.0 / self.target_sampling_rate
+
+        self.needs_target_domain = True
 
     def __call__(self, data: Data, target_domain: Interval):
         if len(target_domain.start) != 1 or len(target_domain.end) != 1:
@@ -42,6 +45,7 @@ class Resampler:
         # Ensure the buffer_start and buffer_end are inside the data domain
         buffer_start = max(start - self._anti_aliasing_buffer, data.domain.start[0])
         buffer_end = min(end + self._anti_aliasing_buffer, data.domain.end[-1])
+
         sliced_buffered_data = data.slice(buffer_start, buffer_end, reset_origin=False)
 
         resampled_data = self.resample(sliced_buffered_data)
@@ -76,12 +80,20 @@ class Resampler:
                 )
 
             downsample_factor = int(downsample_factor)
+
+            resampled_dic = {}
             for attr_key in timeseries.keys():
                 x_in = getattr(timeseries, attr_key)
                 x_out = decimate(x_in, downsample_factor, axis=0, ftype="iir")
-                setattr(timeseries, attr_key, x_out)
+                resampled_dic[attr_key] = x_out
 
-            timeseries.sampling_rate = self.target_sampling_rate
+            # Create a new RegularTimeSeries with the resampled data
+            resampled_timeseries = RegularTimeSeries(
+                sampling_rate=self.target_sampling_rate,
+                **resampled_dic,
+                domain=copy.copy(timeseries.domain),
+            )
+            setattr(data, key, resampled_timeseries)
 
         return data
 
