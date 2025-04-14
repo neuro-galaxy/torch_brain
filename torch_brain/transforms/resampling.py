@@ -48,11 +48,11 @@ class Resampler:
 
         sliced_buffered_data = data.slice(buffer_start, buffer_end, reset_origin=False)
 
-        resampled_data = self.resample(sliced_buffered_data)
+        resampled_data = self.resample(sliced_buffered_data, target_domain)
 
         return resampled_data.slice(start, end, reset_origin=False)
 
-    def resample(self, data: Data):
+    def resample(self, data: Data, target_domain: Interval):
         r"""Resample the data.
 
         Args:
@@ -62,11 +62,10 @@ class Resampler:
             timeseries = data.get_nested_attribute(key)
 
             if isinstance(timeseries, IrregularTimeSeries):
-                start = timeseries.domain.start[0]
-                end = timeseries.domain.end[-1]
                 timeseries = irregular_to_regular_timeseries(
-                    timeseries, target_domain=Interval(start, end)
+                    timeseries, target_domain=target_domain
                 )
+                print(timeseries.timestamps)
 
             # downsample
             downsample_factor = timeseries.sampling_rate / self.target_sampling_rate
@@ -129,11 +128,11 @@ def irregular_to_regular_timeseries(
         # Check the interval is not outside the timeseries domain
         if target_domain.start[0] < timeseries.timestamps[0]:
             raise ValueError(
-                f"target_domain.start {domain.start[0]} is outside the data domain {timeseries.domain}"
+                f"target_domain.start {target_domain.start[0]} is outside the data domain {timeseries.domain.start}"
             )
         if target_domain.end[0] > timeseries.timestamps[-1]:
             raise ValueError(
-                f"target_domain.end {domain.end[-1]} is outside the data domain {timeseries.domain}"
+                f"target_domain.end {target_domain.end[-1]} is outside the data domain {timeseries.domain.end}"
             )
 
         domain = target_domain
@@ -142,15 +141,18 @@ def irregular_to_regular_timeseries(
 
     timestamps_regular = np.arange(domain.start[0], domain.end[0], dt_target)
 
-    for key in timeseries.keys():
+    print(target_domain.end)
+    for attr_key in timeseries.keys():
+        if attr_key == "timestamps":
+            continue
         interpolator = interp1d(
             timeseries.timestamps,
-            timeseries.get_nested_attribute(key),
+            getattr(timeseries, attr_key),
             axis=0,
             kind="linear",
             fill_value="extrapolate",
         )
         interpolated_values = interpolator(timestamps_regular)
-        setattr(out, key, interpolated_values)
+        setattr(out, attr_key, interpolated_values)
 
     return out
