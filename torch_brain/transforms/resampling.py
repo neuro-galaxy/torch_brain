@@ -1,29 +1,32 @@
-import copy
+from typing import List
 
+import logging
+from scipy.interpolate import interp1d
+from scipy.signal import decimate
 import numpy as np
-from scipy.signal import resample
-from temporaldata import Data, IrregularTimeSeries, RegularTimeSeries
+from temporaldata import Data, IrregularTimeSeries, RegularTimeSeries, Interval
 
 
 class Resampler:
     def __init__(
         self,
-        base_frequency: float,
-        resample_frequency: float,
-        extra_window_factor: int = 10,
+        target_sampling_rate: float,
+        target_keys: List[str],
     ):
-        self.base_frequency = base_frequency
-        self.resample_frequency = resample_frequency
-        # TODO add a ref from where this comes from
-        if extra_window_factor < 4 or 10 < extra_window_factor:
-            raise ValueError("extra_window_factor must be between 4 and 10, inclusive.")
-        self.extra_window_factor = extra_window_factor
+        self.target_sampling_rate = target_sampling_rate
+        self.target_keys = target_keys
 
-        b_f, r_f = self.base_frequency, self.resample_frequency
-        self.extra_window_length = extra_window_factor * max(b_f / r_f, r_f / b_f)
+        # To avoid aliasing, we add a buffer of 10 * sampling_rate / target_sampling_rate
+        # points, which is equivalent to 10 / target_sampling_rate seconds
+        self._anti_aliasing_buffer = 10.0 / self.target_sampling_rate
 
     def __call__(self, data: Data, start: float, end: float):
-        return self.resample(data, start, end)
+        start = start - self._anti_aliasing_buffer
+        end = end + self._anti_aliasing_buffer
+
+        data = data.slice(start, end, reset_origin=False)
+
+        return self.resample(data)
 
     def resample(self, data: Data, start: float, end: float):
         r"""Resample the data to a new time interval.
@@ -33,76 +36,69 @@ class Resampler:
             start (float): The start time of the new interval.
             end (float): The end time of the new interval.
         """
-        out = data.__class__.__new__(data.__class__)
-        data = copy.deepcopy(data)
+        for key in self.target_keys:
+            timeseries = data.get_nested_attribute(key)
 
-        # TODO: intersting in you opinion about this
-        # This design ensure us to keep start as the first up/down sampled point
-        offsett = self.extra_window_length / 2 % self.resample_frequency
-        if (
-            data.domain.start <= start - self.extra_window_length / 2 - offsett
-            and end + self.extra_window_length / 2 - offsett < data.domain.end
-        ):
-            window_start = start - self.extra_window_length / 2 - offsett
-            window_end = end + self.extra_window_length / 2 - offsett
-        elif end + self.extra_window_length < data.domain.end:
-            window_start = start
-            window_end = end + self.extra_window_length
-        elif data.domain.start <= start - self.extra_window_length:
-            window_start = start - self.extra_window_length
-            window_end = end
-        else:
-            raise ValueError(
-                f"Data domain {data.domain} does not contain the requested interval [{start}, {end}]"
-            )
-
-        new_data = data.slice(window_start, window_end, reset_origin=False)
-        for key, value in new_data.__dict__.items():
-            if isinstance(value, IrregularTimeSeries):
-                val = copy.copy(value)
-                num = int((window_end - window_start) * self.resample_frequency)
-                t_in = val.timestamps
-
-                resampled_time_based_values = {}
-                for timekey in val._timekeys:
-                    if timekey == "timestamps":
-                        continue
-
-                    x_in = getattr(val, timekey)
-                    x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
-                    resampled_time_based_values[timekey] = x_out
-
-                unsliced_value = IrregularTimeSeries(
-                    timestamps=t_out,
-                    **resampled_time_based_values,
-                    timekeys=val._timekeys,
-                    domain="auto",
+            if isinstance(timeseries, IrregularTimeSeries):
+                timeseries = irregular_to_regular_timeseries(
+                    timeseries, target_domain=Interval(start, end)
                 )
 
-                # TODO the slicing will be process after anyway, here it could be ommited for enficency purpose
-                # However it could be clean to have it already sliced (and optimized memory in case of big window_length)
-                # Intersted about feedback here
-                out.__dict__[key] = unsliced_value.slice(start, end, reset_origin=False)
+            # downsample
+            downsample_factor = timeseries.sampling_rate / self.target_sampling_rate
 
-            elif isinstance(value, RegularTimeSeries):
-                val = copy.copy(value)
-                num = int((window_end - window_start) * self.resample_frequency)
+            if downsample_factor <= 1:
+                raise ValueError(f"Upsampling is not supported")
 
-                resampled_time_based_values = {}
-                for timekey in val.keys():
-                    x_in = getattr(val, timekey)
-                    x_out = resample(x_in, num, window="hamming")
-                    resampled_time_based_values[timekey] = x_out
-
-                val_unsliced = RegularTimeSeries(
-                    sampling_rate=self.resample_frequency,
-                    **resampled_time_based_values,
-                    domain=copy.copy(val._domain),
+            if not downsample_factor.is_integer():
+                raise ValueError(
+                    f"Downsample factor {downsample_factor} is not an integer"
                 )
-                # same as above
-                out.__dict__[key] = val_unsliced.slice(start, end, reset_origin=False)
 
-            else:
-                out.__dict__[key] = copy.copy(value)
+            downsample_factor = int(downsample_factor)
+            for attr_key in timeseries.keys():
+                x_in = getattr(timeseries, attr_key)
+                x_out = decimate(x_in, downsample_factor, axis=0, ftype="iir")
+                setattr(timeseries, attr_key, x_out)
 
-        return out
+            timeseries.sampling_rate = self.target_sampling_rate
+
+        return data
+
+
+def irregular_to_regular_timeseries(
+    timeseries: IrregularTimeSeries,
+    target_sampling_rate: float = None,
+    target_domain: Interval = None,
+):
+    dt = np.diff(timeseries.timestamps)
+
+    if target_sampling_rate is None:
+        target_sampling_rate = np.round(1.0 / np.mean(dt))
+
+    dt_target = 1.0 / target_sampling_rate
+
+    if np.any(np.abs(dt - dt_target) / dt_target > 1e-2):
+        logging.warning("t_irregular must be sampled at a regular interval")
+
+    if target_domain is None:
+        target_domain = Interval(timeseries.timestamps[0], timeseries.timestamps[-1])
+
+    timestamps_regular = np.arange(
+        target_domain.start[0], target_domain.end[0], dt_target
+    )
+    domain = Interval(timestamps_regular[0], timestamps_regular[-1])
+    out = RegularTimeSeries(sampling_rate=target_sampling_rate, domain=domain)
+
+    for key in timeseries.keys():
+        interpolator = interp1d(
+            timeseries.timestamps,
+            timeseries.get_nested_attribute(key),
+            axis=0,
+            kind="linear",
+            fill_value="extrapolate",
+        )
+        interpolated_values = interpolator(timestamps_regular)
+        setattr(out, key, interpolated_values)
+
+    return out
