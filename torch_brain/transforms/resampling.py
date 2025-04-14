@@ -20,30 +20,46 @@ class Resampler:
         # points on left/right side, which is equivalent to 10 / target_sampling_rate seconds
         self._anti_aliasing_buffer = 10.0 / self.target_sampling_rate
 
-    def __call__(self, data: Data, start: float, end: float):
-        # Make the start and end time inside the data domain
-        start = max(data.domain.start[0], start - self._anti_aliasing_buffer)
-        end = min(data.domain.end[-1], end + self._anti_aliasing_buffer)
+    def __call__(self, data: Data, target_domain: Interval):
+        if len(target_domain.start) != 1 or len(target_domain.end) != 1:
+            raise ValueError(
+                f"target_domain must be a 1D Interval, got {target_domain}"
+            )
 
-        data = data.slice(start, end, reset_origin=False)
+        start, end = target_domain.start[0], target_domain.end[0]
 
-        return self.resample(data)
+        if start < data.domain.start[0]:
+            raise ValueError(
+                f"target_domain.start {start} is outside the data domain {data.domain}"
+            )
+        if end > data.domain.end[-1]:
+            raise ValueError(
+                f"target_domain.end {end} is outside the data domain {data.domain}"
+            )
 
-    def resample(self, data: Data, start: float, end: float):
-        r"""Resample the data to a new time interval.
+        # TODO be sure we are taking an offset when the data is not aligned
+
+        # Ensure the buffer_start and buffer_end are inside the data domain
+        buffer_start = max(start - self._anti_aliasing_buffer, data.domain.start[0])
+        buffer_end = min(end + self._anti_aliasing_buffer, data.domain.end[-1])
+        sliced_buffered_data = data.slice(buffer_start, buffer_end, reset_origin=False)
+
+        resampled_data = self.resample(sliced_buffered_data)
+
+        return resampled_data.slice(start, end, reset_origin=False)
+
+    def resample(self, data: Data):
+        r"""Resample the data.
 
         Args:
             data (Data): The data to resample.
-            start (float): The start time of the new interval.
-            end (float): The end time of the new interval.
         """
         for key in self.target_keys:
             timeseries = data.get_nested_attribute(key)
 
             if isinstance(timeseries, IrregularTimeSeries):
-                # Make the start and end time inside the timeseries domain
-                start = max(timeseries.domain.start[0], start)
-                end = min(timeseries.domain.end[-1], end)
+                start = timeseries.domain.start[0]
+                end = timeseries.domain.end[-1]
                 timeseries = irregular_to_regular_timeseries(
                     timeseries, target_domain=Interval(start, end)
                 )
