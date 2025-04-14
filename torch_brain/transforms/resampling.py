@@ -1,10 +1,10 @@
+import logging
 from typing import List
 
-import logging
+import numpy as np
 from scipy.interpolate import interp1d
 from scipy.signal import decimate
-import numpy as np
-from temporaldata import Data, IrregularTimeSeries, RegularTimeSeries, Interval
+from temporaldata import Data, Interval, IrregularTimeSeries, RegularTimeSeries
 
 
 class Resampler:
@@ -17,12 +17,13 @@ class Resampler:
         self.target_keys = target_keys
 
         # To avoid aliasing, we add a buffer of 10 * sampling_rate / target_sampling_rate
-        # points, which is equivalent to 10 / target_sampling_rate seconds
+        # points on left/right side, which is equivalent to 10 / target_sampling_rate seconds
         self._anti_aliasing_buffer = 10.0 / self.target_sampling_rate
 
     def __call__(self, data: Data, start: float, end: float):
-        start = start - self._anti_aliasing_buffer
-        end = end + self._anti_aliasing_buffer
+        # Make the start and end time inside the data domain
+        start = max(data.domain.start[0], start - self._anti_aliasing_buffer)
+        end = min(data.domain.end[-1], end + self._anti_aliasing_buffer)
 
         data = data.slice(start, end, reset_origin=False)
 
@@ -40,6 +41,9 @@ class Resampler:
             timeseries = data.get_nested_attribute(key)
 
             if isinstance(timeseries, IrregularTimeSeries):
+                # Make the start and end time inside the timeseries domain
+                start = max(timeseries.domain.start[0], start)
+                end = min(timeseries.domain.end[-1], end)
                 timeseries = irregular_to_regular_timeseries(
                     timeseries, target_domain=Interval(start, end)
                 )
@@ -82,13 +86,33 @@ def irregular_to_regular_timeseries(
         logging.warning("t_irregular must be sampled at a regular interval")
 
     if target_domain is None:
-        target_domain = Interval(timeseries.timestamps[0], timeseries.timestamps[-1])
+        domain = Interval(timeseries.timestamps[0], timeseries.timestamps[-1])
+    else:
+        # Check that target_domain is a valid interval
+        if not isinstance(target_domain, Interval):
+            raise ValueError(
+                f"target_domain must be an Interval, got {type(target_domain)}"
+            )
+        if len(target_domain.start) != 1 or len(target_domain.end) != 1:
+            raise ValueError(
+                f"target_domain must be a 1D Interval, got {target_domain}"
+            )
 
-    timestamps_regular = np.arange(
-        target_domain.start[0], target_domain.end[0], dt_target
-    )
-    domain = Interval(timestamps_regular[0], timestamps_regular[-1])
+        # Check the interval is not outside the timeseries domain
+        if target_domain.start[0] < timeseries.timestamps[0]:
+            raise ValueError(
+                f"target_domain.start {domain.start[0]} is outside the data domain {timeseries.domain}"
+            )
+        if target_domain.end[0] > timeseries.timestamps[-1]:
+            raise ValueError(
+                f"target_domain.end {domain.end[-1]} is outside the data domain {timeseries.domain}"
+            )
+
+        domain = target_domain
+
     out = RegularTimeSeries(sampling_rate=target_sampling_rate, domain=domain)
+
+    timestamps_regular = np.arange(domain.start[0], domain.end[0], dt_target)
 
     for key in timeseries.keys():
         interpolator = interp1d(
