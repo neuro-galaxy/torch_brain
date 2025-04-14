@@ -76,19 +76,29 @@ def test_downsampling(
     pre_slice_transform = Resampler(
         target_sampling_rate=downsampling_rate, target_keys=["regular_att"]
     )
-    N = pre_slice_transform._anti_aliasing_buffer
-    window_start = int(center_window.start[0] - N)
-    window_end = int(center_window.end[0] + N)
+    transformed_data = pre_slice_transform(data, center_window)
 
-    # t_out = down_sampling_rate
+    timestamps = transformed_data.regular_att.timestamps
 
+    expected_timestamps = np.arange(
+        center_window.start[0],
+        center_window.end[0],
+        step=1 / downsampling_rate,
+    )
+    assert np.array_equal(timestamps, expected_timestamps)
+
+    values = transformed_data.regular_att.values
+
+    buffer = pre_slice_transform._anti_aliasing_buffer
+    window_start = int(center_window.start[0] - buffer)
+    window_end = int(center_window.end[0] + buffer)
     x_in = data.regular_att.values[window_start:window_end]
     downsample_factor = int(data.regular_att.sampling_rate / downsampling_rate)
     x_out = decimate(x_in, downsample_factor, axis=0, ftype="iir")
+    resampled_buffer = int(buffer * downsampling_rate)
+    expected_values = x_out[resampled_buffer:-resampled_buffer]
 
-    # assert np.array_equal(data.att1.timestamps, t_out[N:-N])
-    transformed_data = pre_slice_transform(data, center_window)
-    assert np.array_equal(transformed_data.regular_att.values, x_out[10:-10])
+    assert np.array_equal(values, expected_values)
 
     # # 2 case: right window
     # pre_slice_transform = Resampler(base_frequency, downsampling_frequency)
