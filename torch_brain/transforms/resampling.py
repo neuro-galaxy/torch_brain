@@ -48,7 +48,9 @@ class Resampler:
 
         sliced_buffered_data = data.slice(buffer_start, buffer_end, reset_origin=False)
 
-        resampled_data = self.resample(sliced_buffered_data, target_domain)
+        resampled_data = self.resample(
+            sliced_buffered_data, Interval(buffer_start, buffer_end)
+        )
 
         return resampled_data.slice(start, end, reset_origin=False)
 
@@ -65,7 +67,6 @@ class Resampler:
                 timeseries = irregular_to_regular_timeseries(
                     timeseries, target_domain=target_domain
                 )
-                print(timeseries.timestamps)
 
             # downsample
             downsample_factor = timeseries.sampling_rate / self.target_sampling_rate
@@ -80,19 +81,16 @@ class Resampler:
 
             downsample_factor = int(downsample_factor)
 
-            resampled_dic = {}
-            for attr_key in timeseries.keys():
-                x_in = getattr(timeseries, attr_key)
-                x_out = decimate(x_in, downsample_factor, axis=0, ftype="iir")
-                resampled_dic[attr_key] = x_out
-
             # Create a new RegularTimeSeries with the resampled data
-            resampled_timeseries = RegularTimeSeries(
-                sampling_rate=self.target_sampling_rate,
-                **resampled_dic,
-                domain=copy.copy(timeseries.domain),
+            out = RegularTimeSeries(
+                sampling_rate=self.target_sampling_rate, domain=timeseries.domain
             )
-            setattr(data, key, resampled_timeseries)
+            for att_key in timeseries.keys():
+                x_in = getattr(timeseries, att_key)
+                x_out = decimate(x_in, downsample_factor, axis=0, ftype="iir")
+                setattr(out, att_key, x_out)
+
+            setattr(data, key, out)
 
         return data
 
@@ -125,12 +123,13 @@ def irregular_to_regular_timeseries(
                 f"target_domain must be a 1D Interval, got {target_domain}"
             )
 
+        # TODO could be too restrictive when irregular has an auto domain
         # Check the interval is not outside the timeseries domain
-        if target_domain.start[0] < timeseries.timestamps[0]:
+        if target_domain.start[0] < timeseries.domain.start[0]:
             raise ValueError(
                 f"target_domain.start {target_domain.start[0]} is outside the data domain {timeseries.domain.start}"
             )
-        if target_domain.end[0] > timeseries.timestamps[-1]:
+        if target_domain.end[0] > timeseries.domain.end[-1]:
             raise ValueError(
                 f"target_domain.end {target_domain.end[-1]} is outside the data domain {timeseries.domain.end}"
             )
@@ -141,7 +140,6 @@ def irregular_to_regular_timeseries(
 
     timestamps_regular = np.arange(domain.start[0], domain.end[0], dt_target)
 
-    print(target_domain.end)
     for attr_key in timeseries.keys():
         if attr_key == "timestamps":
             continue
