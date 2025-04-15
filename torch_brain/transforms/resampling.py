@@ -34,7 +34,8 @@ class Resampler:
                 f"target_domain must be a 1D Interval, got {target_domain}"
             )
 
-        start, end = target_domain.start[0], target_domain.end[0]
+        offset = target_domain.start[0] % (1 / self.target_sampling_rate)
+        start, end = target_domain.start[0] - offset, target_domain.end[0]
 
         if start < data.domain.start[0]:
             raise ValueError(
@@ -45,15 +46,9 @@ class Resampler:
                 f"target_domain.end {end} is outside the data domain {data.domain}"
             )
 
-        # TODO be sure we are taking an offset when the data is not aligned
-        offset = start % self.target_sampling_rate
-
-        buffer_start = start - self._anti_aliasing_buffer - offset
-        buffer_end = end + self._anti_aliasing_buffer - offset
-
         # Ensure the buffer_start and buffer_end are inside the data domain
-        buffer_start = max(buffer_start, data.domain.start[0])
-        buffer_end = min(buffer_end, data.domain.end[-1])
+        buffer_start = max(start - self._anti_aliasing_buffer, data.domain.start[0])
+        buffer_end = min(end + self._anti_aliasing_buffer, data.domain.end[-1])
 
         sliced_buffered_data = data.slice(buffer_start, buffer_end, reset_origin=False)
 

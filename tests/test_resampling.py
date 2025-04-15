@@ -46,6 +46,11 @@ def right_window():
     return Interval(90.0, 100.0)
 
 
+@pytest.fixture
+def unaligned_window():
+    return Interval(60.5, 70.0)
+
+
 # TODO if domain="auto for IrregularTimeSeries" causes issues
 @pytest.fixture
 def data(base_sampling_rate):
@@ -70,15 +75,10 @@ def dflt_resample_fn(x, downsample_factor):
     return decimate(x, downsample_factor, axis=0, ftype="iir")
 
 
-def test_downsampling(
-    data,
-    base_sampling_rate,
-    downsampling_rate,
-    center_window,
-    left_window,
-    right_window,
+def test_downsampling_centered_regular(
+    data, base_sampling_rate, downsampling_rate, center_window
 ):
-    # 1 case: centered window on regular data
+    # Test on a centered window for regular data
     pre_slice_transform = Resampler(
         target_sampling_rate=downsampling_rate, target_keys=["regular_att"]
     )
@@ -106,7 +106,11 @@ def test_downsampling(
 
     assert np.array_equal(values, expected_values)
 
-    # 2 case: left window on irregular data
+
+def test_downsampling_left_irregular(
+    data, base_sampling_rate, downsampling_rate, left_window
+):
+    # Test for left window for irregular data
     pre_slice_transform = Resampler(
         target_sampling_rate=downsampling_rate, target_keys=["irregular_att"]
     )
@@ -134,7 +138,11 @@ def test_downsampling(
 
     assert np.array_equal(values, expected_values)
 
-    # 3 case: left window on regular and irregular data
+
+def test_downsampling_right_regular_and_irregular(
+    data, base_sampling_rate, downsampling_rate, right_window
+):
+    # Test or tight window for regular and irregular data
     pre_slice_transform = Resampler(
         target_sampling_rate=downsampling_rate,
         target_keys=["regular_att", "irregular_att"],
@@ -169,190 +177,41 @@ def test_downsampling(
     assert np.array_equal(irregular_values, expected_values)
 
 
-# def test_upsampling_irregular(
-#     irregular_data,
-#     base_frequency,
-#     upsampling_frequency,
-#     center_window,
-#     right_window,
-#     left_window,
-# ):
-#     # 1 case: centered window
-#     pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
-#     start = center_window["start"]
-#     end = center_window["end"]
-#     data = pre_slice_transform(irregular_data, start, end)
+def test_downsampling_unaliged(
+    data, base_sampling_rate, downsampling_rate, unaligned_window
+):
+    # Test for unaligned window for irregular data
+    pre_slice_transform = Resampler(
+        target_sampling_rate=downsampling_rate,
+        target_keys=["irregular_att", "regular_att"],
+    )
+    transformed_data = pre_slice_transform(data, unaligned_window)
 
-#     extra_window_length = pre_slice_transform.extra_window_length
-#     window_start = int(start - extra_window_length / 2)
-#     window_end = int(end + extra_window_length / 2)
-#     x_in = irregular_data.att1.values[window_start:window_end]
-#     num = int((window_end - window_start) * upsampling_frequency)
-#     t_in = irregular_data.att1.timestamps[window_start:window_end]
-#     x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
+    regular_timestamps = transformed_data.regular_att.timestamps
+    irregular_timestamps = transformed_data.irregular_att.timestamps
 
-#     N = int(extra_window_length * upsampling_frequency / 2)
-#     assert np.array_equal(data.att1.timestamps, t_out[N:-N])
-#     assert np.array_equal(data.att1.values, x_out[N:-N])
+    expected_timestamps = np.arange(
+        unaligned_window.start[0],
+        unaligned_window.end[0],
+        step=1 / downsampling_rate,
+    )
+    offset = unaligned_window.start[0] % (1 / downsampling_rate)
+    expected_timestamps -= offset
 
-#     # 2 case: right window
-#     pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
-#     start = right_window["start"]
-#     end = right_window["end"]
-#     data = pre_slice_transform(irregular_data, start, end)
+    assert np.array_equal(regular_timestamps, expected_timestamps)
+    assert np.array_equal(irregular_timestamps, expected_timestamps)
 
-#     extra_window_length = pre_slice_transform.extra_window_length
-#     window_start = int(start)
-#     window_end = int(end + extra_window_length)
-#     x_in = irregular_data.att1.values[window_start:window_end]
-#     num = int((window_end - window_start) * upsampling_frequency)
-#     t_in = irregular_data.att1.timestamps[window_start:window_end]
-#     x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
+    regular_values = transformed_data.regular_att.values
+    irregular_values = transformed_data.irregular_att.values
 
-#     N = int(extra_window_length * upsampling_frequency)
-#     assert np.array_equal(data.att1.timestamps, t_out[:-N])
-#     assert np.array_equal(data.att1.values, x_out[:-N])
+    buffer = pre_slice_transform._anti_aliasing_buffer
+    window_start = int(unaligned_window.start[0] - buffer)
+    window_end = int(unaligned_window.end[0] + buffer)
+    x_in = data.regular_att.values[window_start:window_end]
+    downsample_factor = int(base_sampling_rate / downsampling_rate)
+    x_out = dflt_resample_fn(x_in, downsample_factor)
+    resampled_buffer = int(buffer * downsampling_rate)
+    expected_values = x_out[resampled_buffer:-resampled_buffer]
 
-#     # 3 case: left window
-#     pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
-#     start = left_window["start"]
-#     end = left_window["end"]
-#     data = pre_slice_transform(irregular_data, start, end)
-
-#     extra_window_length = pre_slice_transform.extra_window_length
-#     window_start = int(start - extra_window_length)
-#     window_end = int(end)
-#     x_in = irregular_data.att1.values[window_start:window_end]
-#     num = int((window_end - window_start) * upsampling_frequency)
-#     t_in = irregular_data.att1.timestamps[window_start:window_end]
-#     x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
-
-#     N = int(extra_window_length * upsampling_frequency)
-#     assert np.array_equal(data.att1.timestamps, t_out[N:])
-#     assert np.array_equal(data.att1.values, x_out[N:])
-
-
-# def test_downsampling_regular(
-#     regular_data,
-#     base_frequency,
-#     downsampling_frequency,
-#     center_window,
-#     right_window,
-#     left_window,
-# ):
-#     # 1 case: centered window
-#     pre_slice_transform = Resampler(base_frequency, downsampling_frequency)
-#     start = center_window["start"]
-#     end = center_window["end"]
-#     data = pre_slice_transform(regular_data, start, end)
-
-#     extra_window_length = pre_slice_transform.extra_window_length
-#     window_start = int(start - extra_window_length / 2)
-#     window_end = int(end + extra_window_length / 2)
-#     x_in = regular_data.att1.values[window_start:window_end]
-#     num = int((window_end - window_start) * downsampling_frequency)
-#     t_in = regular_data.att1.timestamps[window_start:window_end]
-#     x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
-
-#     N = int(extra_window_length * downsampling_frequency / 2)
-#     assert np.array_equal(data.att1.timestamps, t_out[N:-N])
-#     assert np.array_equal(data.att1.values, x_out[N:-N])
-
-#     # 2 case: right window
-#     pre_slice_transform = Resampler(base_frequency, downsampling_frequency)
-#     start = right_window["start"]
-#     end = right_window["end"]
-#     data = pre_slice_transform(regular_data, start, end)
-
-#     extra_window_length = pre_slice_transform.extra_window_length
-#     window_start = int(start)
-#     window_end = int(end + extra_window_length)
-#     x_in = regular_data.att1.values[window_start:window_end]
-#     num = int((window_end - window_start) * downsampling_frequency)
-#     t_in = regular_data.att1.timestamps[window_start:window_end]
-#     x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
-
-#     N = int(extra_window_length * downsampling_frequency)
-#     assert np.array_equal(data.att1.timestamps, t_out[:-N])
-#     assert np.array_equal(data.att1.values, x_out[:-N])
-
-#     # 3 case: left window
-#     pre_slice_transform = Resampler(base_frequency, downsampling_frequency)
-#     start = left_window["start"]
-#     end = left_window["end"]
-#     data = pre_slice_transform(regular_data, start, end)
-
-#     extra_window_length = pre_slice_transform.extra_window_length
-#     window_start = int(start - extra_window_length)
-#     window_end = int(end)
-#     x_in = regular_data.att1.values[window_start:window_end]
-#     num = int((window_end - window_start) * downsampling_frequency)
-#     t_in = regular_data.att1.timestamps[window_start:window_end]
-#     x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
-
-#     N = int(extra_window_length * downsampling_frequency)
-#     assert np.array_equal(data.att1.timestamps, t_out[N:])
-#     assert np.array_equal(data.att1.values, x_out[N:])
-
-
-# def test_upsampling_regular(
-#     regular_data,
-#     base_frequency,
-#     upsampling_frequency,
-#     center_window,
-#     right_window,
-#     left_window,
-# ):
-#     # 1 case: centered window
-#     pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
-#     start = center_window["start"]
-#     end = center_window["end"]
-#     data = pre_slice_transform(regular_data, start, end)
-
-#     extra_window_length = pre_slice_transform.extra_window_length
-#     window_start = int(start - extra_window_length / 2)
-#     window_end = int(end + extra_window_length / 2)
-#     x_in = regular_data.att1.values[window_start:window_end]
-#     num = int((window_end - window_start) * upsampling_frequency)
-#     t_in = regular_data.att1.timestamps[window_start:window_end]
-#     x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
-
-#     N = int(extra_window_length * upsampling_frequency / 2)
-#     assert np.array_equal(data.att1.timestamps, t_out[N:-N])
-#     assert np.array_equal(data.att1.values, x_out[N:-N])
-
-#     # 2 case: right window
-#     pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
-#     start = right_window["start"]
-#     end = right_window["end"]
-#     data = pre_slice_transform(regular_data, start, end)
-
-#     extra_window_length = pre_slice_transform.extra_window_length
-#     window_start = int(start)
-#     window_end = int(end + extra_window_length)
-#     x_in = regular_data.att1.values[window_start:window_end]
-#     num = int((window_end - window_start) * upsampling_frequency)
-#     t_in = regular_data.att1.timestamps[window_start:window_end]
-#     x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
-
-#     N = int(extra_window_length * upsampling_frequency)
-#     assert np.array_equal(data.att1.timestamps, t_out[:-N])
-#     assert np.array_equal(data.att1.values, x_out[:-N])
-
-#     # 3 case: left window
-#     pre_slice_transform = Resampler(base_frequency, upsampling_frequency)
-#     start = left_window["start"]
-#     end = left_window["end"]
-#     data = pre_slice_transform(regular_data, start, end)
-
-#     extra_window_length = pre_slice_transform.extra_window_length
-#     window_start = int(start - extra_window_length)
-#     window_end = int(end)
-#     x_in = regular_data.att1.values[window_start:window_end]
-#     num = int((window_end - window_start) * upsampling_frequency)
-#     t_in = regular_data.att1.timestamps[window_start:window_end]
-#     x_out, t_out = resample(x_in, num, t=t_in, window="hamming")
-
-#     N = int(extra_window_length * upsampling_frequency)
-#     assert np.array_equal(data.att1.timestamps, t_out[N:])
-#     assert np.array_equal(data.att1.values, x_out[N:])
+    assert np.array_equal(regular_values, expected_values)
+    assert np.array_equal(irregular_values, expected_values)
