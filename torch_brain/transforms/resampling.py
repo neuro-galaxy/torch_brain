@@ -7,20 +7,24 @@ from scipy.signal import decimate
 from temporaldata import Data, Interval, IrregularTimeSeries, RegularTimeSeries
 
 
-def dflt_resample_fn(x, downsample_factor):
-    return decimate(x, downsample_factor, axis=0, ftype="iir")
-
-
 class Resampler:
+    def dflt_resample_fn(self, x, downsample_factor):
+        return decimate(x, downsample_factor, axis=0, ftype="iir")
+
     def __init__(
         self,
         target_sampling_rate: float,
         target_keys: List[str],
-        resample_fn: Optional[Callable] = dflt_resample_fn,
+        shouldAlign: bool = True,
+        resample_fn: Optional[Callable] = None,
     ):
         self.target_sampling_rate = target_sampling_rate
         self.target_keys = target_keys
-        self.resample_fn = resample_fn
+        if resample_fn is None:
+            self.resample_fn = self.dflt_resample_fn
+        else:
+            self.resample_fn = resample_fn
+        self.shouldAlign = shouldAlign
 
         # To avoid aliasing, we add a buffer of 10 * sampling_rate / target_sampling_rate
         # points on left/right side, which is equivalent to 10 / target_sampling_rate seconds
@@ -34,8 +38,11 @@ class Resampler:
                 f"target_domain must be a 1D Interval, got {target_domain}"
             )
 
-        offset = target_domain.start[0] % (1 / self.target_sampling_rate)
-        start, end = target_domain.start[0] - offset, target_domain.end[0]
+        start, end = target_domain.start[0], target_domain.end[0]
+
+        if self.shouldAlign:
+            offset = target_domain.start[0] % (1 / self.target_sampling_rate)
+            start = start - offset
 
         if start < data.domain.start[0]:
             raise ValueError(
