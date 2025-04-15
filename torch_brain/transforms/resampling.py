@@ -1,6 +1,5 @@
-import copy
 import logging
-from typing import List
+from typing import Callable, List, Optional
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -8,14 +7,20 @@ from scipy.signal import decimate
 from temporaldata import Data, Interval, IrregularTimeSeries, RegularTimeSeries
 
 
+def dflt_resample_fn(x, downsample_factor):
+    return decimate(x, downsample_factor, axis=0, ftype="iir")
+
+
 class Resampler:
     def __init__(
         self,
         target_sampling_rate: float,
         target_keys: List[str],
+        resample_fn: Optional[Callable] = dflt_resample_fn,
     ):
         self.target_sampling_rate = target_sampling_rate
         self.target_keys = target_keys
+        self.resample_fn = resample_fn
 
         # To avoid aliasing, we add a buffer of 10 * sampling_rate / target_sampling_rate
         # points on left/right side, which is equivalent to 10 / target_sampling_rate seconds
@@ -41,10 +46,14 @@ class Resampler:
             )
 
         # TODO be sure we are taking an offset when the data is not aligned
+        offset = start % self.target_sampling_rate
+
+        buffer_start = start - self._anti_aliasing_buffer - offset
+        buffer_end = end + self._anti_aliasing_buffer - offset
 
         # Ensure the buffer_start and buffer_end are inside the data domain
-        buffer_start = max(start - self._anti_aliasing_buffer, data.domain.start[0])
-        buffer_end = min(end + self._anti_aliasing_buffer, data.domain.end[-1])
+        buffer_start = max(buffer_start, data.domain.start[0])
+        buffer_end = min(buffer_end, data.domain.end[-1])
 
         sliced_buffered_data = data.slice(buffer_start, buffer_end, reset_origin=False)
 
@@ -87,7 +96,7 @@ class Resampler:
             )
             for att_key in timeseries.keys():
                 x_in = getattr(timeseries, att_key)
-                x_out = decimate(x_in, downsample_factor, axis=0, ftype="iir")
+                x_out = self.resample_fn(x_in, downsample_factor)
                 setattr(out, att_key, x_out)
 
             setattr(data, key, out)
