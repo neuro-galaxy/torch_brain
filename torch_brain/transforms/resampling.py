@@ -8,9 +8,6 @@ from temporaldata import Data, Interval, IrregularTimeSeries, RegularTimeSeries
 
 
 class Resampler:
-    def dflt_resample_fn(self, x, downsample_factor):
-        return decimate(x, downsample_factor, axis=0, ftype="iir")
-
     def __init__(
         self,
         target_sampling_rate: float,
@@ -104,6 +101,9 @@ class Resampler:
             setattr(data, key, out)
 
         return data
+
+    def dflt_resample_fn(self, x, downsample_factor):
+        return decimate(x, downsample_factor, axis=0, ftype="iir")
 
 
 def irregular_to_regular_timeseries(
