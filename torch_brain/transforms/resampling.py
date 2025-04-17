@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.signal import decimate
+import scipy.signal
 from temporaldata import Data, Interval, IrregularTimeSeries, RegularTimeSeries
 
 
@@ -32,9 +32,9 @@ class Resampler:
             if "method" not in arg:
                 arg["method"] = method
 
-            if arg["method"] not in ["decimate"]:
+            if arg["method"] not in ["decimate", "fft"]:
                 raise ValueError(
-                    f"method {arg['method']} is not supported, only decimate is supported"
+                    f"method {arg['method']} is not supported, only decimate and fft are supported"
                 )
 
             # To avoid aliasing, we add a buffer of 10 * sampling_rate / target_sampling_rate
@@ -111,6 +111,12 @@ class Resampler:
                     Interval(start_with_buffer, end_with_buffer),
                     target_sampling_rate,
                 )
+            elif method == "fft":
+                timeseries_resampled = _resample_fft(
+                    timeseries,
+                    Interval(start_with_buffer, end_with_buffer),
+                    target_sampling_rate,
+                )
 
             setattr(data, target_key, timeseries_resampled)
 
@@ -137,7 +143,33 @@ def _decimate(timeseries: RegularTimeSeries, target_sampling_rate: float):
     # resample each attribute
     for att_key in timeseries.keys():
         x_in = getattr(timeseries, att_key)
-        x_out = decimate(x_in, downsample_factor, axis=0, ftype="iir")
+        x_out = scipy.signal.decimate(x_in, downsample_factor, axis=0, ftype="iir")
+        setattr(out, att_key, x_out)
+
+    return out
+
+
+def _resample_fft(timeseries: RegularTimeSeries, target_sampling_rate: float):
+    downsample_factor = timeseries.sampling_rate / target_sampling_rate
+    new_size = int(len(timeseries) * downsample_factor)
+
+    # create a new RegularTimeSeries with the resampled data
+    out = RegularTimeSeries(
+        sampling_rate=target_sampling_rate,
+        domain=Interval(
+            timeseries.domain.start[0],
+            timeseries.domain.start[0] + (new_size - 1) / target_sampling_rate,
+        ),
+    )
+
+    # resample each attribute
+    for att_key in timeseries.keys():
+        x_in = getattr(timeseries, att_key)
+        sos = scipy.signal.cheby1(
+            N=8, rp=0.05, Wn=0.8 / downsample_factor, output="sos"
+        )
+        x_out = scipy.signal.sosfiltfilt(sos, x_in, axis=-1)
+        x_out = scipy.signal.resample(x_out, new_size)
         setattr(out, att_key, x_out)
 
     return out
