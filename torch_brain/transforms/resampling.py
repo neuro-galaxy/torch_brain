@@ -2,8 +2,8 @@ import logging
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
-from scipy.interpolate import interp1d
 import scipy.signal
+from scipy.interpolate import interp1d
 from temporaldata import Data, Interval, IrregularTimeSeries, RegularTimeSeries
 
 
@@ -16,7 +16,15 @@ class Resampler:
         method: Optional[str] = "decimate",
     ):
         r"""
-        args=[{"target_key": "data_key", "target_sampling_rate": ..., "original_sampling_rate": ..., "method": "decimate"}, ...]
+        args=[
+            {
+                "target_key": "data_key",
+                "target_sampling_rate": ...,
+                "original_sampling_rate": ...,
+                "method": "decimate"
+            },
+            ...
+        ]
 
         Args:
             args (List[Dict[str, Any]]): The arguments for the resampling.
@@ -88,9 +96,8 @@ class Resampler:
 
             start_with_buffer = target_domain_with_buffer.start[0]
             end_with_buffer = target_domain_with_buffer.end[0]
-            start_with_buffer = start_with_buffer + (start - start_with_buffer) % (
-                1.0 / self.target_sampling_rate
-            )
+            offset = (start - start_with_buffer) % (1.0 / target_sampling_rate)
+            start_with_buffer = start_with_buffer + offset
 
             # slice data around the target domain
             timeseries = timeseries.slice(
@@ -100,23 +107,19 @@ class Resampler:
             if isinstance(timeseries, IrregularTimeSeries):
                 timeseries = irregular_to_regular_timeseries(
                     timeseries,
-                    target_domain=target_domain,
+                    target_domain=target_domain_with_buffer,
                     target_sampling_rate=arg.get("original_sampling_rate", None),
                 )
 
             # resample data
             if method == "decimate":
-                timeseries_resampled = _decimate(
-                    timeseries,
-                    Interval(start_with_buffer, end_with_buffer),
-                    target_sampling_rate,
-                )
+                timeseries_resampled = _decimate(timeseries, target_sampling_rate)
             elif method == "fft":
-                timeseries_resampled = _resample_fft(
-                    timeseries,
-                    Interval(start_with_buffer, end_with_buffer),
-                    target_sampling_rate,
-                )
+                timeseries_resampled = _resample_fft(timeseries, target_sampling_rate)
+
+            timeseries_resampled = timeseries_resampled.slice(
+                start, end, reset_origin=False
+            )
 
             setattr(data, target_key, timeseries_resampled)
 
@@ -224,8 +227,21 @@ def irregular_to_regular_timeseries(
         domain = target_domain
 
     out = RegularTimeSeries(sampling_rate=target_sampling_rate, domain=domain)
+    # timestamps = out.timestamps not possible
+    # # Rn trigger this ValueError: RegularTimeSeries is empty.
+    #         def __len__(self):
+    #         r"""Returns the first dimension shared by all attributes."""
+    #         first_dim = self._maybe_first_dim()
+    #         if first_dim is None:
+    # >           raise ValueError(f"{self.__class__.__name__} is empty.")
 
-    for attr_key in timeseries.keys():
+    # Alternative
+    timestamps = np.arange(domain.start[0], domain.end[0], 1 / target_sampling_rate)
+
+    for attr_key in timeseries.timekeys():
+        if attr_key == "timestamps":
+            continue
+
         interpolator = interp1d(
             timeseries.timestamps,
             getattr(timeseries, attr_key),
@@ -233,7 +249,9 @@ def irregular_to_regular_timeseries(
             kind="linear",
             fill_value="extrapolate",
         )
-        interpolated_values = interpolator(out.timestamps)
+
+        interpolated_values = interpolator(timestamps)
+        # error here        AttributeError: can't set attribute 'timestamps'
         setattr(out, attr_key, interpolated_values)
 
     return out
