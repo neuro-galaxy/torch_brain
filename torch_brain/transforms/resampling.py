@@ -12,7 +12,7 @@ class Resampler:
         self,
         args: List[Dict[str, Any]],
         *,
-        target_sampling_rate: float,
+        target_sampling_rate: Optional[float] = None,
         method: Optional[str] = "decimate",
     ):
         r"""
@@ -35,6 +35,10 @@ class Resampler:
         for arg in self.args:
             # Set default values if not provided in the argument
             if "target_sampling_rate" not in arg:
+                if target_sampling_rate is None:
+                    raise ValueError(
+                        f"target_sampling_rate must be provided in the argument {arg} or as a parameter"
+                    )
                 arg["target_sampling_rate"] = target_sampling_rate
 
             if "method" not in arg:
