@@ -100,8 +100,21 @@ class Resampler:
 
             start_with_buffer = target_domain_with_buffer.start[0]
             end_with_buffer = target_domain_with_buffer.end[0]
+
+            # Handle an edge case where a small offset needs to considered.
+            # This is because the anti-aliasing buffer on the left might be truncated by the timeseries domain's start.
+            # Adding this offset ensures that the start time of the resampled timeseries aligns with the original timeseries,
+            # making the first point of both timeseries identical.
             offset = (start - start_with_buffer) % (1.0 / target_sampling_rate)
+
+            # Adjust the buffer's start to align with the timeseries domain's start.
             start_with_buffer = start_with_buffer + offset
+
+            # Update the target domain's start to reflect the adjusted buffer start.
+            target_domain_with_buffer.start[0] += offset
+
+            # Ensure proper alignment for slicing operations at the end of the process.
+            end = end + offset
 
             # slice data around the target domain
             timeseries = timeseries.slice(
