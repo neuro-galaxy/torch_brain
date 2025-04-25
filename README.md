@@ -4,7 +4,7 @@
 
 [Documentation](https://torch-brain.readthedocs.io/en/latest/) | [Join our Discord community](https://discord.gg/kQNKA6B8ZC)
 
-[![PyPI version](https://badge.fury.io/py/pytorch_brain.svg)](https://badge.fury.io/py/pytorch_brain)
+[![PyPI version](https://badge.fury.io/py/pytorch-brain.svg)](https://badge.fury.io/py/pytorch-brain)
 [![Documentation Status](https://readthedocs.org/projects/torch-brain/badge/?version=latest)](https://torch-brain.readthedocs.io/en/latest/?badge=latest)
 [![Tests](https://github.com/neuro-galaxy/torch_brain/actions/workflows/testing.yml/badge.svg)](https://github.com/neuro-galaxy/torch_brain/actions/workflows/testing.yml)
 [![Linting](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml/badge.svg)](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml)
@@ -33,7 +33,7 @@ torch_brain is available for Python 3.9 to Python 3.11
 
 To install the package, run the following command:
 ```bash
-pip install pytorch_brain
+pip install pytorch-brain
 ```
 
 ## Contributing
