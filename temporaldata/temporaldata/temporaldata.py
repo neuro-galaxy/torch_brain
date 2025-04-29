@@ -3,9 +3,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Mapping, Sequence
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Type
-import collections
 import logging
-import warnings
 
 import h5py
 import numpy as np
@@ -3117,7 +3115,7 @@ class Data(object):
                 out = getattr(out, c)
             except AttributeError:
                 raise AttributeError(
-                    f"Could not resolve {path} in data (specifically, at level {c}))"
+                    f"Could not resolve {path} in data (specifically, at level {c})"
                 )
         return out
 
