@@ -3119,6 +3119,22 @@ class Data(object):
                 )
         return out
 
+    def has_nested_attribute(self, path: str) -> bool:
+        """Check if the attribute specified by the path exists in the Data object."""
+        if not path:
+            return False
+
+        current_obj = self
+        attribute_names = path.split(".")
+
+        for name in attribute_names:
+            try:
+                current_obj = current_obj.__dict__[name]
+            except KeyError:
+                return False
+
+        return True
+
     def __copy__(self):
         # create a shallow copy of the object
         # the full skeleton of the Data object, i.e. including all ArrayDict children,

@@ -1336,3 +1336,133 @@ def test_precision(caplog):
         domain="auto",
     )
     assert lfp.timestamps.dtype == np.float64
+
+
+def test_nested_attributes():
+    data = Data(
+        session_id="session_0",
+        domain=Interval.from_list([(0, 3)]),
+        spikes=IrregularTimeSeries(
+            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
+            waveforms=np.zeros((6, 48)),
+            domain="auto",
+        ),
+        units=ArrayDict(
+            id=np.array(["unit_0", "unit_1", "unit_2"]),
+            brain_region=np.array(["M1", "M1", "PMd"]),
+        ),
+    )
+
+    # test get_nested_attribute
+    out = data.get_nested_attribute("spikes.timestamps")
+    assert np.allclose(out, data.spikes.timestamps)
+
+    out = data.get_nested_attribute("units.id")
+    for i, id in enumerate(out):
+        assert id == data.units.id[i]
+
+    # test has_nested_attribute
+    assert data.has_nested_attribute("spikes.timestamps")
+    assert data.has_nested_attribute("units.id")
+    assert not data.has_nested_attribute("spikes.unit_index")
+
+    # test that an error is raised if the attribute does not exist
+    with pytest.raises(AttributeError):
+        data.get_nested_attribute("spikes.unit_index")
+
+    # test that it is possible to access attributes that are not nested
+    assert data.get_nested_attribute("session_id") == "session_0"
+    assert data.has_nested_attribute("session_id")
+
+
+def test_data_has_nested_attribute_lazy(test_filepath):
+    """Tests the Data.has_nested_attribute method with lazily loaded objects."""
+    data_to_save = Data(
+        session_id="session_lazy_hsna_test",
+        some_numpy_array=np.array([10, 20, 30]),
+        spikes=IrregularTimeSeries(
+            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
+            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            domain="auto",
+        ),
+        units=ArrayDict(
+            id=np.array(["u0_hsna", "u1_hsna"]),
+            type=np.array(["typeA_hsna", "typeB_hsna"]),
+        ),
+        nested_data=Data(
+            level2_attr="hello_nested_hsna",
+            level2_array_dict=ArrayDict(l2_field=np.array([100, 200])),
+            level2_primitive=42,
+            domain=Interval(0.0, 1.0),
+        ),
+        domain=Interval(0.0, 3.0),
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        data_to_save.to_hdf5(f)
+    del data_to_save
+
+    with h5py.File(test_filepath, "r") as f:
+        lazy_data = Data.from_hdf5(f, lazy=True)
+
+        # Pre-checks for laziness: ensure some attributes are indeed h5py.Dataset
+        assert isinstance(lazy_data.spikes.__dict__["unit_index"], h5py.Dataset)
+        assert isinstance(lazy_data.units.__dict__["id"], h5py.Dataset)
+        assert isinstance(
+            lazy_data.nested_data.level2_array_dict.__dict__["l2_field"], h5py.Dataset
+        )
+
+        # === Test existing paths ===
+        assert lazy_data.has_nested_attribute("session_id")
+        assert lazy_data.has_nested_attribute("some_numpy_array")
+        assert lazy_data.has_nested_attribute("spikes")
+        assert lazy_data.has_nested_attribute("spikes.unit_index")
+        assert lazy_data.has_nested_attribute("units.id")
+        assert lazy_data.has_nested_attribute("nested_data")
+        assert lazy_data.has_nested_attribute("nested_data.level2_attr")
+        assert lazy_data.has_nested_attribute("nested_data.level2_array_dict")
+        assert lazy_data.has_nested_attribute("nested_data.level2_array_dict.l2_field")
+        assert lazy_data.has_nested_attribute("nested_data.level2_primitive")
+
+        # Check attributes remain lazy after has_nested_attribute calls
+        assert isinstance(
+            lazy_data.spikes.__dict__["unit_index"], h5py.Dataset
+        ), "spikes.unit_index was loaded"
+        assert isinstance(
+            lazy_data.units.__dict__["id"], h5py.Dataset
+        ), "units.id was loaded"
+        assert isinstance(
+            lazy_data.nested_data.level2_array_dict.__dict__["l2_field"], h5py.Dataset
+        ), "nested_data.l2_array_dict.l2_field was loaded"
+
+        # === Test non-existent paths (should return False) ===
+        assert not lazy_data.has_nested_attribute("non_existent_toplevel")
+        assert not lazy_data.has_nested_attribute("spikes.foo_bar_baz")
+        assert not lazy_data.has_nested_attribute("units.id.deeper_false")
+        assert not lazy_data.has_nested_attribute(
+            "nested_data.level2_array_dict.l2_field.deeper_false_too"
+        )
+        assert not lazy_data.has_nested_attribute("nested_data.non_existent_attr")
+
+        # === Test empty path ===
+        assert not lazy_data.has_nested_attribute("")
+
+        # === Test paths that should fail due to AttributeError on __dict__ access for primitives ===
+        with pytest.raises(
+            AttributeError, match="'str' object has no attribute '__dict__'"
+        ):
+            lazy_data.has_nested_attribute("session_id.foo")
+
+        with pytest.raises(
+            AttributeError, match="'numpy.ndarray' object has no attribute '__dict__'"
+        ):
+            lazy_data.has_nested_attribute("some_numpy_array.shape")
+        with pytest.raises(
+            AttributeError, match="'numpy.ndarray' object has no attribute '__dict__'"
+        ):
+            lazy_data.has_nested_attribute("some_numpy_array.foo")
+
+        with pytest.raises(
+            AttributeError, match="'numpy.int64' object has no attribute '__dict__'"
+        ):
+            lazy_data.has_nested_attribute("nested_data.level2_primitive.foo")
