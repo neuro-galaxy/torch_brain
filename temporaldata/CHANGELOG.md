@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 - Fixed a bug where `RegularTimeSeries.slice` does not update the `domain` attribute and leads to incorrect resolution of `timestamps` after slicing. ([#39](https://github.com/neuro-galaxy/temporaldata/pull/39))
+- Fixed a bug where `data.materialize` would not actually load the domain information from the file which would cause issues when accessing it after file was closed. ([#43] (https://github.com/neuro-galaxy/temporaldata/pull/43))
 
 ## [0.1.3] - 2025-03-21
 ### Added

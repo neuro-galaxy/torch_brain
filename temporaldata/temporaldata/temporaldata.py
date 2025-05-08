@@ -3172,6 +3172,9 @@ class Data(object):
             if isinstance(getattr(self, key), (Data, ArrayDict)):
                 getattr(self, key).materialize()
 
+        if self.domain is not None:
+            self.domain.materialize()
+
         return self
 
 
