@@ -10,6 +10,7 @@ from temporaldata import (
     Interval,
     Data,
 )
+from temporaldata.temporaldata import LazyInterval
 
 
 @pytest.fixture
@@ -84,19 +85,29 @@ def test_materialize(test_filepath):
         # materialize the data
         data.materialize()
 
-        # check that the data is now materialized
-        assert all(
-            isinstance(data.spikes.__dict__[key], np.ndarray)
-            for key in data.spikes.keys()
-        )
-        assert all(
-            isinstance(data.lfp.__dict__[key], np.ndarray) for key in data.lfp.keys()
-        )
-        assert all(
-            isinstance(data.units.__dict__[key], np.ndarray)
-            for key in data.units.keys()
-        )
-        assert all(
-            isinstance(data.trials.__dict__[key], np.ndarray)
-            for key in data.trials.keys()
-        )
+    # check that the data is now materialized
+    # Note: It is important to assert this when file is closed
+    assert all(
+        isinstance(data.spikes.__dict__[key], np.ndarray) for key in data.spikes.keys()
+    )
+    assert all(
+        isinstance(data.lfp.__dict__[key], np.ndarray) for key in data.lfp.keys()
+    )
+    assert all(
+        isinstance(data.units.__dict__[key], np.ndarray) for key in data.units.keys()
+    )
+    assert all(
+        isinstance(data.trials.__dict__[key], np.ndarray) for key in data.trials.keys()
+    )
+
+    # Check that none of the objects in the data object are the Lazy variant
+    for key in data.keys():
+        obj = getattr(data, key)
+        if isinstance(obj, (Data, RegularTimeSeries, IrregularTimeSeries, Interval)):
+            assert (
+                "Lazy" not in obj.__class__.__name__
+            ), f"{key} is still a Lazy object: {obj.__class__.__name__}"
+
+    assert not isinstance(
+        data.domain, LazyInterval
+    ), f"data.domain is still a LazyInterval object"
