@@ -1,8 +1,6 @@
 import pytest
 import torch
-import lightning as L
 import torchmetrics
-from collections import defaultdict
 
 from torch_brain.utils.stitcher import MultiTaskDecodingStitchEvaluator
 
