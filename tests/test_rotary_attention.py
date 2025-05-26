@@ -181,172 +181,154 @@ def test_dropout(device, batch_size, seq_length, dim):
     assert torch.allclose(out2, out3)
 
 
-def test_rotary_cross_attention_forward_varlen_matches_forward(device, dim):
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
+@pytest.mark.parametrize("use_xformers", [True, False])
+def test_rotary_cross_attention_forward_varlen_matches_forward(
+    device, dim, use_xformers
+):
     """Test that forward_varlen produces the same output as forward for the same input."""
-    # Skip test if not on CUDA with xformers
-    if device == "cpu":
-        pytest.skip("forward_varlen not implemented for CPU")
+    model = RotaryCrossAttention(dim=dim).to(device)
 
-    try:
-        model = RotaryCrossAttention(dim=dim).to(device)
+    # Create test data
+    query_lengths = [3, 5]
+    context_lengths = [4, 6]
 
-        # Create test data
-        query_lengths = [3, 5]
-        context_lengths = [4, 6]
+    batch_size = len(query_lengths)
 
-        batch_size = len(query_lengths)
+    # First create data for forward_varlen
+    total_query_len = sum(query_lengths)
+    total_context_len = sum(context_lengths)
 
-        # First create data for forward_varlen
-        total_query_len = sum(query_lengths)
-        total_context_len = sum(context_lengths)
+    x_query_varlen = torch.randn(total_query_len, dim, device=device)
+    x_context_varlen = torch.randn(total_context_len, dim, device=device)
+    query_pos_emb_varlen = torch.randn(total_query_len, dim // 2, device=device)
+    context_pos_emb_varlen = torch.randn(total_context_len, dim // 2, device=device)
 
-        x_query_varlen = torch.randn(total_query_len, dim, device=device)
-        x_context_varlen = torch.randn(total_context_len, dim, device=device)
-        query_pos_emb_varlen = torch.randn(total_query_len, dim // 2, device=device)
-        context_pos_emb_varlen = torch.randn(total_context_len, dim // 2, device=device)
+    # Now create the same data in batched form for regular forward
+    max_query_len = max(query_lengths)
+    max_context_len = max(context_lengths)
 
-        # Now create the same data in batched form for regular forward
-        max_query_len = max(query_lengths)
-        max_context_len = max(context_lengths)
+    x_query_batch = torch.zeros(batch_size, max_query_len, dim, device=device)
+    x_context_batch = torch.zeros(batch_size, max_context_len, dim, device=device)
+    query_pos_emb_batch = torch.zeros(
+        batch_size, max_query_len, dim // 2, device=device
+    )
+    context_pos_emb_batch = torch.zeros(
+        batch_size, max_context_len, dim // 2, device=device
+    )
 
-        x_query_batch = torch.zeros(batch_size, max_query_len, dim, device=device)
-        x_context_batch = torch.zeros(batch_size, max_context_len, dim, device=device)
-        query_pos_emb_batch = torch.zeros(
-            batch_size, max_query_len, dim // 2, device=device
+    # Create context mask for padding - shape (B, N_c) indicating valid context positions
+    context_mask = torch.zeros(
+        batch_size, max_context_len, device=device, dtype=torch.bool
+    )
+
+    # Fill in the batched tensors with the same data as the varlen tensors
+    start_q = 0
+    start_c = 0
+    for i, (qlen, clen) in enumerate(zip(query_lengths, context_lengths)):
+        x_query_batch[i, :qlen] = x_query_varlen[start_q : start_q + qlen]
+        x_context_batch[i, :clen] = x_context_varlen[start_c : start_c + clen]
+        query_pos_emb_batch[i, :qlen] = query_pos_emb_varlen[start_q : start_q + qlen]
+        context_pos_emb_batch[i, :clen] = context_pos_emb_varlen[
+            start_c : start_c + clen
+        ]
+
+        # Set context mask for valid positions
+        context_mask[i, :clen] = True
+
+        start_q += qlen
+        start_c += clen
+
+    # Run forward_varlen
+    output_varlen = model.forward_varlen(
+        x_query_varlen,
+        x_context_varlen,
+        query_pos_emb_varlen,
+        context_pos_emb_varlen,
+        torch.tensor(query_lengths, device=device),
+        torch.tensor(context_lengths, device=device),
+    )
+
+    # Run normal forward
+    output_batch = model(
+        x_query_batch,
+        x_context_batch,
+        query_pos_emb_batch,
+        context_pos_emb_batch,
+        context_mask=context_mask,
+        use_xformers=use_xformers,
+    )
+
+    # Compare outputs for non-padded positions
+    start_q = 0
+    for i, qlen in enumerate(query_lengths):
+        assert torch.allclose(
+            output_varlen[start_q : start_q + qlen],
+            output_batch[i, :qlen],
+            atol=1e-5,
         )
-        context_pos_emb_batch = torch.zeros(
-            batch_size, max_context_len, dim // 2, device=device
-        )
-
-        # Create attention mask for padding
-        attn_mask = torch.zeros(
-            batch_size, max_query_len, max_context_len, device=device
-        )
-
-        # Fill in the batched tensors with the same data as the varlen tensors
-        start_q = 0
-        start_c = 0
-        for i, (qlen, clen) in enumerate(zip(query_lengths, context_lengths)):
-            x_query_batch[i, :qlen] = x_query_varlen[start_q : start_q + qlen]
-            x_context_batch[i, :clen] = x_context_varlen[start_c : start_c + clen]
-            query_pos_emb_batch[i, :qlen] = query_pos_emb_varlen[
-                start_q : start_q + qlen
-            ]
-            context_pos_emb_batch[i, :clen] = context_pos_emb_varlen[
-                start_c : start_c + clen
-            ]
-
-            # Set attention mask for valid positions
-            attn_mask[i, :qlen, :clen] = 1.0
-
-            start_q += qlen
-            start_c += clen
-
-        # Get outputs from both implementations
-        try:
-            # Run forward_varlen
-            output_varlen = model.forward_varlen(
-                x_query_varlen,
-                x_context_varlen,
-                query_pos_emb_varlen,
-                context_pos_emb_varlen,
-                torch.tensor(query_lengths, device=device),
-                torch.tensor(context_lengths, device=device),
-            )
-
-            # Run normal forward
-            output_batch = model(
-                x_query_batch,
-                x_context_batch,
-                query_pos_emb_batch,
-                context_pos_emb_batch,
-                attn_mask,
-            )
-
-            # Compare outputs for non-padded positions
-            start_q = 0
-            for i, qlen in enumerate(query_lengths):
-                assert torch.allclose(
-                    output_varlen[start_q : start_q + qlen],
-                    output_batch[i, :qlen],
-                    atol=1e-5,
-                )
-                start_q += qlen
-
-        except RuntimeError as e:
-            if "please install xformers" in str(e):
-                pytest.skip("xformers not installed")
-    except Exception as e:
-        pytest.skip(f"Test failed with error: {str(e)}")
+        start_q += qlen
 
 
-def test_rotary_self_attention_forward_varlen_matches_forward(device, dim):
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
+@pytest.mark.parametrize("use_xformers", [True, False])
+def test_rotary_self_attention_forward_varlen_matches_forward(
+    device, dim, use_xformers
+):
     """Test that forward_varlen produces the same output as forward for the same input."""
-    # Skip test if not on CUDA with xformers
-    if device == "cpu":
-        pytest.skip("forward_varlen not implemented for CPU")
+    model = RotarySelfAttention(dim=dim).to(device)
 
-    try:
-        model = RotarySelfAttention(dim=dim).to(device)
+    # Create test data
+    seq_lengths = [3, 5]
+    batch_size = len(seq_lengths)
 
-        # Create test data
-        seq_lengths = [3, 5]
-        batch_size = len(seq_lengths)
+    # First create data for forward_varlen
+    total_len = sum(seq_lengths)
 
-        # First create data for forward_varlen
-        total_len = sum(seq_lengths)
+    x_varlen = torch.randn(total_len, dim, device=device)
+    pos_emb_varlen = torch.randn(total_len, dim // 2, device=device)
 
-        x_varlen = torch.randn(total_len, dim, device=device)
-        pos_emb_varlen = torch.randn(total_len, dim // 2, device=device)
+    # Now create the same data in batched form for regular forward
+    max_len = max(seq_lengths)
 
-        # Now create the same data in batched form for regular forward
-        max_len = max(seq_lengths)
+    x_batch = torch.zeros(batch_size, max_len, dim, device=device)
+    pos_emb_batch = torch.zeros(batch_size, max_len, dim // 2, device=device)
 
-        x_batch = torch.zeros(batch_size, max_len, dim, device=device)
-        pos_emb_batch = torch.zeros(batch_size, max_len, dim // 2, device=device)
+    # Create attention mask for padding - shape (B, N) indicating valid positions
+    x_mask = torch.zeros(batch_size, max_len, device=device, dtype=torch.bool)
 
-        # Create attention mask for padding
-        attn_mask = torch.zeros(batch_size, max_len, max_len, device=device)
+    # Fill in the batched tensors with the same data as the varlen tensors
+    start = 0
+    for i, slen in enumerate(seq_lengths):
+        x_batch[i, :slen] = x_varlen[start : start + slen]
+        pos_emb_batch[i, :slen] = pos_emb_varlen[start : start + slen]
 
-        # Fill in the batched tensors with the same data as the varlen tensors
-        start = 0
-        for i, slen in enumerate(seq_lengths):
-            x_batch[i, :slen] = x_varlen[start : start + slen]
-            pos_emb_batch[i, :slen] = pos_emb_varlen[start : start + slen]
+        # Set attention mask for valid positions
+        x_mask[i, :slen] = True
 
-            # Set attention mask for valid positions
-            attn_mask[i, :slen, :slen] = 1.0
+        start += slen
 
-            start += slen
+    # Run forward_varlen
+    output_varlen = model.forward_varlen(
+        x_varlen,
+        pos_emb_varlen,
+        torch.tensor(seq_lengths, device=device),
+    )
 
-        # Get outputs from both implementations
-        try:
-            # Run forward_varlen
-            output_varlen = model.forward_varlen(
-                x_varlen,
-                pos_emb_varlen,
-                torch.tensor(seq_lengths, device=device),
-            )
+    # Run normal forward
+    output_batch = model(
+        x_batch,
+        pos_emb_batch,
+        x_mask=x_mask,
+        use_xformers=use_xformers,
+    )
 
-            # Run normal forward
-            output_batch = model(
-                x_batch,
-                pos_emb_batch,
-                attn_mask,
-            )
-
-            # Compare outputs for non-padded positions
-            start = 0
-            for i, slen in enumerate(seq_lengths):
-                assert torch.allclose(
-                    output_varlen[start : start + slen],
-                    output_batch[i, :slen],
-                    atol=1e-5,
-                )
-                start += slen
-
-        except RuntimeError as e:
-            if "please install xformers" in str(e):
-                pytest.skip("xformers not installed")
-    except Exception as e:
-        pytest.skip(f"Test failed with error: {str(e)}")
+    # Compare outputs for non-padded positions
+    start = 0
+    for i, slen in enumerate(seq_lengths):
+        assert torch.allclose(
+            output_varlen[start : start + slen],
+            output_batch[i, :slen],
+            atol=1e-5,
+        )
+        start += slen

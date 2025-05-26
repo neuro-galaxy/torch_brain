@@ -72,6 +72,7 @@ class RotaryCrossAttention(nn.Module):
         query_pos_emb,
         context_pos_emb,
         context_mask=None,
+        use_xformers: bool = False,
     ):
         """Forward pass for regular or padded sequences.
 
@@ -96,7 +97,7 @@ class RotaryCrossAttention(nn.Module):
         k, v = self.to_kv(x_context).chunk(2, dim=-1)
 
         # select attention kernel
-        if xops is not None and x_query.device.type == "cuda":
+        if xops is not None and x_query.device.type == "cuda" and use_xformers:
             # if xformers is available, use it for attention.
             # xformers supports attention masks when using the memory efficient attention
             # kernel, but pytorch does not.
@@ -244,13 +245,14 @@ class RotarySelfAttention(nn.Module):
         x,
         rotary_time_emb,
         x_mask=None,
+        use_xformers: bool = False,
     ):
         """Forward pass for fixed-length sequences.
 
         Shape:
             - x: (B, N, D)
             - rotary_time_emb: (B, N, D_h)
-            - x_mask: (B, N, N)
+            - x_mask: (B, N)
             - Output: (B, N, D)
 
             where B is batch size, N is sequence length, D is input dimension,
@@ -263,7 +265,7 @@ class RotarySelfAttention(nn.Module):
         q, k, v = self.to_qkv(x).chunk(3, dim=-1)
 
         # select attention kernel
-        if xops is not None and x.device.type == "cuda":
+        if xops is not None and x.device.type == "cuda" and use_xformers:
             rotary_attn_func = rotary_attn_xformers_func
         else:
             rotary_attn_func = rotary_attn_pytorch_func
