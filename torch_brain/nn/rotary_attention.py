@@ -1,4 +1,5 @@
 from typing import Optional
+import os
 
 import torch
 import torch.nn.functional as F
@@ -30,6 +31,11 @@ class RotaryCrossAttention(nn.Module):
     - forward_varlen(): Uses sequence lengths instead of masks for sequences that are chained
       together in a single batch dimension. This can be more memory efficient since it avoids
       padding, but requires the sequences to be concatenated rather than stacked.
+
+    The attention implementation is controlled by the TORCH_BRAIN_USE_EFFICIENT_ATTENTION
+    environment variable. When set to "true" (default), "1", or "yes", the layer will use
+    efficient attention implementations (e.g., xformers) when available on CUDA devices.
+    Set to "false", "0", or "no" to force the use of PyTorch's default attention.
 
     Args:
         dim (int): Dimension of input query embeddings
@@ -72,7 +78,6 @@ class RotaryCrossAttention(nn.Module):
         query_pos_emb,
         context_pos_emb,
         context_mask=None,
-        use_xformers: bool = False,
     ):
         """Forward pass for regular or padded sequences.
 
@@ -97,7 +102,10 @@ class RotaryCrossAttention(nn.Module):
         k, v = self.to_kv(x_context).chunk(2, dim=-1)
 
         # select attention kernel
-        if xops is not None and x_query.device.type == "cuda" and use_xformers:
+        use_efficient = os.getenv(
+            "TORCH_BRAIN_USE_EFFICIENT_ATTENTION", "true"
+        ).lower() in ("true", "1", "yes")
+        if xops is not None and x_query.device.type == "cuda" and use_efficient:
             # if xformers is available, use it for attention.
             # xformers supports attention masks when using the memory efficient attention
             # kernel, but pytorch does not.
@@ -211,6 +219,11 @@ class RotarySelfAttention(nn.Module):
       together in a single batch dimension. This can be more memory efficient since it avoids
       padding, but requires the sequences to be concatenated rather than stacked.
 
+    The attention implementation is controlled by the TORCH_BRAIN_USE_EFFICIENT_ATTENTION
+    environment variable. When set to "true" (default), "1", or "yes", the layer will use
+    efficient attention implementations (e.g., xformers) when available on CUDA devices.
+    Set to "false", "0", or "no" to force the use of PyTorch's default attention.
+
     Args:
         dim (int): Dimension of input embeddings
         heads (int): Number of attention heads
@@ -245,7 +258,6 @@ class RotarySelfAttention(nn.Module):
         x,
         rotary_time_emb,
         x_mask=None,
-        use_xformers: bool = False,
     ):
         """Forward pass for fixed-length sequences.
 
@@ -265,7 +277,10 @@ class RotarySelfAttention(nn.Module):
         q, k, v = self.to_qkv(x).chunk(3, dim=-1)
 
         # select attention kernel
-        if xops is not None and x.device.type == "cuda" and use_xformers:
+        use_efficient = os.getenv(
+            "TORCH_BRAIN_USE_EFFICIENT_ATTENTION", "true"
+        ).lower() in ("true", "1", "yes")
+        if xops is not None and x.device.type == "cuda" and use_efficient:
             rotary_attn_func = rotary_attn_xformers_func
         else:
             rotary_attn_func = rotary_attn_pytorch_func
