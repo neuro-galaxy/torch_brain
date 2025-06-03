@@ -65,13 +65,13 @@ class RotaryEmbedding(nn.Module):
     `torch_brain.nn.RotarySelfAttention` and `torch_brain.nn.RotaryCrossAttention` to
     module the attention in accordance with relative timing/positions of the tokens.
 
-    `Original paper <https://arxiv.org/abs/2104.09864>`
+    `Original paper <https://arxiv.org/abs/2104.09864>`_
 
     Args:
         head_dim (int): Dimension of the attention head.
         rotate_dim (int): Number of dimensions to rotate. You can choose to rotate only a
             small portion of the head dimension using this parameter.
-            E.g. [PerceiverIO](https://arxiv.org/abs/2107.14795) found rotating only half
+            E.g. `PerceiverIO <https://arxiv.org/abs/2107.14795>`_ found rotating only half
             dimensions to be effective.
         t_min (float): Minimum period of the sinusoids. Set this to the smallest
             timescale the attention layer should care about.
