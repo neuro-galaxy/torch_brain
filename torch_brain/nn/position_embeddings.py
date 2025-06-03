@@ -61,7 +61,7 @@ class RotaryEmbedding(nn.Module):
     `torch_brain.nn.RotarySelfAttention` and `torch_brain.nn.RotaryCrossAttention` to
     module the attention in accordance with relative timing/positions of the tokens.
 
-    Original paper: https://arxiv.org/abs/2104.09864
+    `Original paper <https://arxiv.org/abs/2104.09864>`
 
     Args:
         head_dim (int): Dimension of the attention head.
