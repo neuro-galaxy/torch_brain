@@ -46,8 +46,7 @@ class SinusoidalEmbedding(nn.Module):
         num: int, t_min: Union[float, Tensor], t_max: Union[float, Tensor]
     ) -> Tensor:
         r"""Generates ``num`` timeperiods that are logarithmically spaced between
-        ``t_min`` and ``t_max``. Both ``t_min`` and ``t_max`` are included in the returned
-        periods
+        ``t_min`` and ``t_max`` (both inclusive).
 
         Args:
             num (int): number of timestamps needed
@@ -68,6 +67,8 @@ class RotaryEmbedding(nn.Module):
     module the attention in accordance with relative timing/positions of the tokens.
 
     Original paper: `RoFormer: Enhanced Transformer with Rotary Position Embedding <https://arxiv.org/abs/2104.09864>`_
+
+    The timeperiods are computed using :meth:`SinsuoidalEmbedding.get_periods`.
 
     Args:
         head_dim (int): Dimension of the attention head.
