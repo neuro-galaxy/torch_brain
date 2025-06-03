@@ -57,21 +57,22 @@ class SinusoidalEmbedding(nn.Module):
 
 
 class RotaryEmbedding(nn.Module):
-    r"""Custom rotary positional embedding layer. This function generates sinusoids of
-    different frequencies, which are then used to modulate the input data. Half of the
-    dimensions are not rotated.
+    r"""Rotary time/positional embedding layer. This layer is used in conjunction with
+    `torch_brain.nn.RotarySelfAttention` and `torch_brain.nn.RotaryCrossAttention` to
+    module the attention in accordance with relative timing/positions of the tokens.
 
-    The frequencies are computed as follows:
-
-    .. math::
-        f(i) = {t_{\min}} \cdot \frac{t_{\max}}{t_{\min}}^{2i/dim}
-
-    To rotate the input data, use :func:`apply_rotary_pos_emb`.
+    Original paper: https://arxiv.org/abs/2104.09864
 
     Args:
-        dim (int): Dimensionality of the input data.
-        t_min (float, optional): Minimum period of the sinusoids.
-        t_max (float, optional): Maximum period of the sinusoids.
+        head_dim (int): Dimension of the attention head.
+        rotate_dim (int): Number of dimensions to rotate. You can choose to rotate only a
+            small portion of the head dimension using this parameter.
+            E.g. [PerceiverIO](https://arxiv.org/abs/2107.14795) found rotating only half
+            dimensions to be effective.
+        t_min (float, optional): Minimum period of the sinusoids. Set this to the smallest
+            timescale the attention layer should care about.
+        t_max (float, optional): Maximum period of the sinusoids. Set this to the largest
+            timescale the attention layer should care about.
     """
 
     omega: Tensor
