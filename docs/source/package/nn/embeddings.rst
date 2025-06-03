@@ -13,7 +13,7 @@ Embeddings Layers
      - An extendable embedding layer + tokenizer.
    * - :py:class:`RotaryEmbedding`
      - Rotary embedding layer.
-  
+
 .. autoclass:: Embedding
     :members:
     :undoc-members:
@@ -26,5 +26,3 @@ Embeddings Layers
 .. autoclass:: RotaryEmbedding
     :members:
     :undoc-members:
-
-.. autofunction:: apply_rotary_pos_emb
