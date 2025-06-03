@@ -84,7 +84,7 @@ class POYOPlus(nn.Module):
         atn_dropout: float = 0.0,
         emb_init_scale: float = 0.02,
         t_min: float = 1e-4,
-        t_max: float = 4.0,
+        t_max: float = 2.0627,
     ):
         super().__init__()
 
@@ -103,7 +103,7 @@ class POYOPlus(nn.Module):
         self.latent_emb = Embedding(
             num_latents_per_step, dim, init_scale=emb_init_scale
         )
-        self.rotary_emb = RotaryEmbedding(dim_head, t_min, t_max)
+        self.rotary_emb = RotaryEmbedding(dim_head, dim_head // 2, t_min, t_max)
 
         self.dropout = nn.Dropout(p=lin_dropout)
 

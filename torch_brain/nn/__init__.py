@@ -3,7 +3,7 @@ from .embedding import Embedding
 from .infinite_vocab_embedding import InfiniteVocabEmbedding
 
 # rotary attention-based models
-from .rotary_embedding import RotaryEmbedding, apply_rotary_pos_emb
+from .position_embeddings import RotaryEmbedding
 from .rotary_attention import RotaryCrossAttention, RotarySelfAttention
 from .feedforward import FeedForward
 
