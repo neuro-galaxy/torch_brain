@@ -64,8 +64,7 @@ class SinusoidalEmbedding(nn.Module):
 class RotaryEmbedding(nn.Module):
     r"""Rotary time/positional embedding layer. This module is designed to be used with
     :class:`torch_brain.nn.RotarySelfAttention` and :class:`torch_brain.nn.RotaryCrossAttention` to
-    module the attention in accordance with relative timing/positions of the tokens.
-
+    modulate the attention weights in accordance with relative timing/positions of the tokens.
     Original paper: `RoFormer: Enhanced Transformer with Rotary Position Embedding <https://arxiv.org/abs/2104.09864>`_
 
     The timeperiods are computed using :meth:`SinusoidalEmbedding.get_periods`.
