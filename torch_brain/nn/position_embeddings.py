@@ -68,7 +68,7 @@ class RotaryEmbedding(nn.Module):
 
     Original paper: `RoFormer: Enhanced Transformer with Rotary Position Embedding <https://arxiv.org/abs/2104.09864>`_
 
-    The timeperiods are computed using :meth:`SinsoidalEmbedding.get_periods`.
+    The timeperiods are computed using :meth:`SinusoidalEmbedding.get_periods`.
 
     Args:
         head_dim (int): Dimension of the attention head.
