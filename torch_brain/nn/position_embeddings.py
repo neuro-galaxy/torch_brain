@@ -124,8 +124,8 @@ class RotaryEmbedding(nn.Module):
             head_dim (int, optional): Dimension of the head. Defaults to 2.
         """
         rotary_emb = rotary_emb.unsqueeze(head_dim).to(x.dtype)
-        pos_cos, pos_sin = rotary_emb.chunk(chunks=2, dim=-1)
-        return (x * pos_cos) + (cls._rotate_half(x) * pos_sin)
+        cos, sin = rotary_emb.chunk(chunks=2, dim=-1)
+        return (x * cos) + (cls._rotate_half(x) * sin)
 
     @staticmethod
     def invert_rotary_emb(rotary_emb: Tensor) -> Tensor:
