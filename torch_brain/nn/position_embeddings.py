@@ -1,3 +1,4 @@
+from typing import Union
 import torch
 from torch import nn, Tensor
 from einops import repeat, rearrange
@@ -37,7 +38,7 @@ class SinusoidalEmbedding(nn.Module):
         return torch.cat((angles.sin(), angles.cos()), dim=-1)
 
     @staticmethod
-    def get_periods(num: int, t_min: float | Tensor, t_max: float | Tensor):
+    def get_periods(num: int, t_min: Union[float, Tensor], t_max: Union[float, Tensor]):
         r"""Generates `num` timeperiods that are logarithmically spaced between
         `t_min` and `t_max`. Both `t_min` and `t_max` are included in the returned
         periods
