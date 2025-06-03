@@ -39,8 +39,8 @@ def test_rotary_cross_attention_shape(device, batch_size, seq_length, dim):
     # Create sample inputs
     x_query = torch.randn(batch_size, seq_length, dim).to(device)
     x_context = torch.randn(batch_size, seq_length * 2, dim).to(device)
-    query_pos_emb = torch.randn(batch_size, seq_length, dim // 2).to(device)
-    context_pos_emb = torch.randn(batch_size, seq_length * 2, dim // 2).to(device)
+    query_pos_emb = torch.randn(batch_size, seq_length, dim).to(device)
+    context_pos_emb = torch.randn(batch_size, seq_length * 2, dim).to(device)
 
     # Test forward pass
     output = model(x_query, x_context, query_pos_emb, context_pos_emb)
@@ -54,7 +54,7 @@ def test_rotary_self_attention_shape(device, batch_size, seq_length, dim):
 
     # Create sample inputs
     x = torch.randn(batch_size, seq_length, dim).to(device)
-    pos_emb = torch.randn(batch_size, seq_length, dim // 2).to(device)
+    pos_emb = torch.randn(batch_size, seq_length, dim).to(device)
 
     # Test forward pass
     output = model(x, pos_emb)
@@ -68,8 +68,8 @@ def test_rotary_cross_attention_mask(device, batch_size, seq_length, dim):
 
     x_query = torch.randn(batch_size, seq_length, dim).to(device)
     x_context = torch.randn(batch_size, seq_length, dim).to(device)
-    query_pos_emb = torch.randn(batch_size, seq_length, dim // 2).to(device)
-    context_pos_emb = torch.randn(batch_size, seq_length, dim // 2).to(device)
+    query_pos_emb = torch.randn(batch_size, seq_length, dim).to(device)
+    context_pos_emb = torch.randn(batch_size, seq_length, dim).to(device)
 
     # Create attention mask (mask out second half of context)
     mask = torch.ones(batch_size, seq_length).to(device)
@@ -92,8 +92,8 @@ def test_rotary_cross_attention_varlen(device, dim):
 
     x_query = torch.randn(total_query_len, dim).to(device)
     x_context = torch.randn(total_context_len, dim).to(device)
-    query_pos_emb = torch.randn(total_query_len, dim // 2).to(device)
-    context_pos_emb = torch.randn(total_context_len, dim // 2).to(device)
+    query_pos_emb = torch.randn(total_query_len, dim).to(device)
+    context_pos_emb = torch.randn(total_context_len, dim).to(device)
 
     # Skip test if not on CUDA with xformers
     if device == "cpu":
@@ -130,7 +130,7 @@ def test_rotary_self_attention_varlen(device, dim):
     total_len = sum(seq_lengths)
 
     x = torch.randn(total_len, dim).to(device)
-    pos_emb = torch.randn(total_len, dim // 2).to(device)
+    pos_emb = torch.randn(total_len, dim).to(device)
 
     # Skip test if not on CUDA with xformers
     if device == "cpu":
@@ -151,8 +151,8 @@ def test_invalid_inputs(device, batch_size, seq_length, dim):
     # Test with mismatched batch sizes
     x_query = torch.randn(batch_size, seq_length, dim).to(device)
     x_context = torch.randn(batch_size + 1, seq_length, dim).to(device)
-    query_pos_emb = torch.randn(batch_size, seq_length, dim // 2).to(device)
-    context_pos_emb = torch.randn(batch_size, seq_length, dim // 2).to(device)
+    query_pos_emb = torch.randn(batch_size, seq_length, dim).to(device)
+    context_pos_emb = torch.randn(batch_size, seq_length, dim).to(device)
 
     with pytest.raises(RuntimeError):
         model(x_query, x_context, query_pos_emb, context_pos_emb)
@@ -164,8 +164,8 @@ def test_dropout(device, batch_size, seq_length, dim):
 
     x_query = torch.randn(batch_size, seq_length, dim).to(device)
     x_context = torch.randn(batch_size, seq_length, dim).to(device)
-    query_pos_emb = torch.randn(batch_size, seq_length, dim // 2).to(device)
-    context_pos_emb = torch.randn(batch_size, seq_length, dim // 2).to(device)
+    query_pos_emb = torch.randn(batch_size, seq_length, dim).to(device)
+    context_pos_emb = torch.randn(batch_size, seq_length, dim).to(device)
 
     # Test that outputs are different in training vs eval mode
     model.train()
