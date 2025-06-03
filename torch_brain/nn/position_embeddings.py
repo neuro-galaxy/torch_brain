@@ -8,7 +8,7 @@ class SinusoidalEmbedding(nn.Module):
     r"""Sinusoidal time/position embedding layer.
     These embeddings are generally added/concatenated to tokens to give
     them a sense of time/position.
-    The timeperiods are logarithmically spaced between `t_min` and `t_max`
+    The timeperiods are logarithmically spaced between ``t_min`` and ``t_max``
     (both inclusive).
 
     Args:
@@ -33,7 +33,7 @@ class SinusoidalEmbedding(nn.Module):
     @torch.no_grad
     @torch.autocast(device_type="cuda", enabled=False)
     def forward(self, timestamps: torch.Tensor) -> torch.Tensor:
-        r"""Convert raw timestamps to `dim`-dimensional sinusoidal embeddings
+        r"""Convert raw timestamps to sinusoidal embeddings
 
         Args:
             timestamps (torch.Tensor): timestamps tensor
@@ -43,8 +43,8 @@ class SinusoidalEmbedding(nn.Module):
 
     @staticmethod
     def get_periods(num: int, t_min: Union[float, Tensor], t_max: Union[float, Tensor]):
-        r"""Generates `num` timeperiods that are logarithmically spaced between
-        `t_min` and `t_max`. Both `t_min` and `t_max` are included in the returned
+        r"""Generates ``num`` timeperiods that are logarithmically spaced between
+        ``t_min`` and ``t_max``. Both ``t_min`` and ``t_max`` are included in the returned
         periods
 
         Args:
@@ -61,11 +61,11 @@ class SinusoidalEmbedding(nn.Module):
 
 
 class RotaryEmbedding(nn.Module):
-    r"""Rotary time/positional embedding layer. This layer is used in conjunction with
-    `torch_brain.nn.RotarySelfAttention` and `torch_brain.nn.RotaryCrossAttention` to
+    r"""Rotary time/positional embedding layer. This module is designed to be used with
+    :class:`torch_brain.nn.RotarySelfAttention` and :class:`torch_brain.nn.RotaryCrossAttention` to
     module the attention in accordance with relative timing/positions of the tokens.
 
-    `Original paper <https://arxiv.org/abs/2104.09864>`_
+    Original paper: `RoFormer: Enhanced Transformer with Rotary Position Embedding <https://arxiv.org/abs/2104.09864>`_
 
     Args:
         head_dim (int): Dimension of the attention head.
@@ -99,7 +99,7 @@ class RotaryEmbedding(nn.Module):
     @torch.autocast(device_type="cuda", enabled=False)
     def forward(self, timestamps: Tensor) -> Tensor:
         r"""Computes the rotary embeddings for given timestamps,
-        which can then be used by `RotaryEmbedding.apply_rotary_emb`.
+        which can then be used by :meth:`RotaryEmbedding.apply_rotary_emb`.
 
         Args:
             timestamps (torch.Tensor): timestamps tensor.
@@ -127,7 +127,7 @@ class RotaryEmbedding(nn.Module):
 
         Args:
             rotary_emb (torch.Tensor): The rotary embedding produced by a forward
-                call of `RotaryEmbedding`.
+                call of :class:`RotaryEmbedding`.
             x (torch.Tensor): Input data.
             head_dim (int, optional): Dimension of the head. Defaults to 2.
         """
@@ -137,12 +137,12 @@ class RotaryEmbedding(nn.Module):
 
     @staticmethod
     def invert_rotary_emb(rotary_emb: Tensor) -> Tensor:
-        r"""Invert/Negate rotary embedding. If the input embeddings correspond to a time `t`,
-        then the output embeddings correspond to time `-t`.
+        r"""Invert/Negate rotary embedding. If the input embeddings correspond to a time
+        :math:`t`, then the output embeddings correspond to time :math:`-t`.
 
         Args:
             rotary_emb (torch.Tensor): Embeddings produced by a forward call of
-                `RotaryEmbedding`.
+                :class:`RotaryEmbedding`.
         """
         cos, sin = rotary_emb.chunk(chunks=2, dim=-1)
         return torch.cat((cos, -sin), dim=-1)

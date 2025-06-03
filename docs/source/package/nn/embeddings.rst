@@ -13,6 +13,8 @@ Embeddings Layers
      - An extendable embedding layer + tokenizer.
    * - :py:class:`RotaryEmbedding`
      - Rotary embedding layer.
+   * - :py:class:`SinusoidalEmbedding`
+     - Sinusoidal embedding layer.
 
 .. autoclass:: Embedding
     :members:
@@ -24,5 +26,9 @@ Embeddings Layers
     :exclude-members: forward, extra_repr, initialize_parameters
 
 .. autoclass:: RotaryEmbedding
+    :members:
+    :undoc-members:
+
+.. autoclass:: SinusoidalEmbedding
     :members:
     :undoc-members:
