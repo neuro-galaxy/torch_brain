@@ -32,7 +32,7 @@ class SinusoidalEmbedding(nn.Module):
 
     @torch.no_grad
     @torch.autocast(device_type="cuda", enabled=False)
-    def forward(self, timestamps: torch.Tensor) -> torch.Tensor:
+    def forward(self, timestamps: Tensor) -> Tensor:
         r"""Convert raw timestamps to sinusoidal embeddings
 
         Args:
