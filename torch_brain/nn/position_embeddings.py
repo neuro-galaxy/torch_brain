@@ -26,6 +26,7 @@ class SinusoidalEmbedding(nn.Module):
         self.register_buffer("omega", omega)
 
     @torch.no_grad
+    @torch.autocast(device_type="cuda", enabled=False)
     def forward(self, timestamps: torch.Tensor) -> torch.Tensor:
         r"""Convert raw timestamps to `dim`-dimensional sinusoidal embeddings
 
@@ -88,6 +89,7 @@ class RotaryEmbedding(nn.Module):
         omega[: rotate_dim // 2] = 2 * torch.pi / periods
         self.register_buffer("omega", omega)
 
+    @torch.no_grad
     @torch.autocast(device_type="cuda", enabled=False)
     def forward(self, timestamps: Tensor) -> Tensor:
         r"""Computes the rotary embeddings for given timestamps,
