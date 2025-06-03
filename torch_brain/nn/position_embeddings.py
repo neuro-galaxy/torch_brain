@@ -42,7 +42,9 @@ class SinusoidalEmbedding(nn.Module):
         return torch.cat((angles.sin(), angles.cos()), dim=-1)
 
     @staticmethod
-    def get_periods(num: int, t_min: Union[float, Tensor], t_max: Union[float, Tensor]):
+    def get_periods(
+        num: int, t_min: Union[float, Tensor], t_max: Union[float, Tensor]
+    ) -> Tensor:
         r"""Generates ``num`` timeperiods that are logarithmically spaced between
         ``t_min`` and ``t_max``. Both ``t_min`` and ``t_max`` are included in the returned
         periods
