@@ -8,11 +8,15 @@ class SinusoidalEmbedding(nn.Module):
     r"""Sinusoidal time/position embedding layer.
     These embeddings are generally added/concatenated to tokens to give
     them a sense of time/position.
+    The timeperiods are logarithmically spaced between `t_min` and `t_max`
+    (both inclusive).
 
     Args:
         dim (int): The dimension of the embedding needed (must be a multiple of 2)
-        t_min (float): Smallest timescale
-        t_max (float): Largest timescale
+        t_min (float): Minimum period of the sinusoids. Set this to the smallest
+            timescale you care about.
+        t_max (float): Maximum period of the sinusoids. Set this to the largest
+            timescale you care about.
     """
 
     omega: Tensor
@@ -69,9 +73,9 @@ class RotaryEmbedding(nn.Module):
             small portion of the head dimension using this parameter.
             E.g. [PerceiverIO](https://arxiv.org/abs/2107.14795) found rotating only half
             dimensions to be effective.
-        t_min (float, optional): Minimum period of the sinusoids. Set this to the smallest
+        t_min (float): Minimum period of the sinusoids. Set this to the smallest
             timescale the attention layer should care about.
-        t_max (float, optional): Maximum period of the sinusoids. Set this to the largest
+        t_max (float): Maximum period of the sinusoids. Set this to the largest
             timescale the attention layer should care about.
     """
 
