@@ -549,7 +549,7 @@ def rotary_attn_xformers_varlen_func(
 
     if rotate_value:
         out = RotaryEmbedding.apply_rotary_emb(
-            RotaryEmbedding.invert_rotary_emb(q_pos_emb),
+            RotaryEmbedding.invert_rotary_emb(q_pos_emb).unsqueeze(0),
             out,
         )
 
