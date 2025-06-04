@@ -26,7 +26,7 @@ class SinusoidalEmbedding(nn.Module):
         if dim % 2 != 0:
             raise ValueError("`dim` must be a multiple of 2")
 
-        periods = self.get_periods(dim // 2, t_min, t_max)
+        periods = get_timeperiods(dim // 2, t_min, t_max)
         omega = 2 * torch.pi / periods
         self.register_buffer("omega", omega)
 
@@ -41,29 +41,6 @@ class SinusoidalEmbedding(nn.Module):
         angles = timestamps[..., None] * self.omega
         return torch.cat((angles.sin(), angles.cos()), dim=-1)
 
-    @staticmethod
-    def get_periods(
-        num: int, t_min: Union[float, Tensor], t_max: Union[float, Tensor]
-    ) -> Tensor:
-        r"""Generates ``num`` timeperiods that are logarithmically spaced between
-        ``t_min`` and ``t_max`` (both inclusive).
-
-        Args:
-            num (int): number of timestamps needed
-            t_min (float): smallest timeperiod
-            t_max (float): largest timeperiod
-        """
-        if not 0 < t_min < t_max:
-            raise ValueError(
-                f"Invalid t_min ({t_min}) and t_max ({t_max}). They should follow 0 < t_min < t_max."
-            )
-        exponents = torch.linspace(0, 1.0, num, dtype=torch.float32)
-        t_min, t_max = torch.tensor(t_min), torch.tensor(t_max)
-        periods = torch.exp(torch.lerp(t_min.log(), t_max.log(), exponents))
-        assert torch.isclose(periods[0], t_min)
-        assert torch.isclose(periods[-1], t_max)
-        return periods
-
 
 class RotaryEmbedding(nn.Module):
     r"""Rotary time/positional embedding layer. This module is designed to be used with
@@ -71,7 +48,7 @@ class RotaryEmbedding(nn.Module):
     modulate the attention weights in accordance with relative timing/positions of the tokens.
     Original paper: `RoFormer: Enhanced Transformer with Rotary Position Embedding <https://arxiv.org/abs/2104.09864>`_
 
-    The timeperiods are computed using :meth:`SinusoidalEmbedding.get_periods`.
+    The timeperiods are computed using :func:`get_timeperiods`.
 
     Args:
         head_dim (int): Dimension of the attention head.
@@ -96,7 +73,7 @@ class RotaryEmbedding(nn.Module):
         if not head_dim >= rotate_dim:
             raise ValueError("head_dim must be equal to or larger than rotate_dim")
 
-        periods = SinusoidalEmbedding.get_periods(rotate_dim // 2, t_min, t_max)
+        periods = get_timeperiods(rotate_dim // 2, t_min, t_max)
         omega = torch.zeros(head_dim // 2)
         omega[: rotate_dim // 2] = 2 * torch.pi / periods
         self.register_buffer("omega", omega)
@@ -152,3 +129,28 @@ class RotaryEmbedding(nn.Module):
         """
         cos, sin = rotary_emb.chunk(chunks=2, dim=-1)
         return torch.cat((cos, -sin), dim=-1)
+
+
+def get_timeperiods(
+    num: int,
+    t_min: Union[float, Tensor],
+    t_max: Union[float, Tensor],
+) -> Tensor:
+    r"""Generates ``num`` timeperiods that are logarithmically spaced between
+    ``t_min`` and ``t_max`` (both inclusive).
+
+    Args:
+        num (int): number of timestamps needed
+        t_min (float): smallest timeperiod
+        t_max (float): largest timeperiod
+    """
+    if not 0 < t_min < t_max:
+        raise ValueError(
+            f"Invalid t_min ({t_min}) and t_max ({t_max}). They should follow 0 < t_min < t_max."
+        )
+    exponents = torch.linspace(0, 1.0, num, dtype=torch.float32)
+    t_min, t_max = torch.tensor(t_min), torch.tensor(t_max)
+    periods = torch.exp(torch.lerp(t_min.log(), t_max.log(), exponents))
+    assert torch.isclose(periods[0], t_min)
+    assert torch.isclose(periods[-1], t_max)
+    return periods
