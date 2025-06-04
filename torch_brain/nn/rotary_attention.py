@@ -402,7 +402,7 @@ def rotary_attn_pytorch_func(
     if rotate_value:
         out = RotaryEmbedding.rotate(
             x=out,
-            rotary_emb=RotaryEmbedding.invert_rotary_emb(q_pos_emb),
+            rotary_emb=RotaryEmbedding.invert(q_pos_emb),
             head_dim=1,
         )
 
@@ -476,7 +476,7 @@ def rotary_attn_xformers_func(
     if rotate_value:
         out = RotaryEmbedding.rotate(
             x=out,
-            rotary_emb=RotaryEmbedding.invert_rotary_emb(q_pos_emb),
+            rotary_emb=RotaryEmbedding.invert(q_pos_emb),
             head_dim=2,
         )
 
@@ -550,7 +550,7 @@ def rotary_attn_xformers_varlen_func(
     if rotate_value:
         out = RotaryEmbedding.rotate(
             x=out,
-            rotary_emb=RotaryEmbedding.invert_rotary_emb(q_pos_emb).unsqueeze(0),
+            rotary_emb=RotaryEmbedding.invert(q_pos_emb).unsqueeze(0),
         )
 
     out = rearrange(out, "() n h d -> n (h d)")

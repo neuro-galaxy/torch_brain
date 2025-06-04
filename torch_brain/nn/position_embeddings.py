@@ -119,7 +119,7 @@ class RotaryEmbedding(nn.Module):
         return (x * cos) + (cls._rotate_half(x) * sin)
 
     @staticmethod
-    def invert_rotary_emb(rotary_emb: Tensor) -> Tensor:
+    def invert(rotary_emb: Tensor) -> Tensor:
         r"""Invert/Negate rotary embedding. If the input embeddings correspond to a time
         :math:`t`, then the output embeddings correspond to time :math:`-t`.
 
