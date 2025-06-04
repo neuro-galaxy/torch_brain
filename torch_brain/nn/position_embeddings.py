@@ -53,6 +53,10 @@ class SinusoidalEmbedding(nn.Module):
             t_min (float): smallest timeperiod
             t_max (float): largest timeperiod
         """
+        if not 0 < t_min < t_max:
+            raise ValueError(
+                f"Invalid t_min ({t_min}) and t_max ({t_max}). They should follow 0 < t_min < t_max."
+            )
         exponents = torch.linspace(0, 1.0, num, dtype=torch.float32)
         t_min, t_max = torch.tensor(t_min), torch.tensor(t_max)
         periods = torch.exp(torch.lerp(t_min.log(), t_max.log(), exponents))
