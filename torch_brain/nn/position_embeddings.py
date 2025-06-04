@@ -121,8 +121,8 @@ class RotaryEmbedding(nn.Module):
     @classmethod
     def apply_rotary_emb(
         cls,
-        rotary_emb: Tensor,
         x: Tensor,
+        rotary_emb: Tensor,
         head_dim: int = 2,
     ) -> Tensor:
         r"""Apply the rotary positional embedding to the input data.
