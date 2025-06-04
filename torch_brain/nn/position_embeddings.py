@@ -105,7 +105,7 @@ class RotaryEmbedding(nn.Module):
     @torch.autocast(device_type="cuda", enabled=False)
     def forward(self, timestamps: Tensor) -> Tensor:
         r"""Computes the rotary embeddings for given timestamps,
-        which can then be used by :meth:`RotaryEmbedding.apply_rotary_emb`.
+        which can then be used by :meth:`RotaryEmbedding.rotate`.
 
         Args:
             timestamps (torch.Tensor): timestamps tensor.
@@ -123,7 +123,7 @@ class RotaryEmbedding(nn.Module):
         return rearrange(x, "... d r -> ... (d r)")
 
     @classmethod
-    def apply_rotary_emb(
+    def rotate(
         cls,
         x: Tensor,
         rotary_emb: Tensor,
