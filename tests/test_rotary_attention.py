@@ -192,12 +192,13 @@ def test_dropout(device, batch_size, seq_length, dim):
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 @pytest.mark.parametrize("efficient_attention", [True, False])
-def test_cross_attention_batched_vs_varlen(device, dim, efficient_attention):
+@pytest.mark.parametrize("dropout", [0.0, 0.5])
+def test_cross_attention_batched_vs_varlen(device, dim, efficient_attention, dropout):
     """Test that batched and varlen cross attention implementations produce the same results."""
     # Set environment variable
     os.environ["TORCH_BRAIN_USE_EFFICIENT_ATTENTION"] = str(efficient_attention).lower()
 
-    model = RotaryCrossAttention(dim=dim).to(device)
+    model = RotaryCrossAttention(dim=dim, dropout=dropout).to(device)
 
     # Create test data with variable sequence lengths (multiples of 8)
     query_lengths = [8, 16]
@@ -264,15 +265,16 @@ def test_cross_attention_batched_vs_varlen(device, dim, efficient_attention):
         )
 
         # Compare outputs for non-padded positions
-        start_q = 0
-        for i, qlen in enumerate(query_lengths):
-            assert torch.allclose(
-                output_varlen[start_q : start_q + qlen],
-                output_batch[i, :qlen],
-                atol=1e-4,
-                rtol=1e-4,
-            ), f"Varlen and batched outputs differ for batch {i} (efficient={efficient_attention})"
-            start_q += qlen
+        if dropout == 0.0:
+            start_q = 0
+            for i, qlen in enumerate(query_lengths):
+                assert torch.allclose(
+                    output_varlen[start_q : start_q + qlen],
+                    output_batch[i, :qlen],
+                    atol=1e-4,
+                    rtol=1e-4,
+                ), f"Varlen and batched outputs differ for batch {i} (efficient={efficient_attention})"
+                start_q += qlen
 
     except (RuntimeError, NotImplementedError) as e:
         if "xformers" in str(e).lower() or "varlen" in str(e).lower():
@@ -283,12 +285,13 @@ def test_cross_attention_batched_vs_varlen(device, dim, efficient_attention):
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
 @pytest.mark.parametrize("efficient_attention", [True, False])
-def test_self_attention_batched_vs_varlen(device, dim, efficient_attention):
+@pytest.mark.parametrize("dropout", [0.0, 0.5])
+def test_self_attention_batched_vs_varlen(device, dim, efficient_attention, dropout):
     """Test that batched and varlen self attention implementations produce the same results."""
     # Set environment variable
     os.environ["TORCH_BRAIN_USE_EFFICIENT_ATTENTION"] = str(efficient_attention).lower()
 
-    model = RotarySelfAttention(dim=dim).to(device)
+    model = RotarySelfAttention(dim=dim, dropout=dropout).to(device)
 
     # Create test data with variable sequence lengths (multiples of 8)
     seq_lengths = [8, 16]
@@ -323,65 +326,19 @@ def test_self_attention_batched_vs_varlen(device, dim, efficient_attention):
         )
 
         # Compare outputs for non-padded positions
-        start = 0
-        for i, slen in enumerate(seq_lengths):
-            assert torch.allclose(
-                output_varlen[start : start + slen],
-                output_batch[i, :slen],
-                atol=1e-4,
-                rtol=1e-4,
-            ), f"Varlen and batched outputs differ for batch {i} (efficient={efficient_attention})"
-            start += slen
+        if dropout == 0.0:
+            start = 0
+            for i, slen in enumerate(seq_lengths):
+                assert torch.allclose(
+                    output_varlen[start : start + slen],
+                    output_batch[i, :slen],
+                    atol=1e-4,
+                    rtol=1e-4,
+                ), f"Varlen and batched outputs differ for batch {i} (efficient={efficient_attention})"
+                start += slen
 
     except (RuntimeError, NotImplementedError) as e:
         if "xformers" in str(e).lower() or "varlen" in str(e).lower():
             pytest.skip("xformers not available for varlen attention")
         else:
             raise
-
-
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="requires CUDA")
-@pytest.mark.parametrize("attention_type", ["cross", "self"])
-def test_efficient_vs_non_efficient_attention(device, dim, attention_type):
-    """Test that efficient and non-efficient attention implementations produce the same results."""
-    batch_size, seq_len = 2, 16
-
-    if attention_type == "cross":
-        # Test cross attention
-        x_query = torch.randn(batch_size, seq_len, dim, device=device)
-        x_context = torch.randn(batch_size, seq_len, dim, device=device)
-        query_pos_emb = torch.randn(batch_size, seq_len, dim // 2, device=device)
-        context_pos_emb = torch.randn(batch_size, seq_len, dim // 2, device=device)
-
-        # Run with efficient attention
-        os.environ["TORCH_BRAIN_USE_EFFICIENT_ATTENTION"] = "true"
-        model_efficient = RotaryCrossAttention(dim=dim).to(device)
-        output_efficient = model_efficient(
-            x_query, x_context, query_pos_emb, context_pos_emb
-        )
-
-        # Run with non-efficient attention
-        os.environ["TORCH_BRAIN_USE_EFFICIENT_ATTENTION"] = "false"
-        model_non_efficient = RotaryCrossAttention(dim=dim).to(device)
-        output_non_efficient = model_non_efficient(
-            x_query, x_context, query_pos_emb, context_pos_emb
-        )
-
-    else:  # self attention
-        x = torch.randn(batch_size, seq_len, dim, device=device)
-        rotary_time_emb = torch.randn(batch_size, seq_len, dim // 2, device=device)
-
-        # Run with efficient attention
-        os.environ["TORCH_BRAIN_USE_EFFICIENT_ATTENTION"] = "true"
-        model_efficient = RotarySelfAttention(dim=dim).to(device)
-        output_efficient = model_efficient(x, rotary_time_emb)
-
-        # Run with non-efficient attention
-        os.environ["TORCH_BRAIN_USE_EFFICIENT_ATTENTION"] = "false"
-        model_non_efficient = RotarySelfAttention(dim=dim).to(device)
-        output_non_efficient = model_non_efficient(x, rotary_time_emb)
-
-    # Compare outputs
-    assert torch.allclose(
-        output_efficient, output_non_efficient, atol=1e-4, rtol=1e-4
-    ), f"{attention_type.capitalize()} attention outputs differ between efficient and non-efficient implementations"

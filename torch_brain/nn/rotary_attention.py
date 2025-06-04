@@ -71,6 +71,10 @@ class RotaryCrossAttention(nn.Module):
         self.to_kv = nn.Linear(context_dim, inner_dim * 2, bias=False)
         self.to_out = nn.Linear(inner_dim, dim)
 
+        self.use_efficient = os.getenv(
+            "TORCH_BRAIN_USE_EFFICIENT_ATTENTION", "true"
+        ).lower() in ("true", "1", "yes")
+
     def forward(
         self,
         x_query,
@@ -102,10 +106,7 @@ class RotaryCrossAttention(nn.Module):
         k, v = self.to_kv(x_context).chunk(2, dim=-1)
 
         # select attention kernel
-        use_efficient = os.getenv(
-            "TORCH_BRAIN_USE_EFFICIENT_ATTENTION", "true"
-        ).lower() in ("true", "1", "yes")
-        if xops is not None and x_query.device.type == "cuda" and use_efficient:
+        if xops is not None and x_query.device.type == "cuda" and self.use_efficient:
             # if xformers is available, use it for attention.
             # xformers supports attention masks when using the memory efficient attention
             # kernel, but pytorch does not.
@@ -253,6 +254,10 @@ class RotarySelfAttention(nn.Module):
         self.to_qkv = nn.Linear(dim, inner_dim * 3, bias=False)
         self.to_out = nn.Linear(inner_dim, dim)
 
+        self.use_efficient = os.getenv(
+            "TORCH_BRAIN_USE_EFFICIENT_ATTENTION", "true"
+        ).lower() in ("true", "1", "yes")
+
     def forward(
         self,
         x,
@@ -277,10 +282,7 @@ class RotarySelfAttention(nn.Module):
         q, k, v = self.to_qkv(x).chunk(3, dim=-1)
 
         # select attention kernel
-        use_efficient = os.getenv(
-            "TORCH_BRAIN_USE_EFFICIENT_ATTENTION", "true"
-        ).lower() in ("true", "1", "yes")
-        if xops is not None and x.device.type == "cuda" and use_efficient:
+        if xops is not None and x.device.type == "cuda" and self.use_efficient:
             rotary_attn_func = rotary_attn_xformers_func
         else:
             rotary_attn_func = rotary_attn_pytorch_func
@@ -484,6 +486,7 @@ def rotary_attn_xformers_func(
         value,
         attn_bias=attn_bias,
         p=dropout_p,
+        op=(xops.fmha.cutlass.FwOp, xops.fmha.cutlass.BwOp),
     )
 
     if rotate_value:
@@ -554,6 +557,7 @@ def rotary_attn_xformers_varlen_func(
         value,
         attn_bias=attn_bias,
         p=dropout_p,
+        op=(xops.fmha.cutlass.FwOp, xops.fmha.cutlass.BwOp),
     )
 
     if rotate_value:
