@@ -112,6 +112,9 @@ class RotaryTimeEmbedding(nn.Module):
             rotary_emb (torch.Tensor): The rotary embedding produced by a forward
                 call of :class:`RotaryTimeEmbedding`.
             head_dim (int, optional): Dimension of the head. Defaults to 2.
+                E.g. If the tokens going into the attention block are of shape (B, H, N, D),
+                then this should be set to 1. If it is (B, N, H, D), then it should be set
+                to 2.
         """
         rotary_emb = rotary_emb.unsqueeze(head_dim).to(x.dtype)
         cos, sin = rotary_emb.chunk(chunks=2, dim=-1)
