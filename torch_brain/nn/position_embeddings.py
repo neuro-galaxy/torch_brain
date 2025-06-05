@@ -4,7 +4,7 @@ from torch import nn, Tensor
 from einops import repeat, rearrange
 
 
-class SinusoidalEmbedding(nn.Module):
+class SinusoidalTimeEmbedding(nn.Module):
     r"""Sinusoidal time/position embedding layer.
     These embeddings are generally added/concatenated to tokens to give
     them a sense of time/position.
@@ -42,7 +42,7 @@ class SinusoidalEmbedding(nn.Module):
         return torch.cat((angles.sin(), angles.cos()), dim=-1)
 
 
-class RotaryEmbedding(nn.Module):
+class RotaryTimeEmbedding(nn.Module):
     r"""Rotary time/positional embedding layer. This module is designed to be used with
     :class:`torch_brain.nn.RotarySelfAttention` and :class:`torch_brain.nn.RotaryCrossAttention` to
     modulate the attention weights in accordance with relative timing/positions of the tokens.
@@ -82,7 +82,7 @@ class RotaryEmbedding(nn.Module):
     @torch.autocast(device_type="cuda", enabled=False)
     def forward(self, timestamps: Tensor) -> Tensor:
         r"""Computes the rotary embeddings for given timestamps,
-        which can then be used by :meth:`RotaryEmbedding.rotate`.
+        which can then be used by :meth:`RotaryTimeEmbedding.rotate`.
 
         Args:
             timestamps (torch.Tensor): timestamps tensor.
@@ -108,14 +108,14 @@ class RotaryEmbedding(nn.Module):
         r"""Apply the rotary positional embedding to the input data.
 
         Args:
-            rotary_emb (torch.Tensor): The rotary embedding produced by a forward
-                call of :class:`RotaryEmbedding`.
             x (torch.Tensor): Input data.
+            rotary_emb (torch.Tensor): The rotary embedding produced by a forward
+                call of :class:`RotaryTimeEmbedding`.
             head_dim (int, optional): Dimension of the head. Defaults to 2.
         """
         rotary_emb = rotary_emb.unsqueeze(head_dim).to(x.dtype)
         cos, sin = rotary_emb.chunk(chunks=2, dim=-1)
-        return (x * cos) + (RotaryEmbedding._rotate_half(x) * sin)
+        return (x * cos) + (RotaryTimeEmbedding._rotate_half(x) * sin)
 
     @staticmethod
     def invert(rotary_emb: Tensor) -> Tensor:
@@ -124,7 +124,7 @@ class RotaryEmbedding(nn.Module):
 
         Args:
             rotary_emb (torch.Tensor): Embeddings produced by a forward call of
-                :class:`RotaryEmbedding`.
+                :class:`RotaryTimeEmbedding`.
         """
         cos, sin = rotary_emb.chunk(chunks=2, dim=-1)
         return torch.cat((cos, -sin), dim=-1)

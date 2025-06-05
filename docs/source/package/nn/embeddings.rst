@@ -11,9 +11,9 @@ Embeddings Layers
      - A simple embedding layer.
    * - :py:class:`InfiniteVocabEmbedding`
      - An extendable embedding layer + tokenizer.
-   * - :py:class:`RotaryEmbedding`
+   * - :py:class:`RotaryTimeEmbedding`
      - Rotary embedding layer.
-   * - :py:class:`SinusoidalEmbedding`
+   * - :py:class:`SinusoidalTimeEmbedding`
      - Sinusoidal embedding layer.
 
 .. autoclass:: Embedding
@@ -25,10 +25,10 @@ Embeddings Layers
     :undoc-members:
     :exclude-members: forward, extra_repr, initialize_parameters
 
-.. autoclass:: RotaryEmbedding
+.. autoclass:: RotaryTimeEmbedding
     :members:
     :undoc-members:
 
-.. autoclass:: SinusoidalEmbedding
+.. autoclass:: SinusoidalTimeEmbedding
     :members:
     :undoc-members:

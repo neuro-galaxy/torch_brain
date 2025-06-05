@@ -13,7 +13,7 @@ from torch_brain.nn import (
     InfiniteVocabEmbedding,
     RotaryCrossAttention,
     RotarySelfAttention,
-    RotaryEmbedding,
+    RotaryTimeEmbedding,
 )
 from torch_brain.registry import ModalitySpec
 
@@ -97,7 +97,7 @@ class POYO(nn.Module):
         self.latent_emb = Embedding(
             num_latents_per_step, dim, init_scale=emb_init_scale
         )
-        self.rotary_emb = RotaryEmbedding(
+        self.rotary_emb = RotaryTimeEmbedding(
             head_dim=dim_head,
             rotate_dim=dim_head // 2,
             t_min=t_min,

@@ -14,7 +14,7 @@ from torch_brain.nn import (
     MultitaskReadout,
     RotaryCrossAttention,
     RotarySelfAttention,
-    RotaryEmbedding,
+    RotaryTimeEmbedding,
     prepare_for_multitask_readout,
 )
 from torch_brain.registry import ModalitySpec, MODALITY_REGISTRY
@@ -103,7 +103,7 @@ class POYOPlus(nn.Module):
         self.latent_emb = Embedding(
             num_latents_per_step, dim, init_scale=emb_init_scale
         )
-        self.rotary_emb = RotaryEmbedding(
+        self.rotary_emb = RotaryTimeEmbedding(
             head_dim=dim_head,
             rotate_dim=dim_head // 2,
             t_min=t_min,
