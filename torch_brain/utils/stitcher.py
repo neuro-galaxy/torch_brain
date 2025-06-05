@@ -8,7 +8,11 @@ from rich import print as rprint
 import torch
 import lightning as L
 import torchmetrics
-import wandb
+
+try:
+    import wandb
+except ImportError:
+    wandb = None
 
 import torch_brain
 from torch_brain.registry import ModalitySpec, DataType
@@ -170,6 +174,9 @@ class DecodingStitchEvaluator(L.Callback):
 
         self.metrics = {k: metric_factory() for k in session_ids}
 
+        self.dim = modality_spec.dim
+        self.data_type = modality_spec.type
+
     def on_validation_epoch_start(self, trainer, pl_module):
         # Cache to store the predictions, targets, and timestamps for each
         # validation step. This will be coalesced at the end of the validation,
@@ -210,14 +217,27 @@ class DecodingStitchEvaluator(L.Callback):
         metrics = {}
         for session_id, metric_fn in self.metrics.items():
             cache = self.cache[session_id]
-            pred = torch.cat(cache["pred"])
-            target = torch.cat(cache["target"])
-            timestamps = torch.cat(cache["timestamps"])
+            if len(cache["pred"]) > 0:
+                pred = torch.cat(cache["pred"])
+                target = torch.cat(cache["target"])
+                timestamps = torch.cat(cache["timestamps"])
 
-            stitched_pred = stitch(timestamps, pred)[1]
-            stitched_target = stitch(timestamps, target)[1]
+                stitched_pred = stitch(timestamps, pred)[1]
+                stitched_target = stitch(timestamps, target)[1]
 
-            metric_fn.to(pl_module.device).update(stitched_pred, stitched_target)
+                metric_fn.to(pl_module.device).update(stitched_pred, stitched_target)
+            else:
+                if self.data_type == DataType.CONTINUOUS:
+                    metric_fn.to(pl_module.device).update(
+                        torch.empty(0, self.dim, device=pl_module.device),
+                        torch.empty(0, self.dim, device=pl_module.device),
+                    )
+                else:
+                    metric_fn.to(pl_module.device).update(
+                        torch.empty(0, self.dim, device=pl_module.device),
+                        torch.empty(0, device=pl_module.device),
+                    )
+
             metrics[session_id] = metric_fn.compute()
             metric_fn.reset()
 
@@ -245,7 +265,10 @@ class DecodingStitchEvaluator(L.Callback):
                     logger.experiment.add_text(
                         f"{prefix}_metrics", metrics_df.to_markdown()
                     )
-                if isinstance(logger, L.pytorch.loggers.WandbLogger):
+                if (
+                    isinstance(logger, L.pytorch.loggers.WandbLogger)
+                    and wandb is not None
+                ):
                     logger.experiment.log(
                         {f"{prefix}_metrics": wandb.Table(dataframe=metrics_df)}
                     )
@@ -402,7 +425,10 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                     logger.experiment.add_text(
                         f"{prefix}_metrics", metrics_df.to_markdown()
                     )
-                if isinstance(logger, L.pytorch.loggers.WandbLogger):
+                if (
+                    isinstance(logger, L.pytorch.loggers.WandbLogger)
+                    and wandb is not None
+                ):
                     logger.experiment.log(
                         {f"{prefix}_metrics": wandb.Table(dataframe=metrics_df)}
                     )
