@@ -89,8 +89,8 @@ class RotaryEmbedding(nn.Module):
         """
         angles = timestamps.unsqueeze(-1) * self.omega
         angles = repeat(angles, "... n -> ... (n r)", r=2)
-        pos_emb = torch.cat((angles.cos(), angles.sin()), dim=-1)
-        return pos_emb
+        rotary_emb = torch.cat((angles.cos(), angles.sin()), dim=-1)
+        return rotary_emb
 
     @staticmethod
     def _rotate_half(x: Tensor) -> Tensor:
@@ -99,9 +99,8 @@ class RotaryEmbedding(nn.Module):
         x = torch.stack((-x2, x1), dim=-1)
         return rearrange(x, "... d r -> ... (d r)")
 
-    @classmethod
+    @staticmethod
     def rotate(
-        cls,
         x: Tensor,
         rotary_emb: Tensor,
         head_dim: int = 2,
@@ -116,7 +115,7 @@ class RotaryEmbedding(nn.Module):
         """
         rotary_emb = rotary_emb.unsqueeze(head_dim).to(x.dtype)
         cos, sin = rotary_emb.chunk(chunks=2, dim=-1)
-        return (x * cos) + (cls._rotate_half(x) * sin)
+        return (x * cos) + (RotaryEmbedding._rotate_half(x) * sin)
 
     @staticmethod
     def invert(rotary_emb: Tensor) -> Tensor:
