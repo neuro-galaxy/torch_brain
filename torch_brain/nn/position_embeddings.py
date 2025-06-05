@@ -87,7 +87,7 @@ class RotaryTimeEmbedding(nn.Module):
         Args:
             timestamps (torch.Tensor): timestamps tensor.
         """
-        angles = timestamps.unsqueeze(-1) * self.omega
+        angles = torch.einsum("..., f -> ... f", timestamps, self.omega)
         angles = repeat(angles, "... n -> ... (n r)", r=2)
         rotary_emb = torch.cat((angles.cos(), angles.sin()), dim=-1)
         return rotary_emb
