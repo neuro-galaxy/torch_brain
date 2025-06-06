@@ -11,7 +11,7 @@ except ImportError:
     xops = None
 
 
-from torch_brain.nn.rotary_embedding import apply_rotary_pos_emb
+from torch_brain.nn import RotaryTimeEmbedding
 
 
 class RotaryCrossAttention(nn.Module):
@@ -381,10 +381,12 @@ def rotary_attn_pytorch_func(
     value = rearrange(value, "b n (h d) -> b h n d", h=num_heads)
 
     # apply rotary embeddings
-    query = apply_rotary_pos_emb(q_pos_emb, query, head_dim=1)
-    key = apply_rotary_pos_emb(kv_pos_emb, key, head_dim=1)
+    query = RotaryTimeEmbedding.rotate(x=query, rotary_emb=q_pos_emb, unsqueeze_dim=1)
+    key = RotaryTimeEmbedding.rotate(x=key, rotary_emb=kv_pos_emb, unsqueeze_dim=1)
     if rotate_value:
-        value = apply_rotary_pos_emb(kv_pos_emb, value, head_dim=1)
+        value = RotaryTimeEmbedding.rotate(
+            x=value, rotary_emb=kv_pos_emb, unsqueeze_dim=1
+        )
 
     # attention mask
     if attn_mask is not None:
@@ -400,7 +402,11 @@ def rotary_attn_pytorch_func(
     )
 
     if rotate_value:
-        out = apply_rotary_pos_emb(-q_pos_emb, out, head_dim=1)
+        out = RotaryTimeEmbedding.rotate(
+            x=out,
+            rotary_emb=RotaryTimeEmbedding.invert(q_pos_emb),
+            unsqueeze_dim=1,
+        )
 
     # return (b, n, (h d), )
     out = rearrange(out, "b h n d -> b n (h d)")
@@ -442,11 +448,13 @@ def rotary_attn_xformers_func(
     key = rearrange(key, "b n (h d) -> b n h d", h=num_heads)
     value = rearrange(value, "b n (h d) -> b n h d", h=num_heads)
 
-    query = apply_rotary_pos_emb(q_pos_emb, query, head_dim=2)
-    key = apply_rotary_pos_emb(kv_pos_emb, key, head_dim=2)
+    query = RotaryTimeEmbedding.rotate(x=query, rotary_emb=q_pos_emb, unsqueeze_dim=2)
+    key = RotaryTimeEmbedding.rotate(x=key, rotary_emb=kv_pos_emb, unsqueeze_dim=2)
 
     if rotate_value:
-        value = apply_rotary_pos_emb(kv_pos_emb, value, head_dim=2)
+        value = RotaryTimeEmbedding.rotate(
+            x=value, rotary_emb=kv_pos_emb, unsqueeze_dim=2
+        )
 
     # WARNING: this is very slow, avoid using attn_mask if possible, refer to xformers
     # documentation
@@ -470,7 +478,11 @@ def rotary_attn_xformers_func(
     )
 
     if rotate_value:
-        out = apply_rotary_pos_emb(-q_pos_emb, out, head_dim=2)
+        out = RotaryTimeEmbedding.rotate(
+            x=out,
+            rotary_emb=RotaryTimeEmbedding.invert(q_pos_emb),
+            unsqueeze_dim=2,
+        )
 
     out = rearrange(out, "b n h d -> b n (h d)")
     return out
@@ -513,11 +525,11 @@ def rotary_attn_xformers_varlen_func(
     value = rearrange(value, "n (h d) -> () n h d", h=num_heads)
 
     # TODO check rotation works
-    query = apply_rotary_pos_emb(q_pos_emb.unsqueeze(0), query)
-    key = apply_rotary_pos_emb(kv_pos_emb.unsqueeze(0), key)
+    query = RotaryTimeEmbedding.rotate(x=query, rotary_emb=q_pos_emb.unsqueeze(0))
+    key = RotaryTimeEmbedding.rotate(x=key, rotary_emb=kv_pos_emb.unsqueeze(0))
 
     if rotate_value:
-        value = apply_rotary_pos_emb(kv_pos_emb.unsqueeze(0), value)
+        value = RotaryTimeEmbedding.rotate(x=value, rotary_emb=kv_pos_emb.unsqueeze(0))
 
     if isinstance(q_seqlen, torch.Tensor):
         q_seqlen = q_seqlen.tolist()
@@ -540,7 +552,10 @@ def rotary_attn_xformers_varlen_func(
     )
 
     if rotate_value:
-        out = apply_rotary_pos_emb(-q_pos_emb.unsqueeze(0), out)
+        out = RotaryTimeEmbedding.rotate(
+            x=out,
+            rotary_emb=RotaryTimeEmbedding.invert(q_pos_emb).unsqueeze(0),
+        )
 
     out = rearrange(out, "() n h d -> n (h d)")
     return out
