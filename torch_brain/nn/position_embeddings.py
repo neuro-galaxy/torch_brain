@@ -26,7 +26,7 @@ class SinusoidalTimeEmbedding(nn.Module):
         if dim % 2 != 0:
             raise ValueError("`dim` must be a multiple of 2")
 
-        periods = get_timeperiods(dim // 2, t_min, t_max)
+        periods = generate_logspace_timeperiods(dim // 2, t_min, t_max)
         omega = 2 * torch.pi / periods
         self.register_buffer("omega", omega)
 
@@ -48,7 +48,7 @@ class RotaryTimeEmbedding(nn.Module):
     modulate the attention weights in accordance with relative timing/positions of the tokens.
     Original paper: `RoFormer: Enhanced Transformer with Rotary Position Embedding <https://arxiv.org/abs/2104.09864>`_
 
-    The timeperiods are computed using :func:`get_timeperiods`.
+    The timeperiods are computed using :func:`generate_logspace_timeperiods`.
 
     Args:
         head_dim (int): Dimension of the attention head.
@@ -73,7 +73,7 @@ class RotaryTimeEmbedding(nn.Module):
         if not head_dim >= rotate_dim:
             raise ValueError("head_dim must be equal to or larger than rotate_dim")
 
-        periods = get_timeperiods(rotate_dim // 2, t_min, t_max)
+        periods = generate_logspace_timeperiods(rotate_dim // 2, t_min, t_max)
         omega = torch.zeros(head_dim // 2)
         omega[: rotate_dim // 2] = 2 * torch.pi / periods
         self.register_buffer("omega", omega)
@@ -133,7 +133,7 @@ class RotaryTimeEmbedding(nn.Module):
         return torch.cat((cos, -sin), dim=-1)
 
 
-def get_timeperiods(
+def generate_logspace_timeperiods(
     num: int,
     t_min: Union[float, Tensor],
     t_max: Union[float, Tensor],
