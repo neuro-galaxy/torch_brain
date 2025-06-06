@@ -381,10 +381,12 @@ def rotary_attn_pytorch_func(
     value = rearrange(value, "b n (h d) -> b h n d", h=num_heads)
 
     # apply rotary embeddings
-    query = RotaryTimeEmbedding.rotate(x=query, rotary_emb=q_pos_emb, head_dim=1)
-    key = RotaryTimeEmbedding.rotate(x=key, rotary_emb=kv_pos_emb, head_dim=1)
+    query = RotaryTimeEmbedding.rotate(x=query, rotary_emb=q_pos_emb, unsqueeze_dim=1)
+    key = RotaryTimeEmbedding.rotate(x=key, rotary_emb=kv_pos_emb, unsqueeze_dim=1)
     if rotate_value:
-        value = RotaryTimeEmbedding.rotate(x=value, rotary_emb=kv_pos_emb, head_dim=1)
+        value = RotaryTimeEmbedding.rotate(
+            x=value, rotary_emb=kv_pos_emb, unsqueeze_dim=1
+        )
 
     # attention mask
     if attn_mask is not None:
@@ -403,7 +405,7 @@ def rotary_attn_pytorch_func(
         out = RotaryTimeEmbedding.rotate(
             x=out,
             rotary_emb=RotaryTimeEmbedding.invert(q_pos_emb),
-            head_dim=1,
+            unsqueeze_dim=1,
         )
 
     # return (b, n, (h d), )
@@ -446,11 +448,13 @@ def rotary_attn_xformers_func(
     key = rearrange(key, "b n (h d) -> b n h d", h=num_heads)
     value = rearrange(value, "b n (h d) -> b n h d", h=num_heads)
 
-    query = RotaryTimeEmbedding.rotate(x=query, rotary_emb=q_pos_emb, head_dim=2)
-    key = RotaryTimeEmbedding.rotate(x=key, rotary_emb=kv_pos_emb, head_dim=2)
+    query = RotaryTimeEmbedding.rotate(x=query, rotary_emb=q_pos_emb, unsqueeze_dim=2)
+    key = RotaryTimeEmbedding.rotate(x=key, rotary_emb=kv_pos_emb, unsqueeze_dim=2)
 
     if rotate_value:
-        value = RotaryTimeEmbedding.rotate(x=value, rotary_emb=kv_pos_emb, head_dim=2)
+        value = RotaryTimeEmbedding.rotate(
+            x=value, rotary_emb=kv_pos_emb, unsqueeze_dim=2
+        )
 
     # WARNING: this is very slow, avoid using attn_mask if possible, refer to xformers
     # documentation
@@ -477,7 +481,7 @@ def rotary_attn_xformers_func(
         out = RotaryTimeEmbedding.rotate(
             x=out,
             rotary_emb=RotaryTimeEmbedding.invert(q_pos_emb),
-            head_dim=2,
+            unsqueeze_dim=2,
         )
 
     out = rearrange(out, "b n h d -> b n (h d)")

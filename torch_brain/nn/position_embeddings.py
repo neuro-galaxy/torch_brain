@@ -103,7 +103,7 @@ class RotaryTimeEmbedding(nn.Module):
     def rotate(
         x: Tensor,
         rotary_emb: Tensor,
-        head_dim: int = 2,
+        unsqueeze_dim: int = 2,
     ) -> Tensor:
         r"""Apply the rotary positional embedding to the input data.
 
@@ -111,12 +111,12 @@ class RotaryTimeEmbedding(nn.Module):
             x (torch.Tensor): Input data.
             rotary_emb (torch.Tensor): The rotary embedding produced by a forward
                 call of :class:`RotaryTimeEmbedding`.
-            head_dim (int, optional): Dimension of the head. Defaults to 2.
-                E.g. If the tokens going into the attention block are of shape (B, H, N, D),
-                then this should be set to 1. If it is (B, N, H, D), then it should be set
-                to 2.
+            unsqueeze_dim (int, optional): Dimension where heads are located in the input tensor.
+                E.g. For input shape (batch, heads, seq_len, dim) use 1.
+                For input shape (batch, seq_len, heads, dim) use 2.
+                Defaults to 2.
         """
-        rotary_emb = rotary_emb.unsqueeze(head_dim).to(x.dtype)
+        rotary_emb = rotary_emb.unsqueeze(unsqueeze_dim).to(x.dtype)
         cos, sin = rotary_emb.chunk(chunks=2, dim=-1)
         return (x * cos) + (RotaryTimeEmbedding._rotate_half(x) * sin)
 
