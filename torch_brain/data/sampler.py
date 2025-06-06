@@ -150,12 +150,13 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
     that the entire sequence is covered.
 
     Args:
-        sampling_intervals (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
+        sampling_intervals (Dict[str, List[Tuple[float, float]]]): Sampling intervals for each
             session in the dataset.
         window_length (float): Length of the window to sample.
-        step (Optional[float], optional): Step size between windows. If None, it
-            defaults to `window_length`. Defaults to None.
-        drop_short (bool, optional): Whether to drop short intervals. Defaults to False.
+        step (float, optional): Step size between windows. If None, it
+            defaults to ``window_length``.
+        drop_short (bool, optional): Whether to drop windows smaller than ``window_length``.
+            Defaults to False.
     """
 
     def __init__(
@@ -172,7 +173,6 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
         self.drop_short = drop_short
 
         assert self.step > 0, "Step must be greater than 0."
-        assert self.step <= self.window_length, "Step must be less than window length."
 
     # we cache the indices since they are deterministic
     @cached_property
