@@ -1,14 +1,13 @@
 from collections.abc import Iterable
 from typing import Union, Any, Optional
-from copy import deepcopy
 
 import torch
 from torch import Tensor, nn
 import torchmetrics
 from torchmetrics.collections import MetricCollection
 from torchmetrics.metric import Metric
-from torchmetrics.wrappers.abstract import WrapperMetric
 from torchmetrics.wrappers import MultitaskWrapper
+from torchmetrics.wrappers.abstract import WrapperMetric
 
 from torch_brain.utils.stitcher import stitch
 from torch_brain.data.sampler import StitcherSamplerWrapper
@@ -296,7 +295,7 @@ class TorchBrainMetricWrapper(WrapperMetric):
                 self._sample_ptr += 1
                 # check if the cache can be flushed
                 if self._counter[j] >= self._cache_flush_threshold[j]:
-                    self._process_cache_element(
+                    self._process_cache_chunk(
                         self._cache[j], self.metrics[recording_id]
                     )
                     # delete the cache to free memory
@@ -317,7 +316,7 @@ class TorchBrainMetricWrapper(WrapperMetric):
 
         return stitched_preds, stitched_targets
 
-    def _process_cache_element(self, _cache, metric: torchmetrics.Metric):
+    def _process_cache_chunk(self, _cache, metric: torchmetrics.Metric):
         preds_list = _cache["preds"]
         targets_list = _cache["targets"]
         timestamps_list = _cache["timestamps"]
@@ -347,7 +346,7 @@ class TorchBrainMetricWrapper(WrapperMetric):
         assert not self._smart_flushing
 
         for recording_id, metric in self.metrics.items():
-            self._process_cache_element(self._cache[recording_id], metric)
+            self._process_cache_chunk(self._cache[recording_id], metric)
 
         # delete the cache to free memory
         self._cache = None
