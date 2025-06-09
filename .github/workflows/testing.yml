@@ -28,11 +28,16 @@ jobs:
         source venv/bin/activate
         uv pip install --upgrade pip 
         uv pip install torch==2.2.0
-        uv pip install -e ".[dev]" 
+        uv pip install -e ".[dev]"
+        uv pip install lightning==2.3.3
     - name: Install plugin
       run: |
         source venv/bin/activate
         uv pip install pytest-github-actions-annotate-failures
+    - name: Install brainsets
+      run: |
+        source venv/bin/activate
+        uv pip install git+https://github.com/neuro-galaxy/brainsets@main
     - name: Test with pytest
       run: |
         source venv/bin/activate
@@ -42,23 +47,15 @@ jobs:
       run: |
         source venv/bin/activate
         pytest --doctest-modules torch_brain/ -v
-    - name: Install brainsets
-      run: |
-        source venv/bin/activate
-        mkdir -p brainsets_tmp 
-        cd brainsets_tmp
-        git clone https://github.com/neuro-galaxy/brainsets.git
-        cd brainsets
-        uv pip install -e .
     - name: Download sample dataset
       run: |
         source venv/bin/activate
-        cd brainsets_tmp/brainsets
-        brainsets config --raw ../../data/raw --processed ../../data/processed
+        brainsets config --raw-dir data/raw --processed-dir data/processed
         brainsets prepare pei_pandarinath_nlb_2021
     - name: Train a POYO model
       run: |
         source venv/bin/activate
+        uv pip install torch-optimizer==0.3.0
         python examples/poyo/train.py --config-name train_mc_maze_small.yaml data_root=data/processed wandb.enable=false epochs=2 eval_epochs=2 optim.lr_decay_start=0.
     - name: Train a POYO+ model
       run: |

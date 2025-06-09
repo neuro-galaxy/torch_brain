@@ -90,6 +90,7 @@
         movement_phases.hold_period: 0.1
         movement_phases.reach_period: 5.0
         movement_phases.return_period: 1.0
+        movement_phases.invalid: 0.1
         cursor_outlier_segments: 0.0
       metrics:
         - metric:

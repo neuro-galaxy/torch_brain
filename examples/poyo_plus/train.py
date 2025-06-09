@@ -16,7 +16,6 @@ from lightning.pytorch.callbacks import (
 )
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
-from torch_optimizer import Lamb
 
 import torch_brain
 from torch_brain.data import Dataset, collate
@@ -24,6 +23,7 @@ from torch_brain.data.sampler import (
     SequentialFixedWindowSampler,
     RandomFixedWindowSampler,
 )
+from torch_brain.optim import SparseLamb
 from torch_brain.models import POYOPlus
 from torch_brain.registry import MODALITY_REGISTRY
 from torch_brain.transforms import Compose
@@ -57,8 +57,23 @@ class TrainWrapper(L.LightningModule):
     def configure_optimizers(self):
         max_lr = self.cfg.optim.base_lr * self.cfg.batch_size  # linear scaling rule
 
-        optimizer = Lamb(
-            self.model.parameters(),
+        special_emb_params = (
+            list(self.model.unit_emb.parameters())
+            + list(self.model.session_emb.parameters())
+            + list(self.model.readout.parameters())
+        )
+
+        remaining_params = [
+            p
+            for n, p in self.model.named_parameters()
+            if "unit_emb" not in n and "session_emb" not in n and "readout" not in n
+        ]
+
+        optimizer = SparseLamb(
+            [
+                {"params": special_emb_params, "sparse": True},
+                {"params": remaining_params},
+            ],
             lr=max_lr,
             weight_decay=self.cfg.optim.weight_decay,
         )
@@ -465,6 +480,8 @@ def main(cfg: DictConfig):
         ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
         ModelCheckpoint(
             save_last=True,
+            monitor="average_val_metric",
+            mode="max",
             save_on_train_epoch_end=True,
             every_n_epochs=cfg.eval_epochs,
         ),
@@ -503,7 +520,7 @@ def main(cfg: DictConfig):
     trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path)
 
     # Test
-    trainer.test(wrapper, data_module)
+    trainer.test(wrapper, data_module, ckpt_path="best")
 
 
 if __name__ == "__main__":
