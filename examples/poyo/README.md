@@ -22,7 +22,8 @@ Then you can train POYO-MP by running:
 python train.py --config-name train_poyo_mp.yaml
 ```
 
-Checkout `configs/base.yaml` and `configs/train_poyo_mp.yaml` for all configurations available.
+Checkout `configs/defaults.yaml` and `configs/train_poyo_mp.yaml` for all configurations
+available.
 
 ### Training POYO-1
 To train POYO-1 you first need to download all datasets using `brainsets`.
@@ -41,9 +42,16 @@ python train.py --config-name train_poyo_1.yaml
 ```
 
 Checkout `configs/base.yaml` and `configs/train_poyo_1.yaml` for all configurations available.
+>>>>>>> origin/main
 
 ### Finetuning
-Will be implemented soon
+To finetune POYO-MP you can run:
+```bash
+python train.py --config-name train_poyo_mp.yaml \
+    ckpt_path=<path-to-checkpoint> \
+    finetuning.enable=true \
+    finetuning.freeze_perceiver_until_epoch=10  # set to -1 to do unit-identification
+```
 
 
 ## Cite
