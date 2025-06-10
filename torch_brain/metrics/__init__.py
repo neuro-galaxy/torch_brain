@@ -1,1 +1,1 @@
-from .metric_group import MetricGroupWithStitcher
+from .metric_wrapper import MetricWrapper

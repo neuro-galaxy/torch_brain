@@ -13,7 +13,7 @@ from torch_brain.utils.stitcher import stitch
 from torch_brain.data.sampler import StitcherSamplerWrapper
 
 
-class TorchBrainMetricWrapper(WrapperMetric):
+class MetricWrapper(WrapperMetric):
     """A wrapper for computing metrics across multiple recordings with intelligent data stitching.
 
     This class manages a collection of torchmetrics.Metric objects, one for each recording in your dataset.
@@ -53,10 +53,10 @@ class TorchBrainMetricWrapper(WrapperMetric):
 
         >>> import torch
         >>> from torchmetrics.regression import MeanSquaredError
-        >>> from torch_brain.metrics import TorchBrainMetricWrapper
+        >>> from torch_brain.metrics import MetricWrapper
         >>>
         >>> # Set up metrics for two recordings
-        >>> metrics = TorchBrainMetricWrapper({
+        >>> metrics = MetricWrapper({
         ...     "recording_001": MeanSquaredError(),
         ...     "recording_002": MeanSquaredError()
         ... })
@@ -76,10 +76,10 @@ class TorchBrainMetricWrapper(WrapperMetric):
 
         >>> import torch
         >>> from torchmetrics.regression import MeanSquaredError
-        >>> from torch_brain.metrics import TorchBrainMetricWrapper
+        >>> from torch_brain.metrics import MetricWrapper
         >>>
         >>> # Set up metrics for two recordings
-        >>> metrics = TorchBrainMetricWrapper({
+        >>> metrics = MetricWrapper({
         ...     "recording_001": MeanSquaredError(),
         ...     "recording_002": MeanSquaredError()
         ... }, stitch=True)
@@ -107,10 +107,10 @@ class TorchBrainMetricWrapper(WrapperMetric):
         >>> import torch
         >>> from torchmetrics.regression import MeanSquaredError, R2Score
         >>> from torchmetrics import MetricCollection
-        >>> from torch_brain.metrics import TorchBrainMetricWrapper
+        >>> from torch_brain.metrics import MetricWrapper
         >>>
         >>> # Set up metrics for two recordings
-        >>> metrics = TorchBrainMetricWrapper({
+        >>> metrics = MetricWrapper({
         ...     "recording_001": MetricCollection({
         ...         "mse": MeanSquaredError(),
         ...         "r2": R2Score()
@@ -137,7 +137,7 @@ class TorchBrainMetricWrapper(WrapperMetric):
         >>>
         >>> # At epoch end, compute final metrics
         >>> results = metrics.compute()
-        >>> # Results: {"recording_001": {"mse": tensor(0.01), "r2": tensor(0.99)}, "recording_002": {"mse": tensor(0.01), "r2": tensor(0.99)}}
+        >>> # Results: {"recording_001": {"mse": tensor(0.01), "r2": tensor(0.992)}, "recording_002": {"mse": tensor(0.01), "r2": tensor(0.992)}}
 
         Example with multiple tasks:
 
@@ -145,10 +145,10 @@ class TorchBrainMetricWrapper(WrapperMetric):
         >>> from torchmetrics.regression import MeanSquaredError, R2Score
         >>> from torchmetrics.classification import MulticlassAccuracy
         >>> from torchmetrics import MetricCollection, MultitaskWrapper
-        >>> from torch_brain.metrics import TorchBrainMetricWrapper
+        >>> from torch_brain.metrics import MetricWrapper
         >>>
         >>> # Set up metrics for two recordings
-        >>> metrics = TorchBrainMetricWrapper({
+        >>> metrics = MetricWrapper({
         ...     "recording_001": MultitaskWrapper({
         ...         "task_0": MetricCollection({
         ...             "mse": MeanSquaredError(),
@@ -179,7 +179,7 @@ class TorchBrainMetricWrapper(WrapperMetric):
         Example with efficient memory caching:
         >>> from torch_brain.data.sampler import SequentialFixedWindowSampler
         >>>
-        >>> metrics = TorchBrainMetricWrapper(...)
+        >>> metrics = MetricWrapper(...)
         >>> # Create your sampler as usual
         >>> sampler = SequentialFixedWindowSampler(dataset, window_size=1000)
         >>>
@@ -308,8 +308,8 @@ class TorchBrainMetricWrapper(WrapperMetric):
         timestamps = torch.cat(timestamps_list)
 
         # Pool data wherever timestamps overlap
-        stitched_preds = stitch(timestamps, preds)
-        stitched_targets = stitch(timestamps, targets)
+        _, stitched_preds = stitch(timestamps, preds)
+        _, stitched_targets = stitch(timestamps, targets)
 
         if targets.dtype == torch.long:
             stitched_targets = torch.round(stitched_targets).long()
@@ -374,12 +374,12 @@ class TorchBrainMetricWrapper(WrapperMetric):
 
     def reset(self) -> None:
         """Reset all underlying metrics."""
-        if self._stitch:
-            self._init_cache()
-
         for metric in self.metrics.values():
             metric.reset()
         super().reset()
+
+        if self._stitch:
+            self._init_cache()
 
     def convert_to_stitcher_sampler(self, sampler, num_replicas=1, rank=0):
         """Convert a sampler to a stitcher sampler.
