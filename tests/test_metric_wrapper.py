@@ -899,3 +899,147 @@ def test_metric_wrapper_state_persistence():
         ** 2
     )
     assert torch.isclose(results["rec_001"], expected_mse, atol=1e-6)
+
+
+# Test cache
+@pytest.fixture
+def mock_session_ids():
+    return [
+        "session1",
+        "session2",
+        "session3",
+    ]
+
+
+def test_update(mock_session_ids):
+    metrics = {session_id: torchmetrics.R2Score() for session_id in mock_session_ids}
+    metric_wrapper = MetricWrapper(metrics=metrics, stitch=True)
+
+    B = 3  # batch size
+    N = 17  # tokens per sample
+    D = 2  # output dim (for cursor velocity 2d)
+
+    def step_with_one_session(session_id):
+        timestamps = torch.rand(B, N)
+        absolute_starts = torch.rand(B)
+        timestamps = timestamps + absolute_starts[:, None]
+        preds = torch.rand(B, N, D)
+        targets = torch.rand(B, N, D)
+
+        for i in range(B):
+            metric_wrapper.update(
+                preds=preds[i],
+                targets=targets[i],
+                timestamps=timestamps[i],
+                recording_id=session_id,
+            )
+
+        return timestamps, preds, targets
+
+    # Test with first session
+    sess_id1 = mock_session_ids[0]
+    exp_times1, exp_preds1, exp_targets1 = step_with_one_session(sess_id1)
+
+    assert len(metric_wrapper._cache) == len(mock_session_ids)
+    assert len(metric_wrapper._cache[sess_id1]["timestamps"]) == B
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id1]["timestamps"]),
+        exp_times1.flatten(0, 1),
+    )
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id1]["preds"]), exp_preds1.flatten(0, 1)
+    )
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id1]["targets"]),
+        exp_targets1.flatten(0, 1),
+    )
+
+    # Step again with same session
+    exp_times2, exp_preds2, exp_targets2 = step_with_one_session(sess_id1)
+    exp_times2 = torch.cat((exp_times1, exp_times2))
+    exp_preds2 = torch.cat((exp_preds1, exp_preds2))
+    exp_targets2 = torch.cat((exp_targets1, exp_targets2))
+
+    assert len(metric_wrapper._cache[sess_id1]["timestamps"]) == 2 * B
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id1]["timestamps"]),
+        exp_times2.flatten(0, 1),
+    )
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id1]["preds"]), exp_preds2.flatten(0, 1)
+    )
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id1]["targets"]),
+        exp_targets2.flatten(0, 1),
+    )
+
+    # Step with 2nd session
+    sess_id2 = mock_session_ids[1]
+    exp_times3, exp_preds3, exp_targets3 = step_with_one_session(sess_id2)
+
+    assert len(metric_wrapper._cache) == len(mock_session_ids)
+    assert len(metric_wrapper._cache[sess_id1]["timestamps"]) == 2 * B
+    assert len(metric_wrapper._cache[sess_id2]["timestamps"]) == B
+    # First session cache should be unchanged
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id1]["timestamps"]),
+        exp_times2.flatten(0, 1),
+    )
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id1]["preds"]), exp_preds2.flatten(0, 1)
+    )
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id1]["targets"]),
+        exp_targets2.flatten(0, 1),
+    )
+    # Second session cache should match new data
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id2]["timestamps"]),
+        exp_times3.flatten(0, 1),
+    )
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id2]["preds"]), exp_preds3.flatten(0, 1)
+    )
+    assert torch.allclose(
+        torch.cat(metric_wrapper._cache[sess_id2]["targets"]),
+        exp_targets3.flatten(0, 1),
+    )
+
+
+def test_end_to_end_accuracy(mock_session_ids):
+    B = 9  # batch size
+    N = 50  # tokens per sample
+    D = 8  # prediction dimension (for drifting gratings orientation)
+    num_sessions = len(mock_session_ids)
+
+    metrics = {
+        session_id: torchmetrics.classification.MulticlassAccuracy(num_classes=D)
+        for session_id in mock_session_ids
+    }
+    metric_wrapper = MetricWrapper(metrics=metrics, stitch=True)
+
+    for epoch in range(3):
+        assert len(metric_wrapper._cache) == len(mock_session_ids)
+
+        for batch_step in range(10):
+            batch_session_ids = [
+                mock_session_ids[idx] for idx in torch.arange(B) % num_sessions
+            ]
+            timestamps = torch.linspace(0, 1, N).repeat(B, 1)
+            preds = torch.rand(B, N, D)
+            targets = torch.randint(D, (B, N))
+            masks = torch.rand(B, N) > 0.5
+            absolute_starts = torch.rand(B)
+
+            for i in range(B):
+                metric_wrapper.update(
+                    preds=preds[i][masks[i]],
+                    targets=targets[i][masks[i]],
+                    timestamps=timestamps[i][masks[i]] + absolute_starts[i],
+                    recording_id=batch_session_ids[i],
+                )
+
+        metric_dict = metric_wrapper.compute()
+        assert len(metric_dict) == num_sessions
+
+        metric_wrapper.reset()
