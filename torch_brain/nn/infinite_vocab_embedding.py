@@ -182,7 +182,7 @@ class InfiniteVocabEmbedding(nn.Module):
         embeddings_for_existing_words = self.weight.clone().detach()
 
         # reinitalize weight matrix after extending it
-        self.weight = UninitializedParameter()
+        self.weight = UninitializedParameter(device=self.weight.device)
         self.initialize_parameters(len(self.vocab))
 
         # copy existing embeddings into new weight matrix
