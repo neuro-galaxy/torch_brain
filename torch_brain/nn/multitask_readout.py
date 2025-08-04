@@ -159,6 +159,16 @@ def prepare_for_multitask_readout(
     data: Data,
     readout_registry: Dict[str, "ModalitySpec"],
 ):
+    """Prepare data for multitask readout.
+
+    This function is used to prepare data for multitask readout. It will return a set of tensors
+    that can be used to train a multitask readout model.
+
+    Args:
+        data: Data object containing the data to be prepared for multitask readout
+        readout_registry: Dictionary of readout specifications
+    """
+
     required_keys = ["readout_id"]
     optional_keys = [
         "weights",
@@ -168,6 +178,7 @@ def prepare_for_multitask_readout(
         "value_key",
         "metrics",
         "eval_interval",
+        "value_map",
     ]
 
     timestamps = list()
@@ -210,7 +221,7 @@ def prepare_for_multitask_readout(
 
         # Apply value mapping if specified in the readout spec
         if readout_spec.value_map:
-            values[key] = np.vectorize(dict(readout_spec.value_map).get)(values[key])
+            values[key] = readout_spec.value_map(values[key])
             assert not np.any(
                 values[key] == None
             ), f"Value mapping resulted in None values for readout {key}"

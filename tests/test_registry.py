@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 import torch_brain
 from torch_brain.registry import (
@@ -61,6 +62,34 @@ def test_register_modality(clear_registry):
     assert "test_modality" in MODALITY_REGISTRY
     assert MODALITY_REGISTRY["test_modality"].id == 1
     assert MODALITY_REGISTRY["test_modality"].dim == 2
+
+
+def test_register_modality_with_value_map(clear_registry):
+    """Test registering a modality with a value map."""
+    modality_id = register_modality(
+        "test_modality",
+        dim=2,
+        type=DataType.CONTINUOUS,
+        loss_fn=torch_brain.nn.loss.MSELoss(),
+        timestamp_key="test.timestamps",
+        value_key="test.values",
+        value_map={
+            0: -1,
+            1: 1,
+        },
+    )
+
+    assert modality_id == 1
+    assert "test_modality" in MODALITY_REGISTRY
+    assert MODALITY_REGISTRY["test_modality"].id == 1
+    assert np.all(
+        MODALITY_REGISTRY["test_modality"].value_map(np.array([0, 1]))
+        == np.array([-1, 1])
+    )
+    assert np.all(
+        MODALITY_REGISTRY["test_modality"].value_map(np.array([2, 3]))
+        == np.array([None, None])
+    )
 
 
 def test_register_duplicate_modality(clear_registry):

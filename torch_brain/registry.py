@@ -1,6 +1,8 @@
+from copy import copy
 from enum import Enum
 from typing import Dict, Optional, Any, Callable
 
+import numpy as np
 from pydantic.dataclasses import dataclass
 import torch_brain
 
@@ -32,6 +34,10 @@ class ModalitySpec:
         timestamp_key: Key to access timestamps in the data object
         value_key: Key to access values in the data object
         id: Unique numeric ID assigned to this modality
+        value_map: Function to map values in the output. This is useful for multi-class
+            classification tasks where only certain classes are used for training.
+            To use this, pass a dictionary of the form {value: mapped_value} to the
+            register_modality function.
     """
 
     id: int
@@ -40,7 +46,7 @@ class ModalitySpec:
     timestamp_key: str  # can be overwritten
     value_key: str  # can be overwritten
     loss_fn: Callable  # can be overwritten
-    value_map: Optional[Dict[Any, Any]] = None
+    value_map: Optional[Callable[[np.ndarray], np.ndarray]] = None
 
 
 MODALITY_REGISTRY: Dict[str, ModalitySpec] = {}
@@ -67,6 +73,12 @@ def register_modality(name: str, **kwargs: Any) -> int:
 
     # Get next available ID
     next_id = len(MODALITY_REGISTRY) + 1
+
+    # if value_map is provided, get a mapping function from the dictionary
+    if "value_map" in kwargs:
+        value_map = copy(dict(kwargs["value_map"]))
+        if isinstance(value_map, dict):
+            kwargs["value_map"] = lambda t: np.vectorize(dict(value_map).get)(t)
 
     # Create DecoderSpec from kwargs and set ID
     decoder_spec = ModalitySpec(**kwargs, id=next_id)
