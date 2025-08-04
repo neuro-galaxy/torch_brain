@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, Tuple, Optional, Any, Callable
+from typing import Dict, Optional, Any, Callable
 
 from pydantic.dataclasses import dataclass
 import torch_brain
@@ -40,6 +40,7 @@ class ModalitySpec:
     timestamp_key: str  # can be overwritten
     value_key: str  # can be overwritten
     loss_fn: Callable  # can be overwritten
+    value_map: Optional[Dict[Any, Any]] = None
 
 
 MODALITY_REGISTRY: Dict[str, ModalitySpec] = {}
@@ -101,6 +102,22 @@ register_modality(
     timestamp_key="cursor.timestamps",
     value_key="cursor.vel",
     loss_fn=torch_brain.nn.loss.MSELoss(),
+)
+
+register_modality(
+    "feet_versus_right_hand_movement",
+    dim=2,
+    type=DataType.MULTINOMIAL,
+    timestamp_key="imagined_movement_trials.timestamps",
+    value_key="imagined_movement_trials.movement_ids",
+    value_map={
+        0: -1,
+        1: 1,
+        2: -1,
+        3: 0,
+        4: -1,
+    },
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
 register_modality(

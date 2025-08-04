@@ -208,6 +208,13 @@ def prepare_for_multitask_readout(
         timestamps.append(data.get_nested_attribute(timestamp_key))
         values[key] = data.get_nested_attribute(value_key)
 
+        # Apply value mapping if specified in the readout spec
+        if readout_spec.value_map:
+            values[key] = np.vectorize(dict(readout_spec.value_map).get)(values[key])
+            assert not np.any(
+                values[key] == None
+            ), f"Value mapping resulted in None values for readout {key}"
+
         # z-scale the values if mean/std are specified in the config file
         if "normalize_mean" in readout_config:
             # if mean is a list, its a per-channel mean (usually for x,y coordinates)
