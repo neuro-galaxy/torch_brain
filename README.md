@@ -55,6 +55,20 @@ pytest
 or test individual files via, e.g., `pytest test/test_binning.py`
 
 
+### Dependency Management with `uv`
+This project uses `uv` for fast dependency management. The `uv.lock` file contains a resolved list of all dependencies.
+
+To work on the project, first install `uv`:
+```bash
+pip install uv
+```
+Then, you can install all the development dependencies using the lock file:
+```bash
+uv pip sync uv.lock
+```
+This ensures that you have the exact same versions of all dependencies as specified in the lock file.
+
+
 ## Cite
 
 Please cite [our paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca113d122584f12a6727341aaf58887-Abstract-Conference.html) if you use this code in your own work:
