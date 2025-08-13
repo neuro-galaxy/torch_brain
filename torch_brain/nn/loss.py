@@ -78,8 +78,6 @@ class CrossEntropyLoss(Loss):
             raise ValueError("Weights must have 1 dimension")
         if weights is not None and input.shape[0] != weights.shape[0]:
             raise ValueError("Input and weights must have the same batch size")
-        
-        target = target.long()
 
         if weights is not None:
             loss_noreduce = F.cross_entropy(input, target, reduction="none")

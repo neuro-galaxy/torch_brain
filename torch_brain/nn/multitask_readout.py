@@ -215,6 +215,8 @@ def prepare_for_multitask_readout(
             mask = np.logical_and(timestamps_ >= 0.25, timestamps_ <= 0.75)
             timestamps.append(timestamps_[mask])
             values[key] = data.get_nested_attribute(value_key)[mask]
+            if timestamp_key == "task_aligned_intervals.reward.timestamps":
+                values[key] = np.array([0, 1, 1], dtype=np.int64)[(values[key] + 1).astype(int)]
         else:
             timestamps.append(data.get_nested_attribute(timestamp_key))
             values[key] = data.get_nested_attribute(value_key)
