@@ -205,8 +205,19 @@ def prepare_for_multitask_readout(
         timestamp_key = readout_config.get("timestamp_key", readout_spec.timestamp_key)
 
         readout_index.append(readout_spec.id)
-        timestamps.append(data.get_nested_attribute(timestamp_key))
-        values[key] = data.get_nested_attribute(value_key)
+        if timestamp_key in ["task_aligned_intervals.block_prior.timestamps", "task_aligned_intervals.choice.timestamps", "task_aligned_intervals.reward.timestamps", "task_aligned_intervals.stimulus_side.timestamps", "task_aligned_intervals.stimulus_contrast.timestamps"]:
+            # Use string replace in timestamp_key to get start and end, then compute midpoint
+            start_key = timestamp_key.replace("timestamps", "start")
+            end_key = timestamp_key.replace("timestamps", "end")
+            start = data.get_nested_attribute(start_key)
+            end = data.get_nested_attribute(end_key)
+            timestamps_ = (start + end) / 2
+            mask = np.logical_and(timestamps_ >= 0.25, timestamps_ <= 0.75)
+            timestamps.append(timestamps_[mask])
+            values[key] = data.get_nested_attribute(value_key)[mask]
+        else:
+            timestamps.append(data.get_nested_attribute(timestamp_key))
+            values[key] = data.get_nested_attribute(value_key)
 
         # z-scale the values if mean/std are specified in the config file
         if "normalize_mean" in readout_config:

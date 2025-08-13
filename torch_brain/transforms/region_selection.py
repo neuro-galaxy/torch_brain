@@ -54,7 +54,7 @@ class RandomRegionSelection:
         
         # randomly select one region
         selected_region = self.rng.choice(available_regions)
-        logging.info(f"Selected region: {selected_region}")
+        # logging.info(f"Selected region: {selected_region}")
         
         # create mask for units in the selected region
         unit_mask = regions == selected_region

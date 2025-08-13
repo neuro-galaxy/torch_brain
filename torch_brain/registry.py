@@ -269,8 +269,8 @@ register_modality(
     "block_prior",
     dim=3,
     type=DataType.MULTINOMIAL,
-    timestamp_key="block_prior.block",
-    value_key="block_prior.timestamps",
+    timestamp_key="task_aligned_intervals.block_prior.timestamps",
+    value_key="task_aligned_intervals.block_prior.block",
     loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
@@ -278,8 +278,8 @@ register_modality(
     "choice",
     dim=2,
     type=DataType.MULTINOMIAL,
-    timestamp_key="choice.block",
-    value_key="choice.timestamps",
+    timestamp_key="task_aligned_intervals.choice.timestamps",
+    value_key="task_aligned_intervals.choice.block",
     loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
@@ -287,8 +287,8 @@ register_modality(
     "reward",
     dim=2,
     type=DataType.MULTINOMIAL,
-    timestamp_key="reward.reward",
-    value_key="reward.timestamps",
+    timestamp_key="task_aligned_intervals.reward.timestamps",
+    value_key="task_aligned_intervals.reward.reward",
     loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
@@ -296,8 +296,8 @@ register_modality(
     "stimulus_side",
     dim=2,
     type=DataType.MULTINOMIAL,
-    timestamp_key="stimulus_side.stimulus_side",
-    value_key="stimulus_side.timestamps",
+    timestamp_key="task_aligned_intervals.stimulus_side.timestamps",
+    value_key="task_aligned_intervals.stimulus_side.stimulus_side",
     loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
@@ -305,8 +305,8 @@ register_modality(
     "stimulus_contrast",
     dim=5,
     type=DataType.MULTINOMIAL,
-    timestamp_key="stimulus_contrast.stimulus_contrast",
-    value_key="stimulus_contrast.timestamps",
+    timestamp_key="task_aligned_intervals.stimulus_contrast.timestamps",
+    value_key="task_aligned_intervals.stimulus_contrast.stimulus_contrast",
     loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
 )
 
