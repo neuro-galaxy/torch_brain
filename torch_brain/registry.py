@@ -264,3 +264,93 @@ register_modality(
     value_key="pupil.size_2d",
     loss_fn=torch_brain.nn.loss.MSELoss(),
 )
+
+register_modality(
+    "block_prior",
+    dim=3,
+    type=DataType.MULTINOMIAL,
+    timestamp_key="block_prior.block",
+    value_key="block_prior.timestamps",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
+)
+
+register_modality(
+    "choice",
+    dim=2,
+    type=DataType.MULTINOMIAL,
+    timestamp_key="choice.block",
+    value_key="choice.timestamps",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
+)
+
+register_modality(
+    "reward",
+    dim=2,
+    type=DataType.MULTINOMIAL,
+    timestamp_key="reward.reward",
+    value_key="reward.timestamps",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
+)
+
+register_modality(
+    "stimulus_side",
+    dim=2,
+    type=DataType.MULTINOMIAL,
+    timestamp_key="stimulus_side.stimulus_side",
+    value_key="stimulus_side.timestamps",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
+)
+
+register_modality(
+    "stimulus_contrast",
+    dim=5,
+    type=DataType.MULTINOMIAL,
+    timestamp_key="stimulus_contrast.stimulus_contrast",
+    value_key="stimulus_contrast.timestamps",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
+)
+
+register_modality(
+    "whisker_motion_energy",
+    dim=1,
+    type=DataType.CONTINUOUS,
+    timestamp_key="whisker.timestamps",
+    value_key="whisker.motion_energy",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)
+
+register_modality(
+    "wheel_speed",
+    dim=1,
+    type=DataType.CONTINUOUS,
+    timestamp_key="wheel.timestamps",
+    value_key="wheel.speed",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)
+
+register_modality(
+    "right_paw_v_xy",
+    dim=2,
+    type=DataType.CONTINUOUS,
+    timestamp_key="pose.timestamps",
+    value_key="pose.right_paw_v_xy",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)
+
+register_modality(
+    "left_paw_v_xy",
+    dim=2,
+    type=DataType.CONTINUOUS,
+    timestamp_key="pose.timestamps",
+    value_key="pose.left_paw_v_xy",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)
+
+register_modality(
+    "licking",
+    dim=1,
+    type=DataType.CONTINUOUS,
+    timestamp_key="licking.timestamps",
+    value_key="licking.rate",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)

@@ -1,0 +1,20 @@
+defaults:
+  - defaults.yaml
+  - model: poyo_1.yaml
+  - dataset: ibl_brain_wide_map_2023.yaml
+  - _self_
+
+train_transforms:
+  - _target_: torch_brain.transforms.RandomRegionSelection
+    exclude_regions:
+      - "root"
+      - "void"
+    min_units: 5
+  - _target_: torch_brain.transforms.UnitDropout
+    max_units: 1000
+    min_units: 5
+    mode_units: 20
+    peak: 4
+
+wandb:
+  run_name: poyo-plus-ibl
