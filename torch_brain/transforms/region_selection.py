@@ -42,7 +42,9 @@ class RandomRegionSelection:
         # filter out excluded regions and regions with insufficient units
         available_regions = []
         for region, count in zip(unique_regions, region_counts):
-            if region not in self.exclude_regions and count >= self.min_units:
+            # Handle byte strings by converting to regular strings for comparison
+            region_str = region.decode('utf-8') if isinstance(region, bytes) else str(region)
+            if region_str not in self.exclude_regions and count >= self.min_units:
                 available_regions.append(region)
         
         if not available_regions:

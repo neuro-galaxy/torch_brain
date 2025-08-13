@@ -276,7 +276,7 @@ register_modality(
 
 register_modality(
     "choice",
-    dim=2,
+    dim=3,
     type=DataType.MULTINOMIAL,
     timestamp_key="task_aligned_intervals.choice.timestamps",
     value_key="task_aligned_intervals.choice.block",
