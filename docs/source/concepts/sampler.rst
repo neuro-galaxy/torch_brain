@@ -279,14 +279,14 @@ The modifier code should update the ``sampling_intervals`` variable with the mod
     :caption: config.yaml
     
     - selection:
-    - brainset: perich_miller_population_2018
+      - brainset: perich_miller_population_2018
         sessions:
-        - c_20131003_center_out_reaching
-        - c_20131022_center_out_reaching
-        - c_20131023_center_out_reaching
+          - c_20131003_center_out_reaching
+          - c_20131022_center_out_reaching
+          - c_20131023_center_out_reaching
       config:
         sampling_intervals_modifier: |
-            sampling_intervals = sampling_intervals & data.movement_phases.reach_period
+          sampling_intervals = sampling_intervals & data.movement_phases.reach_period
 
 .. note::
 
@@ -300,11 +300,11 @@ The modifier code should update the ``sampling_intervals`` variable with the mod
     :caption: config.yaml
     
     - selection:
-    - brainset: perich_miller_population_2018
+      - brainset: perich_miller_population_2018
         sessions:
-        - c_20131003_center_out_reaching
-        - c_20131022_center_out_reaching
-        - c_20131023_center_out_reaching
+          - c_20131003_center_out_reaching
+          - c_20131022_center_out_reaching
+          - c_20131023_center_out_reaching
       config:
         sampling_intervals_modifier: |
             import numpy as np
