@@ -7,8 +7,8 @@ defaults:
 train_transforms:
   - _target_: torch_brain.transforms.RandomRegionSelection
     exclude_regions:
-      - "root"
-      - "void"
+      - root
+      - void
     min_units: 5
   - _target_: torch_brain.transforms.UnitDropout
     max_units: 1000

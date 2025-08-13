@@ -15,7 +15,6 @@ class RandomRegionSelection:
     Args:
         field (str, optional): Field to apply the region selection. Defaults to "spikes".
         exclude_regions (List[str], optional): List of regions to exclude from selection.
-            Defaults to ["void"].
         min_units (int, optional): Minimum number of units required for a region to be selected.
             Defaults to 1.
         seed (int, optional): Seed for the random number generator.
@@ -31,7 +30,7 @@ class RandomRegionSelection:
     ):
         self.field = field
         self.reset_index = reset_index
-        self.exclude_regions = exclude_regions if exclude_regions is not None else ["void"]
+        self.exclude_regions = exclude_regions if exclude_regions is not None else []
         self.min_units = min_units
         self.rng = np.random.default_rng(seed=seed)
 

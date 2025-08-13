@@ -37,6 +37,9 @@ class MSELoss(Loss):
             target (Tensor): The target tensor.
             weights (Tensor, optional): The weights tensor.
         """
+        if target.ndim == 1:
+            target = target.unsqueeze(1)
+        
         if input.ndim != 2:
             raise ValueError("Input must have 2 dimensions")
         if target.ndim != 2:
