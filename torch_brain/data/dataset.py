@@ -569,10 +569,8 @@ class Dataset(torch.utils.data.Dataset):
             sampling_domain = (
                 f"{self.split}_domain" if self.split is not None else "domain"
             )
-            sampling_intervals = getattr(
-                self._get_data_object(recording_id), sampling_domain
-            )
-            sampling_intervals_dict[recording_id] = (list(data.domain.start), list(data.domain.end))
+            sampling_intervals = getattr(data, sampling_domain)
+            sampling_intervals_dict[recording_id] = (list(sampling_intervals.start), list(sampling_intervals.end))
             # del data
             file.close()
 
