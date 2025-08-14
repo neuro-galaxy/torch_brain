@@ -1,15 +1,19 @@
 import copy
+import hashlib
+import json
 import logging
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Optional
 
 import h5py
 import numpy as np
 import omegaconf
 import torch
 from temporaldata import Data, Interval
+from tqdm import tqdm
 
 
 @dataclass
@@ -351,8 +355,13 @@ class Dataset(torch.utils.data.Dataset):
         Note that these intervals will change depending on the split. If no split is
         provided, the full domain of the data is used.
         """
+        sampling_intervals = self.get_all_ids()['sampling_intervals']
+
+        sampling_intervals = {key: Interval(np.array(start), np.array(end)) for key, (start, end) in sampling_intervals.items()}
+        
+        return sampling_intervals
         sampling_intervals_dict = {}
-        for recording_id in self.recording_dict.keys():
+        for recording_id in tqdm(self.recording_dict.keys(), desc="Getting sampling intervals"):
             sampling_domain = (
                 f"{self.split}_domain" if self.split is not None else "domain"
             )
@@ -397,11 +406,7 @@ class Dataset(torch.utils.data.Dataset):
     def _get_unit_ids_with_prefix(self, data: Data) -> np.ndarray:
         r"""Return unit ids with prefix applied"""
         prefix_str = self.unit_id_prefix_fn(data)
-        # Check numpy version and use appropriate function
-        if np.__version__ >= "2.0":
-            return np.strings.add(prefix_str, data.units.id.astype(str))
-        else:
-            return np.core.defchararray.add(prefix_str, data.units.id.astype(str))
+        return np.core.defchararray.add(prefix_str, data.units.id.astype(str))
 
     def _get_session_id_with_prefix(self, data: Data) -> str:
         r"""Return session id with prefix applied"""
@@ -422,38 +427,230 @@ class Dataset(torch.utils.data.Dataset):
         if hasattr(data, "subject"):
             data.subject.id = self._get_subject_id_with_prefix(data)
 
-    def get_unit_ids(self):
-        r"""Returns all unit ids in the dataset."""
+    def _get_cache_directory(self):
+        r"""Returns the cache directory path for this dataset."""
+        cache_dir = Path(self.root) / ".torch_brain_cache" / "dataset_ids"
+        print(cache_dir)
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        return cache_dir
+
+    def _get_dataset_hash(self):
+        r"""Generate a unique hash for this dataset configuration to use as cache key."""
+        # Create a hash based on dataset configuration that would affect IDs
+        hash_data = {
+            'root': str(self.root),
+            'config': self.config if isinstance(self.config, (str, type(None))) else str(self.config),
+            'split': self.split,
+            # 'recording_dict_keys': sorted(self.recording_dict.keys()) if self.recording_dict else [],
+            # # Include modification times of recording files to detect changes
+            # 'file_mtimes': {
+            #     recording_id: os.path.getmtime(info['filename'])
+            #     for recording_id, info in self.recording_dict.items()
+            #     if os.path.exists(info['filename'])
+            # } if self.recording_dict else {}
+        }
+        
+        hash_string = json.dumps(hash_data, sort_keys=True)
+        return hashlib.md5(hash_string.encode()).hexdigest()
+
+    def _get_cache_file_path(self):
+        r"""Returns the full path to the cache file for this dataset."""
+        dataset_hash = self._get_dataset_hash()
+        cache_dir = self._get_cache_directory()
+        return cache_dir / f"ids_cache_{dataset_hash}.json"
+
+    def _load_ids_from_disk_cache(self):
+        r"""Load cached IDs from disk if available and valid."""
+        cache_file = self._get_cache_file_path()
+        
+        if not cache_file.exists():
+            return None
+            
+        try:
+            with open(cache_file, 'r') as f:
+                cached_data = json.load(f)
+                
+            # Convert lists back to numpy arrays where needed
+            if 'unit_ids' in cached_data:
+                cached_data['unit_ids'] = [str(uid) for uid in cached_data['unit_ids']]
+                
+            return cached_data
+        except (json.JSONDecodeError, KeyError, IOError) as e:
+            logging.warning(f"Failed to load IDs cache from {cache_file}: {e}")
+            # Remove corrupted cache file
+            try:
+                cache_file.unlink()
+            except OSError:
+                pass
+            return None
+
+    def _save_ids_to_disk_cache(self, ids_data):
+        r"""Save IDs data to disk cache."""
+        cache_file = self._get_cache_file_path()
+        
+        try:
+            # Convert numpy arrays to lists for JSON serialization
+            serializable_data = {}
+            for key, value in ids_data.items():
+                if isinstance(value, np.ndarray):
+                    serializable_data[key] = value.tolist()
+                elif isinstance(value, list):
+                    # Convert any numpy elements in lists to regular Python types
+                    serializable_data[key] = [
+                        item.tolist() if isinstance(item, np.ndarray) else str(item)
+                        for item in value
+                    ]
+                else:
+                    serializable_data[key] = value
+            
+            with open(cache_file, 'w') as f:
+                json.dump(serializable_data, f, indent=2)
+                
+            logging.info(f"Saved IDs cache to {cache_file}")
+        except (IOError, TypeError) as e:
+            logging.warning(f"Failed to save IDs cache to {cache_file}: {e}")
+
+    def get_all_ids(self, use_cache=True):
+        r"""Returns all types of IDs in the dataset in a single pass through recordings.
+        
+        This is an optimized version that collects all ID types (unit, session, 
+        subject, brainset) in one iteration instead of multiple separate iterations.
+        
+        The function uses a two-level caching system:
+        1. Memory cache: Cached in instance variable for fastest access
+        2. Disk cache: Persistent cache in ~/.torch_brain_cache/dataset_ids/
+        
+        Args:
+            use_cache: If True, use both memory and disk cache to avoid re-computation.
+            
+        Returns:
+            dict: Dictionary containing all ID types:
+                - 'unit_ids': List of all unit IDs 
+                - 'session_ids': List of all unique session IDs
+                - 'subject_ids': List of all unique subject IDs
+                - 'brainset_ids': List of all unique brainset IDs
+        """
+        # Check memory cache first (fastest)
+        if use_cache and hasattr(self, '_cached_all_ids'):
+            return self._cached_all_ids
+        
+        # Check disk cache second (fast, persistent)
+        if use_cache:
+            disk_cached_result = self._load_ids_from_disk_cache()
+            if disk_cached_result is not None:
+                # Store in memory cache for even faster subsequent access
+                self._cached_all_ids = disk_cached_result
+                logging.info("Loaded IDs from disk cache")
+                return disk_cached_result
+            
         unit_ids_list = []
-        for recording_id in self.recording_dict.keys():
-            data = self._get_data_object(recording_id)
+        session_ids_set = set()
+        subject_ids_set = set()
+        brainset_ids_set = set()
+        sampling_intervals_dict = {}
+        
+        for recording_id in tqdm(
+            self.recording_dict.keys(), desc="Collecting all IDs"
+        ):
+            file = h5py.File(self.recording_dict[recording_id]["filename"], "r")
+            data = Data.from_hdf5(file, lazy=True)
+            
             unit_ids = self._get_unit_ids_with_prefix(data)
             unit_ids_list.extend(unit_ids)
-        return unit_ids_list
+            
+            session_id = self._get_session_id_with_prefix(data)
+            session_ids_set.add(session_id)
+        
+            subject_id = self._get_subject_id_with_prefix(data)
+            subject_ids_set.add(subject_id)
+        
+            brainset_ids_set.add(data.brainset.id)
+
+            sampling_domain = (
+                f"{self.split}_domain" if self.split is not None else "domain"
+            )
+            sampling_intervals = getattr(
+                self._get_data_object(recording_id), sampling_domain
+            )
+            sampling_intervals_dict[recording_id] = (list(data.domain.start), list(data.domain.end))
+            # del data
+            file.close()
+
+        result = {
+            'unit_ids': unit_ids_list,
+            'session_ids': sorted(list(session_ids_set)),
+            'subject_ids': sorted(list(subject_ids_set)),
+            'brainset_ids': sorted(list(brainset_ids_set)),
+            'sampling_intervals': sampling_intervals_dict,
+        }
+        
+        # Cache the results if requested
+        if use_cache:
+            # Store in memory cache
+            self._cached_all_ids = result
+            # Save to disk cache for persistence across sessions
+            self._save_ids_to_disk_cache(result)
+            
+        return result
+
+    def get_unit_ids(self):
+        r"""Returns all unit ids in the dataset."""
+        return self.get_all_ids()['unit_ids']
 
     def get_session_ids(self):
         r"""Returns the session ids of the dataset."""
-        ans = []
-        for recording_id in self.recording_dict.keys():
-            data = self._get_data_object(recording_id)
-            ans.append(self._get_session_id_with_prefix(data))
-        return sorted(ans)
+        return self.get_all_ids()['session_ids']
 
     def get_subject_ids(self):
         r"""Returns all subject ids in the dataset."""
-        subject_ids = []
-        for recording_id in self.recording_dict.keys():
-            data = self._get_data_object(recording_id)
-            subject_ids.append(self._get_subject_id_with_prefix(data))
-        return sorted(list(set(subject_ids)))
+        return self.get_all_ids()['subject_ids']
 
     def get_brainset_ids(self):
         r"""Returns all brainset ids in the dataset."""
-        brainset_ids = []
-        for recording_id in self.recording_dict.keys():
+        return self.get_all_ids()['brainset_ids']
+
+    def clear_ids_cache(self):
+        r"""Clears both memory and disk cached IDs. Useful when the dataset has been modified."""
+        # Clear memory cache
+        if hasattr(self, '_cached_all_ids'):
+            delattr(self, '_cached_all_ids')
+        
+        # Clear disk cache
+        cache_file = self._get_cache_file_path()
+        if cache_file.exists():
+            try:
+                cache_file.unlink()
+                logging.info(f"Cleared disk cache: {cache_file}")
+            except OSError as e:
+                logging.warning(f"Failed to clear disk cache {cache_file}: {e}")
+
+    def clear_all_ids_cache_files(self):
+        r"""Clears all IDs cache files from the cache directory. Useful for cleanup."""
+        cache_dir = self._get_cache_directory()
+        try:
+            cache_files = list(cache_dir.glob("ids_cache_*.json"))
+            for cache_file in cache_files:
+                cache_file.unlink()
+            logging.info(f"Cleared {len(cache_files)} cache files from {cache_dir}")
+        except OSError as e:
+            logging.warning(f"Failed to clear cache files from {cache_dir}: {e}")
+
+    def get_number_of_tokens(self):
+        r"""Returns the number of tokens in the dataset."""
+        tokens_total = 0
+        for recording_id in tqdm(
+            self.recording_dict.keys(), desc="Collecting number of tokens"
+        ):
             data = self._get_data_object(recording_id)
-            brainset_ids.append(data.brainset.id)
-        return sorted(list(set(brainset_ids)))
+            if self.split == "train":
+                tokens_total += sum(data.eeg.train_mask) * data.eeg.signal.shape[1]
+            elif self.split == "val":
+                tokens_total += sum(data.eeg.val_mask) * data.eeg.signal.shape[1]
+            elif self.split == "test":
+                tokens_total += sum(data.eeg.test_mask) * data.eeg.signal.shape[1]
+            else:
+                raise ValueError(f"Invalid split: {self.split}")
+        return tokens_total
 
     def disable_data_leakage_check(self):
         r"""Disables the data leakage check.
@@ -469,6 +666,7 @@ class Dataset(torch.utils.data.Dataset):
         )
 
     def __getitem__(self, index: DatasetIndex):
+
         sample = self.get(index.recording_id, index.start, index.end)
 
         # apply transform
