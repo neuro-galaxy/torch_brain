@@ -48,6 +48,7 @@ class RandomRegionSelection:
                 available_regions.append(region)
         
         if not available_regions:
+            return data
             raise ValueError(
                 f"No regions have at least {self.min_units} units after excluding {self.exclude_regions}. "
                 f"Available regions and their unit counts: {list(zip(unique_regions, region_counts))}"
