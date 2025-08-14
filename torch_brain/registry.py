@@ -354,3 +354,13 @@ register_modality(
     value_key="licking.rate",
     loss_fn=torch_brain.nn.loss.MSELoss(),
 )
+
+
+register_modality(
+    "placeholder",
+    dim=1,
+    type=DataType.CONTINUOUS,
+    timestamp_key="licking.timestamps",
+    value_key="licking.rate",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)
