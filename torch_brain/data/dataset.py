@@ -306,6 +306,7 @@ class Dataset(torch.utils.data.Dataset):
             end: The end time of the slice.
         """
         data = self._get_data_object(recording_id)
+        data.wheel._domain = Interval(data.wheel.domain.start[0], data.wheel.domain.end[-1])
         sample = data.slice(start, end)
 
         if self._check_for_data_leakage_flag and self.split is not None:
@@ -395,6 +396,11 @@ class Dataset(torch.utils.data.Dataset):
                 sampling_intervals = local_vars.get("sampling_intervals")
             sampling_intervals_dict[recording_id] = sampling_intervals
         return sampling_intervals_dict
+
+    def get_extra_sampling_intervals(self):
+        sampling_intervals = self.get_all_ids()['extra_sampling_intervals']
+        sampling_intervals = {key: Interval(np.array(start), np.array(end)) for key, (start, end) in sampling_intervals.items()}
+        return sampling_intervals
 
     def get_recording_config_dict(self):
         r"""Returns configs for each session in the dataset as a dictionary."""
@@ -552,6 +558,7 @@ class Dataset(torch.utils.data.Dataset):
         subject_ids_set = set()
         brainset_ids_set = set()
         sampling_intervals_dict = {}
+        extra_sampling_intervals_dict = {}
         
         for recording_id in tqdm(
             self.recording_dict.keys(), desc="Collecting all IDs"
@@ -570,11 +577,11 @@ class Dataset(torch.utils.data.Dataset):
         
             brainset_ids_set.add(data.brainset.id)
 
-            sampling_domain = (
-                f"{self.split}_domain" if self.split is not None else "domain"
-            )
-            sampling_intervals = getattr(data, sampling_domain)
+            intervals = [getattr(data.task_aligned_intervals, name) for name in data.task_aligned_intervals.keys()]
+            from functools import reduce
+            sampling_intervals = reduce(lambda x, y: x | y, intervals)
             sampling_intervals_dict[recording_id] = (list(sampling_intervals.start), list(sampling_intervals.end))
+            extra_sampling_intervals_dict[recording_id] = (list(data.domain.start), list(data.domain.end))
             # del data
             file.close()
 
@@ -584,6 +591,7 @@ class Dataset(torch.utils.data.Dataset):
             'subject_ids': sorted(list(subject_ids_set)),
             'brainset_ids': sorted(list(brainset_ids_set)),
             'sampling_intervals': sampling_intervals_dict,
+            'extra_sampling_intervals': extra_sampling_intervals_dict,
         }
         
         # Cache the results if requested

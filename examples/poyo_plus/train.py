@@ -20,6 +20,7 @@ from torch_brain.data import Dataset, collate
 from torch_brain.data.sampler import (
     DistributedStitchingFixedWindowSampler,
     RandomFixedWindowSampler,
+    CustomIBLSampler,
 )
 from torch_brain.optim import SparseLamb
 from torch_brain.models import POYOPlus
@@ -260,8 +261,10 @@ class DataModule(L.LightningDataModule):
         return metrics
 
     def train_dataloader(self):
-        train_sampler = RandomFixedWindowSampler(
+        train_sampler = CustomIBLSampler(
             sampling_intervals=self.train_dataset.get_sampling_intervals(),
+            extra_sampling_intervals=self.train_dataset.get_extra_sampling_intervals(),
+            extra_sampling_factor=0.2,
             window_length=self.sequence_length,
             generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
