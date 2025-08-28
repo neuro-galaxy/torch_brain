@@ -375,6 +375,8 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                 stitched_target = torch.round(stitched_target).long()
 
             for metric_name in self.metrics[session_id][task_name].keys():
+                if task_name == "choice":
+                    stitched_pred = stitched_pred[:, :2]
                 self.metrics[session_id][task_name][metric_name].update(
                     stitched_pred, stitched_target
                 )

@@ -85,3 +85,65 @@ class RandomRegionSelection:
             target_obj.unit_index = relabel_map[target_obj.unit_index]
 
         return data
+
+
+class RegionSelection:
+    r"""Augmentation that selects one region from the available regions in the data.
+    
+    This transform assumes that the data has a `units` object with a `region` attribute.
+    It works for :class:`IrregularTimeSeries` data, keeping only spikes from units in the selected region.
+
+    Args:
+        field (str, optional): Field to apply the region selection. Defaults to "spikes".
+        region (str): Region to select.
+        min_units (int, optional): Minimum number of units required for a region to be selected.
+            Defaults to 1.
+        seed (int, optional): Seed for the random number generator.
+    """
+
+    def __init__(
+        self, 
+        field: str = "spikes", 
+        region: str = None,
+        reset_index: bool = True,
+    ):
+        self.field = field
+        self.reset_index = reset_index
+        self.region = region
+
+    def __call__(self, data: Data):
+        # get regions from data
+        regions = data.units.region
+    
+        selected_region = self.region
+        
+        # create mask for units in the selected region
+        unit_mask = regions.astype(str) == selected_region
+
+        if not unit_mask.any():
+            raise ValueError(f"No units found in region {self.region}")
+        
+        if self.reset_index:
+            data.units = data.units.select_by_mask(unit_mask)
+
+        target_obj = getattr(data, self.field)
+        
+        if not isinstance(target_obj, IrregularTimeSeries):
+            raise ValueError(f"Unsupported type for {self.field}: {type(target_obj)}. Only IrregularTimeSeries is supported.")
+        
+        # make a mask to select spikes that are from units in the selected region
+        spike_mask = unit_mask[target_obj.unit_index]
+
+        # using lazy masking, we will apply the mask for all attributes from spikes
+        # and units.
+        setattr(data, self.field, target_obj.select_by_mask(spike_mask))
+
+        if self.reset_index:
+            # relabel unit indices to be consecutive
+            relabel_map = np.zeros(len(regions), dtype=int)
+            relabel_map[unit_mask] = np.arange(unit_mask.sum())
+
+            target_obj = getattr(data, self.field)
+            target_obj.unit_index = relabel_map[target_obj.unit_index]
+            
+        return data

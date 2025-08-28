@@ -1,0 +1,15 @@
+- selection:
+    - brainset: ibl_brain_wide_map_2023
+      sessions:
+        - "02fbb6da-3034-47d6-a61b-7d06c796a830"
+  config:
+    sampling_intervals_modifier: |
+        sampling_intervals = sampling_intervals & data.task_aligned_intervals.choice
+    multitask_readout:
+      - readout_id: choice
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 2
+              average: macro  # balanced accuracy

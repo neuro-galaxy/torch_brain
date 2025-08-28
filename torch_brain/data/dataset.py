@@ -307,6 +307,7 @@ class Dataset(torch.utils.data.Dataset):
         """
         data = self._get_data_object(recording_id)
         data.wheel._domain = Interval(data.wheel.domain.start[0], data.wheel.domain.end[-1])
+
         sample = data.slice(start, end)
 
         if self._check_for_data_leakage_flag and self.split is not None:
@@ -356,11 +357,6 @@ class Dataset(torch.utils.data.Dataset):
         Note that these intervals will change depending on the split. If no split is
         provided, the full domain of the data is used.
         """
-        sampling_intervals = self.get_all_ids()['sampling_intervals']
-
-        sampling_intervals = {key: Interval(np.array(start), np.array(end)) for key, (start, end) in sampling_intervals.items()}
-        
-        return sampling_intervals
         sampling_intervals_dict = {}
         for recording_id in tqdm(self.recording_dict.keys(), desc="Getting sampling intervals"):
             sampling_domain = (
@@ -520,7 +516,7 @@ class Dataset(torch.utils.data.Dataset):
         except (IOError, TypeError) as e:
             logging.warning(f"Failed to save IDs cache to {cache_file}: {e}")
 
-    def get_all_ids(self, use_cache=True):
+    def get_all_ids(self, use_cache=False):
         r"""Returns all types of IDs in the dataset in a single pass through recordings.
         
         This is an optimized version that collects all ID types (unit, session, 
