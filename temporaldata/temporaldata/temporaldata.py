@@ -43,15 +43,16 @@ class ArrayDict(object):
 
     def keys(self) -> List[str]:
         r"""Returns a list of all array attribute names."""
-        return [x for x in self.__dict__.keys() if not x.startswith("_")]
+        return list(filter(lambda x: not x.startswith("_"), self.__dict__))
 
     def _maybe_first_dim(self):
         # If self has at least one attribute, returns the first dimension of
         # the first attribute. Otherwise, returns :obj:`None`.
-        if len(self.keys()) == 0:
+        keys = self.keys()
+        if len(keys) == 0:
             return None
         else:
-            return self.__dict__[self.keys()[0]].shape[0]
+            return self.__dict__[keys[0]].shape[0]
 
     def __len__(self):
         r"""Returns the first dimension shared by all attributes."""
@@ -607,7 +608,7 @@ class IrregularTimeSeries(ArrayDict):
 
         if name == "timestamps":
             assert value.ndim == 1, "timestamps must be 1D."
-            assert ~np.any(np.isnan(value)), f"timestamps cannot contain NaNs."
+            assert ~np.isnan(value).any(), f"timestamps cannot contain NaNs."
             if value.dtype != np.float64:
                 logging.warning(f"{name} is of type {value.dtype} not of type float64.")
             # timestamps has been updated, we no longer know whether it is sorted or not
@@ -618,7 +619,7 @@ class IrregularTimeSeries(ArrayDict):
         # check if we already know that the sequence is sorted
         # if lazy loading, we'll have to skip this check
         if self._sorted is None:
-            self._sorted = bool(np.all(self.timestamps[1:] >= self.timestamps[:-1]))
+            self._sorted = bool((self.timestamps[1:] >= self.timestamps[:-1]).all())
         return self._sorted
 
     def _maybe_start(self) -> float:
@@ -627,7 +628,7 @@ class IrregularTimeSeries(ArrayDict):
         if self.is_sorted():
             return np.float64(self.timestamps[0])
         else:
-            return np.float64(np.min(self.timestamps))
+            return np.float64(self.timestamps.min())
 
     def _maybe_end(self) -> float:
         r"""Returns the end time of the time series. If the time series is not sorted,
@@ -635,7 +636,7 @@ class IrregularTimeSeries(ArrayDict):
         if self.is_sorted():
             return np.float64(self.timestamps[-1])
         else:
-            return np.float64(np.max(self.timestamps))
+            return np.float64(self.timestamps.max())
 
     def sort(self):
         r"""Sorts the timestamps, and reorders the other attributes accordingly.
@@ -1348,7 +1349,7 @@ class RegularTimeSeries(ArrayDict):
                     np.floor((end - self.domain.start[0]) * self.sampling_rate)
                 )
 
-            assert not np.any(mask_array[start_id:end_id])
+            assert not mask_array[start_id:end_id].any()
             mask_array[start_id:end_id] = True
 
         setattr(self, f"{name}_mask", mask_array)
@@ -1688,7 +1689,7 @@ class Interval(ArrayDict):
 
         if name == "start" or name == "end":
             assert value.ndim == 1, f"{name} must be 1D."
-            assert ~np.any(np.isnan(value)), f"{name} cannot contain NaNs."
+            assert ~np.isnan(value).any(), f"{name} cannot contain NaNs."
             if value.dtype != np.float64:
                 logging.warning(f"{name} is of type {value.dtype} not of type float64.")
             # start or end have been updated, we no longer know whether it is sorted
@@ -1734,7 +1735,7 @@ class Interval(ArrayDict):
                 # ValueError is returned if intervals are not disjoint
                 return False
             return tmp_copy.is_disjoint()
-        return bool(np.all(self.end[:-1] <= self.start[1:]))
+        return bool((self.end[:-1] <= self.start[1:]).all())
 
     def is_sorted(self):
         r"""Returns :obj:`True` if the intervals are sorted."""
@@ -1742,8 +1743,8 @@ class Interval(ArrayDict):
         # if lazy loading, we'll have to skip this check
         if self._sorted is None:
             self._sorted = bool(
-                np.all(self.start[1:] >= self.start[:-1])
-                and np.all(self.end[1:] >= self.end[:-1])
+                (self.start[1:] >= self.start[:-1]).all()
+                and (self.end[1:] >= self.end[:-1]).all()
             )
         return self._sorted
 
@@ -2589,9 +2590,12 @@ def sorted_traversal(lintervals, rintervals):
     # or a "closing paranthesis" (lop=False)
     lop, rop = True, True
 
-    while (lidx < len(lintervals)) or (ridx < len(rintervals)):
+    len_lintervals = len(lintervals)
+    len_rintervals = len(rintervals)
+
+    while (lidx < len_lintervals) or (ridx < len_rintervals):
         # retrieve the time of the pointer in the left object
-        if lidx < len(lintervals):
+        if lidx < len_lintervals:
             # retrieve the time of the next interval in left object
             ltime = lintervals.start[lidx] if lop else lintervals.end[lidx]
         else:
@@ -2599,7 +2603,7 @@ def sorted_traversal(lintervals, rintervals):
             ltime = np.inf
 
         # retrieve the time of the pointer in the right object
-        if ridx < len(rintervals):
+        if ridx < len_rintervals:
             # retrieve the time of the next interval in right object
             rtime = rintervals.start[ridx] if rop else rintervals.end[ridx]
         else:
@@ -3092,7 +3096,7 @@ class Data(object):
 
     def keys(self) -> List[str]:
         r"""Returns a list of all attribute names."""
-        return [x for x in self.__dict__.keys() if not x.startswith("_")]
+        return list(filter(lambda x: not x.startswith("_"), self.__dict__))
 
     def __contains__(self, key: str) -> bool:
         r"""Returns :obj:`True` if the attribute :obj:`key` is present in the
