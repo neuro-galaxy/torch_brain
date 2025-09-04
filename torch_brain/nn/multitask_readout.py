@@ -205,7 +205,13 @@ def prepare_for_multitask_readout(
         timestamp_key = readout_config.get("timestamp_key", readout_spec.timestamp_key)
 
         readout_index.append(readout_spec.id)
-        if timestamp_key in ["task_aligned_intervals.block_prior.timestamps", "task_aligned_intervals.choice.timestamps", "task_aligned_intervals.reward.timestamps", "task_aligned_intervals.stimulus_side.timestamps", "task_aligned_intervals.stimulus_contrast.timestamps"]:
+        if timestamp_key in [
+            "task_aligned_intervals.block_prior.timestamps",
+            "task_aligned_intervals.choice.timestamps",
+            "task_aligned_intervals.reward.timestamps",
+            "task_aligned_intervals.stimulus_side.timestamps",
+            "task_aligned_intervals.stimulus_contrast.timestamps",
+        ]:
             # Use string replace in timestamp_key to get start and end, then compute midpoint
             start_key = timestamp_key.replace("timestamps", "start")
             end_key = timestamp_key.replace("timestamps", "end")
@@ -216,7 +222,9 @@ def prepare_for_multitask_readout(
             timestamps.append(timestamps_[mask])
             values[key] = data.get_nested_attribute(value_key)[mask]
             if timestamp_key == "task_aligned_intervals.reward.timestamps":
-                values[key] = np.array([0, 1, 1], dtype=np.int64)[(values[key] + 1).astype(int)]
+                values[key] = np.array([0, 1, 1], dtype=np.int64)[
+                    (values[key] + 1).astype(int)
+                ]
         else:
             timestamps.append(data.get_nested_attribute(timestamp_key))
             values[key] = data.get_nested_attribute(value_key)

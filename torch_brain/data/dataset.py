@@ -306,7 +306,9 @@ class Dataset(torch.utils.data.Dataset):
             end: The end time of the slice.
         """
         data = self._get_data_object(recording_id)
-        data.wheel._domain = Interval(data.wheel.domain.start[0], data.wheel.domain.end[-1])
+        data.wheel._domain = Interval(
+            data.wheel.domain.start[0], data.wheel.domain.end[-1]
+        )
 
         sample = data.slice(start, end)
 
@@ -358,7 +360,9 @@ class Dataset(torch.utils.data.Dataset):
         provided, the full domain of the data is used.
         """
         sampling_intervals_dict = {}
-        for recording_id in tqdm(self.recording_dict.keys(), desc="Getting sampling intervals"):
+        for recording_id in tqdm(
+            self.recording_dict.keys(), desc="Getting sampling intervals"
+        ):
             sampling_domain = (
                 f"{self.split}_domain" if self.split is not None else "domain"
             )
@@ -394,8 +398,11 @@ class Dataset(torch.utils.data.Dataset):
         return sampling_intervals_dict
 
     def get_extra_sampling_intervals(self):
-        sampling_intervals = self.get_all_ids()['extra_sampling_intervals']
-        sampling_intervals = {key: Interval(np.array(start), np.array(end)) for key, (start, end) in sampling_intervals.items()}
+        sampling_intervals = self.get_all_ids()["extra_sampling_intervals"]
+        sampling_intervals = {
+            key: Interval(np.array(start), np.array(end))
+            for key, (start, end) in sampling_intervals.items()
+        }
         return sampling_intervals
 
     def get_recording_config_dict(self):
@@ -444,9 +451,13 @@ class Dataset(torch.utils.data.Dataset):
         r"""Generate a unique hash for this dataset configuration to use as cache key."""
         # Create a hash based on dataset configuration that would affect IDs
         hash_data = {
-            'root': str(self.root),
-            'config': self.config if isinstance(self.config, (str, type(None))) else str(self.config),
-            'split': self.split,
+            "root": str(self.root),
+            "config": (
+                self.config
+                if isinstance(self.config, (str, type(None)))
+                else str(self.config)
+            ),
+            "split": self.split,
             # 'recording_dict_keys': sorted(self.recording_dict.keys()) if self.recording_dict else [],
             # # Include modification times of recording files to detect changes
             # 'file_mtimes': {
@@ -455,7 +466,7 @@ class Dataset(torch.utils.data.Dataset):
             #     if os.path.exists(info['filename'])
             # } if self.recording_dict else {}
         }
-        
+
         hash_string = json.dumps(hash_data, sort_keys=True)
         return hashlib.md5(hash_string.encode()).hexdigest()
 
@@ -468,18 +479,18 @@ class Dataset(torch.utils.data.Dataset):
     def _load_ids_from_disk_cache(self):
         r"""Load cached IDs from disk if available and valid."""
         cache_file = self._get_cache_file_path()
-        
+
         if not cache_file.exists():
             return None
-            
+
         try:
-            with open(cache_file, 'r') as f:
+            with open(cache_file, "r") as f:
                 cached_data = json.load(f)
-                
+
             # Convert lists back to numpy arrays where needed
-            if 'unit_ids' in cached_data:
-                cached_data['unit_ids'] = [str(uid) for uid in cached_data['unit_ids']]
-                
+            if "unit_ids" in cached_data:
+                cached_data["unit_ids"] = [str(uid) for uid in cached_data["unit_ids"]]
+
             return cached_data
         except (json.JSONDecodeError, KeyError, IOError) as e:
             logging.warning(f"Failed to load IDs cache from {cache_file}: {e}")
@@ -493,7 +504,7 @@ class Dataset(torch.utils.data.Dataset):
     def _save_ids_to_disk_cache(self, ids_data):
         r"""Save IDs data to disk cache."""
         cache_file = self._get_cache_file_path()
-        
+
         try:
             # Convert numpy arrays to lists for JSON serialization
             serializable_data = {}
@@ -508,38 +519,38 @@ class Dataset(torch.utils.data.Dataset):
                     ]
                 else:
                     serializable_data[key] = value
-            
-            with open(cache_file, 'w') as f:
+
+            with open(cache_file, "w") as f:
                 json.dump(serializable_data, f, indent=2)
-                
+
             logging.info(f"Saved IDs cache to {cache_file}")
         except (IOError, TypeError) as e:
             logging.warning(f"Failed to save IDs cache to {cache_file}: {e}")
 
     def get_all_ids(self, use_cache=False):
         r"""Returns all types of IDs in the dataset in a single pass through recordings.
-        
-        This is an optimized version that collects all ID types (unit, session, 
+
+        This is an optimized version that collects all ID types (unit, session,
         subject, brainset) in one iteration instead of multiple separate iterations.
-        
+
         The function uses a two-level caching system:
         1. Memory cache: Cached in instance variable for fastest access
         2. Disk cache: Persistent cache in ~/.torch_brain_cache/dataset_ids/
-        
+
         Args:
             use_cache: If True, use both memory and disk cache to avoid re-computation.
-            
+
         Returns:
             dict: Dictionary containing all ID types:
-                - 'unit_ids': List of all unit IDs 
+                - 'unit_ids': List of all unit IDs
                 - 'session_ids': List of all unique session IDs
                 - 'subject_ids': List of all unique subject IDs
                 - 'brainset_ids': List of all unique brainset IDs
         """
         # Check memory cache first (fastest)
-        if use_cache and hasattr(self, '_cached_all_ids'):
+        if use_cache and hasattr(self, "_cached_all_ids"):
             return self._cached_all_ids
-        
+
         # Check disk cache second (fast, persistent)
         if use_cache:
             disk_cached_result = self._load_ids_from_disk_cache()
@@ -548,79 +559,87 @@ class Dataset(torch.utils.data.Dataset):
                 self._cached_all_ids = disk_cached_result
                 logging.info("Loaded IDs from disk cache")
                 return disk_cached_result
-            
+
         unit_ids_list = []
         session_ids_set = set()
         subject_ids_set = set()
         brainset_ids_set = set()
         sampling_intervals_dict = {}
         extra_sampling_intervals_dict = {}
-        
-        for recording_id in tqdm(
-            self.recording_dict.keys(), desc="Collecting all IDs"
-        ):
+
+        for recording_id in tqdm(self.recording_dict.keys(), desc="Collecting all IDs"):
             file = h5py.File(self.recording_dict[recording_id]["filename"], "r")
             data = Data.from_hdf5(file, lazy=True)
-            
+
             unit_ids = self._get_unit_ids_with_prefix(data)
             unit_ids_list.extend(unit_ids)
-            
+
             session_id = self._get_session_id_with_prefix(data)
             session_ids_set.add(session_id)
-        
+
             subject_id = self._get_subject_id_with_prefix(data)
             subject_ids_set.add(subject_id)
-        
+
             brainset_ids_set.add(data.brainset.id)
 
-            intervals = [getattr(data.task_aligned_intervals, name) for name in data.task_aligned_intervals.keys()]
+            intervals = [
+                getattr(data.task_aligned_intervals, name)
+                for name in data.task_aligned_intervals.keys()
+            ]
             from functools import reduce
+
             sampling_intervals = reduce(lambda x, y: x | y, intervals)
-            sampling_intervals_dict[recording_id] = (list(sampling_intervals.start), list(sampling_intervals.end))
-            extra_sampling_intervals_dict[recording_id] = (list(data.domain.start), list(data.domain.end))
+            sampling_intervals_dict[recording_id] = (
+                list(sampling_intervals.start),
+                list(sampling_intervals.end),
+            )
+            extra_sampling_intervals_dict[recording_id] = (
+                list(data.domain.start),
+                list(data.domain.end),
+            )
             # del data
             file.close()
 
         result = {
-            'unit_ids': unit_ids_list,
-            'session_ids': sorted(list(session_ids_set)),
-            'subject_ids': sorted(list(subject_ids_set)),
-            'brainset_ids': sorted(list(brainset_ids_set)),
-            'sampling_intervals': sampling_intervals_dict,
-            'extra_sampling_intervals': extra_sampling_intervals_dict,
+            "unit_ids": unit_ids_list,
+            "session_ids": sorted(list(session_ids_set)),
+            "subject_ids": sorted(list(subject_ids_set)),
+            "brainset_ids": sorted(list(brainset_ids_set)),
+            "sampling_intervals": sampling_intervals_dict,
+            "extra_sampling_intervals": extra_sampling_intervals_dict,
         }
-        
+
         # Cache the results if requested
         if use_cache:
             # Store in memory cache
             self._cached_all_ids = result
             # Save to disk cache for persistence across sessions
             self._save_ids_to_disk_cache(result)
-            
+
         return result
 
     def get_unit_ids(self):
         r"""Returns all unit ids in the dataset."""
-        return self.get_all_ids()['unit_ids']
+        return self.get_all_ids()["unit_ids"]
 
     def get_session_ids(self):
         r"""Returns the session ids of the dataset."""
-        return self.get_all_ids()['session_ids']
+        return self.get_all_ids()["session_ids"]
 
     def get_subject_ids(self):
         r"""Returns all subject ids in the dataset."""
-        return self.get_all_ids()['subject_ids']
+        return self.get_all_ids()["subject_ids"]
 
     def get_brainset_ids(self):
         r"""Returns all brainset ids in the dataset."""
-        return self.get_all_ids()['brainset_ids']
+        return self.get_all_ids()["brainset_ids"]
 
     def clear_ids_cache(self):
         r"""Clears both memory and disk cached IDs. Useful when the dataset has been modified."""
         # Clear memory cache
-        if hasattr(self, '_cached_all_ids'):
-            delattr(self, '_cached_all_ids')
-        
+        if hasattr(self, "_cached_all_ids"):
+            delattr(self, "_cached_all_ids")
+
         # Clear disk cache
         cache_file = self._get_cache_file_path()
         if cache_file.exists():

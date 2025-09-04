@@ -138,8 +138,6 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
             yield indices[idx]
 
 
-
-
 class CustomIBLSampler(torch.utils.data.Sampler):
     r"""Samples fixed-length windows randomly, given intervals defined in the
     :obj:`sampling_intervals` parameter. :obj:`sampling_intervals` is a dictionary where the keys
@@ -330,8 +328,6 @@ class CustomIBLSampler(torch.utils.data.Sampler):
         # shuffle
         for idx in torch.randperm(len(indices), generator=self.generator):
             yield indices[idx]
-
-
 
 
 class SequentialFixedWindowSampler(torch.utils.data.Sampler):

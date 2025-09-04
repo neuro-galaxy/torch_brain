@@ -45,17 +45,20 @@ import logging
 
 orig_torch_load = torch.load
 
+
 def torch_wrapper(*args, **kwargs):
-    logging.warning("[comfyui-unsafe-torch] I have unsafely patched `torch.load`.  The `weights_only` option of `torch.load` is forcibly disabled.")
-    kwargs['weights_only'] = False
+    logging.warning(
+        "[comfyui-unsafe-torch] I have unsafely patched `torch.load`.  The `weights_only` option of `torch.load` is forcibly disabled."
+    )
+    kwargs["weights_only"] = False
 
     return orig_torch_load(*args, **kwargs)
+
 
 torch.load = torch_wrapper
 
 NODE_CLASS_MAPPINGS = {}
-__all__ = ['NODE_CLASS_MAPPINGS']
-
+__all__ = ["NODE_CLASS_MAPPINGS"]
 
 
 class TrainWrapper(L.LightningModule):
@@ -241,6 +244,7 @@ class DataModule(L.LightningDataModule):
         model.unit_emb.subset_vocab(unit_ids)
         model.session_emb.extend_vocab(session_ids)
         model.session_emb.subset_vocab(session_ids)
+
     def get_session_ids(self):
         return self.train_dataset.get_session_ids()
 
@@ -284,7 +288,7 @@ class DataModule(L.LightningDataModule):
         train_sampler = CustomIBLSampler(
             sampling_intervals=self.train_dataset.get_sampling_intervals(),
             extra_sampling_intervals=self.train_dataset.get_extra_sampling_intervals(),
-            extra_sampling_factor=0.,
+            extra_sampling_factor=0.0,
             window_length=self.sequence_length,
             generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
@@ -454,9 +458,10 @@ def main(cfg: DictConfig):
     trainer.fit(wrapper, data_module)
 
     import numpy
+
     torch.serialization.add_safe_globals([numpy.core.multiarray.scalar])
     trainer.test(wrapper, data_module, ckpt_path="best")
 
-    
+
 if __name__ == "__main__":
     main()
