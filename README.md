@@ -54,7 +54,6 @@ pytest
 ```
 or test individual files via, e.g., `pytest test/test_binning.py`
 
-
 ## Cite
 
 Please cite [our paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca113d122584f12a6727341aaf58887-Abstract-Conference.html) if you use this code in your own work:
