@@ -86,7 +86,14 @@ class Resampler:
             target_domain_with_buffer = target_domain.dilate(anti_aliasing_buffer)
             target_domain_with_buffer = target_domain_with_buffer & timeseries.domain
 
+            # TODO test this case
+            print(
+                "target_domain_with_buffer",
+                target_domain_with_buffer.start,
+                target_domain_with_buffer.end,
+            )
             if len(target_domain_with_buffer) > 1:
+                print("enter_here")
                 idx = np.where(
                     np.logical_and(
                         start >= target_domain_with_buffer.start,
@@ -122,6 +129,7 @@ class Resampler:
             )
 
             if isinstance(timeseries, IrregularTimeSeries):
+                # TODO add test on this function
                 timeseries = irregular_to_regular_timeseries(
                     timeseries,
                     target_domain=target_domain_with_buffer,
@@ -132,11 +140,15 @@ class Resampler:
             if method == "decimate":
                 timeseries_resampled = _decimate(timeseries, target_sampling_rate)
             elif method == "fft":
+                # TODO add test on this function
                 timeseries_resampled = _resample_fft(timeseries, target_sampling_rate)
 
+            print(start, end)
             timeseries_resampled = timeseries_resampled.slice(
                 start, end, reset_origin=False
             )
+            print(timeseries_resampled.timestamps)
+            print(timeseries_resampled.domain.start, timeseries_resampled.domain.end)
 
             setattr(data, target_key, timeseries_resampled)
 

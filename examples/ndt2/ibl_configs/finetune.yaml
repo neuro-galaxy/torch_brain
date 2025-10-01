@@ -1,0 +1,29 @@
+defaults:
+  - _default
+  - dataset: test
+  - model: [encoder_large, decoder]
+  - sweep
+  - _self_
+
+wandb:
+  run_name: finetune_SSL_more_patience
+
+load_from_checkpoint: true
+checkpoint_path: /nethome/aandre8/torch_brain/examples/ndt2/logs/NDT2_IBL/6i2j9c78/checkpoints/epoch=151-step=8816.ckpt
+
+fragment_dataset: true
+
+num_workers: 8
+batch_size: 128
+
+optimizer:
+  scheduler: true
+  start_factor: 0.1
+  warmup_steps: 100
+  decay_steps: 2500
+  lr_min: 1e-6
+
+callbacks:
+  monitor_avg: true
+  patience: 200
+

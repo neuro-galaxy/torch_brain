@@ -1,0 +1,13 @@
+defaults:
+  - probe
+  - _self_
+
+wandb:
+  run_name: probe_block_long_finetune
+
+bhvr_key: block
+
+model:
+  bhv_decoder:
+    behavior_dim: 3
+    task: classification

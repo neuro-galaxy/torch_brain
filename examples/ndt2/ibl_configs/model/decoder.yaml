@@ -1,0 +1,14 @@
+decoder:
+  depth: 2
+  heads: 4
+  dropout: 0.1
+  ffn_mult: 1
+
+bhv_decoder:
+  depth: 2
+  heads: 4
+  dropout: 0.1
+  ffn_mult: 1
+  decode_time_pool: mean
+  behavior_dim: 1
+  task: regression

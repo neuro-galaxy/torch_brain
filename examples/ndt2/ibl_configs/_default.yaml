@@ -1,0 +1,37 @@
+wandb:
+  enable: false
+  project: NDT2.5
+  entity: aandre8-gatech
+
+log_dir: /nethome/aandre8/torch_brain/examples/ndt2/logs/
+data_root: /home/aandre8/brainsets_private/processed/
+  
+
+model:
+  ctx_time: 2.0
+  bin_time: 0.02
+  tokenize_session: true
+  tokenize_subject: true
+  tokenize_task: false
+
+custom_ndt2_data_spliter: false
+unsorted: false
+keep_M1_units: false
+
+epochs: 500
+log_every_n_steps: 1
+num_sanity_val_steps: 0
+
+seed: 0
+pad_val: 64
+
+load_from_checkpoint: false
+callbacks:
+  checkpoint: false
+  early_stop: true
+  patience: 100
+  checkpoint_path: /home/hice1/aandre8/scratch/alex/checkpoints
+
+superv_batch_size: null  #  defaults to batch_size
+eval_epochs: 1
+precision: bf16-mixed

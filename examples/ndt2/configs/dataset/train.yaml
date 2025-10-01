@@ -1,0 +1,9 @@
+- selection:
+  - brainset: odoherty_sabes_nonhuman_2017_v2
+    subject: indy
+    exclude_sessions:
+      - indy_20170131_02
+      - indy_20160407_02
+      - indy_20160627_01
+      - indy_20161005_06
+      - indy_20161026_03

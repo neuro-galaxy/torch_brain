@@ -1,0 +1,25 @@
+defaults:
+  - _default
+  - dataset: test
+  - model: [encoder_large, decoder]
+  - sweep
+  - _self_
+
+load_from_checkpoint: true
+fragment_checkpoint: true
+checkpoint_path: /home/hice1/aandre8/scratch/alex/checkpoints/
+checkpoint_prefix: finetune_SSL_more_patience
+
+new_decoder: true
+fragment_dataset: true
+is_ssl: false
+
+
+num_workers: 8
+batch_size: 128
+
+optimizer:
+  scheduler: false
+  lr: 1e-4 # also sweep with  lr: 1e-4 # [5e-5, 2e-4]
+  freeze_encoder: true  
+  weight_decay: 0.01

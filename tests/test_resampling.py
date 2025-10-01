@@ -104,6 +104,52 @@ def data_2(base_sampling_rate, resampling_factor):
     return data
 
 
+@pytest.fixture
+def data_3(base_sampling_rate):
+    base_frequency = 1.0 / base_sampling_rate
+
+    t_1 = np.arange(0, 10, base_frequency, dtype=np.float64)
+    t_2 = np.arange(15, 80, base_frequency, dtype=np.float64)
+    t_3 = np.arange(90, 100, base_frequency, dtype=np.float64)
+    t = np.concatenate([t_1, t_2, t_3])
+
+    v_1 = np.arange(100, 110, base_frequency, dtype=np.float64)
+    v_2 = np.arange(115, 180, base_frequency, dtype=np.float64)
+    v_3 = np.arange(190, 200, base_frequency, dtype=np.float64)
+    v = np.concatenate([v_1, v_2, v_3])
+
+    domain = Interval(np.array([0.0, 15.0, 90.0]), np.array([10.0, 80.0, 100.0]))
+
+    irregular_timseries = IrregularTimeSeries(
+        timestamps=t,
+        values=v,
+        timekeys=["timestamps", "values"],
+        domain=domain,
+    )
+
+    v_1 = np.arange(100, 110, base_frequency, dtype=np.float64)
+    v_2 = np.arange(120, 125, base_frequency, dtype=np.float64)
+    v_3 = np.arange(130, 170, base_frequency, dtype=np.float64)
+    v_4 = np.arange(175, 180, base_frequency, dtype=np.float64)
+    v_5 = np.arange(190, 200, base_frequency, dtype=np.float64)
+    v = np.concatenate([v_1, v_2, v_3, v_4, v_5])
+
+    start = np.array([0.0, 20.0, 30.0, 75.0, 90.0])
+    end = np.array([10.0, 25.0, 70.0, 80.0, 100.0])
+    domain = Interval(start, end)
+
+    regular_timseries = RegularTimeSeries(
+        sampling_rate=base_sampling_rate, values=v, domain=domain
+    )
+
+    data = Data(
+        irregular_att=irregular_timseries,
+        regular_att=regular_timseries,
+        domain="auto",
+    )
+    return data
+
+
 def test_downsampling_centered(
     data, base_sampling_rate, downsampling_rate, center_window
 ):
@@ -394,7 +440,7 @@ def test_downsampling_diff_target_sampling_rate(
 def test_downsampling_unaliged(
     data, base_sampling_rate, downsampling_rate, unaligned_window
 ):
-    # Test on a centered window for resampling all the data object at the same sampling_rate
+    # Test on
     start, end = unaligned_window.start[0], unaligned_window.end[0]
     pre_slice_transform = Resampler(
         args=[{"target_key": "regular_att"}, {"target_key": "irregular_att"}],
@@ -427,3 +473,50 @@ def test_downsampling_unaliged(
 
     assert np.array_equal(regular_values, expected_resampled_values)
     assert np.array_equal(irregular_values, expected_resampled_values)
+
+
+def test_downsampling_non_contiguous_domain(
+    data_3, base_sampling_rate, downsampling_rate, center_window
+):
+    # Test target_domain.dilate(anti_aliasing_buffer) for irregular_att
+    # Test case if len(target_domain_with_buffer) > 1: for irregular_att
+    start, end = center_window.start[0], center_window.end[0]
+    pre_slice_transform = Resampler(
+        args=[
+            # {"target_key": "irregular_att"},
+            {"target_key": "regular_att"},
+        ],
+        target_sampling_rate=downsampling_rate,
+    )
+    # TODO be careful the object is overide
+    transformed_data = pre_slice_transform(copy.deepcopy(data_3), center_window)
+
+    irregular_timestamps = transformed_data.irregular_att.timestamps
+    regular_timestamps = transformed_data.regular_att.timestamps
+    print("ok")
+
+    print(data_3.regular_att.timestamps)
+    print(data_3.regular_att.values)
+
+    print("ok")
+    expected_timestamps = np.arange(start, end, step=1 / downsampling_rate)
+
+    # assert np.array_equal(irregular_timestamps, expected_timestamps)
+    assert np.array_equal(regular_timestamps, expected_timestamps)
+
+    # irregular_values = transformed_data.irregular_att.values
+
+    # buffer = pre_slice_transform.args[0]["anti_aliasing_buffer"]
+
+    # new_data = data_3.slice(start - buffer, end + buffer, reset_origin=False)
+    # x_in = new_data.irregular_att.values
+    # print(x_in)
+    # assert False
+    # downsample_factor = int(base_sampling_rate / downsampling_rate)
+    # x_out = decimate(x_in, downsample_factor)
+    # resampled_buffer = int(buffer * downsampling_rate)
+    # resampled_offfset_buffer = int((start - offset) * downsampling_rate)
+    # expected_resampled_values = x_out[resampled_offfset_buffer:-resampled_buffer]
+
+    # assert np.array_equal(regular_values, expected_resampled_values)
+    # assert np.array_equal(irregular_values, expected_resampled_values)

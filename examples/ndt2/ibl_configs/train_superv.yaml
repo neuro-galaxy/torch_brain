@@ -1,0 +1,27 @@
+defaults:
+  - _default
+  - dataset: small_10
+  - model: encoder_small
+  - _self_
+
+wandb:
+  run_name: train_superv
+
+num_workers: 0
+batch_size: 4
+
+is_ssl: false
+model:
+  _target_: torch_brain.models.NDT2_Supervised
+
+optimizer:
+  lr: 0.0005 # Into sweep
+  scheduler: true
+  weight_decay: 0.01 # Into sweep
+  start_factor: 0.1
+  warmup_steps: 100
+  decay_steps: 2500
+  lr_min: 1e-6
+
+
+

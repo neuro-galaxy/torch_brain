@@ -1,0 +1,9 @@
+defaults:
+  - probe
+  - _self_
+
+wandb:
+  run_name: probe_whisker_long_finetune
+
+bhvr_key: whisker
+ibl_binning: true

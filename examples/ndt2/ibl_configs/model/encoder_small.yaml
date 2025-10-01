@@ -1,0 +1,12 @@
+dim: 128
+units_per_patch: 64
+max_bincount: 100
+max_time_patches: 256
+max_space_patches: 256
+enc_depth: 3
+enc_heads: 4
+enc_ffn_mult: 2
+dec_depth: 2
+dec_heads: 4
+dec_ffn_mult: 1
+dropout: 0.1
