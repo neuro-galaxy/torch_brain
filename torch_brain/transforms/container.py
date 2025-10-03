@@ -1,5 +1,6 @@
 from typing import Any, Callable, List
 import copy
+import logging
 
 import numpy as np
 
@@ -112,7 +113,12 @@ class SkipOnFailure:
 
         try:
             return self.transform(data)
-        except Exception:
+        except Exception as e:
+            logging.warning(
+                f"Transform {self.transform} failed for sample from "
+                f"{data.session.id}. The following exception was raised: {e}\n"
+                f"Restoring pre-transform data."
+            )
             if self.backup_copy:
                 return data_backup
             else:
