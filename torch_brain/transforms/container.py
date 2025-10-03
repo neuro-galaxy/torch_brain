@@ -1,4 +1,5 @@
 from typing import Any, Callable, List
+import copy
 
 import numpy as np
 
@@ -83,3 +84,36 @@ class ConditionalChoice:
             return self.true_transform(data)
         else:
             return self.false_transform(data)
+
+
+class SkipOnFailure:
+    r"""Safely apply a single transform and skip it on failure.
+
+    If the wrapped transform raises an exception, this container returns the input
+    unchanged.
+
+    Example:
+        >>> from torch_brain.transforms import SkipOnFailure, RandomSelectByRegion
+        >>> transform = SkipOnFailure(RandomSelectByRegion(min_units=5, seed=42))
+
+    Args:
+        transform: transformation to attempt to apply.
+        backup_copy: whether to make a backup copy of the input data. Set to True if the
+            transform risks mutating the input data in-place before raising an exception.
+    """
+
+    def __init__(self, transform: Callable, backup_copy: bool = False) -> None:
+        self.transform = transform
+        self.backup_copy = backup_copy
+
+    def __call__(self, data: temporaldata.Data) -> temporaldata.Data:
+        if self.backup_copy:
+            data_backup = copy.deepcopy(data)
+
+        try:
+            return self.transform(data)
+        except Exception:
+            if self.backup_copy:
+                return data_backup
+            else:
+                return data
