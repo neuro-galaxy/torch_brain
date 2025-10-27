@@ -1,0 +1,40 @@
+- selection:
+  - brainset: allen_visual_coding_ophys_2016
+    sessions:
+    - "501021421"
+  config:
+    sampling_intervals_modifier: |
+      sampling_intervals = sampling_intervals & data.drifting_gratings.coalesce(0.3)
+    multitask_readout:
+      - readout_id: drifting_gratings_orientation
+        timestamp_key: drifting_gratings.timestamps
+        value_key: drifting_gratings.orientation_id
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 8
+      - readout_id: drifting_gratings_temporal_frequency
+        timestamp_key: drifting_gratings.timestamps
+        value_key: drifting_gratings.temporal_frequency_id
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 5
+      - readout_id: natural_movie_one_frame
+        timestamp_key: natural_movie_one.timestamps
+        value_key: natural_movie_one.frame
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 900
+      - readout_id: natural_movie_three_frame
+        timestamp_key: natural_movie_three.timestamps
+        value_key: natural_movie_three.frame
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 3600

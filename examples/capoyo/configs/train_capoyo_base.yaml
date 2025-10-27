@@ -1,0 +1,17 @@
+defaults:
+  - defaults.yaml
+  - model: capoyo_base.yaml
+  - dataset: capoyo_base.yaml
+  - _self_  # ensures current config overrides defaults
+
+train_transforms:
+  - _target_: torch_brain.transforms.UnitDropout
+    field: "calcium_traces.df_over_f"
+    min_units: 10
+    mode_units: 50
+    max_units: 300
+    tail_right: 100
+
+wandb:
+  run_name: capoyo_base
+  
