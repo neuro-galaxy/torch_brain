@@ -17,6 +17,33 @@ from torch_brain.utils.binning import bin_spikes
 
 
 class NDT2(nn.Module):
+    """NDT2 model from `Ye et al. 2023, Neural Data Transformer 2: Multi-context Pretraining for Neural Spiking Activity <https://www.biorxiv.org/content/10.1101/2023.09.18.558113v1>`_.
+
+    TODO
+
+    Args:
+        dim: Dimension of all embeddings,
+        units_per_patch: int,
+        max_bincount: int,
+        max_time_patches: int,
+        max_space_patches: int,
+        bin_time: float,
+        ctx_time: float,
+        mask_ratio: float,
+        tokenize_session: bool,
+        tokenize_subject: bool,
+        tokenize_task: bool,
+        enc_depth: int,
+        enc_heads: int,
+        enc_ffn_mult: float,
+        dec_depth: int,
+        dec_heads: int,
+        dec_ffn_mult: float,
+        dropout: float,
+        activation: str = "gelu",
+        pre_norm: bool = False,
+    """
+
     def __init__(
         self,
         dim,
@@ -143,7 +170,7 @@ class NDT2(nn.Module):
         if self.tokenize_task:
             task_idx = self.task_emb.tokenizer(data.brainset.id)
 
-        ### Encoder_tokens
+        ### Prepare encoder_tokens
         nb_units = len(data.units.id)
 
         # self.max_bincount is used as the padding input
@@ -177,7 +204,7 @@ class NDT2(nn.Module):
 
         # last patches may have fewer units
         extra_units_mask = np.ones(
-            (nb_bins, nb_units_patches, self.units_per_patch), dtype=np.bool8
+            (nb_bins, nb_units_patches, self.units_per_patch), dtype=np.bool_
         )
         extra_units_mask[:, -1, -extra_units:] = False
         extra_units_mask = rearrange(
@@ -206,10 +233,13 @@ class NDT2(nn.Module):
         space_idx_shuffled = space_idx[shuffle]
         extra_units_mask_shuffled = extra_units_mask[shuffle]
 
+        ### Encoder tokens
         enc_units_patch = units_patch_shuffled[:encoder_frac]
         enc_time_idx = time_idx_shuffled[:encoder_frac]
         enc_space_idx = space_idx_shuffled[:encoder_frac]
 
+        ### Encoder attention mask
+        # need to pad at the beginning the attention mask to take the context tokens into account
         enc_attn_mask = enc_time_idx[:, None] < enc_time_idx[None, :]
         top_pad = ((self.nb_ctx_tokens, 0), (0, 0))
         enc_attn_mask = np.pad(enc_attn_mask, top_pad, "constant", constant_values=True)
@@ -222,18 +252,18 @@ class NDT2(nn.Module):
         masked_time_idx = time_idx_shuffled[encoder_frac:]
         masked_space_idx = space_idx_shuffled[encoder_frac:]
 
+        ### Decoder attention masks
+        # need to pad at the attention masks to take the context tokens into account
         enc_dec_attn_mask = enc_time_idx[:, None] < masked_time_idx[None, :]
         top_pad = ((self.nb_ctx_tokens, 0), (0, 0))
         enc_dec_attn_mask = np.pad(
             enc_dec_attn_mask, top_pad, "constant", constant_values=True
         )
-
         dec_enc_attn_mask = masked_time_idx[:, None] < enc_time_idx[None, :]
         left_pad = ((0, 0), (self.nb_ctx_tokens, 0))
         dec_enc_attn_mask = np.pad(
             dec_enc_attn_mask, left_pad, "constant", constant_values=False
         )
-
         dec_dec_attn_mask = masked_time_idx[:, None] < masked_time_idx[None, :]
 
         ### Target tokens
@@ -242,16 +272,16 @@ class NDT2(nn.Module):
 
         data_dict = {
             "model_inputs": {
-                # context_tokens
+                # context
                 "session_idx": session_idx,
                 "subject_idx": subject_idx,
                 "task_idx": task_idx,
-                # encoder_tokens
+                # encoder
                 "units_patch": pad(enc_units_patch),
                 "enc_time_idx": pad(enc_time_idx),
                 "enc_space_idx": pad(enc_space_idx),
                 "enc_attn_mask": pad2d(enc_attn_mask),
-                # decoder_tokens
+                # decoder
                 "masked_time_idx": pad(masked_time_idx),
                 "masked_space_idx": pad(masked_space_idx),
                 "enc_dec_attn_mask": pad2d(enc_dec_attn_mask),
@@ -361,6 +391,10 @@ class NDT2(nn.Module):
 
 
 class NDT2_Supervised(nn.Module):
+    """NDT2 model from `Ye et al. 2023, Neural Data Transformer 2: Multi-context Pretraining for Neural Spiking Activity <https://www.biorxiv.org/content/10.1101/2023.09.18.558113v1>`_.
+    TODO
+    """
+
     def __init__(
         self,
         dim,
@@ -381,9 +415,11 @@ class NDT2_Supervised(nn.Module):
         dec_ffn_mult: float,
         dropout: float,
         readout_spec: ModalitySpec,
+        dec_time_pool="mean",
         activation: str = "gelu",
         pre_norm: bool = False,
-        pool="mean",
+        lag: bool = False,
+        bhvr_lag_bins: int = 0,
     ):
         super().__init__()
         self.ctx_time = ctx_time
@@ -475,8 +511,11 @@ class NDT2_Supervised(nn.Module):
         self.decoder = nn.TransformerEncoder(self.decoder_layer, dec_depth)
 
         self.task = "regression"
-        self.pool = pool
+        self.pool = dec_time_pool
         self.readout_spec = readout_spec
+        self.lag = lag
+        if lag:
+            self.bhvr_lag_bins = bhvr_lag_bins
 
         # Bhvr readout
         self.output_to_bhvr = nn.Linear(dim, readout_spec.dim)
@@ -491,7 +530,7 @@ class NDT2_Supervised(nn.Module):
         if self.tokenize_task:
             task_idx = self.task_emb.tokenizer(data.brainset.id)
 
-        ### Encoder_tokens
+        ### Prepare encoder_tokens
         nb_units = len(data.units.id)
 
         # self.max_bincount is used as the padding input
@@ -525,7 +564,7 @@ class NDT2_Supervised(nn.Module):
 
         # last patches may have fewer units
         extra_units_mask = np.ones(
-            (nb_bins, nb_units_patches, self.units_per_patch), dtype=np.bool8
+            (nb_bins, nb_units_patches, self.units_per_patch), dtype=np.bool_
         )
         extra_units_mask[:, -1, -extra_units:] = False
         extra_units_mask = rearrange(
@@ -542,6 +581,8 @@ class NDT2_Supervised(nn.Module):
         enc_space_idx = np.arange(nb_units_patches, dtype=np.int32)
         enc_space_idx = repeat(enc_space_idx, "n -> (t n)", t=nb_bins)
 
+        ### Encoder attention mask
+        # need to pad at the beginning the attention mask to take the context tokens into account
         enc_attn_mask = enc_time_idx[:, None] < enc_time_idx[None, :]
         top_pad = ((self.nb_ctx_tokens, 0), (0, 0))
         enc_attn_mask = np.pad(enc_attn_mask, top_pad, "constant", constant_values=True)
@@ -556,20 +597,16 @@ class NDT2_Supervised(nn.Module):
             bhvr_time_idx = np.array([nb_bins - 1], dtype=np.int32)
         else:
             bhvr_time_idx = np.arange(nb_bins, dtype=np.int32)
-            # self.bhvr_lag_bins = 0
-            # if self.lag:
-            #     # allow looking N-bins of neural data into the "future";
-            #     # we back-shift during the actual decode comparison.
-            #     bhvr_time_idx = bhvr_time_idx + self.bhvr_lag_bins
-            # TODO move it before (tokenizer)
-            # if self.lag:
-            #     # exclude the last N-bins
-            #     bhvr = bhvr[:, : -self.bhvr_lag_bins]
-            #     # add to the left N-bins to match the lag
-            #     bhvr = F.pad(bhvr, (0, 0, self.bhvr_lag_bins, 0), value=0)
+            if self.lag:
+                # allow looking N-bins of neural data into the "future";
+                # we back-shift during the actual decode comparison.
+                bhvr_time_idx = bhvr_time_idx + self.bhvr_lag_bins
+                bhvr_time_idx[-self.bhvr_lag_bins :] = 0
 
         dec_time_idx = np.concatenate([pooled_time_idx, bhvr_time_idx], axis=0)
 
+        ### Decoder attention masks
+        # need to pad at the attention masks to take the context tokens into account
         enc_enc_attn_mask = pooled_time_idx[:, None] < pooled_time_idx[None, :]
         enc_enc_attn_mask = np.pad(
             enc_enc_attn_mask, top_pad, "constant", constant_values=True
@@ -598,31 +635,45 @@ class NDT2_Supervised(nn.Module):
         dec_attn_mask = np.concatenate([dec_attn_mask_up, dec_attn_mask_low], axis=0)
 
         ### Readout/Target tokens
-        output_timestamps, output_values, output_weights, eval_mask = (
-            prepare_for_readout(data, self.readout_spec)
+        bhvr_timestamps, bhvr_values, _, _ = prepare_for_readout(
+            data, self.readout_spec
         )
-        # TODO binning (with interpolation)
-        bin = lambda x, t: x[::20]
 
-        tgt = bin(output_values, output_timestamps)
+        # TODO binning (with interpolation)
+        def interpolation(x, t):
+            missing = 50 - t.shape[0]
+            if missing == 0:
+                return x
+            else:
+                pad_width = (0, missing) if x.ndim == 1 else ((0, missing), (0, 0))
+                return np.pad(x, pad_width, mode="constant", constant_values=1.0)
+
+        bhvr = interpolation(bhvr_values, bhvr_timestamps)
+
+        eval_mask = np.ones(len(bhvr), dtype=np.bool_)
+        if self.lag:
+            # exclude the last N-bins (N=self.bhvr_lag_bins)
+            bhvr[..., : -self.bhvr_lag_bins] = 0
+            eval_mask[: -self.bhvr_lag_bins] = False
 
         data_dict = {
             "model_inputs": {
-                # context_tokens
+                # context
                 "session_idx": session_idx,
                 "subject_idx": subject_idx,
                 "task_idx": task_idx,
-                # encoder_tokens
+                # encoder
                 "units_patch": pad(units_patch),
                 "enc_time_idx": pad(enc_time_idx),
                 "enc_space_idx": pad(enc_space_idx),
                 "enc_attn_mask": pad2d(enc_attn_mask),
                 "enc_time_pad_idx": track_mask(enc_time_idx),
-                # decoder_tokens
-                "dec_time_idx": dec_time_idx,
-                "dec_attn_mask": dec_attn_mask,
+                # decoder
+                "dec_time_idx": pad(dec_time_idx),
+                "dec_attn_mask": pad2d(dec_attn_mask),
             },
-            "target": tgt,
+            "target": bhvr,
+            "eval_mask": eval_mask,
         }
         return data_dict
 
@@ -676,17 +727,18 @@ class NDT2_Supervised(nn.Module):
         latents = enc_output[:, self.nb_ctx_tokens :]
         latents = self.enc_dropout_out(latents)
 
-        # TODO check the t + 1 for padding
-        # encoder_out = pooled_features[:, :-1]  # remove padding
-
         # Pooling
         b, _, h = latents.size()
-        size = (b, self.bin_size, h)
+        size = (b, self.bin_size + 1, h)  # +1 to handdle padding
         pooled_latents = torch.zeros(size, device=latents.device, dtype=latents.dtype)
-        index = repeat(enc_time_pad_idx, "b max_l -> b max_l h", h=h).to(torch.long)
-        pooled_latents = pooled_latents.scatter_reduce(
+
+        # handdle padding
+        index = torch.where(enc_time_pad_idx, enc_time_idx, self.bin_size)
+        index = index.unsqueeze(-1).expand(-1, -1, h)
+        pooled_latents.scatter_reduce_(
             dim=1, index=index, src=latents, reduce=self.pool, include_self=False
         )
+        pooled_latents = pooled_latents[:, :-1]  # remove padding
 
         bhv_l = dec_time_idx.size(1) - self.bin_size
         bhvr_tokens = repeat(self.bhvr_emb, "h -> b bhv_l h", b=b, bhv_l=bhv_l)
@@ -700,7 +752,7 @@ class NDT2_Supervised(nn.Module):
 
         # append context tokens at the start of the sequence
         if self.nb_ctx_tokens > 0:
-            # detach the context tokens because don't to uncalibrate the ctx_emb from the SSL pretraining
+            # detach the context tokens because don't want to uncalibrate the ctx_emb from the SSL pretraining
             ctx_emb = ctx_emb.detach()
             latents = torch.cat([ctx_emb, latents], dim=1)
 
@@ -717,209 +769,4 @@ class NDT2_Supervised(nn.Module):
         output = output[:, -bhv_l:]
         bhvr = self.output_to_bhvr(output)
 
-        # TODO if lagging
-        # if self.lag:
-        #     # exclude the last N-bins
-        #     bhvr = bhvr[:, : -self.bhvr_lag_bins]
-        #     # add to the left N-bins to match the lag
-        #     bhvr = F.pad(bhvr, (0, 0, self.bhvr_lag_bins, 0), value=0)
-
         return {"output": bhvr}
-
-        if self.task == "classification":
-            tgt = bhvr_tgt.argmax(dim=-1).cpu()
-            pred = bhvr.argmax(dim=-1).cpu()
-            acc = accuracy_score(tgt, pred)
-            balanced_acc = balanced_accuracy_score(tgt, pred)
-            return {
-                "loss": loss,
-                "acc": acc,
-                "balanced_acc": balanced_acc,
-                "pred": bhvr,
-            }
-
-        raise NotImplementedError
-
-        # pass
-        # # b, t_enc = encoder_out.size()[:2]
-        # time = torch.arange(encoder_frac)
-
-        # if self.task == "classification":
-        #     query_time = torch.tensor([encoder_frac])
-        # else:
-        #     t = bhvr.size(1)
-        #     query_time = torch.arange(t)
-
-        # if self.lag:
-        #     # allow looking N-bins of neural data into the "future";
-        #     # we back-shift during the actual decode comparison.
-        #     query_time = time + self.bhvr_lag_bins
-
-        # length_mask = ~self.temporal_pad_mask(decoder_out, max_length)
-        # if self.lag:
-        #     length_mask[:, : self.bhvr_lag_bins] = False
-
-        # latent_time_idx = torch.cat([time, query_time], dim=1)
-        # latent_space_idx = torch.zeros_like(latent_time_idx)
-
-        # latent_mask = torch.ones(encoder_frac, dtype=bool).float()
-        # latent_mask = latent_mask.scatter_reduce(
-        #     src=torch.zeros_like(time_idx).float(),
-        #     dim=1,
-        #     index=time_idx.to(torch.long),
-        #     reduce="prod",
-        #     include_self=False,
-        # ).bool()
-
-        # if encoder_out.size(1) < bhvr.size(2):
-        #     to_add = bhvr.size(2) - latent_mask.size(1)
-        #     latent_mask = F.pad(latent_mask, (0, to_add), value=True)
-
-        # # TODO check where max_length is from
-        # max_lenght = batch["bhvr_mask"].sum(1, keepdim=True)
-        # token_position = torch.arange(latent_mask.size(1))
-        # token_position = rearrange(token_position, "t -> () t")
-        # query_pad_mask = token_position >= max_lenght
-
-        # # TODO check but this should be easier to do
-        # query_pad_mask = batch["bhvr_mask"]
-
-        # latent_mask = torch.cat([latent_mask, query_pad_mask], dim=1)
-
-        # decoder_attn_mask = ~input_causality
-
-        # if not self.is_ssl:
-        #     # -- Behavior
-        #     # TODO add a callable in the config to handle this access to the bhvr data
-        #     bhvr = getattr(data, self.bhvr_key)
-        #     try:
-        #         bhvr = getattr(bhvr, self.bhvr_key)
-        #         # One hot encoding of the behavior
-        #         bhvr = np.eye(self.bhvr_dim)[bhvr]
-        #     except:
-        #         pass
-
-        #     # TODO should be more general
-        #     if self.ibl_binning:
-        #         intervals = np.c_[data.trials.start, data.trials.end]
-        #         params = {
-        #             "interval_len": 2,
-        #             "binsize": 0.02,
-        #             "single_region": False,
-        #             "align_time": "stimOn_times",
-        #             "time_window": (-0.5, 1.5),
-        #             "fr_thresh": 0.5,
-        #         }
-
-        #         # TODO use mask_dict and refactor
-        #         bhvr_data = getattr(data, self.bhvr_key)
-        #         bhvr_value = bhvr_data.values
-
-        #         behave_dict, mask_dict = bin_behaviors(
-        #             bhvr_data.timestamps,
-        #             bhvr_value.squeeze(),
-        #             intervals=intervals,
-        #             beh=self.bhvr_key,
-        #             **params,
-        #         )
-        #         bhvr = behave_dict[self.bhvr_key][:, None]
-
-        #     batch["bhvr"] = pad(bhvr)
-        #     batch["bhvr_mask"] = track_mask(bhvr)
-
-    # def forward(
-    #     self,
-    #     latents: TensorType["b", "n_in + n_lat", "dim", int],
-    #     time_idx: TensorType["b", "n_in + n_lat", int],
-    #     space_idx: TensorType["b", "n_in + n_lat", int],
-    #     decoder_attn_mask: TensorType["b", "n_in + n_lat", "n_in + n_lat", bool],
-    #     ctx_emb: Optional[TensorType["b", "n_ctx", "dim", float]],
-    #     target: TensorType["b", "n_lat", "patch_dim", int],
-    #     extra_units_mask: Optional[TensorType["b", "n_lat", "patch_dim", bool]],
-    # ) -> Dict:
-    #     """
-    #     TODO update w/ eval_mode if needed
-    #     """
-    # prepare decoder input
-
-    # TODO for bhvr
-    # latent_time_idx: torch.Tensor
-    # latent_space_idx: torch.Tensor
-    # pad_mask = latent_mask
-
-    # times = input_time_idx
-
-    # b, nb_tokens, h = encoder_out.shape
-    # b = encoder_out.shape[0]
-    # t = times.max() + 1
-    # h = encoder_out.shape[-1]
-    # dev = encoder_out.device
-    # pool = self.decode_time_pool
-
-    # # t + 1 for padding
-    # pooled_features = torch.zeros(
-    #     b, t + 1, h, device=dev, dtype=encoder_out.dtype
-    # )
-
-    # time_with_pad_marked = torch.where(pad_mask, t, times)
-    # index = repeat(time_with_pad_marked, "b t -> b t h", h=h).to(torch.long)
-    # pooled_features = pooled_features.scatter_reduce(
-    #     src=encoder_out, dim=1, index=index, reduce=pool, include_self=False
-    # )
-    # encoder_out = pooled_features[:, :-1]  # remove padding
-
-    # bhvr_tgt = batch["bhvr"]
-
-    # b, t = bhvr.size()[:2]
-    # query_tokens = repeat(self.query_token, "h -> b t h", b=b, t=t)
-    # if encoder_out.size(1) < t:
-    #     to_add = t - encoder_out.size(1)
-    #     encoder_out = F.pad(encoder_out, (0, 0, 0, to_add), value=0)
-    # decoder_in = torch.cat([encoder_out, query_tokens], dim=1)
-
-    # else:
-    #     # compute behavior
-    #     nb_query_tokens = bhvr_tgt.size(1)
-    #     decoder_out = decoder_out[:, -nb_query_tokens:]
-    #     bhvr = self.out(decoder_out)
-
-    #     # TODO move it before (tokenizer)
-    #     if self.lag:
-    #         # exclude the last N-bins
-    #         bhvr = bhvr[:, : -self.bhvr_lag_bins]
-    #         # add to the left N-bins to match the lag
-    #         bhvr = F.pad(bhvr, (0, 0, self.bhvr_lag_bins, 0), value=0)
-
-    #     # Compute loss & r2
-    #     loss_mask = loss_mask
-    #     no_nan_mask_decoder_out = ~torch.isnan(decoder_out).any(-1)
-    #     no_nan_mask_target = ~torch.isnan(bhvr_tgt).any(-1)
-    #     no_nan_mask = no_nan_mask_decoder_out & no_nan_mask_target
-    #     loss_mask = loss_mask & no_nan_mask
-    #     bhvr_tgt = bhvr_tgt.to(bhvr.dtype)  # TODO make it cleanner
-    #     loss = self.loss(bhvr, bhvr_tgt)
-    #     # TODO this way of computing a loss
-    #     # self.modality_spec.loss_fn
-    #     loss = loss[loss_mask].mean()
-
-    #     if self.task == "regression":
-    #         tgt = bhvr_tgt[loss_mask].float().detach().cpu()
-    #         pred = bhvr[loss_mask].float().detach().cpu()
-    #         r2 = r2_score(tgt, pred, multioutput="raw_values")
-    #         if r2.mean() < -10:
-    #             r2 = np.zeros_like(r2)
-    #         return {"loss": loss, "r2": r2, "pred": bhvr}
-
-    #     if self.task == "classification":
-    #         tgt = bhvr_tgt.argmax(dim=-1).cpu()
-    #         pred = bhvr.argmax(dim=-1).cpu()
-    #         acc = accuracy_score(tgt, pred)
-    #         balanced_acc = balanced_accuracy_score(tgt, pred)
-    #         return {
-    #             "loss": loss,
-    #             "acc": acc,
-    #             "balanced_acc": balanced_acc,
-    #             "pred": bhvr,
-    #         }
-
-    #     raise NotImplementedError

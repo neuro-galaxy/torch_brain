@@ -1,11 +1,9 @@
 import logging
-from collections import defaultdict, deque
-from typing import Dict, List, Optional, Tuple, Union
+from collections import deque
+from typing import Optional, Union
 
 import hydra
 import lightning as L
-import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 import wandb
@@ -25,7 +23,7 @@ from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )
-from torch_brain.models import NDT2, NDT2_SSL
+from torch_brain.models import NDT2, NDT2_Supervised
 from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
 from torch_brain.transforms import Compose
 from torch_brain.utils import seed_everything
@@ -35,8 +33,8 @@ class NDT2TrainWrapper(L.LightningModule):
     def __init__(
         self,
         cfg,
-        model: Union[NDT2_SSL, NDT2],
-        modality_spec: ModalitySpec,
+        model: Union[NDT2, NDT2_Supervised],
+        modality_spec: Optional[ModalitySpec] = None,
     ):
         super().__init__()
         self.model = model
@@ -48,9 +46,10 @@ class NDT2TrainWrapper(L.LightningModule):
             self.window_size = 10
             self.loss_queue = deque(maxlen=self.window_size)
 
-        self.modality_spec = modality_spec
         if self.cfg.is_ssl:
             self.loss_fn = nn.PoissonNLLLoss(reduction="none", log_input=True)
+        else:
+            self.loss_fn = modality_spec.loss_fn
 
     def configure_optimizers(self):
         cfg = self.cfg.optimizer
@@ -95,31 +94,10 @@ class NDT2TrainWrapper(L.LightningModule):
         else:
             output = model_out["output"].flatten(1, -1)
             target = batch["target"].flatten(1, -1)
-            loss = self.modality_spec.loss_fn(output, target)
 
-            for metric in self.modality_spec.metrics:
-                print(metric)
+            loss = self.loss_fn(output, target)
 
-            exit(0)
-
-        self.log("train_loss", loss, prog_bar=True)
-
-        #  self.log("train_kinematic_decoding_loss", loss)
-
-        #     task = self.cfg.model.bhv_decoder.get("task", "regression")
-        #     if task == "regression":
-        #         self.log("train_kinematic_r2", decoder_out["r2"].mean())
-        #     elif task == "classification":
-        #         self.log(
-        #             f"train_acc",
-        #             decoder_out["acc"].mean(),
-        #             add_dataloader_idx=False,
-        #         )
-        #         self.log(
-        #             f"train_balanced_acc",
-        #             decoder_out["balanced_acc"].mean(),
-        #             add_dataloader_idx=False,
-        #         )
+            # TODO manage metrics
 
         self.log("train_loss", loss, prog_bar=True)
         return loss
@@ -139,30 +117,13 @@ class NDT2TrainWrapper(L.LightningModule):
             extra_units_mask = batch["extra_units_mask"]
             loss = self.loss_fn(rates, target)[extra_units_mask].mean()
         else:
+            # output = batch["extra_units_mask"]
             output = model_out["output"].flatten(1, -1)
             target = batch["target"].flatten(1, -1)
-            loss = self.modality_spec.loss_fn(output, target)
 
-            # self.log(f"{prefix}kinematic_decoding_loss", loss, add_dataloader_idx=False)
+            loss = self.loss_fn(output, target)
 
-            # task = self.cfg.model.bhv_decoder.get("task", "regression")
-            # if task == "regression":
-            #     self.log(
-            #         f"{prefix}kinematic_r2",
-            #         decoder_out["r2"].mean(),
-            #         add_dataloader_idx=False,
-            #     )
-            # elif task == "classification":
-            #     self.log(
-            #         f"{prefix}acc",
-            #         decoder_out["acc"].mean(),
-            #         add_dataloader_idx=False,
-            #     )
-            #     self.log(
-            #         f"{prefix}balanced_acc",
-            #         decoder_out["balanced_acc"].mean(),
-            #         add_dataloader_idx=False,
-            #     )
+            # TODO manage metrics
 
         self.log(
             f"{prefix}loss",
@@ -172,20 +133,12 @@ class NDT2TrainWrapper(L.LightningModule):
             add_dataloader_idx=False,
         )
 
-        # if self.val_loss_smoothing:
-        #     avg_loss = self.moving_average(loss)
-        #     self.log(
-        #         f"{prefix}loss_avg",
-        #         avg_loss,
-        #         sync_dist=True,
-        #         add_dataloader_idx=False,
-        #     )
         return loss
 
     # TODO not being used but could be implemented
     # def test_step(self, batch, batch_idx):
 
-    # TODO move somewhere else
+    # TODO to update
     def split_params(self, params):
         cfg = self.cfg.optimizer
         accel_flag = lambda n: "decoder" in n or "ctx_manager" in n and "_emb" in n
@@ -204,13 +157,6 @@ class NDT2TrainWrapper(L.LightningModule):
         ]
 
     # TODO move somewhere else
-    # def on_save_checkpoint(self, ckpt):
-    #     ckpt["context_manager_state_dict"] = self.model.ctx_manager.state_dict()
-    #     ckpt["spikes_patchifier_state_dict"] = self.model.spikes_patchifier.state_dict()
-    #     ckpt["encoder_state_dict"] = self.model.encoder.state_dict()
-    #     ckpt["decoder_state_dict"] = self.model.decoder.state_dict()
-
-    # TODO move somewhere else
     def moving_average(self, x):
         """
         Computes a simple moving average over the last 'window_size' losses.
@@ -226,15 +172,7 @@ class DataModule(L.LightningDataModule):
         self.cfg = cfg
         self.is_ssl = is_ssl
 
-    # TODO Use FilterUnit("/M1", keep=True)
-    # train_transforms:
-    #   - _target_: torch_brain.transforms.UnitDropout
-    #     max_units: 1000
-    #     min_units: 60
-    #     mode_units: 300
-    #     peak: 4
-
-    def setup_dataset_and_link_model(self, model: NDT2_SSL):
+    def setup_dataset_and_link_model(self, model: NDT2):
         cfg = self.cfg
 
         #  Do not use split for dataset because is handle at sampler level
@@ -264,7 +202,10 @@ class DataModule(L.LightningDataModule):
 
             self.train_intervals = self.train_dataset.get_sampling_intervals()
 
-            self._init_model_vocab(model)
+            if cfg.get("load_from_checkpoint", False):
+                self._extend_model_vocab(model)
+            else:
+                self._init_model_vocab(model)
 
             eval_transforms = []
             if cfg.get("eval_transforms"):
@@ -294,13 +235,52 @@ class DataModule(L.LightningDataModule):
         #     intervals = self.ndt2_custom_sampling_intervals()
         #     self.train_intervals, self.val_intervals, self.eval_intervals = intervals
 
-    def _init_model_vocab(self, model: NDT2_SSL):
+    def _init_model_vocab(self, model: NDT2):
         if model.tokenize_session:
             model.session_emb.initialize_vocab(self.get_session_ids())
         if model.tokenize_subject:
             model.subject_emb.initialize_vocab(self.get_subject_ids())
         if model.tokenize_task:
             model.task_emb.initialize_vocab(self.get_task_ids())
+
+    def _extend_model_vocab(self, model: NDT2):
+        log = logging.getLogger(__name__)
+
+        if model.tokenize_session:
+            session_emb = model.session_emb
+            existing = list(session_emb.vocab.keys()) if session_emb.vocab else []
+            new_sessions = [s for s in self.get_session_ids() if s not in existing]
+            if len(new_sessions) > 0:
+                log.info(
+                    f"Extending session vocab with {len(new_sessions)} new IDs: {new_sessions}"
+                )
+                model.session_emb.extend_vocab(new_sessions, exist_ok=True)
+            else:
+                log.info("Session vocab already includes all session IDs.")
+
+        if model.tokenize_subject:
+            subject_emb = model.subject_emb
+            existing = list(subject_emb.vocab.keys()) if subject_emb.vocab else []
+            new_subjects = [s for s in self.get_subject_ids() if s not in existing]
+            if len(new_subjects) > 0:
+                log.info(
+                    f"Extending subject vocab with {len(new_subjects)} new IDs: {new_subjects}"
+                )
+                subject_emb.extend_vocab(new_subjects, exist_ok=True)
+            else:
+                log.info("Subject vocab already includes all subject IDs.")
+
+        if model.tokenize_task:
+            task_emb = model.task_emb
+            existing = list(task_emb.vocab.keys()) if task_emb.vocab else []
+            new_tasks = [t for t in self.get_task_ids() if t not in existing]
+            if len(new_tasks) > 0:
+                log.info(
+                    f"Extending task vocab with {len(new_tasks)} new IDs: {new_tasks}"
+                )
+                task_emb.extend_vocab(new_tasks, exist_ok=True)
+            else:
+                log.info("Task vocab already includes all task IDs.")
 
     def get_session_ids(self):
         return self.train_dataset.get_session_ids()
@@ -370,12 +350,7 @@ class DataModule(L.LightningDataModule):
 
 
 def get_ckpt(cfg):
-    if cfg.get("fragment_checkpoint"):
-        ses = cfg.dataset[0].selection[0]["sessions"][0]
-        checkpoint_path = f"{cfg.checkpoint_path}{cfg.checkpoint_prefix}-{ses}.ckpt"
-        ckpt = torch.load(checkpoint_path)
-    else:
-        ckpt = torch.load(cfg.checkpoint_path)
+    ckpt = torch.load(cfg.checkpoint_path)
     return ckpt
 
 
@@ -417,35 +392,66 @@ def run_training(cfg):
         log.info(f"Batch size per GPU: {cfg.batch_size_per_gpu}")
         log.info(f"Superv batch size per GPU: {cfg.superv_batch_size_per_gpu}")
 
-    readout_cfg = cfg.dataset[0].config.readout
-    readout_id = readout_cfg.readout_id
-    readout_spec = MODALITY_REGISTRY[readout_id]
-    # readout_spec.timestamp_key = readout_cfg.timestamp_key
-    # readout_spec.value_key = readout_cfg.value_key
-
     # Set up data module
     data_module = DataModule(cfg, cfg.is_ssl)
 
+    readout_spec = None
     if cfg.is_ssl:
         model = hydra.utils.instantiate(cfg.model)
     else:
+        readout_cfg = cfg.dataset[0].config.readout
+        readout_id = readout_cfg.readout_id
+        readout_spec = MODALITY_REGISTRY[readout_id]
         model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)
 
-    # # Load from checkpoint TODO update
-    # if cfg.get("load_from_checkpoint", False):
-    #     ckpt = get_ckpt(cfg)
-    #     model.ctx_manager.load_state_dict(ckpt["context_manager_state_dict"])
-    #     model.spikes_patchifier.load_state_dict(ckpt["spikes_patchifier_state_dict"])
-    #     model.encoder.load_state_dict(ckpt["encoder_state_dict"])
-    #     if not cfg.get("new_decoder", False):
-    #         model.decoder.load_state_dict(ckpt["decoder_state_dict"])
+    # Load from checkpoint
+    if cfg.get("load_from_checkpoint", False):
+        log.info(f"Loading checkpoint from {cfg.checkpoint_path}")
+        ckpt = torch.load(cfg.checkpoint_path, map_location="cpu")
+
+        # Lightning checkpoints store everything under "state_dict"
+        state_dict = ckpt.get("state_dict", ckpt)
+        if cfg.get("new_decoder", False):
+            log.info("Loading pretrained weights (everything except decoder)")
+
+            # Filter out decoder-related keys
+            exclude_prefixes = [
+                "model.decoder",  # Transformer decoder
+                "model.dec_time_emb",  # decoder time embedding
+                "model.dec_dropout_in",  # decoder dropout layers
+                "model.dec_dropout_out",
+                "model.output_to_bhvr",  # readout head
+                "model.bhvr_emb",  # decoder query embedding
+            ]
+
+            # Keep everything except the excluded prefixes
+            filtered_state_dict = {
+                k.replace("model.", ""): v
+                for k, v in state_dict.items()
+                if not any(k.startswith(excl) for excl in exclude_prefixes)
+            }
+
+            # Load remaining weights (encoder, embeddings, etc.)
+            missing, unexpected = model.load_state_dict(
+                filtered_state_dict, strict=False
+            )
+
+            log.info(f"Loaded pretrained model (excluding decoder).")
+            log.info(f"Missing keys: {len(missing)}")
+            log.info(f"Unexpected keys: {len(unexpected)}")
+            if missing:
+                log.debug(f"Missing: {missing}")
+            if unexpected:
+                log.debug(f"Unexpected: {unexpected}")
+
+        else:
+            log.info("Loading full model weights")
+            model.load_state_dict(
+                {k.replace("model.", ""): v for k, v in state_dict.items()},
+                strict=False,
+            )
 
     data_module.setup_dataset_and_link_model(model)
-
-    # TODO must add the extension of the vocab in case we load the model from a checkpoint
-    # if cfg.get("load_from_checkpoint", False):
-    #     # Register new context
-    #     ctx_manager.extend_vocab(data_module.get_ctx_vocab(ctx_manager.keys))
 
     # Train wrapper
     train_wrapper = NDT2TrainWrapper(cfg=cfg, model=model, modality_spec=readout_spec)
@@ -507,7 +513,7 @@ def run_training(cfg):
         wandb.finish()
 
 
-@hydra.main(version_base="1.3", config_path="./ibl_configs", config_name="pretrain")
+@hydra.main(version_base="1.3", config_path="./configs", config_name="defaults")
 def main(cfg):
     if cfg.get("fragment_dataset", False):
         run_name = cfg.wandb.run_name
