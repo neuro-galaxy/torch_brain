@@ -2,6 +2,7 @@ import argparse
 import datetime
 import logging
 import os
+from pathlib import Path
 
 import h5py
 from pynwb import NWBHDF5IO
@@ -101,6 +102,7 @@ def main():
         " resulting in a variety of straight and curved reaches.",
     )
 
+    args.input_file = Path(args.input_file)
     logging.info(f"Processing file: {args.input_file}")
 
     # open file
@@ -153,7 +155,7 @@ def main():
         domain="auto",
     )
 
-    if not "test" in args.input_file:
+    if not "test" in args.input_file.name:
         # extract behavior
         data.hand, data.eye = extract_behavior(nwbfile, trials)
 
