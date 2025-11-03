@@ -34,7 +34,7 @@ wandb:
 precision: 32
 nodes: 1
 gpus: 1
-num_workers: 0
+num_workers: 4
 
 # Checkpointing
 ckpt_path: null  # for resuming training, or loading a model during finetuning
