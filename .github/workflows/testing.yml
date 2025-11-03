@@ -28,7 +28,7 @@ jobs:
         source venv/bin/activate
         uv pip install --upgrade pip 
         uv pip install -e ".[dev]"
-        uv pip install lightning==2.3.3
+        uv pip install lightning
     - name: Install plugin
       run: |
         source venv/bin/activate
