@@ -478,12 +478,6 @@
         metrics:
           - metric:
               _target_: torchmetrics.MeanSquaredError
-      - readout_id: pupil_location
-        timestamp_key: pupil.timestamps
-        value_key: pupil.location
-        metrics:
-          - metric:
-              _target_: torchmetrics.MeanSquaredError
       # - readout_id: pupil_location
       #   timestamp_key: pupil.timestamps
       #   value_key: pupil.location

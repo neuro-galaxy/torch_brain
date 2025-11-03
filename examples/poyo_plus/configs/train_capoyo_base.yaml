@@ -4,6 +4,9 @@ defaults:
   - dataset: capoyo_base.yaml
   - _self_  # ensures current config overrides defaults
 
+epochs: 2000
+batch_size: 64
+
 train_transforms:
   - _target_: torch_brain.transforms.UnitDropout
     field: "calcium_traces.df_over_f"
