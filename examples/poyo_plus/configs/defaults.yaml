@@ -2,7 +2,7 @@
 # this file needs to be combined with a model config and a dataset config
 
 # Paths
-data_root: ../data/processed/
+data_root: ./data/processed/
 log_dir: ./logs
 
 # Transforms
@@ -34,7 +34,7 @@ wandb:
 precision: 32
 nodes: 1
 gpus: 1
-num_workers: 4
+num_workers: 0
 
 # Checkpointing
 ckpt_path: null  # for resuming training, or loading a model during finetuning

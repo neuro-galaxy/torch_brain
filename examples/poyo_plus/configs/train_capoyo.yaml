@@ -16,5 +16,5 @@ train_transforms:
     tail_right: 100
 
 wandb:
-  run_name: capoyo_base
+  run_name: capoyo_full
   

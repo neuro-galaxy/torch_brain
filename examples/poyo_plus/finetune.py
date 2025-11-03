@@ -120,7 +120,7 @@ def load_model_from_ckpt(model: nn.Module, ckpt_path: str) -> None:
     model.load_state_dict(state_dict)
 
 
-@hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
+@hydra.main(version_base="1.3", config_path="./configs", config_name="finetune.yaml")
 def main(cfg: DictConfig):
     # fix random seed, skipped if cfg.seed is None
     seed_everything(cfg.seed)

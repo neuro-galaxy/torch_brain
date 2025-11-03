@@ -22,19 +22,3 @@
               _target_: torchmetrics.Accuracy
               task: multiclass
               num_classes: 5
-      - readout_id: natural_movie_one_frame
-        timestamp_key: natural_movie_one.timestamps
-        value_key: natural_movie_one.frame
-        metrics:
-          - metric:
-              _target_: torchmetrics.Accuracy
-              task: multiclass
-              num_classes: 900
-      - readout_id: natural_movie_three_frame
-        timestamp_key: natural_movie_three.timestamps
-        value_key: natural_movie_three.frame
-        metrics:
-          - metric:
-              _target_: torchmetrics.Accuracy
-              task: multiclass
-              num_classes: 3600
