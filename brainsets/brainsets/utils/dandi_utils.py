@@ -98,7 +98,7 @@ def extract_spikes_from_nwbfile(nwbfile, recording_tech):
         domain="auto",
     )
 
-    # make sure to sort ethe spikes
+    # make sure to sort the spikes
     spikes.sort()
 
     return spikes, units
