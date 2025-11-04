@@ -1,0 +1,3 @@
+allensdk==2.16.2
+psycopg2-binary==2.9.10
+brainsets @ git+https://github.com/neuro-galaxy/brainsets@main
