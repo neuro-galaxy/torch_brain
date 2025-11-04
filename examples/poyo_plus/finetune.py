@@ -20,6 +20,8 @@ from torch_brain.utils.stitcher import StitchEvaluator
 
 from train import POYOTrainWrapper
 
+from torch_brain.models.poyo_plus import POYOPlus, CaPOYO
+
 # higher speed on machines with tensor cores
 torch.set_float32_matmul_precision("medium")
 
@@ -45,16 +47,32 @@ class GradualUnfreezing(L.Callback):
         r"""Freeze the model weights, except for the unit and session embeddings, and
         return the list of frozen parameters.
         """
-        layers_to_freeze = [
-            model.enc_atn,
-            model.enc_ffn,
-            model.proc_layers,
-            model.dec_atn,
-            model.dec_ffn,
-            model.readout,
-            model.token_type_emb,
-            model.task_emb,
-        ]
+        if isinstance(model, POYOPlus):
+            layers_to_freeze = [
+                model.enc_atn,
+                model.enc_ffn,
+                model.proc_layers,
+                model.dec_atn,
+                model.dec_ffn,
+                model.readout,
+                model.token_type_emb,
+                model.task_emb,
+            ]
+        elif isinstance(model, CaPOYO):
+            layers_to_freeze = [
+                model.enc_atn,
+                model.enc_ffn,
+                model.proc_layers,
+                model.dec_atn,
+                model.dec_ffn,
+                model.readout,
+                model.task_emb,
+                model.input_value_map,  # for calcium value map
+            ]
+        else:
+            raise ValueError(
+                f"Model {type(model)} is not a supported model for finetuning."
+            )
 
         frozen_params = []
         for layer in layers_to_freeze:
@@ -102,7 +120,7 @@ def load_model_from_ckpt(model: nn.Module, ckpt_path: str) -> None:
     model.load_state_dict(state_dict)
 
 
-@hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
+@hydra.main(version_base="1.3", config_path="./configs", config_name="finetune.yaml")
 def main(cfg: DictConfig):
     # fix random seed, skipped if cfg.seed is None
     seed_everything(cfg.seed)
