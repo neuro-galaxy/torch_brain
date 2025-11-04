@@ -12,14 +12,13 @@ This is an example training script for the model in [Azabou and Pan et al. 2025]
 ## Training POYO+ on Calcium Traces
 
 **Data Preparation**  
-There are 1350 sessions in the full CaPOYO model.
-The raw data for all sessions is ~381GB and processed data uses ~61GB.
+There are 1304 sessions in the full CaPOYO model and 30 holdout drifting gratings sessions.
+The raw data for all sessions is ~360GB and processed data uses ~58GB.
 To prepare the data, run:
 
 ```bash
 brainsets prepare allen_visual_coding_ophys_2016
 ```
-
 
 **Training**  
 
