@@ -1,7 +1,7 @@
 defaults:
   - defaults.yaml
-  - model: capoyo_base.yaml
-  - dataset: capoyo_base.yaml
+  - model: capoyo.yaml
+  - dataset: capoyo.yaml
   - _self_  # ensures current config overrides defaults
 
 epochs: 2000
