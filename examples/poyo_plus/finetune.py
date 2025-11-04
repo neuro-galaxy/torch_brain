@@ -20,7 +20,7 @@ from torch_brain.utils.stitcher import StitchEvaluator
 
 from train import POYOTrainWrapper
 
-from torch_brain.models.poyo_plus import POYOPlus, CAPOYO
+from torch_brain.models.poyo_plus import POYOPlus, CaPOYO
 
 # higher speed on machines with tensor cores
 torch.set_float32_matmul_precision("medium")
@@ -58,7 +58,7 @@ class GradualUnfreezing(L.Callback):
                 model.token_type_emb,
                 model.task_emb,
             ]
-        elif isinstance(model, CAPOYO):
+        elif isinstance(model, CaPOYO):
             layers_to_freeze = [
                 model.enc_atn,
                 model.enc_ffn,
