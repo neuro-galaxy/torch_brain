@@ -15,6 +15,7 @@ class Cre_line(StringIntEnum):
     SST_IRES_CRE = 10
     TLX3_CRE_PL56 = 11
     VIP_IRES_CRE = 12
+    RBP4_CRE = 13
 
 
 class BrainRegion(StringIntEnum):
