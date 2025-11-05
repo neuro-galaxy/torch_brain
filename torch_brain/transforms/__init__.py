@@ -1,4 +1,4 @@
-from .container import Compose, ConditionalChoice, RandomChoice
+from .container import Compose, ConditionalChoice, RandomChoice, SkipOnFailure
 from .output_sampler import RandomOutputSampler
 from .random_crop import RandomCrop
 from .random_time_scaling import RandomTimeScaling
