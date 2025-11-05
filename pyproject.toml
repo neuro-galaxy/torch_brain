@@ -31,7 +31,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "black==24.2.0", "pre-commit>=3.5.0", "flake8"]
+dev = [
+    "pytest",
+    "black==24.2.0",
+    "pre-commit>=3.5.0",
+    "flake8",
+    "pytest-cov",
+]
 
 [project.urls]
 Homepage = "https://github.com/neuro-galaxy/torch_brain"
