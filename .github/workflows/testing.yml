@@ -43,6 +43,10 @@ jobs:
         source venv/bin/activate
         export WANDB_MODE=dryrun
         pytest --cov=torch_brain --cov-report=xml --cov-report=term-missing -v
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
     - name: Test documentation
       run: |
         source venv/bin/activate
