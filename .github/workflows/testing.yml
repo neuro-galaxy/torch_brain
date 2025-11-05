@@ -42,7 +42,6 @@ jobs:
       run: |
         source venv/bin/activate
         export WANDB_MODE=dryrun
-        # pytest tests/
         pytest --cov=torch_brain --cov-report=xml --cov-report=term-missing -v
     - name: Test documentation
       run: |
