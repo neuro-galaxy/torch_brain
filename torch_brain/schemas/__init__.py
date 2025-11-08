@@ -7,9 +7,9 @@ from .poyo_dataset import (
 )
 
 __all__ = [
-    'ReadoutConfig',
-    'SelectionConfig',
-    'DatasetLevelConfig',
-    'DatasetSelectionBlock',
-    'POYODatasetConfig',
+    "ReadoutConfig",
+    "SelectionConfig",
+    "DatasetLevelConfig",
+    "DatasetSelectionBlock",
+    "POYODatasetConfig",
 ]
