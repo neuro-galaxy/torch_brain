@@ -376,12 +376,16 @@ class POYO(nn.Module):
 
         # Load model weights
         # POYO is pretrained using lightning, so model weights are prefixed with "model."
-        state_dict = {k.replace("model.", ""): v for k, v in checkpoint["state_dict"].items()}
+        state_dict = {
+            k.replace("model.", ""): v for k, v in checkpoint["state_dict"].items()
+        }
 
         # Remove readout layer from checkpoint if we're using a new one
         if skip_readout:
-            state_dict = {k: v for k, v in state_dict.items() if not k.startswith("readout.")}
-        
+            state_dict = {
+                k: v for k, v in state_dict.items() if not k.startswith("readout.")
+            }
+
         # model.load_state_dict(state_dict)
         missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
         if len(missing_keys) > 0:
