@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from typing import Optional
 import click
@@ -160,12 +161,13 @@ def prepare(
 
         if process.returncode == 0:
             click.echo(f"Successfully downloaded {brainset}")
-        else:
-            click.echo("Error downloading dataset")
+
     except subprocess.CalledProcessError as e:
         click.echo(f"Error: Command failed with return code {e.returncode}")
+        sys.exit(e.returncode or 1)
     except Exception as e:
         click.echo(f"Error: {str(e)}")
+        sys.exit(1)
 
 
 def _validate_snakefile(filepath: Path) -> bool:
