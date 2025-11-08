@@ -1,7 +1,9 @@
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 import logging
 
+from pathlib import Path
 import numpy as np
+import torch
 import torch.nn as nn
 from torchtyping import TensorType
 from temporaldata import Data
@@ -358,6 +360,36 @@ class POYO(nn.Module):
                 f"sequence_length ({sequence_length}) is not a multiple of latent_step "
                 f"({latent_step}). This is a simple warning, and this behavior is allowed."
             )
+
+    @classmethod
+    def load_pretrained(
+        cls,
+        checkpoint_path: str | Path,
+        readout_spec: ModalitySpec,
+        skip_readout: bool = False,
+    ) -> "POYO":
+        # Instantiate model object from checkpoint hyperparameters
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+        model_kwargs = checkpoint["hyper_parameters"]["model"]
+        model_kwargs.pop("_target_", None)
+        model = cls(**model_kwargs, readout_spec=readout_spec)
+
+        # Load model weights
+        # POYO is pretrained using lightning, so model weights are prefixed with "model."
+        state_dict = {k.replace("model.", ""): v for k, v in checkpoint["state_dict"].items()}
+
+        # Remove readout layer from checkpoint if we're using a new one
+        if skip_readout:
+            state_dict = {k: v for k, v in state_dict.items() if not k.startswith("readout.")}
+        
+        # model.load_state_dict(state_dict)
+        missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
+        if len(missing_keys) > 0:
+            print(f"Missing keys when loading pretrained POYO: {missing_keys}")
+        if len(unexpected_keys) > 0:
+            print(f"Unexpected keys when loading pretrained POYO: {unexpected_keys}")
+
+        return model
 
 
 def poyo_mp(readout_spec: ModalitySpec, ckpt_path=None):
