@@ -1,7 +1,7 @@
 Installation
 ============
 
-**torch_brain** is available for Python > 3.10.
+**torch_brain** is available for Python >= 3.10.
 
 To install the package, run::
 
