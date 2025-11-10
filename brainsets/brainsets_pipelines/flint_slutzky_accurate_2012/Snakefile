@@ -14,12 +14,23 @@ checkpoint download_data:
     shell:
         f"""
         mkdir -p {RAW_DIR}/{DATASET}
-        wget -O "{RAW_DIR}/{DATASET}/Flint_2012_e1.mat" "https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012?fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e1.mat&username=&password=&guest=1&fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e1.mat&agree_terms=on&submit=Login+Anonymously"
-        wget -O "{RAW_DIR}/{DATASET}/Flint_2012_e2.mat" "https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012?fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e2.mat&username=&password=&guest=1&fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e2.mat&agree_terms=on&submit=Login+Anonymously"
-        wget -O "{RAW_DIR}/{DATASET}/Flint_2012_e3.mat" "https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012?fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e3.mat&username=&password=&guest=1&fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e3.mat&agree_terms=on&submit=Login+Anonymously"
-        wget -O "{RAW_DIR}/{DATASET}/Flint_2012_e4.mat" "https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012?fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e4.mat&username=&password=&guest=1&fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e4.mat&agree_terms=on&submit=Login+Anonymously"
-        wget -O "{RAW_DIR}/{DATASET}/Flint_2012_e5.mat" "https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012?fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e5.mat&username=&password=&guest=1&fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e5.mat&agree_terms=on&submit=Login+Anonymously"
-        find {RAW_DIR}/{DATASET}/ -type f -name "*.mat" | sed "s|^{RAW_DIR}/{DATASET}/||" | sed "s|^/*||" > {{output}}
+        if  wget --quiet --server-response \
+            --save-cookies {RAW_DIR}/{DATASET}/cookies.txt \
+            --keep-session-cookies \
+            --post-data '2Fdata_sets%2FFlint_2012&agree_terms=on&submit=Login+Anonymously' \
+            -O /dev/null 'https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012' \
+            2>&1 | grep -q crcns_nersc_download; then
+            wget --load-cookies {RAW_DIR}/{DATASET}/cookies.txt -O "{RAW_DIR}/{DATASET}/Flint_2012_e1.mat" "https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012?fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e1.mat&username=&password=&guest=1&fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e1.mat&agree_terms=on&submit=Login+Anonymously"
+            wget --load-cookies {RAW_DIR}/{DATASET}/cookies.txt -O "{RAW_DIR}/{DATASET}/Flint_2012_e2.mat" "https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012?fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e2.mat&username=&password=&guest=1&fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e2.mat&agree_terms=on&submit=Login+Anonymously"
+            wget --load-cookies {RAW_DIR}/{DATASET}/cookies.txt -O "{RAW_DIR}/{DATASET}/Flint_2012_e3.mat" "https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012?fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e3.mat&username=&password=&guest=1&fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e3.mat&agree_terms=on&submit=Login+Anonymously"
+            wget --load-cookies {RAW_DIR}/{DATASET}/cookies.txt -O "{RAW_DIR}/{DATASET}/Flint_2012_e4.mat" "https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012?fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e4.mat&username=&password=&guest=1&fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e4.mat&agree_terms=on&submit=Login+Anonymously"
+            wget --load-cookies {RAW_DIR}/{DATASET}/cookies.txt -O "{RAW_DIR}/{DATASET}/Flint_2012_e5.mat" "https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012?fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e5.mat&username=&password=&guest=1&fn=dream%2Fdata_sets%2FFlint_2012%2FFlint_2012_e5.mat&agree_terms=on&submit=Login+Anonymously"
+            rm {RAW_DIR}/{DATASET}/cookies.txt
+            find {RAW_DIR}/{DATASET}/ -type f -name "*.mat" | sed "s|^{RAW_DIR}/{DATASET}/||" | sed "s|^/*||" > {{output}}
+        else
+            echo "Failed downloading raw data. Please report this as an issue on GitHub."
+            exit 1
+        fi
         """
 
 rule prepare_data:
