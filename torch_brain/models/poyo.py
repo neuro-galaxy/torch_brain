@@ -406,9 +406,13 @@ class POYO(nn.Module):
 
         missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
         if len(missing_keys) > 0:
-            logging.warning(f"Missing keys when loading pretrained POYO: {missing_keys}")
+            logging.warning(
+                f"Missing keys when loading pretrained POYO: {missing_keys}"
+            )
         if len(unexpected_keys) > 0:
-            logging.warning(f"Unexpected keys when loading pretrained POYO: {unexpected_keys}")
+            logging.warning(
+                f"Unexpected keys when loading pretrained POYO: {unexpected_keys}"
+            )
 
         return model
 
