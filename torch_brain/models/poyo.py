@@ -368,6 +368,24 @@ class POYO(nn.Module):
         readout_spec: ModalitySpec,
         skip_readout: bool = False,
     ) -> "POYO":
+        """
+        Load a pretrained POYO model from a checkpoint file.
+
+        Args:
+            checkpoint_path (str or Path): Path to the checkpoint file containing model weights and hyperparameters.
+            readout_spec (ModalitySpec): Specification for the readout modality, used to initialize the model.
+            skip_readout (bool, optional): If True, the readout layer weights from the checkpoint are ignored and a new readout layer is initialized. Default is False.
+
+        Returns:
+            POYO: An instance of the POYO model with weights loaded from the checkpoint.
+
+        Usage:
+            model = POYO.load_pretrained("path/to/checkpoint.ckpt", readout_spec)
+
+        Notes:
+            - The checkpoint is expected to contain both model hyperparameters and weights.
+            - If `skip_readout` is True, the readout layer weights are not loaded from the checkpoint.
+        """
         # Instantiate model object from checkpoint hyperparameters
         checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
         model_kwargs = checkpoint["hyper_parameters"]["model"]
