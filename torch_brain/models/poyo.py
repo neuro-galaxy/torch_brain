@@ -404,7 +404,6 @@ class POYO(nn.Module):
                 k: v for k, v in state_dict.items() if not k.startswith("readout.")
             }
 
-        # model.load_state_dict(state_dict)
         missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
         if len(missing_keys) > 0:
             print(f"Missing keys when loading pretrained POYO: {missing_keys}")
