@@ -8,7 +8,10 @@ import torch.nn as nn
 from torch_brain.registry import ModalitySpec, register_modality, MODALITY_REGISTRY
 from torch_brain.schemas.base_class.dataset_schema import BaseDatasetConfig
 from torch_brain.data import Dataset
-from torch_brain.data.sampler import RandomFixedWindowSampler, SequentialFixedWindowSampler
+from torch_brain.data.sampler import (
+    RandomFixedWindowSampler,
+    SequentialFixedWindowSampler,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -48,7 +51,7 @@ class TorchBrainModel(nn.Module, ABC):
     def get_dataset_config_schema(cls) -> type[BaseDatasetConfig]:
         """Return the dataset configuration schema class for this model."""
         return BaseDatasetConfig
-    
+
     def validate_dataset_config(self, dataset_config: dict):
         """Validate a dataset configuration against the model's schema and readout_spec."""
         schema = self.get_dataset_config_schema()
@@ -70,7 +73,7 @@ class TorchBrainModel(nn.Module, ABC):
             raise ValueError(
                 f"Dataset config readout timestamp_key '{readout_timestamp_key}' does not match model readout_spec '{self.readout_spec.timestamp_key}'"
             )
-        
+
     def set_datasets(
         self,
         brainset_path: str,
@@ -81,7 +84,7 @@ class TorchBrainModel(nn.Module, ABC):
         if isinstance(dataset_config, (str, Path)):
             with open(dataset_config, "r") as f:
                 dataset_config = yaml.safe_load(f)
-            
+
         self.validate_dataset_config(dataset_config)
 
         # Training
@@ -133,9 +136,11 @@ class TorchBrainModel(nn.Module, ABC):
     @abstractmethod
     def forward(self, x):
         raise NotImplementedError("Subclasses must implement the forward method")
-    
+
     @abstractmethod
     @classmethod
     def load_pretrained(cls) -> "TorchBrainModel":
         """Load a pretrained model from a checkpoint."""
-        raise NotImplementedError("Subclasses must implement the load_pretrained method")
+        raise NotImplementedError(
+            "Subclasses must implement the load_pretrained method"
+        )
