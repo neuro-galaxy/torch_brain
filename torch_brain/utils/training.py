@@ -32,13 +32,13 @@ def r2_score(y_pred, y_true):
     return r2
 
 
-def compute_r2(dataloader, model):
+def compute_r2(dataloader, model, device):
     model.eval()  # turn off dropout, etc.
     total_target = []
     total_pred = []
     with torch.no_grad():  # <-- crucial: no graph, no huge memory
         for batch in dataloader:
-            batch = move_to_device(batch)
+            batch = move_to_device(batch, device)
             pred = model(**batch["model_inputs"])
             target = batch["target_values"]
 

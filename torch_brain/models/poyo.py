@@ -541,6 +541,9 @@ class POYO(TorchBrainModel):
         train_loader = self.get_data_loader(mode="train", **data_loader_kwargs)
         val_loader = self.get_data_loader(mode="valid", **data_loader_kwargs)
 
+        # Reinitialize vocabs
+        self.reinitialize_vocabs()
+
         # Main progress bar for epochs
         epoch_pbar = tqdm(range(num_epochs), desc="Finetuning Progress", leave=True)
         for epoch in epoch_pbar:
@@ -553,7 +556,7 @@ class POYO(TorchBrainModel):
             # Validation before training step
             with torch.no_grad():
                 self.eval()  # make sure we're in eval mode during validation
-                r2, target, pred = compute_r2(val_loader, self)
+                r2, target, pred = compute_r2(val_loader, self, device)
                 r2_log.append(r2)
 
             # Switch back to training mode
@@ -590,7 +593,7 @@ class POYO(TorchBrainModel):
             del target, pred
 
         # Final validation
-        r2, _, _ = compute_r2(val_loader, self)
+        r2, _, _ = compute_r2(val_loader, self, device)
         r2_log.append(r2)
         print(f"\n✅ Done! Final validation R² = {r2:.3f}")
 
