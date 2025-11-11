@@ -108,30 +108,17 @@ class TorchBrainModel(nn.Module, ABC):
             split="test",
         )
 
-    def get_train_data_sampler(self) -> torch.utils.data.Sampler:
-        train_sampling_intervals = self.train_dataset.get_sampling_intervals()
-        train_sampler = RandomFixedWindowSampler(
-            sampling_intervals=train_sampling_intervals,
-            window_length=1.0,
-            generator=torch.Generator().manual_seed(self.seed),
+    @abstractmethod
+    def get_train_data_sampler(self):
+        raise NotImplementedError(
+            "Subclasses must implement the get_train_data_sampler method"
         )
-        return train_sampler
 
-    def get_val_data_sampler(self) -> torch.utils.data.Sampler:
-        val_sampling_intervals = self.val_dataset.get_sampling_intervals()
-        val_sampler = SequentialFixedWindowSampler(
-            sampling_intervals=val_sampling_intervals,
-            window_length=1.0,
+    @abstractmethod
+    def get_val_data_sampler(self):
+        raise NotImplementedError(
+            "Subclasses must implement the get_val_data_sampler method"
         )
-        return val_sampler
-
-    def get_test_data_sampler(self) -> torch.utils.data.Sampler:
-        test_sampling_intervals = self.test_dataset.get_sampling_intervals()
-        test_sampler = SequentialFixedWindowSampler(
-            sampling_intervals=test_sampling_intervals,
-            window_length=1.0,
-        )
-        return test_sampler
 
     @abstractmethod
     def forward(self, x):

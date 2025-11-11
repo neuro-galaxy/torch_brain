@@ -19,7 +19,10 @@ from torch_brain.nn import (
     RotaryTimeEmbedding,
 )
 from torch_brain.registry import ModalitySpec
-
+from torch_brain.data.sampler import (
+    RandomFixedWindowSampler,
+    SequentialFixedWindowSampler,
+)
 from torch_brain.utils import (
     create_linspace_latent_tokens,
     create_start_end_unit_tokens,
@@ -369,6 +372,22 @@ class POYO(TorchBrainModel):
         self.train_dataset.transform = self.tokenize
         self.val_dataset.transform = self.tokenize
         self.test_dataset.transform = self.tokenize
+
+    def get_train_data_sampler(self) -> torch.utils.data.Sampler:
+        return RandomFixedWindowSampler(
+            sampling_intervals=self.train_dataset.get_sampling_intervals(),
+            window_length=self.sequence_length,
+            generator=torch.Generator().manual_seed(self.seed),
+            drop_short=True,
+        )
+
+    def get_val_data_sampler(self) -> torch.utils.data.Sampler:
+        return SequentialFixedWindowSampler(
+            sampling_intervals=self.val_dataset.get_sampling_intervals(),
+            window_length=self.sequence_length,
+            step=None,
+            drop_short=False,
+        )
 
     @classmethod
     def load_pretrained(
