@@ -54,15 +54,16 @@ class TorchBrainModel(nn.Module, ABC):
         """Return the dataset configuration schema class for this model."""
         return BaseDatasetConfig
 
-    def validate_dataset_config(self, dataset_config: dict):
+    def validate_dataset_config(self, dataset_config: list[dict]):
         """Validate a dataset configuration against the model's schema and readout_spec."""
         schema = self.get_dataset_config_schema()
-        schema(**dataset_config)
+        schema(root=dataset_config)
 
         # Validate dataset config against model readout_spec used to initialize the model
-        readout_id = dataset_config["readout"]["readout_id"]
-        readout_value_key = dataset_config["readout"]["value_key"]
-        readout_timestamp_key = dataset_config["readout"]["timestamp_key"]
+        selection_config = dataset_config[0]["config"]
+        readout_id = selection_config["readout"]["readout_id"]
+        readout_value_key = selection_config["readout"]["value_key"]
+        readout_timestamp_key = selection_config["readout"]["timestamp_key"]
         if readout_id != self.readout_spec.name:
             raise ValueError(
                 f"Dataset config readout_id '{readout_id}' does not match model readout_spec '{self.readout_spec.name}'"
@@ -79,7 +80,7 @@ class TorchBrainModel(nn.Module, ABC):
     def set_datasets(
         self,
         brainset_path: str,
-        dataset_config: str | Path | dict,
+        dataset_config: str | Path | list[dict],
     ):
         """Set datasets (train, valid, test) for this model based on the provided configuration."""
         # Load from yaml file if a path is provided

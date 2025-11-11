@@ -371,7 +371,7 @@ class POYO(TorchBrainModel):
                 f"({latent_step}). This is a simple warning, and this behavior is allowed."
             )
 
-    def set_datasets(self, brainset_path: str, dataset_config: str | Path | Dict):
+    def set_datasets(self, brainset_path: str, dataset_config: str | Path | list[dict]):
         super().set_datasets(brainset_path, dataset_config)
 
         # Connect tokenizers to Datasets
