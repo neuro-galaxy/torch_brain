@@ -1,13 +1,15 @@
 from abc import ABC, abstractmethod
+from typing import Callable, Literal
 from pathlib import Path
 import logging
 import yaml
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader
 
 from torch_brain.registry import ModalitySpec, register_modality, MODALITY_REGISTRY
 from torch_brain.schemas.base_class.dataset_schema import BaseDatasetConfig
-from torch_brain.data import Dataset
+from torch_brain.data import Dataset, collate
 from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
@@ -108,6 +110,37 @@ class TorchBrainModel(nn.Module, ABC):
             split="test",
         )
 
+    def get_data_loader(
+        self,
+        mode: Literal["train", "valid", "test"],
+        batch_size: int,
+        collate_fn: Callable | None = collate,
+        num_workers: int = 0,
+        pin_memory: bool = False,
+        persistent_workers: bool = False,
+        **dataloader_kwargs,
+    ) -> torch.utils.data.DataLoader:
+        """Create a DataLoader for the given dataset and sampler."""
+        if mode == "train":
+            dataset = self.train_dataset
+            sampler = self.get_train_data_sampler()
+        elif mode == "valid":
+            dataset = self.val_dataset
+            sampler = self.get_val_data_sampler()
+        elif mode == "test":
+            dataset = self.test_dataset
+            sampler = self.get_test_data_sampler()
+        return DataLoader(
+            dataset=dataset,
+            sampler=sampler,
+            batch_size=batch_size,
+            collate_fn=collate_fn,
+            num_workers=num_workers,
+            pin_memory=pin_memory,
+            persistent_workers=persistent_workers,
+            **dataloader_kwargs,
+        )
+
     @abstractmethod
     def get_train_data_sampler(self):
         raise NotImplementedError(
@@ -118,6 +151,12 @@ class TorchBrainModel(nn.Module, ABC):
     def get_val_data_sampler(self):
         raise NotImplementedError(
             "Subclasses must implement the get_val_data_sampler method"
+        )
+    
+    @abstractmethod
+    def get_test_data_sampler(self):
+        raise NotImplementedError(
+            "Subclasses must implement the get_test_data_sampler method"
         )
 
     @abstractmethod
