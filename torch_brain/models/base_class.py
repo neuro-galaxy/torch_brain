@@ -154,7 +154,7 @@ class TorchBrainModel(nn.Module, ABC):
         raise NotImplementedError(
             "Subclasses must implement the get_val_data_sampler method"
         )
-    
+
     @abstractmethod
     def get_test_data_sampler(self):
         raise NotImplementedError(

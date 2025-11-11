@@ -63,18 +63,18 @@ def compute_r2(dataloader, model, device):
 
 
 def training_step(batch, model, optimizer):
-    optimizer.zero_grad()                  # Step 0. Clear old gradients
+    optimizer.zero_grad()  # Step 0. Clear old gradients
 
     inputs = batch["model_inputs"]
     target = batch["target_values"]
-    
+
     pred = model(**inputs)  # Step 1. Do forward pass
 
     # shapes: [B, T, 1] -> [B, T]
     if pred.dim() == 3 and pred.size(-1) == 1:
         pred = pred.squeeze(-1)
-    
-    loss = F.mse_loss(pred, target)        # Step 2. Compute loss
-    loss.backward()                        # Step 3. Backward pass
-    optimizer.step()                       # Step 4. Update model params
+
+    loss = F.mse_loss(pred, target)  # Step 2. Compute loss
+    loss.backward()  # Step 3. Backward pass
+    optimizer.step()  # Step 4. Update model params
     return loss

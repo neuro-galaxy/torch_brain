@@ -394,7 +394,7 @@ class POYO(TorchBrainModel):
             step=None,
             drop_short=False,
         )
-    
+
     def get_test_data_sampler(self) -> torch.utils.data.Sampler:
         return SequentialFixedWindowSampler(
             sampling_intervals=self.test_dataset.get_sampling_intervals(),
@@ -481,20 +481,25 @@ class POYO(TorchBrainModel):
         """Finetune POYO model with frozen backbone."""
         if device is None:
             device = (
-                torch.device("mps") if torch.backends.mps.is_available()
-                else torch.device("cuda:0") if torch.cuda.is_available()
-                else torch.device("cpu")
+                torch.device("mps")
+                if torch.backends.mps.is_available()
+                else (
+                    torch.device("cuda:0")
+                    if torch.cuda.is_available()
+                    else torch.device("cpu")
+                )
             )
         self.to(device).float()  # float() is important on MPS
         self.device = device
 
         # Freeze the backbone
         backbone_params = [
-            p for p in self.named_parameters()
+            p
+            for p in self.named_parameters()
             if (
-                'unit_emb' not in p[0]
-                and 'session_emb' not in p[0]
-                and 'readout' not in p[0]
+                "unit_emb" not in p[0]
+                and "session_emb" not in p[0]
+                and "readout" not in p[0]
                 and p[1].requires_grad
             )
         ]
@@ -503,12 +508,12 @@ class POYO(TorchBrainModel):
 
         # Store intermediate outputs for visualization
         train_outputs = {
-            'n_epochs': num_epochs,
-            'epoch_to_unfreeze': epoch_to_unfreeze,
-            'unit_emb': [],
-            'session_emb': [],
-            'output_pred': [],
-            'output_gt': [],
+            "n_epochs": num_epochs,
+            "epoch_to_unfreeze": epoch_to_unfreeze,
+            "unit_emb": [],
+            "session_emb": [],
+            "output_pred": [],
+            "output_gt": [],
         }
 
         r2_log = []
@@ -561,11 +566,13 @@ class POYO(TorchBrainModel):
 
             # Switch back to training mode
             self.train()
-            
+
             running_loss = 0.0
 
             # Inner progress bar for training batches
-            batch_pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}", leave=False)
+            batch_pbar = tqdm(
+                train_loader, desc=f"Epoch {epoch+1}/{num_epochs}", leave=False
+            )
             for batch in batch_pbar:
                 batch = move_to_device(batch, device=device)
                 loss = training_step(batch, self, optimizer)
@@ -573,22 +580,24 @@ class POYO(TorchBrainModel):
                 running_loss += loss.item()
 
                 # Update inner bar postfix
-                batch_pbar.set_postfix({
-                    "Loss": f"{loss.item():.4f}",
-                    "Val R2": f"{r2:.3f}"
-                })
+                batch_pbar.set_postfix(
+                    {"Loss": f"{loss.item():.4f}", "Val R2": f"{r2:.3f}"}
+                )
 
             avg_loss = running_loss / len(train_loader)
-            epoch_pbar.set_postfix({
-                "Avg Loss": f"{avg_loss:.4f}",
-                "Val R2": f"{r2:.3f}"
-            })
+            epoch_pbar.set_postfix(
+                {"Avg Loss": f"{avg_loss:.4f}", "Val R2": f"{r2:.3f}"}
+            )
 
             # Store intermediate outputs
-            train_outputs['unit_emb'].append(self.unit_emb.weight[1:].detach().cpu().numpy())
-            train_outputs['session_emb'].append(self.session_emb.weight[1:].detach().cpu().numpy())
-            train_outputs['output_gt'].append(target.detach().cpu().numpy())
-            train_outputs['output_pred'].append(pred.detach().cpu().numpy())
+            train_outputs["unit_emb"].append(
+                self.unit_emb.weight[1:].detach().cpu().numpy()
+            )
+            train_outputs["session_emb"].append(
+                self.session_emb.weight[1:].detach().cpu().numpy()
+            )
+            train_outputs["output_gt"].append(target.detach().cpu().numpy())
+            train_outputs["output_pred"].append(pred.detach().cpu().numpy())
 
             del target, pred
 
