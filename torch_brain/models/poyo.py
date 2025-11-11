@@ -8,6 +8,7 @@ import torch.nn as nn
 from torchtyping import TensorType
 from temporaldata import Data
 
+from torch_brain.models.base_class import TorchBrainModel
 from torch_brain.data import chain, pad8, track_mask8
 from torch_brain.nn import (
     Embedding,
@@ -26,7 +27,7 @@ from torch_brain.utils import (
 )
 
 
-class POYO(nn.Module):
+class POYO(TorchBrainModel):
     """POYO model from `Azabou et al. 2023, A Unified, Scalable Framework for Neural Population Decoding
     <https://arxiv.org/abs/2310.16046>`_.
 
@@ -83,7 +84,7 @@ class POYO(nn.Module):
         t_min: float = 1e-4,
         t_max: float = 2.0627,
     ):
-        super().__init__()
+        super().__init__(readout_spec=readout_spec)
 
         self._validate_params(sequence_length, latent_step)
 
@@ -360,6 +361,14 @@ class POYO(nn.Module):
                 f"sequence_length ({sequence_length}) is not a multiple of latent_step "
                 f"({latent_step}). This is a simple warning, and this behavior is allowed."
             )
+
+    def set_datasets(self, brainset_path: str, dataset_config: str | Path | Dict):
+        super().set_datasets(brainset_path, dataset_config)
+
+        # Connect tokenizers to Datasets
+        self.train_dataset.transform = self.tokenize
+        self.val_dataset.transform = self.tokenize
+        self.test_dataset.transform = self.tokenize
 
     @classmethod
     def load_pretrained(
