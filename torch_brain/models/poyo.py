@@ -444,6 +444,13 @@ class POYO(TorchBrainModel):
 
         return model
 
+    def reinitialize_vocabs(self):
+        """Reinitialize the vocabs for the new units and sessions"""
+        self.unit_emb.extend_vocab(self.train_dataset.get_unit_ids())
+        self.unit_emb.subset_vocab(self.train_dataset.get_unit_ids())
+        self.session_emb.extend_vocab(self.train_dataset.get_session_ids())
+        self.session_emb.subset_vocab(self.train_dataset.get_session_ids())
+
 
 def poyo_mp(readout_spec: ModalitySpec, ckpt_path=None):
     if ckpt_path is not None:
