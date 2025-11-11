@@ -38,6 +38,7 @@ dev = [
     "flake8",
     "boto3",
     "tqdm",
+    "pytest-cov",
 ]
 
 [project.urls]
