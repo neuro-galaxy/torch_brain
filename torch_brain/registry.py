@@ -26,6 +26,7 @@ class ModalitySpec:
     """Specification for a modality.
 
     Attributes:
+        name: Unique name for this modality
         dim: Dimension for this modality
         type: DataType enum specifying the data type
         loss_fn: Name of loss function to use for this modality
@@ -34,6 +35,7 @@ class ModalitySpec:
         id: Unique numeric ID assigned to this modality
     """
 
+    name: str
     id: int
     dim: int
     type: DataType
@@ -46,7 +48,7 @@ MODALITY_REGISTRY: Dict[str, ModalitySpec] = {}
 _ID_TO_MODALITY: Dict[int, str] = {}
 
 
-def register_modality(name: str, **kwargs: Any) -> int:
+def register_modality(**kwargs: Any) -> int:
     """Register a new modality specification in the global registry.
 
     Args:
@@ -61,8 +63,8 @@ def register_modality(name: str, **kwargs: Any) -> int:
         ValueError: If a modality with the given name already exists
     """
     # Check if modality already exists
-    if name in MODALITY_REGISTRY:
-        raise ValueError(f"Modality {name} already exists in registry")
+    if kwargs["name"] in MODALITY_REGISTRY:
+        raise ValueError(f"Modality {kwargs['name']} already exists in registry")
 
     # Get next available ID
     next_id = len(MODALITY_REGISTRY) + 1
@@ -71,8 +73,8 @@ def register_modality(name: str, **kwargs: Any) -> int:
     decoder_spec = ModalitySpec(**kwargs, id=next_id)
 
     # Add to registries
-    MODALITY_REGISTRY[name] = decoder_spec
-    _ID_TO_MODALITY[next_id] = name
+    MODALITY_REGISTRY[kwargs["name"]] = decoder_spec
+    _ID_TO_MODALITY[next_id] = kwargs["name"]
 
     return next_id
 
