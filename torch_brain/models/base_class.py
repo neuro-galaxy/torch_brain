@@ -164,8 +164,8 @@ class TorchBrainModel(nn.Module, ABC):
     def forward(self, x):
         raise NotImplementedError("Subclasses must implement the forward method")
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def load_pretrained(cls) -> "TorchBrainModel":
         """Load a pretrained model from a checkpoint."""
         raise NotImplementedError(

@@ -97,7 +97,7 @@ def get_modality_by_id(modality_id: int) -> ModalitySpec:
 
 
 register_modality(
-    "cursor_velocity_2d",
+    name="cursor_velocity_2d",
     dim=2,
     type=DataType.CONTINUOUS,
     timestamp_key="cursor.timestamps",
@@ -106,7 +106,7 @@ register_modality(
 )
 
 register_modality(
-    "cursor_position_2d",
+    name="cursor_position_2d",
     dim=2,
     type=DataType.CONTINUOUS,
     timestamp_key="cursor.timestamps",
@@ -115,7 +115,7 @@ register_modality(
 )
 
 register_modality(
-    "arm_velocity_2d",
+    name="arm_velocity_2d",
     dim=2,
     type=DataType.CONTINUOUS,
     timestamp_key="behavior.timestamps",
@@ -124,7 +124,7 @@ register_modality(
 )
 
 register_modality(
-    "drifting_gratings_orientation",
+    name="drifting_gratings_orientation",
     dim=8,
     type=DataType.MULTINOMIAL,
     timestamp_key="drifting_gratings.timestamps",
@@ -133,7 +133,7 @@ register_modality(
 )
 
 register_modality(
-    "drifting_gratings_temporal_frequency",
+    name="drifting_gratings_temporal_frequency",
     dim=5,  # [1,2,4,8,15]
     type=DataType.MULTINOMIAL,
     timestamp_key="drifting_gratings.timestamps",
@@ -142,7 +142,7 @@ register_modality(
 )
 
 register_modality(
-    "natural_movie_one_frame",
+    name="natural_movie_one_frame",
     dim=900,
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_movie_one.timestamps",
@@ -151,7 +151,7 @@ register_modality(
 )
 
 register_modality(
-    "natural_movie_two_frame",
+    name="natural_movie_two_frame",
     dim=900,
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_movie_two.timestamps",
@@ -160,7 +160,7 @@ register_modality(
 )
 
 register_modality(
-    "natural_movie_three_frame",
+    name="natural_movie_three_frame",
     dim=3600,
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_movie_three.timestamps",
@@ -169,7 +169,7 @@ register_modality(
 )
 
 register_modality(
-    "locally_sparse_noise_frame",
+    name="locally_sparse_noise_frame",
     dim=8000,
     type=DataType.MULTINOMIAL,
     timestamp_key="locally_sparse_noise.timestamps",
@@ -178,7 +178,7 @@ register_modality(
 )
 
 register_modality(
-    "static_gratings_orientation",
+    name="static_gratings_orientation",
     dim=6,
     type=DataType.MULTINOMIAL,
     timestamp_key="static_gratings.timestamps",
@@ -187,7 +187,7 @@ register_modality(
 )
 
 register_modality(
-    "static_gratings_spatial_frequency",
+    name="static_gratings_spatial_frequency",
     dim=5,
     type=DataType.MULTINOMIAL,
     timestamp_key="static_gratings.timestamps",
@@ -196,7 +196,7 @@ register_modality(
 )
 
 register_modality(
-    "static_gratings_phase",
+    name="static_gratings_phase",
     dim=5,
     type=DataType.MULTINOMIAL,
     timestamp_key="static_gratings.timestamps",
@@ -205,7 +205,7 @@ register_modality(
 )
 
 register_modality(
-    "natural_scenes",
+    name="natural_scenes",
     dim=119,  # image classes [0,...,118]
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_scenes.timestamps",
@@ -214,7 +214,7 @@ register_modality(
 )
 
 register_modality(
-    "gabor_orientation",
+    name="gabor_orientation",
     dim=4,  # [0, 1, 2, 3]
     type=DataType.MULTINOMIAL,
     timestamp_key="gabors.timestamps",
@@ -223,7 +223,7 @@ register_modality(
 )
 
 register_modality(
-    "gabor_pos_2d",  # 9x9 grid modeled as (x, y) coordinates
+    name="gabor_pos_2d",  # 9x9 grid modeled as (x, y) coordinates
     dim=2,
     type=DataType.CONTINUOUS,
     timestamp_key="gabors.timestamps",
@@ -232,7 +232,7 @@ register_modality(
 )
 
 register_modality(
-    "running_speed",
+    name="running_speed",
     dim=1,
     type=DataType.CONTINUOUS,
     timestamp_key="running.timestamps",
@@ -241,7 +241,7 @@ register_modality(
 )
 
 register_modality(
-    "gaze_pos_2d",
+    name="gaze_pos_2d",
     dim=2,
     type=DataType.CONTINUOUS,
     timestamp_key="gaze.timestamps",
@@ -250,7 +250,7 @@ register_modality(
 )
 
 register_modality(
-    "pupil_location",
+    name="pupil_location",
     dim=2,
     type=DataType.CONTINUOUS,
     timestamp_key="pupil.timestamps",
@@ -259,7 +259,7 @@ register_modality(
 )
 
 register_modality(
-    "pupil_size_2d",
+    name="pupil_size_2d",
     dim=2,
     type=DataType.CONTINUOUS,
     timestamp_key="pupil.timestamps",

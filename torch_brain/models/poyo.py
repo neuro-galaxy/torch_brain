@@ -9,7 +9,6 @@ import torch.nn.functional as F
 from torchtyping import TensorType
 from temporaldata import Data
 
-from tests.test_rotary_attention import batch_size
 from torch_brain.models.base_class import TorchBrainModel
 from torch_brain.data import collate, pad8, track_mask8
 from torch_brain.nn import (
