@@ -112,6 +112,7 @@ class TorchBrainModel(nn.Module, ABC):
 
     def get_data_loader(
         self,
+        *,
         mode: Literal["train", "valid", "test"],
         batch_size: int,
         collate_fn: Callable | None = collate,

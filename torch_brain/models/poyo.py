@@ -1,15 +1,17 @@
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 import logging
-
+from tqdm import tqdm
 from pathlib import Path
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torchtyping import TensorType
 from temporaldata import Data
 
+from tests.test_rotary_attention import batch_size
 from torch_brain.models.base_class import TorchBrainModel
-from torch_brain.data import chain, pad8, track_mask8
+from torch_brain.data import collate, pad8, track_mask8
 from torch_brain.nn import (
     Embedding,
     FeedForward,
@@ -27,6 +29,11 @@ from torch_brain.utils import (
     create_linspace_latent_tokens,
     create_start_end_unit_tokens,
     prepare_for_readout,
+)
+from torch_brain.utils.training import (
+    move_to_device,
+    compute_r2,
+    training_step,
 )
 
 
@@ -388,6 +395,14 @@ class POYO(TorchBrainModel):
             step=None,
             drop_short=False,
         )
+    
+    def get_test_data_sampler(self) -> torch.utils.data.Sampler:
+        return SequentialFixedWindowSampler(
+            sampling_intervals=self.test_dataset.get_sampling_intervals(),
+            window_length=self.sequence_length,
+            step=None,
+            drop_short=False,
+        )
 
     @classmethod
     def load_pretrained(
@@ -450,6 +465,137 @@ class POYO(TorchBrainModel):
         self.unit_emb.subset_vocab(self.train_dataset.get_unit_ids())
         self.session_emb.extend_vocab(self.train_dataset.get_session_ids())
         self.session_emb.subset_vocab(self.train_dataset.get_session_ids())
+
+    def finetune(
+        self,
+        device: torch.device | None = None,
+        optimizer_class: type[torch.optim.Optimizer] = torch.optim.AdamW,
+        optimizer_kwargs: Dict | None = None,
+        num_epochs: int = 50,
+        epoch_to_unfreeze: int = 30,
+        data_loader_batch_size: int = 16,
+        data_loader_collate_fn: Callable | None = collate,
+        data_loader_num_workers: int = 0,
+        data_loader_pin_memory: bool = False,
+        data_loader_persistent_workers: bool = False,
+    ):
+        """Finetune POYO model with frozen backbone."""
+        if device is None:
+            device = (
+                torch.device("mps") if torch.backends.mps.is_available()
+                else torch.device("cuda:0") if torch.cuda.is_available()
+                else torch.device("cpu")
+            )
+        self.to(device).float()  # float() is important on MPS
+        self.device = device
+
+        # Freeze the backbone
+        backbone_params = [
+            p for p in self.named_parameters()
+            if (
+                'unit_emb' not in p[0]
+                and 'session_emb' not in p[0]
+                and 'readout' not in p[0]
+                and p[1].requires_grad
+            )
+        ]
+        for _, param in backbone_params:
+            param.requires_grad = False
+
+        # Store intermediate outputs for visualization
+        train_outputs = {
+            'n_epochs': num_epochs,
+            'epoch_to_unfreeze': epoch_to_unfreeze,
+            'unit_emb': [],
+            'session_emb': [],
+            'output_pred': [],
+            'output_gt': [],
+        }
+
+        r2_log = []
+        loss_log = []
+
+        # Optimizer setup
+        if optimizer_kwargs is None:
+            optimizer_kwargs = dict(
+                lr=1e-3,
+            )
+        optimizer = optimizer_class(
+            self.parameters(),
+            **optimizer_kwargs,
+        )
+
+        # Data loaders
+        if device.type == "mps":
+            data_loader_num_workers = 0
+            data_loader_pin_memory = False
+            data_loader_persistent_workers = False
+
+        data_loader_kwargs = dict(
+            batch_size=data_loader_batch_size,
+            collate_fn=data_loader_collate_fn,
+            num_workers=data_loader_num_workers,
+            pin_memory=data_loader_pin_memory,
+            persistent_workers=data_loader_persistent_workers,
+        )
+
+        train_loader = self.get_data_loader(mode="train", **data_loader_kwargs)
+        val_loader = self.get_data_loader(mode="valid", **data_loader_kwargs)
+
+        # Main progress bar for epochs
+        epoch_pbar = tqdm(range(num_epochs), desc="Finetuning Progress", leave=True)
+        for epoch in epoch_pbar:
+            # Unfreeze backbone
+            if epoch == epoch_to_unfreeze:
+                for _, param in backbone_params:
+                    param.requires_grad = True
+                print("\n🔓 Unfreezing entire model")
+
+            # Validation before training step
+            with torch.no_grad():
+                self.eval()  # make sure we're in eval mode during validation
+                r2, target, pred = compute_r2(val_loader, self)
+                r2_log.append(r2)
+
+            # Switch back to training mode
+            self.train()
+            
+            running_loss = 0.0
+
+            # Inner progress bar for training batches
+            batch_pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}", leave=False)
+            for batch in batch_pbar:
+                batch = move_to_device(batch, device=device)
+                loss = training_step(batch, self, optimizer)
+                loss_log.append(loss.item())
+                running_loss += loss.item()
+
+                # Update inner bar postfix
+                batch_pbar.set_postfix({
+                    "Loss": f"{loss.item():.4f}",
+                    "Val R2": f"{r2:.3f}"
+                })
+
+            avg_loss = running_loss / len(train_loader)
+            epoch_pbar.set_postfix({
+                "Avg Loss": f"{avg_loss:.4f}",
+                "Val R2": f"{r2:.3f}"
+            })
+
+            # Store intermediate outputs
+            train_outputs['unit_emb'].append(self.unit_emb.weight[1:].detach().cpu().numpy())
+            train_outputs['session_emb'].append(self.session_emb.weight[1:].detach().cpu().numpy())
+            train_outputs['output_gt'].append(target.detach().cpu().numpy())
+            train_outputs['output_pred'].append(pred.detach().cpu().numpy())
+
+            del target, pred
+
+        # Final validation
+        r2, _, _ = compute_r2(val_loader, self)
+        r2_log.append(r2)
+        print(f"\n✅ Done! Final validation R² = {r2:.3f}")
+
+        return r2_log, loss_log, train_outputs
 
 
 def poyo_mp(readout_spec: ModalitySpec, ckpt_path=None):
