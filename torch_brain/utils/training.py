@@ -107,6 +107,17 @@ def compute_r2(dataloader, model, device):
 
 
 def training_step(batch, model, optimizer):
+    """
+    Performs a single training step: forward pass, loss computation, backward pass, and optimizer step.
+
+    Args:
+        batch (dict): A batch of data containing 'model_inputs' and 'target_values'.
+        model (torch.nn.Module): The model to be trained.
+        optimizer (torch.optim.Optimizer): The optimizer used to update model parameters.
+
+    Returns:
+        torch.Tensor: The computed loss for the batch.
+    """
     optimizer.zero_grad()  # Step 0. Clear old gradients
 
     inputs = batch["model_inputs"]
