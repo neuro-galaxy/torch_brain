@@ -56,8 +56,8 @@ class MLPNeuralDecoder(TorchBrainModel):
 
         Shape of x: (B, T, N)
         """
-        x = x.flatten(1)                          # (B, T, N)    -> (B, T*N)
-        x = self.net(x)                           # (B, T*N)     -> (B, T*D_out)
+        x = x.flatten(1)  # (B, T, N)    -> (B, T*N)
+        x = self.net(x)  # (B, T*N)     -> (B, T*D_out)
         x = x.reshape(-1, self.num_timesteps, 2)  # (B, T*D_out) -> (B, T, D_out)
         return x
 
@@ -70,7 +70,7 @@ class MLPNeuralDecoder(TorchBrainModel):
             spikes=spikes,
             num_units=len(data.units),
             bin_size=self.bin_size,
-            num_bins=self.num_timesteps
+            num_bins=self.num_timesteps,
         ).T
 
         # Target variable
@@ -84,7 +84,7 @@ class MLPNeuralDecoder(TorchBrainModel):
             "target_values": torch.tensor(y, dtype=torch.float32),
         }
         return data_dict
-    
+
     def set_datasets(self, dir_path: str, dataset_config: str | Path | list[dict]):
         super().set_datasets(dir_path, dataset_config)
 
@@ -116,7 +116,7 @@ class MLPNeuralDecoder(TorchBrainModel):
             step=None,
             drop_short=False,
         )
-    
+
     @classmethod
     def load_pretrained(
         cls,
