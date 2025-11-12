@@ -9,11 +9,13 @@ readout_modality_name = "wheel"
 readout_value_key = "wheel.vel"
 readout_timestamp_key = "wheel.timestamps"
 
-# Helper class method to create minimal dataset config 
+# Helper class method to create minimal dataset config
 dataset_config = POYO.create_basic_dataset_config(
     dir_path=".",
     brainset="ibl",
-    sessions=["sub-CSH-ZAD-024_ses-8207abc6-6b23-4762-92b4-82e05bed5143-processed-only_behavior"],
+    sessions=[
+        "sub-CSH-ZAD-024_ses-8207abc6-6b23-4762-92b4-82e05bed5143-processed-only_behavior"
+    ],
     readout_id=readout_modality_name,
     value_key=readout_value_key,
     timestamp_key=readout_timestamp_key,
@@ -41,9 +43,9 @@ model = POYO.load_pretrained(
 # Load model to device
 # PS: we could probably automatically do this (by default)
 device = (
-    torch.device("mps") if torch.backends.mps.is_available()
-    else torch.device("cuda:0") if torch.cuda.is_available()
-    else torch.device("cpu")
+    torch.device("mps")
+    if torch.backends.mps.is_available()
+    else torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 )
 model.to(device)
 

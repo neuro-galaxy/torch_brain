@@ -141,7 +141,7 @@ class TorchBrainModel(nn.Module, ABC):
             persistent_workers=persistent_workers,
             **dataloader_kwargs,
         )
-    
+
     @classmethod
     def create_basic_dataset_config(
         cls,
@@ -153,14 +153,17 @@ class TorchBrainModel(nn.Module, ABC):
         timestamp_key: str,
     ) -> list[dict]:
         """Create a minimal dataset configuration dictionary for the given brainset and sessions."""
+
         def deep_getattr(obj, attr_path):
             """Get a nested attribute from an object using a dotted path."""
             try:
-                for attr in attr_path.split('.'):
+                for attr in attr_path.split("."):
                     obj = getattr(obj, attr)
                 return obj
             except AttributeError:
-                raise AttributeError(f"Attribute path '{attr_path}' not found in the object.")
+                raise AttributeError(
+                    f"Attribute path '{attr_path}' not found in the object."
+                )
 
         # Estimate z-score statistics from training data
         session = sessions[0]
@@ -174,7 +177,7 @@ class TorchBrainModel(nn.Module, ABC):
             train_vals = deep_getattr(train_data, value_key)
             mean_val = np.mean(train_vals)
             std_val = np.std(train_vals)
-        
+
         # Dataset dictionary
         dataset_dict = [
             {
@@ -193,13 +196,9 @@ class TorchBrainModel(nn.Module, ABC):
                         "value_key": value_key,
                         "weights": {},
                         "eval_interval": None,
-                        "metrics": [
-                            {
-                                "metric": {"_target_": "torchmetrics.R2Score"}
-                            }
-                        ]
+                        "metrics": [{"metric": {"_target_": "torchmetrics.R2Score"}}],
                     }
-                }
+                },
             }
         ]
 
