@@ -3,17 +3,16 @@ from typing import Callable, Literal
 from pathlib import Path
 import logging
 import yaml
+import h5py
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+import numpy as np
+from temporaldata import Data
 
 from torch_brain.registry import ModalitySpec, register_modality, MODALITY_REGISTRY
 from torch_brain.schemas.base_class.dataset_schema import BaseDatasetConfig
 from torch_brain.data import Dataset, collate
-from torch_brain.data.sampler import (
-    RandomFixedWindowSampler,
-    SequentialFixedWindowSampler,
-)
 
 
 logger = logging.getLogger(__name__)
@@ -79,7 +78,7 @@ class TorchBrainModel(nn.Module, ABC):
 
     def set_datasets(
         self,
-        brainset_path: str,
+        dir_path: str,
         dataset_config: str | Path | list[dict],
     ):
         """Set datasets (train, valid, test) for this model based on the provided configuration."""
@@ -92,21 +91,21 @@ class TorchBrainModel(nn.Module, ABC):
 
         # Training
         self.train_dataset = Dataset(
-            root=brainset_path,
+            root=dir_path,
             config=dataset_config,
             split="train",
         )
 
         # Validation
         self.val_dataset = Dataset(
-            root=brainset_path,
+            root=dir_path,
             config=dataset_config,
             split="valid",
         )
 
         # Testing
         self.test_dataset = Dataset(
-            root=brainset_path,
+            root=dir_path,
             config=dataset_config,
             split="test",
         )
@@ -142,6 +141,70 @@ class TorchBrainModel(nn.Module, ABC):
             persistent_workers=persistent_workers,
             **dataloader_kwargs,
         )
+    
+    @classmethod
+    def create_basic_dataset_config(
+        cls,
+        dir_path: str,
+        brainset: str,
+        sessions: list[str],
+        readout_id: str,
+        value_key: str,
+        timestamp_key: str,
+    ) -> list[dict]:
+        """Create a minimal dataset configuration dictionary for the given brainset and sessions."""
+        def deep_getattr(obj, attr_path):
+            """Get a nested attribute from an object using a dotted path."""
+            try:
+                for attr in attr_path.split('.'):
+                    obj = getattr(obj, attr)
+                return obj
+            except AttributeError:
+                raise AttributeError(f"Attribute path '{attr_path}' not found in the object.")
+
+        # Estimate z-score statistics from training data
+        session = sessions[0]
+        with h5py.File(f"{dir_path}/{brainset}/{session}.h5", "r") as f:
+            session_data = Data.from_hdf5(f, lazy=True)
+            # Validate value_key and timestamp_key exist in the data
+            _ = deep_getattr(session_data, value_key)
+            _ = deep_getattr(session_data, timestamp_key)
+            # Select training data based on the training domain interval
+            train_data = session_data.select_by_interval(session_data.train_domain)
+            train_vals = deep_getattr(train_data, value_key)
+            mean_val = np.mean(train_vals)
+            std_val = np.std(train_vals)
+        
+        # Dataset dictionary
+        dataset_dict = [
+            {
+                "selection": [
+                    {
+                        "brainset": brainset,
+                        "sessions": sessions,
+                    }
+                ],
+                "config": {
+                    "readout": {
+                        "readout_id": readout_id,
+                        "normalize_mean": mean_val,
+                        "normalize_std": std_val,
+                        "timestamp_key": timestamp_key,
+                        "value_key": value_key,
+                        "weights": {},
+                        "eval_interval": None,
+                        "metrics": [
+                            {
+                                "metric": {"_target_": "torchmetrics.R2Score"}
+                            }
+                        ]
+                    }
+                }
+            }
+        ]
+
+        # Instantiate using model_validate
+        return BaseDatasetConfig.model_validate(dataset_dict).model_dump()
 
     @abstractmethod
     def get_train_data_sampler(self):

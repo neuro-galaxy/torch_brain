@@ -109,10 +109,10 @@ class Dataset(torch.utils.data.Dataset):
 
             if isinstance(config, omegaconf.listconfig.ListConfig):
                 config = omegaconf.OmegaConf.to_container(config)
+            elif isinstance(config, list):
+                config = omegaconf.OmegaConf.create(config)
             elif Path(config).is_file():
                 config = omegaconf.OmegaConf.load(config)
-            elif isinstance(config, dict):
-                config = omegaconf.OmegaConf.create(config)
             else:
                 raise ValueError(f"Could not open configuration file: '{config}'")
 
