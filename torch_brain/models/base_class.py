@@ -175,8 +175,8 @@ class TorchBrainModel(nn.Module, ABC):
             # Select training data based on the training domain interval
             train_data = session_data.select_by_interval(session_data.train_domain)
             train_vals = deep_getattr(train_data, value_key)
-            mean_val = np.mean(train_vals)
-            std_val = np.std(train_vals)
+            mean_val = float(np.mean(train_vals))
+            std_val = float(np.std(train_vals))
 
         # Dataset dictionary
         dataset_dict = [
