@@ -139,7 +139,7 @@ class MLPNeuralDecoder(TorchBrainModel):
         # Remove readout layer from checkpoint if we're using a new one
         if skip_readout:
             state_dict = {
-                k: v for k, v in state_dict.items() if not k.startswith("readout.")
+                k: v for k, v in state_dict.items() if not k.startswith("net.4.")
             }
 
         missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
