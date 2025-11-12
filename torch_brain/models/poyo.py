@@ -458,6 +458,7 @@ class POYO(TorchBrainModel):
 
         return model
 
+
     def reinitialize_vocabs(self):
         """Reinitialize the vocabs for the new units and sessions"""
         self.unit_emb.extend_vocab(self.train_dataset.get_unit_ids())
