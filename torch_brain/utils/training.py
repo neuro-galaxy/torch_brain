@@ -33,6 +33,19 @@ def move_to_device(data, device):
 
 
 def r2_score(y_pred, y_true):
+    """
+    Computes the coefficient of determination (R² score) between predictions and true values.
+
+    R² is calculated as: R² = 1 - (SS_res / SS_tot)
+    where SS_res is the sum of squared residuals and SS_tot is the total sum of squares.
+
+    Args:
+        y_pred (torch.Tensor): Predicted values. Shape should match y_true.
+        y_true (torch.Tensor): Ground truth (target) values.
+
+    Returns:
+        torch.Tensor: The R² score as a scalar tensor.
+    """
     # Compute total sum of squares (variance of the true values)
     y_true_mean = torch.mean(y_true, dim=0, keepdim=True)
     ss_total = torch.sum((y_true - y_true_mean) ** 2)
