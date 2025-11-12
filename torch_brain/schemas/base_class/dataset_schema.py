@@ -5,7 +5,6 @@ from pydantic import (
     Field,
     RootModel,
     field_validator,
-    model_validator,
 )
 
 
