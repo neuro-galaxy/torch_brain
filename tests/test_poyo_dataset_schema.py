@@ -1,7 +1,6 @@
 """Tests for POYO dataset configuration schemas."""
 
 import pytest
-from pathlib import Path
 from omegaconf import OmegaConf
 from torch_brain.schemas.base_class.dataset_schema import BaseDatasetConfig
 
