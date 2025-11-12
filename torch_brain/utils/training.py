@@ -33,6 +33,23 @@ def r2_score(y_pred, y_true):
 
 
 def compute_r2(dataloader, model, device):
+    """
+    Compute the R^2 score for a model over a given dataloader.
+
+    Parameters:
+        dataloader: DataLoader
+            An iterable over batches of data, each containing model inputs and target values.
+        model: torch.nn.Module
+            The model to evaluate.
+        device: torch.device or str
+            The device on which computation is performed.
+
+    Returns:
+        tuple:
+            r2 (float): The R^2 score computed over all batches.
+            total_target (torch.Tensor): Concatenated ground truth target values.
+            total_pred (torch.Tensor): Concatenated model predictions.
+    """
     model.eval()  # turn off dropout, etc.
     total_target = []
     total_pred = []
