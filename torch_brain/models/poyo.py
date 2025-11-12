@@ -379,6 +379,16 @@ class POYO(TorchBrainModel):
         self.val_dataset.transform = self.tokenize
         self.test_dataset.transform = self.tokenize
 
+        # Reinitialize vocabs
+        self.reinitialize_vocabs()
+
+    def reinitialize_vocabs(self):
+        """Reinitialize the vocabs for the new units and sessions"""
+        self.unit_emb.extend_vocab(self.train_dataset.get_unit_ids())
+        self.unit_emb.subset_vocab(self.train_dataset.get_unit_ids())
+        self.session_emb.extend_vocab(self.train_dataset.get_session_ids())
+        self.session_emb.subset_vocab(self.train_dataset.get_session_ids())
+
     def get_train_data_sampler(self) -> torch.utils.data.Sampler:
         return RandomFixedWindowSampler(
             sampling_intervals=self.train_dataset.get_sampling_intervals(),
@@ -457,13 +467,6 @@ class POYO(TorchBrainModel):
             )
 
         return model
-
-    def reinitialize_vocabs(self):
-        """Reinitialize the vocabs for the new units and sessions"""
-        self.unit_emb.extend_vocab(self.train_dataset.get_unit_ids())
-        self.unit_emb.subset_vocab(self.train_dataset.get_unit_ids())
-        self.session_emb.extend_vocab(self.train_dataset.get_session_ids())
-        self.session_emb.subset_vocab(self.train_dataset.get_session_ids())
 
     def finetune(
         self,
@@ -545,9 +548,6 @@ class POYO(TorchBrainModel):
 
         train_loader = self.get_data_loader(mode="train", **data_loader_kwargs)
         val_loader = self.get_data_loader(mode="valid", **data_loader_kwargs)
-
-        # Reinitialize vocabs
-        self.reinitialize_vocabs()
 
         # Main progress bar for epochs
         epoch_pbar = tqdm(range(num_epochs), desc="Finetuning Progress", leave=True)
