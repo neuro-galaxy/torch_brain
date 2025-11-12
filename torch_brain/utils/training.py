@@ -3,7 +3,21 @@ import torch.nn.functional as F
 
 
 def move_to_device(data, device):
-    """Recursively move data to the specified device."""
+    """
+    Recursively move data to the specified device.
+
+    Parameters
+    ----------
+    data : torch.Tensor, dict, list, or other
+        The data to move. Can be a tensor, a dictionary of tensors, a list of tensors, or nested structures thereof.
+    device : torch.device or str
+        The device to move the data to (e.g., 'cpu', 'cuda', or a torch.device object).
+
+    Returns
+    -------
+    Moved data of the same structure as input, with all tensors moved to the specified device.
+    Non-tensor objects are returned unchanged.
+    """
     if isinstance(data, torch.Tensor):
         # Specify dtype on the move for float tensors.
         if data.is_floating_point():
