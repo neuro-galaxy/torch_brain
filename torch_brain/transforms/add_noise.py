@@ -22,7 +22,7 @@ class RandomNoise:
 
     def __init__(
         self,
-        field: str = "rates.amplitudes",
+        field: str = "cursor.acc",
         noise_mean: float = 0.0,
         noise_std: float = 0.1,
         clip: bool = False,
