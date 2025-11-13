@@ -23,6 +23,7 @@ class RandomNoise:
     def __init__(
         self,
         field: str = "rates.amplitudes",
+        noise_mean: float = 0.0,
         noise_std: float = 0.1,
         clip: bool = False,
         seed: int = None,
@@ -40,7 +41,7 @@ class RandomNoise:
             assert len(nested) == 2, "Field must be like 'rates.data' or 'lfp.data'"
             arr = getattr(obj, nested[1])
 
-            noise = self.rng.normal(0, self.noise_std, size=arr.shape)
+            noise = self.rng.normal(self.noise_mean, self.noise_std, size=arr.shape)
             out = arr + noise
 
             if self.clip:
