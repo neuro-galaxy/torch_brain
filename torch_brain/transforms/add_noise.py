@@ -29,6 +29,7 @@ class RandomNoise:
         seed: int = None,
     ):
         self.field = field
+        self.noise_mean = noise_mean
         self.noise_std = noise_std
         self.clip = clip
         self.rng = np.random.default_rng(seed)
