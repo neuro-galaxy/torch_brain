@@ -42,7 +42,7 @@ class MLPNeuralDecoder(TorchBrainModel):
         super().__init__(readout_spec=readout_spec)
 
         self.sequence_length = sequence_length
-        
+
         self.input_bin_size = input_bin_size
         self.input_num_timesteps = int(sequence_length / input_bin_size)
         self.input_dim = num_units * self.input_num_timesteps
@@ -67,7 +67,9 @@ class MLPNeuralDecoder(TorchBrainModel):
         """
         x = x.flatten(1)  # (B, T, N)    -> (B, T*N)
         y = self.net(x)  # (B, T*N)     -> (B, T*D_out)
-        y = y.reshape(-1, self.output_num_timesteps, self.readout_spec.dim)  # (B, T*D_out) -> (B, T, D_out)
+        y = y.reshape(
+            -1, self.output_num_timesteps, self.readout_spec.dim
+        )  # (B, T*D_out) -> (B, T, D_out)
         return y
 
     def tokenize(self, data: Data) -> dict:
@@ -88,7 +90,7 @@ class MLPNeuralDecoder(TorchBrainModel):
         # Handle length mismatches by cropping or padding
         if len(y) > self.output_num_timesteps:
             # Too many samples - drop the last ones
-            y = y[:self.output_num_timesteps]
+            y = y[: self.output_num_timesteps]
         elif len(y) < self.output_num_timesteps:
             # Too few samples - pad by repeating the last value
             padding_needed = self.output_num_timesteps - len(y)

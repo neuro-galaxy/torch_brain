@@ -214,16 +214,16 @@ def train_model(
             )
 
         avg_loss = running_loss / len(train_loader)
-        epoch_pbar.set_postfix(
-            {"Avg Loss": f"{avg_loss:.4f}", "Val R2": f"{r2:.3f}"}
-        )
+        epoch_pbar.set_postfix({"Avg Loss": f"{avg_loss:.4f}", "Val R2": f"{r2:.3f}"})
 
         # Store intermediate outputs
         if store_params is not None and len(store_params) > 0:
             for param in store_params:
                 if not hasattr(model, param):
                     raise ValueError(f"Model has no parameter named '{param}'")
-                train_outputs[param].append(getattr(model, param).weight[1:].detach().cpu().numpy())
+                train_outputs[param].append(
+                    getattr(model, param).weight[1:].detach().cpu().numpy()
+                )
 
         train_outputs["output_gt"].append(target.detach().cpu().numpy())
         train_outputs["output_pred"].append(pred.detach().cpu().numpy())
