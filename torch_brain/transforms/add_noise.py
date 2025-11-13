@@ -6,11 +6,7 @@ class RandomNoise:
     """
     Add Gaussian noise.
 
-    Behavior:
-    ---------
-    - IrregularTimeSeries:
-         * If amplitudes exist  -> add noise to amplitudes only
-         * If no amplitudes     -> throw error
+    Disclaimer: This transform is only compatible with IrregularTimeSeries.
 
     Args:
         field (str): Path to field, e.g. "lfp.data", "rates.data", "spikes".
