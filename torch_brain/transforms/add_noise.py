@@ -1,5 +1,5 @@
 import numpy as np
-from temporaldata import IrregularTimeSeries, RegularTimeSeries, Data
+from temporaldata import IrregularTimeSeries, Data
 
 
 class RandomNoise:
