@@ -38,14 +38,14 @@ class RandomNoise:
         # TODO Handle RegularTimeSeries
         if isinstance(obj, IrregularTimeSeries):
 
-            amps = getattr(obj, nested[1])
-            noise = self.rng.normal(self.noise_mean, self.noise_std, size=amps.shape)
-            amps_noisy = amps + noise
+            values = getattr(obj, nested[1])
+            noise = self.rng.normal(self.noise_mean, self.noise_std, size=values.shape)
+            values_noisy = values + noise
 
             if self.clip:
-                amps_noisy = np.clip(amps_noisy, 0, None)
+                values_noisy = np.clip(values_noisy, 0, None)
 
-            setattr(obj, nested[1], amps_noisy)
+            setattr(obj, nested[1], values_noisy)
             return data
 
         raise ValueError(f"Unsupported type for RandomNoise: {type(obj)}")
