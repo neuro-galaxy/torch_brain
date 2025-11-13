@@ -56,7 +56,7 @@ class RandomNoise:
                 raise ValueError(f"Augmentation {type(self)} requires a field with amplitudes to be present in the data.")
 
             amps = getattr(obj, nested[1])
-            noise = self.rng.normal(0, self.noise_std, size=amps.shape)
+            noise = self.rng.normal(self.noise_mean, self.noise_std, size=amps.shape)
             amps_noisy = amps + noise
 
             if self.clip:
