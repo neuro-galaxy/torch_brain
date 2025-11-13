@@ -41,11 +41,6 @@ class RandomNoise:
 
         # TODO Handle RegularTimeSeries
         if isinstance(obj, IrregularTimeSeries):
-            # If no amplitude information (e.g. spikes), do not modify anything
-            if not hasattr(obj, nested[1]):
-                raise ValueError(
-                    f"Augmentation {type(self)} requires a field with amplitudes to be present in the data."
-                )
 
             amps = getattr(obj, nested[1])
             noise = self.rng.normal(self.noise_mean, self.noise_std, size=amps.shape)
