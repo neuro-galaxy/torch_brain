@@ -10,8 +10,8 @@ class RandomNoise:
 
     Args:
         field (str, optional): Path to field, e.g. "lfp.data", "rates.data".
-        noise_mean (float): Mean of Gaussian noise.
-        noise_std (float): Standard deviation of Gaussian noise.
+        loc (float): Mean of Gaussian noise.
+        scale (float): Standard deviation of Gaussian noise.
         distribution (str): Distribution to use for noise. It must be one of 'gaussian',
         'laplace', and 'uniform'. Defaults to 'gaussian'.
         kind (str, optional): How the noise is added to the original time series. It must be either
@@ -31,7 +31,7 @@ class RandomNoise:
         seed: int = None,
     ):
         self.field = field
-        # TODO: Add support for defining noise_mean and noise_std for each field and channel.
+        # TODO: Add support for defining loc and scale for each field and channel.
         self.loc = loc
         self.scale = scale
         self.distribution = distribution
