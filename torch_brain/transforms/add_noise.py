@@ -4,19 +4,19 @@ from temporaldata import IrregularTimeSeries, RegularTimeSeries, Data
 
 class RandomNoise:
     """
-    Add Gaussian noise to neural data.
+    Add Gaussian noise.
 
     Behavior:
     ---------
-    - RegularTimeSeries (continuous data): Add noise to data array (T × C).
     - IrregularTimeSeries:
          * If amplitudes exist  -> add noise to amplitudes only
-         * If no amplitudes     -> no-op (timestamps untouched)
+         * If no amplitudes     -> throw error
 
     Args:
         field (str): Path to field, e.g. "lfp.data", "rates.data", "spikes".
+        noise_mean (float): Mean of Gaussian noise.
         noise_std (float): Standard deviation of Gaussian noise.
-        clip (bool): Clip values to min=0 (useful for calcium/rates).
+        clip (bool): Clip values to min=0.
         seed (int): Random seed.
     """
 
