@@ -34,22 +34,11 @@ class RandomNoise:
         self.rng = np.random.default_rng(seed)
 
     def __call__(self, data: Data):
+
         nested = self.field.split(".")
         obj = getattr(data, nested[0])
 
-        if isinstance(obj, RegularTimeSeries):
-            assert len(nested) == 2, "Field must be like 'rates.data' or 'lfp.data'"
-            arr = getattr(obj, nested[1])
-
-            noise = self.rng.normal(self.noise_mean, self.noise_std, size=arr.shape)
-            out = arr + noise
-
-            if self.clip:
-                out = np.clip(out, 0, None)
-
-            setattr(obj, nested[1], out)
-            return data
-
+        # TODO Handle RegularTimeSeries
         if isinstance(obj, IrregularTimeSeries):
             # If no amplitude information (e.g. spikes), do not modify anything
             if not hasattr(obj, nested[1]):
