@@ -1,5 +1,9 @@
+import logging
+from tqdm import tqdm
 import torch
 import torch.nn.functional as F
+
+from torch_brain.models.base_class import TorchBrainModel
 
 
 def move_to_device(data, device):
@@ -106,30 +110,127 @@ def compute_r2(dataloader, model, device):
     return r2.item(), total_target, total_pred
 
 
-def training_step(batch, model, optimizer):
+def regression_training_step(
+    batch: dict,
+    model: TorchBrainModel,
+    optimizer: torch.optim.Optimizer,
+):
     """
     Performs a single training step: forward pass, loss computation, backward pass, and optimizer step.
 
     Args:
         batch (dict): A batch of data containing 'model_inputs' and 'target_values'.
-        model (torch.nn.Module): The model to be trained.
+        model (TorchBrainModel): The model to be trained.
         optimizer (torch.optim.Optimizer): The optimizer used to update model parameters.
 
     Returns:
         torch.Tensor: The computed loss for the batch.
     """
-    optimizer.zero_grad()  # Step 0. Clear old gradients
+    # Clear old gradients
+    optimizer.zero_grad()
 
+    # Get input and target values from the batch
+    if "model_inputs" not in batch:
+        raise ValueError("Batch must contain 'model_inputs' key.")
+    if "target_values" not in batch:
+        raise ValueError("Batch must contain 'target_values' key.")
     inputs = batch["model_inputs"]
     target = batch["target_values"]
 
-    pred = model(**inputs)  # Step 1. Do forward pass
+    # Do forward pass
+    pred = model(**inputs)
 
+    # Squeeze if singleton last dimension
     # shapes: [B, T, 1] -> [B, T]
     if pred.dim() == 3 and pred.size(-1) == 1:
         pred = pred.squeeze(-1)
 
-    loss = F.mse_loss(pred, target)  # Step 2. Compute loss
-    loss.backward()  # Step 3. Backward pass
-    optimizer.step()  # Step 4. Update model params
+    # Compute loss
+    loss = F.mse_loss(pred, target)
+
+    # Backward pass
+    loss.backward()
+
+    # Update model params
+    optimizer.step()
     return loss
+
+
+def train_model(
+    device: torch.device,
+    model: TorchBrainModel,
+    optimizer: torch.optim.Optimizer,
+    train_loader: torch.utils.data.DataLoader,
+    val_loader: torch.utils.data.DataLoader,
+    num_epochs=50,
+    store_params: list[str] | None = None,
+):
+    """Train the model using the provided training and validation data loaders."""
+    # Store intermediate outputs for visualization
+    train_outputs = {
+        "n_epochs": num_epochs,
+        "output_pred": [],
+        "output_gt": [],
+    }
+    if store_params is not None and len(store_params) > 0:
+        for param in store_params:
+            train_outputs[param] = []
+
+    # Training loop
+    r2_log = []
+    loss_log = []
+    epoch_pbar = tqdm(range(num_epochs), desc="Training Progress", leave=True)
+    for epoch in epoch_pbar:
+        # Validation before training step
+        with torch.no_grad():
+            model.eval()  # make sure we're in eval mode during validation
+            r2, target, pred = compute_r2(val_loader, model, device)
+            r2_log.append(r2)
+
+        # Switch back to training mode
+        model.train()
+
+        # Training steps
+        # Inner progress bar for training batches
+        running_loss = 0.0
+        batch_pbar = tqdm(
+            train_loader,
+            desc=f"Epoch {epoch+1}/{num_epochs}",
+            leave=False,
+        )
+        for batch in batch_pbar:
+            batch = move_to_device(data=batch, device=device)
+            loss = regression_training_step(
+                batch=batch,
+                model=model,
+                optimizer=optimizer,
+            )
+            loss_log.append(loss.item())
+            running_loss += loss.item()
+
+            # Update inner bar postfix
+            batch_pbar.set_postfix(
+                {"Loss": f"{loss.item():.4f}", "Val R2": f"{r2:.3f}"}
+            )
+
+        avg_loss = running_loss / len(train_loader)
+        epoch_pbar.set_postfix(
+            {"Avg Loss": f"{avg_loss:.4f}", "Val R2": f"{r2:.3f}"}
+        )
+
+        # Store intermediate outputs
+        if store_params is not None and len(store_params) > 0:
+            for param in store_params:
+                if not hasattr(model, param):
+                    raise ValueError(f"Model has no parameter named '{param}'")
+                train_outputs[param].append(getattr(model, param).weight[1:].detach().cpu().numpy())
+
+        train_outputs["output_gt"].append(target.detach().cpu().numpy())
+        train_outputs["output_pred"].append(pred.detach().cpu().numpy())
+
+    # Compute final R² score
+    r2, _, _ = compute_r2(val_loader, model, device)
+    r2_log.append(r2)
+    print(f"\nDone! Final validation R2 = {r2:.3f}")
+
+    return r2_log, loss_log, train_outputs

@@ -1,9 +1,11 @@
 from pathlib import Path
+from typing import Callable
+import numpy as np
+import logging
 import torch
 import torch.nn as nn
 from temporaldata import Data
-import numpy as np
-import logging
+
 
 from torch_brain.models.base_class import TorchBrainModel
 from torch_brain.registry import ModalitySpec
@@ -11,6 +13,8 @@ from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )
+from torch_brain.data import collate
+from torch_brain.utils.training import train_model
 
 
 def bin_spikes(spikes, num_units, bin_size, num_bins=None):
@@ -30,17 +34,22 @@ class MLPNeuralDecoder(TorchBrainModel):
         readout_spec: ModalitySpec,
         sequence_length: float,
         num_units: int,
-        bin_size: int,
+        input_bin_size: int,
+        output_bin_size: int,
         hidden_dim: int,
     ):
         """Initialize the neural net layers."""
         super().__init__(readout_spec=readout_spec)
 
         self.sequence_length = sequence_length
-        self.num_timesteps = int(sequence_length / bin_size)
-        self.bin_size = bin_size
-        self.input_dim = num_units * self.num_timesteps
-        self.output_dim = readout_spec.dim * self.num_timesteps
+        
+        self.input_bin_size = input_bin_size
+        self.input_num_timesteps = int(sequence_length / input_bin_size)
+        self.input_dim = num_units * self.input_num_timesteps
+
+        self.output_bin_size = output_bin_size
+        self.output_num_timesteps = int(sequence_length / output_bin_size)
+        self.output_dim = readout_spec.dim * self.output_num_timesteps
 
         self.net = nn.Sequential(
             nn.Linear(self.input_dim, hidden_dim),
@@ -57,9 +66,9 @@ class MLPNeuralDecoder(TorchBrainModel):
         Shape of x: (B, T, N)
         """
         x = x.flatten(1)  # (B, T, N)    -> (B, T*N)
-        x = self.net(x)  # (B, T*N)     -> (B, T*D_out)
-        x = x.reshape(-1, self.num_timesteps, 2)  # (B, T*D_out) -> (B, T, D_out)
-        return x
+        y = self.net(x)  # (B, T*N)     -> (B, T*D_out)
+        y = y.reshape(-1, self.output_num_timesteps, self.readout_spec.dim)  # (B, T*D_out) -> (B, T, D_out)
+        return y
 
     def tokenize(self, data: Data) -> dict:
         """tokenizes a data sample, which is a sliced Data object"""
@@ -69,12 +78,21 @@ class MLPNeuralDecoder(TorchBrainModel):
         x = bin_spikes(
             spikes=spikes,
             num_units=len(data.units),
-            bin_size=self.bin_size,
-            num_bins=self.num_timesteps,
+            bin_size=self.input_bin_size,
+            num_bins=self.input_num_timesteps,
         ).T
 
         # Target variable
-        y = getattr(data, self.readout_spec.value_key)
+        y = data.get_nested_attribute(self.readout_spec.value_key)
+
+        # Handle length mismatches by cropping or padding
+        if len(y) > self.output_num_timesteps:
+            # Too many samples - drop the last ones
+            y = y[:self.output_num_timesteps]
+        elif len(y) < self.output_num_timesteps:
+            # Too few samples - pad by repeating the last value
+            padding_needed = self.output_num_timesteps - len(y)
+            y = np.concatenate([y, np.repeat(y[-1], padding_needed)])
 
         # Output the "tokenized" data in the form of a dictionary
         data_dict = {
@@ -152,3 +170,65 @@ class MLPNeuralDecoder(TorchBrainModel):
                 f"Unexpected keys when loading pretrained MLPNeuralDecoder: {unexpected_keys}"
             )
         return model
+
+    def train_model(
+        self,
+        device: torch.device | None = None,
+        optimizer_class: type[torch.optim.Optimizer] = torch.optim.AdamW,
+        optimizer_kwargs: dict | None = None,
+        num_epochs: int = 50,
+        data_loader_batch_size: int = 16,
+        data_loader_collate_fn: Callable | None = collate,
+        data_loader_num_workers: int = 0,
+        data_loader_pin_memory: bool = False,
+        data_loader_persistent_workers: bool = False,
+    ):
+        if device is None:
+            if torch.backends.mps.is_available():
+                device = torch.device("mps")
+            else:
+                if torch.cuda.is_available():
+                    device = torch.device("cuda:0")
+                else:
+                    device = torch.device("cpu")
+        self.to(device)
+        logging.info(f"Training on device: {device}")
+
+        # Optimizer setup
+        if optimizer_kwargs is None:
+            optimizer_kwargs = dict(
+                lr=1e-3,
+            )
+        optimizer = optimizer_class(
+            self.parameters(),
+            **optimizer_kwargs,
+        )
+
+        # Data loaders
+        if device.type == "mps":
+            data_loader_num_workers = 0
+            data_loader_pin_memory = False
+            data_loader_persistent_workers = False
+
+        data_loader_kwargs = dict(
+            batch_size=data_loader_batch_size,
+            collate_fn=data_loader_collate_fn,
+            num_workers=data_loader_num_workers,
+            pin_memory=data_loader_pin_memory,
+            persistent_workers=data_loader_persistent_workers,
+        )
+
+        train_loader = self.get_data_loader(mode="train", **data_loader_kwargs)
+        val_loader = self.get_data_loader(mode="valid", **data_loader_kwargs)
+
+        r2_log, loss_log, train_outputs = train_model(
+            device=device,
+            model=self,
+            optimizer=optimizer,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            num_epochs=num_epochs,
+            store_params=None,
+        )
+
+        return (r2_log, loss_log, train_outputs)

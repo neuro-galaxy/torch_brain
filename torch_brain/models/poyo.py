@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Union
 import logging
 from tqdm import tqdm
 from pathlib import Path
@@ -31,7 +31,7 @@ from torch_brain.utils import (
 from torch_brain.utils.training import (
     move_to_device,
     compute_r2,
-    training_step,
+    regression_training_step,
 )
 
 
@@ -471,7 +471,7 @@ class POYO(TorchBrainModel):
         self,
         device: torch.device | None = None,
         optimizer_class: type[torch.optim.Optimizer] = torch.optim.AdamW,
-        optimizer_kwargs: Dict | None = None,
+        optimizer_kwargs: dict | None = None,
         num_epochs: int = 50,
         epoch_to_unfreeze: int = 30,
         data_loader_batch_size: int = 16,
@@ -491,7 +491,7 @@ class POYO(TorchBrainModel):
                     else torch.device("cpu")
                 )
             )
-        self.to(device).float()  # float() is important on MPS
+        self.to(device)
         self.device = device
 
         # Freeze the backbone
@@ -573,8 +573,12 @@ class POYO(TorchBrainModel):
                 train_loader, desc=f"Epoch {epoch+1}/{num_epochs}", leave=False
             )
             for batch in batch_pbar:
-                batch = move_to_device(batch, device=device)
-                loss = training_step(batch, self, optimizer)
+                batch = move_to_device(data=batch, device=device)
+                loss = regression_training_step(
+                    batch=batch,
+                    model=self,
+                    optimizer=optimizer,
+                )
                 loss_log.append(loss.item())
                 running_loss += loss.item()
 
