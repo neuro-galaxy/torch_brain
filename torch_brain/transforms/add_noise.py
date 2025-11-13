@@ -23,16 +23,17 @@ class RandomNoise:
     def __init__(
         self,
         field: str = "cursor.acc",
-        noise_mean: float = 0.0,
-        noise_std: float = 0.1,
+        loc: float = 0.0,
+        scale: float = 0.1,
         distribution: str = "gaussian",
         kind: str = "additive",
         clip: bool = False,
         seed: int = None,
     ):
         self.field = field
-        self.noise_mean = noise_mean
-        self.noise_std = noise_std
+        # TODO: Add support for defining noise_mean and noise_std for each field and channel.
+        self.loc = loc
+        self.scale = scale
         self.distribution = distribution
         self.kind = kind
         self.clip = clip
@@ -49,17 +50,17 @@ class RandomNoise:
             values = getattr(obj, nested[1])
             if self.distribution == "gaussian":
                 noise = self.rng.normal(
-                    loc=self.noise_mean, scale=self.noise_std, size=values.shape
+                    loc=self.loc, scale=self.scale, size=values.shape
                 )
             elif self.distribution == "laplace":
                 noise = self.rng.laplace(
-                    loc=self.noise_mean, scale=self.noise_std, size=values.shape
+                    loc=self.loc, scale=self.scale, size=values.shape
                 )
             elif self.distribution == "uniform":
                 # Convert mean + std → uniform bounds
-                a = self.noise_std * np.sqrt(3)  # half-width for matching std
-                low = self.noise_mean - a
-                high = self.noise_mean + a
+                a = self.scale * np.sqrt(3)  # half-width for matching std
+                low = self.loc - a
+                high = self.loc + a
                 noise = self.rng.uniform(low=low, high=high, size=values.shape)
             else:
                 raise ValueError(f"Invalid distribution: {self.distribution}")
