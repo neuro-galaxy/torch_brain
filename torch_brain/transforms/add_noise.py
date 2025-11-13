@@ -9,7 +9,7 @@ class RandomNoise:
     Disclaimer: This transform is only compatible with IrregularTimeSeries.
 
     Args:
-        field (str): Path to field, e.g. "lfp.data", "rates.data", "spikes".
+        field (str): Path to field, e.g. "lfp.data", "rates.data".
         noise_mean (float): Mean of Gaussian noise.
         noise_std (float): Standard deviation of Gaussian noise.
         clip (bool): Clip values to min=0.
