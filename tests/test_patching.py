@@ -8,323 +8,398 @@ from temporaldata import (
     IrregularTimeSeries,
     RegularTimeSeries,
 )
-from torch_brain.transforms.patching import Patching
+from torch_brain.transforms.patching import RegularPatching
 
 
 @pytest.fixture
-def irregular_data():
-    """Create test data with IrregularTimeSeries (spikes)."""
-    timestamps = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
-    unit_index = np.array([0, 0, 1, 1, 0, 1, 2, 0, 1, 2])
-    types = np.zeros(10)
-    
-    data = Data(
-        spikes=IrregularTimeSeries(
-            timestamps=timestamps,
-            unit_index=unit_index,
-            types=types,
-            domain="auto",
-        ),
-        units=ArrayDict(
-            id=np.array(["a", "b", "c"]),
-        ),
-        domain=Interval(start=np.array([0.0]), end=np.array([1.0])),
-    )
-    return data
-
-
-@pytest.fixture
-def regular_data():
-    """Create test data with RegularTimeSeries (LFP)."""
-    sampling_rate = 10.0  # 10 Hz
+def basic_regular_data():
+    """Create basic RegularTimeSeries data: 100 samples at 10 Hz = 10 seconds."""
+    sampling_rate = 10.0
     num_samples = 100
-    lfps = RegularTimeSeries(
+    num_channels = 3
+    
+    lfp = RegularTimeSeries(
         sampling_rate=sampling_rate,
-        data=np.random.randn(num_samples, 3),  # 3 channels
+        data=np.random.randn(num_samples, num_channels),
         domain="auto",
     )
-    data = Data(lfps=lfps, domain=lfps.domain)
+    data = Data(lfp=lfp, domain=lfp.domain)
     return data
 
 
-def test_basic_patching_irregular_exact_match(irregular_data):
-    """Test patching with IrregularTimeSeries when patch duration equals data duration."""
-    patch_duration = 1.0  # Exactly matches data duration
-    transform = Patching(patch_duration=patch_duration)
-    patched_data = transform(irregular_data)
-    
-    # Should create exactly one patch
-    assert len(patched_data.spikes.timestamps) == 1
-    assert patched_data.spikes.timestamps[0] == 0.0  # First timestamp mode
-    
-    # Domain should be updated
-    assert patched_data.domain.start[0] == 0.0
-    assert patched_data.domain.end[-1] == patch_duration
-
-
-def test_basic_patching_regular_exact_match(regular_data):
-    """Test patching with RegularTimeSeries when patch duration equals data duration."""
-    # regular_data has 100 samples at 10 Hz = 10 seconds
-    patch_duration = 10.0  # Exactly matches data duration
-    transform = Patching(patch_duration=patch_duration)
-    patched_data = transform(regular_data)
-    
-    # Should create exactly one patch
-    # Shape should be (num_patches, channels, samples_per_patch)
-    assert patched_data.lfps.data.shape[0] == 1  # num_patches
-    assert patched_data.lfps.data.shape[1] == 3  # channels preserved
-    assert patched_data.lfps.data.shape[2] == int(patch_duration * regular_data.lfps.sampling_rate)  # samples_per_patch
-    
-    # Sampling rate should be maintained
-    assert patched_data.lfps.sampling_rate == regular_data.lfps.sampling_rate
-
-
-def test_error_when_patch_shorter_than_data_irregular():
-    """Test that error is raised when patch duration is shorter than data duration."""
-    # Data spans 1.0 second
-    timestamps = np.linspace(0.0, 1.0, 10)
-    unit_index = np.arange(10)
-    
-    data = Data(
-        spikes=IrregularTimeSeries(
-            timestamps=timestamps,
-            unit_index=unit_index,
-            domain="auto",
-        ),
-        domain=Interval(start=np.array([0.0]), end=np.array([1.0])),
-    )
-    
-    patch_duration = 0.3  # Shorter than data duration (1.0)
-    transform = Patching(patch_duration=patch_duration)
-    
-    with pytest.raises(ValueError, match="patch duration.*shorter than data duration"):
-        transform(data)
-
-
-def test_error_when_patch_shorter_than_data_regular():
-    """Test that error is raised when patch duration is shorter than data duration for RegularTimeSeries."""
-    sampling_rate = 10.0
-    num_samples = 100  # 10 seconds of data
-    lfps = RegularTimeSeries(
-        sampling_rate=sampling_rate,
-        data=np.random.randn(num_samples, 2),
+@pytest.fixture
+def irregular_and_regular_data():
+    """Create data with both IrregularTimeSeries and RegularTimeSeries."""
+    # Regular time series: 100 samples at 10 Hz
+    lfp = RegularTimeSeries(
+        sampling_rate=10.0,
+        data=np.random.randn(100, 3),
         domain="auto",
     )
-    data = Data(lfps=lfps, domain=lfps.domain)
     
-    patch_duration = 5.0  # Shorter than data duration (10.0)
-    transform = Patching(patch_duration=patch_duration)
-    
-    with pytest.raises(ValueError, match="patch duration.*shorter than data duration"):
-        transform(data)
-
-
-def test_padding_non_divisible_regular():
-    """Test zero-padding for RegularTimeSeries when patch duration doesn't divide evenly."""
-    sampling_rate = 10.0
-    num_samples = 23  # 2.3 seconds of data
-    lfps = RegularTimeSeries(
-        sampling_rate=sampling_rate,
-        data=np.random.randn(num_samples, 2),
+    # Irregular time series (spikes)
+    timestamps = np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0])
+    spikes = IrregularTimeSeries(
+        timestamps=timestamps,
+        unit_index=np.array([0, 0, 1, 1, 0, 1, 2, 0, 1, 2]),
         domain="auto",
     )
-    data = Data(lfps=lfps, domain=lfps.domain)
     
-    patch_duration = 2.5  # Longer than data duration, doesn't divide evenly
-    transform = Patching(patch_duration=patch_duration)
+    # Combine into Data object
+    data = Data(
+        lfp=lfp,
+        spikes=spikes,
+        units=ArrayDict(id=np.array(["a", "b", "c"])),
+        session_id="test_session",
+        domain=lfp.domain,
+    )
+    return data
+
+
+def test_basic_patching_non_overlapping_exact_divisibility(basic_regular_data):
+    """Test basic patching with non-overlapping patches that divide evenly.
+    
+    100 samples at 10 Hz, patch_duration=1.0, stride=1.0
+    Expected: 10 patches of 10 samples each
+    Shape: (100, 3) -> (10, 3, 10)
+    """
+    patch_duration = 1.0
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride, timestamp_mode="start")
+    
+    patched_data = transform(basic_regular_data)
+    
+    # Verify shape: (num_patches, channels, patch_samples)
+    assert patched_data.lfp.data.shape == (10, 3, 10)
+    
+    # Verify sampling rate is now patches per second (1/stride)
+    assert patched_data.lfp.sampling_rate == 1.0 / stride
+    
+    # Verify timestamps: should be [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    expected_timestamps = np.arange(10) * stride
+    np.testing.assert_array_almost_equal(patched_data.lfp.timestamps, expected_timestamps)
+    
+    # Verify domain reflects new time structure
+    assert patched_data.lfp.domain.start[0] == 0.0
+    assert patched_data.lfp.domain.end[-1] == 9.0  # Last timestamp at 9.0
+
+
+def test_patching_with_padding():
+    """Test patching when data doesn't divide evenly - requires padding.
+    
+    95 samples at 10 Hz, patch_duration=1.0, stride=1.0
+    Expected: 10 patches (last patch padded with 5 zeros)
+    """
+    sampling_rate = 10.0
+    num_samples = 95  # Not divisible by patch size
+    
+    lfp = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        data=np.ones((num_samples, 2)),  # Use ones to easily verify padding
+        domain="auto",
+    )
+    data = Data(lfp=lfp, domain=lfp.domain)
+    
+    patch_duration = 1.0
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
     patched_data = transform(data)
     
-    # Should create one patch with padding
-    # Shape should be (num_patches, channels, samples_per_patch)
-    expected_samples_per_patch = int(patch_duration * sampling_rate)
-    assert patched_data.lfps.data.shape[0] == 1  # num_patches
-    assert patched_data.lfps.data.shape[1] == 2  # channels
-    assert patched_data.lfps.data.shape[2] == expected_samples_per_patch  # samples_per_patch
+    # Should create 10 patches with shape (num_patches, channels, patch_samples)
+    assert patched_data.lfp.data.shape == (10, 2, 10)
     
-    # Last samples should be padded with zeros
-    # Shape is (1, 2, 25), so we check the last dimension (samples_per_patch)
-    patch = patched_data.lfps.data[0]  # Shape: (2, 25)
-    # Original had 23 samples, patch needs 25, so last 2 samples should be zeros
-    # Check each channel's last 2 samples
-    assert np.allclose(patch[:, 23:], 0.0)
+    # Last patch should have 5 zeros at the end (samples 90-94 are data, 95-99 are padding)
+    last_patch = patched_data.lfp.data[-1]  # Shape: (2, 10)
+    
+    # First 5 samples should be ones (for both channels)
+    np.testing.assert_array_equal(last_patch[:, :5], np.ones((2, 5)))
+    
+    # Last 5 samples should be zeros (padding)
+    np.testing.assert_array_equal(last_patch[:, 5:], np.zeros((2, 5)))
 
 
-def test_multiple_time_series_fields():
-    """Test patching with multiple time-series fields."""
-    timestamps = np.linspace(0.0, 1.0, 10)
+def test_overlapping_patches():
+    """Test patching with overlapping patches (stride < patch_duration).
     
-    data = Data(
-        spikes=IrregularTimeSeries(
-            timestamps=timestamps,
-            unit_index=np.arange(10) % 2,
-            domain="auto",
-        ),
-        lfp=RegularTimeSeries(
-            sampling_rate=10.0,
-            data=np.random.randn(10, 3),
-            domain="auto",
-        ),
-        domain=Interval(start=np.array([0.0]), end=np.array([1.0])),
+    100 samples at 10 Hz, patch_duration=2.0, stride=1.0
+    Expected: overlapping patches with 1 second overlap
+    """
+    sampling_rate = 10.0
+    num_samples = 100
+    
+    lfp = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        data=np.random.randn(num_samples, 3),
+        domain="auto",
+    )
+    data = Data(lfp=lfp, domain=lfp.domain)
+    
+    patch_duration = 2.0  # 20 samples per patch
+    stride = 1.0  # 10 samples between patch starts
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
+    patched_data = transform(data)
+    
+    # Calculate expected number of patches
+    # num_patches = ceil((100 - 20) / 10) + 1 = ceil(80/10) + 1 = 9
+    expected_num_patches = 9
+    assert patched_data.lfp.data.shape == (expected_num_patches, 3, 20)
+    
+    # Verify timestamps for overlapping patches
+    expected_timestamps = np.arange(expected_num_patches) * stride
+    np.testing.assert_array_almost_equal(patched_data.lfp.timestamps, expected_timestamps)
+
+
+def test_timestamp_mode_start():
+    """Test that timestamp_mode='start' places timestamps at patch starts."""
+    sampling_rate = 10.0
+    lfp = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        data=np.random.randn(100, 2),
+        domain="auto",
+    )
+    data = Data(lfp=lfp, domain=lfp.domain)
+    
+    patch_duration = 1.0
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride, timestamp_mode="start")
+    
+    patched_data = transform(data)
+    
+    # Timestamps should be at the start of each patch: [0, 1, 2, ..., 9]
+    expected_timestamps = np.arange(10) * stride
+    np.testing.assert_array_almost_equal(patched_data.lfp.timestamps, expected_timestamps)
+
+
+
+def test_timestamp_mode_middle_even_patch_size():
+    """Test middle timestamp mode with even patch size.
+    
+    For even patch sizes, middle should be computed correctly.
+    E.g., patch with 10 samples (0-9), middle is at index 4.5, 
+    which corresponds to time (4 + 5) / 2 / sampling_rate from patch start.
+    """
+    sampling_rate = 10.0
+    lfp = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        data=np.random.randn(100, 2),
+        domain="auto",
+    )
+    data = Data(lfp=lfp, domain=lfp.domain)
+    
+    patch_duration = 1.0  # 10 samples (even)
+    stride = 0.5  # 5 samples
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride, timestamp_mode="middle")
+    
+    patched_data = transform(data)
+    
+    # Middle of 1.0 second patch is at 0.5 seconds from patch start
+    # Patches start at: 0, 0.5, 1.0, 1.5, ..., 9.5
+    # Middle timestamps: 0.5, 1.0, 1.5, 2.0, ..., 10.0
+    num_patches = patched_data.lfp.data.shape[0]
+    expected_timestamps = np.arange(num_patches) * stride + patch_duration / 2
+    np.testing.assert_array_almost_equal(patched_data.lfp.timestamps, expected_timestamps)
+
+
+def test_multiple_regular_time_series():
+    """Test patching with multiple RegularTimeSeries objects in Data."""
+    sampling_rate = 10.0
+    num_samples = 100
+    
+    lfp1 = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        data=np.random.randn(num_samples, 3),
+        domain="auto",
     )
     
-    patch_duration = 1.0  # Exactly matches data duration
-    transform = Patching(patch_duration=patch_duration)
+    lfp2 = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        data=np.random.randn(num_samples, 5),
+        domain="auto",
+    )
+    
+    data = Data(lfp1=lfp1, lfp2=lfp2, domain=lfp1.domain)
+    
+    patch_duration = 1.0
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
     patched_data = transform(data)
     
-    # Both fields should be patched
+    # Both should be patched consistently
+    assert patched_data.lfp1.data.shape == (10, 3, 10)
+    assert patched_data.lfp2.data.shape == (10, 5, 10)
+    
+    # Both should have same timestamps
+    np.testing.assert_array_equal(patched_data.lfp1.timestamps, patched_data.lfp2.timestamps)
+
+
+def test_mixed_data_types(irregular_and_regular_data):
+    """Test patching preserves non-RegularTimeSeries data correctly.
+    
+    IrregularTimeSeries should be left unchanged.
+    ArrayDict and scalars should be preserved.
+    """
+    patch_duration = 1.0
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
+    patched_data = transform(irregular_and_regular_data)
+    
+    # RegularTimeSeries should be patched
+    assert patched_data.lfp.data.shape == (10, 3, 10)
+    
+    # IrregularTimeSeries should be unchanged
     assert hasattr(patched_data, "spikes")
-    assert hasattr(patched_data, "lfp")
-    
-    # Both should have the same number of patches (1)
-    num_patches_spikes = len(patched_data.spikes.timestamps)
-    num_patches_lfp = patched_data.lfp.data.shape[0]
-    assert num_patches_spikes == num_patches_lfp == 1
-
-
-def test_timestamp_mode_first():
-    """Test timestamp_mode='first' (default)."""
-    timestamps = np.linspace(0.0, 1.0, 10)
-    
-    data = Data(
-        spikes=IrregularTimeSeries(
-            timestamps=timestamps,
-            unit_index=np.arange(10),
-            domain="auto",
-        ),
-        domain=Interval(start=np.array([0.0]), end=np.array([1.0])),
+    np.testing.assert_array_equal(
+        patched_data.spikes.timestamps,
+        irregular_and_regular_data.spikes.timestamps
+    )
+    np.testing.assert_array_equal(
+        patched_data.spikes.unit_index,
+        irregular_and_regular_data.spikes.unit_index
     )
     
-    patch_duration = 1.0  # Exactly matches data duration
-    transform = Patching(patch_duration=patch_duration, timestamp_mode="first")
-    patched_data = transform(data)
-    
-    # Timestamp should be at the start of the patch
-    assert len(patched_data.spikes.timestamps) == 1
-    assert patched_data.spikes.timestamps[0] == 0.0
-
-
-def test_timestamp_mode_middle():
-    """Test timestamp_mode='middle'."""
-    timestamps = np.linspace(0.0, 1.0, 10)
-    
-    data = Data(
-        spikes=IrregularTimeSeries(
-            timestamps=timestamps,
-            unit_index=np.arange(10),
-            domain="auto",
-        ),
-        domain=Interval(start=np.array([0.0]), end=np.array([1.0])),
-    )
-    
-    patch_duration = 1.0  # Exactly matches data duration
-    transform = Patching(patch_duration=patch_duration, timestamp_mode="middle")
-    patched_data = transform(data)
-    
-    # Timestamp should be at the middle of the patch
-    assert len(patched_data.spikes.timestamps) == 1
-    assert patched_data.spikes.timestamps[0] == 0.5  # 0.0 + 1.0/2
-
-
-def test_timestamp_mode_last():
-    """Test timestamp_mode='last'."""
-    timestamps = np.linspace(0.0, 1.0, 10)
-    
-    data = Data(
-        spikes=IrregularTimeSeries(
-            timestamps=timestamps,
-            unit_index=np.arange(10),
-            domain="auto",
-        ),
-        domain=Interval(start=np.array([0.0]), end=np.array([1.0])),
-    )
-    
-    patch_duration = 1.0  # Exactly matches data duration
-    transform = Patching(patch_duration=patch_duration, timestamp_mode="last")
-    patched_data = transform(data)
-    
-    # Timestamp should be at the end of the patch
-    assert len(patched_data.spikes.timestamps) == 1
-    assert patched_data.spikes.timestamps[0] == 1.0  # 0.0 + 1.0
-
-
-def test_preserve_non_temporal_fields(irregular_data):
-    """Test that non-temporal fields (ArrayDict, scalars) are preserved."""
-    # Add a scalar field
-    irregular_data.session_id = "test_session"
-    
-    patch_duration = 1.0  # Exactly matches data duration
-    transform = Patching(patch_duration=patch_duration)
-    patched_data = transform(irregular_data)
-    
-    # Non-temporal fields should be preserved
+    # ArrayDict should be preserved
     assert hasattr(patched_data, "units")
-    assert hasattr(patched_data, "session_id")
-    assert patched_data.session_id == "test_session"
-    assert np.array_equal(patched_data.units.id, irregular_data.units.id)
-
-
-def test_empty_data():
-    """Test edge case with empty data."""
-    data = Data(
-        spikes=IrregularTimeSeries(
-            timestamps=np.array([]),
-            unit_index=np.array([]),
-            domain=Interval(start=np.array([0.0]), end=np.array([0.0])),
-        ),
-        domain=Interval(start=np.array([0.0]), end=np.array([0.0])),
-    )
+    np.testing.assert_array_equal(patched_data.units.id, irregular_and_regular_data.units.id)
     
-    patch_duration = 0.3
-    transform = Patching(patch_duration=patch_duration)
-    patched_data = transform(data)
-    
-    # Should handle empty data gracefully
-    # Might create one patch with all zeros
-    assert hasattr(patched_data, "spikes")
+    # Scalar should be preserved
+    assert patched_data.session_id == irregular_and_regular_data.session_id
 
 
-def test_data_shorter_than_patch_size():
-    """Test edge case when data is shorter than patch size."""
-    # Very short data: only 0.05 seconds
-    timestamps = np.array([0.01, 0.02, 0.03])
-    unit_index = np.array([0, 1, 0])
-    
-    data = Data(
-        spikes=IrregularTimeSeries(
-            timestamps=timestamps,
-            unit_index=unit_index,
-            domain="auto",
-        ),
-        domain=Interval(start=np.array([0.0]), end=np.array([0.05])),
-    )
-    
-    patch_duration = 0.3  # Much longer than data
-    transform = Patching(patch_duration=patch_duration)
-    patched_data = transform(data)
-    
-    # Should create at least one patch with padding
-    assert len(patched_data.spikes.timestamps) >= 1
-
-
-def test_regular_time_series_padding_consistency():
-    """Test that RegularTimeSeries patches have consistent dimensions."""
+def test_domain_consistency():
+    """Test that domain is updated correctly to reflect patched structure."""
     sampling_rate = 10.0
-    num_samples = 17  # 1.7 seconds of data
-    lfps = RegularTimeSeries(
+    lfp = RegularTimeSeries(
         sampling_rate=sampling_rate,
-        data=np.random.randn(num_samples, 4),
+        data=np.random.randn(100, 2),
         domain="auto",
     )
-    data = Data(lfps=lfps, domain=lfps.domain)
+    data = Data(lfp=lfp, domain=lfp.domain)
     
-    patch_duration = 2.0  # Longer than data duration, doesn't divide evenly
-    transform = Patching(patch_duration=patch_duration)
+    patch_duration = 1.0
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
     patched_data = transform(data)
     
-    # Should create one patch with consistent dimensions
-    # Shape should be (num_patches, channels, samples_per_patch)
-    expected_samples_per_patch = int(patch_duration * sampling_rate)
-    assert patched_data.lfps.data.shape[0] == 1  # num_patches
-    assert patched_data.lfps.data.shape[1] == 4  # Channels preserved
-    assert patched_data.lfps.data.shape[2] == expected_samples_per_patch  # samples_per_patch
+    # Domain should reflect new time structure
+    # 10 patches with timestamps [0, 1, 2, ..., 9]
+    assert patched_data.domain.start[0] == 0.0
+    assert patched_data.domain.end[-1] == 9.0  # Last timestamp at 9.0
 
+
+def test_single_patch_short_data():
+    """Test edge case: data shorter than patch_duration creates single patch with padding."""
+    sampling_rate = 10.0
+    num_samples = 5  # Only 0.5 seconds of data
+    
+    lfp = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        data=np.ones((num_samples, 2)),
+        domain="auto",
+    )
+    data = Data(lfp=lfp, domain=lfp.domain)
+    
+    patch_duration = 1.0  # Longer than data
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
+    patched_data = transform(data)
+    
+    # Should create 1 patch with padding, shape (num_patches, channels, patch_samples)
+    assert patched_data.lfp.data.shape == (1, 2, 10)
+    
+    # First 5 samples should be data (ones), last 5 should be padding (zeros)
+    single_patch = patched_data.lfp.data[0]  # Shape: (2, 10)
+    np.testing.assert_array_equal(single_patch[:, :5], np.ones((2, 5)))
+    np.testing.assert_array_equal(single_patch[:, 5:], np.zeros((2, 5)))
+
+
+def test_multidimensional_data():
+    """Test patching with multi-dimensional data: (time, channels, height, width)."""
+    sampling_rate = 10.0
+    num_samples = 100
+    num_channels = 3
+    height = 8
+    width = 8
+    
+    # Create 4D data: (time, channels, height, width)
+    eeg = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        data=np.random.randn(num_samples, num_channels, height, width),
+        domain="auto",
+    )
+    data = Data(eeg=eeg, domain=eeg.domain)
+    
+    patch_duration = 1.0
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
+    patched_data = transform(data)
+    
+    # Shape should be (num_patches, channels, patch_samples, height, width)
+    assert patched_data.eeg.data.shape == (10, 3, 10, 8, 8)
+
+
+def test_very_small_stride_heavy_overlap():
+    """Test edge case with very small stride causing heavy overlap."""
+    sampling_rate = 10.0
+    num_samples = 100
+    
+    lfp = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        data=np.random.randn(num_samples, 2),
+        domain="auto",
+    )
+    data = Data(lfp=lfp, domain=lfp.domain)
+    
+    patch_duration = 2.0  # 20 samples
+    stride = 0.1  # 1 sample stride - very heavy overlap
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
+    patched_data = transform(data)
+    
+    # Calculate expected number of patches: ceil((100 - 20) / 1) + 1 = 81
+    expected_num_patches = 81
+    assert patched_data.lfp.data.shape == (expected_num_patches, 2, 20)
+    
+    # Verify timestamps
+    expected_timestamps = np.arange(expected_num_patches) * stride
+    np.testing.assert_array_almost_equal(patched_data.lfp.timestamps, expected_timestamps)
+
+
+def test_invalid_timestamp_mode():
+    """Test that invalid timestamp_mode raises ValueError."""
+    with pytest.raises(ValueError, match="timestamp_mode must be"):
+        RegularPatching(patch_duration=1.0, timestamp_mode="invalid")
+
+
+def test_data_without_domain():
+    """Test that Data without domain raises appropriate error."""
+    data = Data(value=42)  # No time-based attributes
+    
+    transform = RegularPatching(patch_duration=1.0)
+    
+    with pytest.raises(ValueError, match="must have a domain"):
+        transform(data)
+
+
+def test_preserves_absolute_start():
+    """Test that _absolute_start is preserved through patching."""
+    sampling_rate = 10.0
+    lfp = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        data=np.random.randn(100, 2),
+        domain="auto",
+    )
+    data = Data(lfp=lfp, domain=lfp.domain)
+    data._absolute_start = 5.0  # Simulate a sliced data object
+    
+    transform = RegularPatching(patch_duration=1.0, stride=1.0)
+    patched_data = transform(data)
+    
+    # _absolute_start should be preserved
+    assert patched_data._absolute_start == 5.0
