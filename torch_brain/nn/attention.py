@@ -41,8 +41,8 @@ class CrossAttention(nn.Module):
         *,
         dim: int,
         context_dim: Optional[int] = None,
-        heads: int = 8,
-        dim_head: int = 64,
+        heads: int,
+        dim_head: int,
         dropout: float = 0.0,
     ):
         super().__init__()
@@ -59,12 +59,7 @@ class CrossAttention(nn.Module):
         self.to_kv = nn.Linear(context_dim, inner_dim * 2, bias=False)
         self.to_out = nn.Linear(inner_dim, dim)
 
-    def forward(
-        self,
-        x_query,
-        x_context,
-        context_mask=None,
-    ):
+    def forward(self, x_query, x_context, context_mask=None):
         """Forward pass for regular or padded sequences.
 
         Shape:
@@ -113,13 +108,7 @@ class CrossAttention(nn.Module):
         out = self.to_out(out)
         return out
 
-    def forward_varlen(
-        self,
-        x_query,
-        x_context,
-        query_seqlen,
-        context_seqlen,
-    ):
+    def forward_varlen(self, x_query, x_context, query_seqlen, context_seqlen):
         """Forward pass for variable length sequences.
 
         Similar to forward() but handles variable length sequences that have been chained
@@ -179,12 +168,10 @@ class CrossAttention(nn.Module):
 
 
 class SelfAttention(nn.Module):
-    """Self-attention layer with rotary positional embeddings.
+    """Multi-head self-attention layer.
 
-    This layer performs self-attention within a sequence, with rotary positional embeddings
-    applied to the queries and keys (and optionally values). It first normalizes the input,
-    projects it to query/key/value space, applies rotary embeddings and attention, then
-    projects back to the original dimension.
+    This layer performs multi-head self-attention within a sequence. It includes input LayerNorm,
+    as well as application of query, key, value weights.
 
     The layer provides two forward methods:
     - forward(): This is the default, and is used for sequences in a batch that are of
@@ -199,41 +186,32 @@ class SelfAttention(nn.Module):
         heads (int): Number of attention heads
         dim_head (int): Dimension of each attention head
         dropout (float): Dropout probability
-        rotate_value (bool): Whether to apply rotary embeddings to values as well as queries/keys
     """
 
     def __init__(
         self,
         *,
         dim: int,
-        heads: int = 8,
-        dim_head: int = 64,
-        dropout: float = 0.0,
-        rotate_value: bool = False,
+        heads: int,
+        dim_head: int,
+        dropout: float,
     ):
         super().__init__()
 
         inner_dim = dim_head * heads
         self.heads = heads
         self.dropout = dropout
-        self.rotate_value = rotate_value
 
         self.norm = nn.LayerNorm(dim)
 
         self.to_qkv = nn.Linear(dim, inner_dim * 3, bias=False)
         self.to_out = nn.Linear(inner_dim, dim)
 
-    def forward(
-        self,
-        x,
-        rotary_time_emb,
-        x_mask=None,
-    ):
+    def forward(self, x, x_mask=None):
         """Forward pass for fixed-length sequences.
 
         Shape:
             - x: (B, N, D)
-            - rotary_time_emb: (B, N, D_h)
             - x_mask: (B, N, N)
             - Output: (B, N, D)
 
@@ -248,20 +226,17 @@ class SelfAttention(nn.Module):
 
         # select attention kernel
         if xops is not None and x.device.type == "cuda":
-            rotary_attn_func = attn_xformers_func
+            attn_func = attn_xformers_func
         else:
-            rotary_attn_func = attn_pytorch_func
+            attn_func = attn_pytorch_func
 
         # apply attention
-        out = rotary_attn_func(
+        out = attn_func(
             query=q,
             key=k,
             value=v,
-            q_pos_emb=rotary_time_emb,
-            kv_pos_emb=rotary_time_emb,
             num_heads=self.heads,
             dropout_p=self.dropout if self.training else 0,
-            rotate_value=self.rotate_value,
             attn_mask=x_mask,
         )
 
@@ -269,17 +244,11 @@ class SelfAttention(nn.Module):
         out = self.to_out(out)
         return out
 
-    def forward_varlen(
-        self,
-        x,
-        rotary_time_emb,
-        x_seqlen,
-    ):
+    def forward_varlen(self, x, x_seqlen):
         """Forward pass for variable-length sequences.
 
         Shape:
             - x: (N_total, D)
-            - rotary_time_emb: (N_total, D_h)
             - x_seqlen: (B,)
             - Output: (N_total, D)
 
@@ -294,7 +263,7 @@ class SelfAttention(nn.Module):
 
         # select attention kernel
         if xops is not None and x.device.type == "cuda":
-            rotary_attn_func = rotary_attn_xformers_varlen_func
+            attn_func = attn_xformers_varlen_func
         else:
             if x.device.type == "cuda":
                 raise RuntimeError(
@@ -307,15 +276,12 @@ class SelfAttention(nn.Module):
                 )
 
         # apply attention
-        out = rotary_attn_func(
+        out = attn_func(
             query=q,
             key=k,
             value=v,
-            q_pos_emb=rotary_time_emb,
-            kv_pos_emb=rotary_time_emb,
             num_heads=self.heads,
             dropout_p=self.dropout if self.training else 0,
-            rotate_value=self.rotate_value,
             q_seqlen=x_seqlen,
             kv_seqlen=None,  # self-attention has the same seqlen for q, k, v
         )
