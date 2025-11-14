@@ -1,14 +1,15 @@
 # Standalone implementation of POCO (Population-Conditioned Forecaster)
 # Needs torch, numpy, einops, and xformers
+import itertools
+import logging
+import warnings
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-import itertools
 import torch.nn.functional as F
-import logging
+from einops import rearrange, repeat
 from torchtyping import TensorType
-from einops import repeat, rearrange
-import warnings
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -16,14 +17,10 @@ with warnings.catch_warnings():
         import xformers.ops as xops
     except ImportError:
         xops = None
-from typing import Union, Optional
-from torch_brain.nn import (
-    Embedding,
-    RotaryCrossAttention,
-    RotarySelfAttention,
-)
+from typing import Optional, Union
 
-from poyo import POYO
+from torch_brain.models import POYO
+from torch_brain.nn import Embedding, RotaryCrossAttention, RotarySelfAttention
 from torch_brain.registry import ModalitySpec
 
 
@@ -102,21 +99,15 @@ class NeuralPredictionConfig:
         self.freeze_conditioned_net = False
 
 
+import logging
+import warnings
 from typing import Dict, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchtyping import TensorType
-import logging
-from typing import Optional
-
-import torch
-import torch.nn.functional as F
-import torch.nn as nn
 from einops import rearrange, repeat
-
-import warnings
+from torchtyping import TensorType
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -867,8 +858,8 @@ class POCO(nn.Module):
         self.input_size = input_size
         self.pred_step = config.pred_length
 
-        from torch_brain.registry import register_modality, DataType, MODALITY_REGISTRY
         from torch_brain.nn.loss import MSELoss
+        from torch_brain.registry import MODALITY_REGISTRY, DataType, register_modality
 
         # Register the modality (returns an ID, but we need the ModalitySpec)
         # If it's already registered, just get it from the registry
