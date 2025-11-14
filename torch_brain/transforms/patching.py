@@ -113,17 +113,17 @@ class RegularPatching:
         """
         # Get all array attributes (excluding timestamps for irregular)
         array_attrs = {}
-        
+
         if isinstance(ts, RegularTimeSeries):
             sampling_rate = ts.sampling_rate
             start_time = ts.domain.start[0] if ts.domain else 0.0
-            
+
             # Get all array attributes from RegularTimeSeries
             for key in ts.keys():
                 attr = getattr(ts, key)
                 if isinstance(attr, np.ndarray) and attr.ndim >= 2:
                     array_attrs[key] = attr
-                    
+
         elif isinstance(ts, IrregularTimeSeries):
             # Get all array attributes (excluding timestamps)
             for key in ts.keys():
@@ -132,11 +132,11 @@ class RegularPatching:
                 attr = getattr(ts, key)
                 if isinstance(attr, np.ndarray) and attr.ndim >= 2:
                     array_attrs[key] = attr
-            
+
             # If no suitable array attributes or < 2 timestamps, return unchanged
             if not array_attrs or len(ts.timestamps) < 2:
                 return copy.copy(ts)
-            
+
             # Calculate effective sampling rate from timestamps
             time_diffs = np.diff(ts.timestamps)
             sampling_rate = 1.0 / np.mean(time_diffs)
@@ -181,7 +181,9 @@ class RegularPatching:
                 pad_width = [(0, total_samples_needed - time_samples)] + [(0, 0)] * (
                     attr_data.ndim - 1
                 )
-                padded_data = np.pad(attr_data, pad_width, mode="constant", constant_values=0)
+                padded_data = np.pad(
+                    attr_data, pad_width, mode="constant", constant_values=0
+                )
             else:
                 padded_data = attr_data
 
