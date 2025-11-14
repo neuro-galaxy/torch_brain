@@ -12,11 +12,21 @@ class AddRate:
     Args:
         field (str): Path to the spikes data inside Data. E.g., "spikes".
         bin_size (float): The size of the time bins in seconds.
+        method (str): The method to use to compute the rates. It must be one of "gaussian", "exponential", or "none".
+        sigma (float): The sigma for the Gaussian smoothing.
     """
 
-    def __init__(self, field: str = "spikes", bin_size: float = 0.02):
+    def __init__(
+        self,
+        field: str = "spikes",
+        bin_size: float = 0.02,
+        method: str = "gaussian",
+        sigma: float = 2.0,
+    ):
         self.field = field
         self.bin_size = bin_size
+        self.method = method
+        self.sigma = sigma
 
     def __call__(self, data: Data):
 
@@ -28,8 +38,8 @@ class AddRate:
 
         rates = compute_rates(
             binned,
-            method="gaussian",  # or "exponential" or "none"
-            sigma=2.0,  # smoothing width
+            method=self.method,  # or "exponential" or "none"
+            sigma=self.sigma,  # smoothing width
             normalize=True,  # optional
         )
 
