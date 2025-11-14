@@ -1,0 +1,48 @@
+# Main configuration file for neuroprobe evaluation
+defaults:
+  - _self_
+  - model: logistic
+  - preprocessor: raw
+  - eval: within_session
+
+# Evaluation parameters
+eval_name: onset  # Evaluation name (e.g., onset, gpt2_surprisal)
+splits_type: WithinSession  # WithinSession or CrossSession
+subject_id: 1
+trial_id: 1
+
+# Data parameters
+only_1second: false  # Whether to only evaluate on 1 second after word onset
+lite: true  # Use Neuroprobe Lite (default)
+nano: false  # Use Neuroprobe Nano
+binary_tasks: true  # Whether to use binary classification for tasks that support it
+
+# Time window parameters
+bins_start_before_word_onset_seconds: 0.5
+bins_end_after_word_onset_seconds: 1.5
+bin_size_seconds: 0.25
+bin_step_size_seconds: 0.125
+
+# General settings
+seed: 42
+save_dir: eval_results
+overwrite: false
+verbose: true
+
+# Metadata (for leaderboard submission)
+author: "Your Name"
+organization: "Your Organization"
+organization_url: "https://your-url.com"
+
+# Data source configuration
+# Options: "raw" (uses BrainTreebankSubject) or "processed" (uses temporaldata.Data with pre-computed splits)
+# For replicating neuroprobe_linear_baselines.ipynb, use "processed"
+data_source: raw  # "raw" or "processed"
+
+# Data directory (optional - can also be set via ROOT_DIR_BRAINTREEBANK env var)
+# For raw data: should point to raw data directory
+# For processed data: should point to processed data directory with pre-computed splits
+# If not set here and not in env, defaults to: /home/geeling/Projects/tb_buildathon/data/raw/neuroprobe_2025
+# root_dir_braintreebank: /path/to/braintreebank/data
+processed_data_path: /home/geeling/Projects/tb_buildathon/data/processed/neuroprobe_2025
+

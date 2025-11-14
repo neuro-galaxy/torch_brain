@@ -1,0 +1,15 @@
+# Transformer model (PyTorch)
+name: transformer
+d_model: 64
+nhead: 8
+dim_feedforward: 256
+dropout: 0.1
+num_layers: 3
+batch_size: 64
+learning_rate: 0.001
+max_iter: 100
+patience: 10
+tol: 1e-4
+val_size: 0.2
+random_state: 42
+
