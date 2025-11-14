@@ -1,0 +1,7 @@
+_target_: torch_brain.models.MLP
+
+input_size: 4800 # 5 timesteps x 96 channel array concat. FALCON M2
+hidden_sizes:
+- 64
+- 64
+sequence_length: 1.0
