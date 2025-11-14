@@ -73,7 +73,6 @@ class RegularPatching:
                 out.__dict__[key] = copy.copy(value)
 
         # Update domain to reflect new time structure
-        # Get the domain from the first patched RegularTimeSeries
         patched_domain = None
         for key, value in out.__dict__.items():
             if isinstance(value, RegularTimeSeries):
@@ -108,8 +107,6 @@ class RegularPatching:
         stride_samples = int(np.round(self.stride * sampling_rate))
         
         # Calculate number of patches needed
-        # Formula: ceil((time_samples - patch_samples) / stride_samples) + 1
-        # But handle edge case where data is shorter than patch size
         if time_samples <= patch_samples:
             num_patches = 1
         else:
@@ -125,38 +122,23 @@ class RegularPatching:
         else:
             padded_data = data
         
-        # Vectorized patch extraction using advanced indexing
         # Create index array: shape (num_patches, patch_samples)
         indices = np.arange(patch_samples)[None, :] + stride_samples * np.arange(num_patches)[:, None]
         
-        # Extract all patches at once
-        # Initial shape: (num_patches, patch_samples, channels, ...)
         patches = padded_data[indices]
-        
-        # Move channels dimension before patch_samples
-        # From: (num_patches, patch_samples, channels, ...)
-        # To: (num_patches, channels, patch_samples, ...)
         patches = np.moveaxis(patches, 2, 1)
-        
-        # Create new domain for the patched time series
-        # After patching, the time dimension represents patches, not samples
-        # The "sampling rate" is now patches per second = 1/stride
         new_sampling_rate = 1.0 / self.stride
         
-        # Calculate domain based on timestamp mode
         if self.timestamp_mode == "start":
-            # Timestamps at patch starts: 0, stride, 2*stride, ...
             domain_start = 0.0
             domain_end = (num_patches - 1) / new_sampling_rate
         elif self.timestamp_mode == "middle":
-            # Timestamps at patch middles: patch_duration/2, stride + patch_duration/2, ...
             domain_start = self.patch_duration / 2
             domain_end = domain_start + (num_patches - 1) / new_sampling_rate
         
         new_domain = Interval(start=domain_start, end=domain_end)
         
         # Create new RegularTimeSeries with patched data
-        # The new sampling rate is 1/stride (patches per second)
         patched_ts = RegularTimeSeries.__new__(RegularTimeSeries)
         patched_ts.__dict__['data'] = patches
         patched_ts._sampling_rate = new_sampling_rate
