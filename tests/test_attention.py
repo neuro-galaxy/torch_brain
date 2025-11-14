@@ -25,12 +25,7 @@ def dim():
 
 @pytest.fixture
 def heads():
-    return 4
-
-
-@pytest.fixture
-def dim_head():
-    return 32
+    return 2
 
 
 def test_cross_attention_shape(device, batch_size, seq_length, dim, heads):
