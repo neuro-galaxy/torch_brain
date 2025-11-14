@@ -1,6 +1,5 @@
 import copy
 from abc import ABC, abstractmethod
-from typing import List, Tuple
 
 import numpy as np
 from temporaldata import (
@@ -217,24 +216,34 @@ class TimeMasking(MaskingBase):
         if num_samples_to_mask == 0:
             return mask
 
-        # Calculate number of windows needed
-        num_windows = max(1, int(np.ceil(num_samples_to_mask / window_samples)))
+        # If window is larger than time dimension, mask everything
+        if time_dim <= window_samples:
+            mask[:, :] = False
+            return mask
 
-        # Randomly sample start positions for windows
-        for _ in range(num_windows):
-            if time_dim <= window_samples:
-                # If window is larger than time dimension, mask everything
-                mask[:, :] = False
-                break
+        # Track masked time points (1D mask for time dimension)
+        time_mask = np.ones(time_dim, dtype=bool)
+        samples_masked = 0
 
-            # Randomly select start position
-            max_start = time_dim - window_samples
-            if max_start > 0:
-                start_idx = self._rng.integers(0, max_start + 1)
-                end_idx = min(start_idx + window_samples, time_dim)
+        # Generate all possible window start positions and shuffle them
+        # This ensures randomness while allowing efficient sequential placement
+        possible_starts = np.arange(time_dim - window_samples + 1)
+        self._rng.shuffle(possible_starts)
 
-                # Mask this window (set to False)
-                mask[start_idx:end_idx, :] = False
+        # Place non-overlapping windows by iterating through shuffled positions
+        for start_idx in possible_starts:
+            # Check if this position is still available (no overlap with existing windows)
+            if time_mask[start_idx:start_idx + window_samples].all():
+                # Mask this window
+                time_mask[start_idx:start_idx + window_samples] = False
+                samples_masked += window_samples
+
+                # Stop if we've masked enough samples
+                if samples_masked >= num_samples_to_mask:
+                    break
+
+        # Apply the 1D time mask to all channels
+        mask[~time_mask, :] = False
 
         return mask
 

@@ -230,6 +230,34 @@ class TestTimeMasking:
         # Masks should be identical
         np.testing.assert_array_equal(result1.regular_ts.mask, result2.regular_ts.mask)
 
+    def test_windows_do_not_overlap(self):
+        """Test that masking windows don't overlap, ensuring accurate mask percentage."""
+        from torch_brain.transforms.masking import TimeMasking
+
+        # Use longer time series for better statistical validity
+        data = Data(
+            regular_ts=create_sample_regular_time_series(1000, 10, sampling_rate=100.0),
+            domain=Interval(0.0, 10.0),
+        )
+        
+        # Test with various mask percentages
+        for mask_percentage in [0.1, 0.2, 0.3, 0.4]:
+            transform = TimeMasking(
+                mask_percentage=mask_percentage, 
+                window_duration=0.05,  # 5 samples
+                random_seed=42
+            )
+            result = transform(data)
+            
+            mask = result.regular_ts.mask
+            # Calculate actual masked fraction
+            masked_fraction = 1.0 - mask.any(axis=1).sum() / mask.shape[0]
+            
+            # With non-overlapping windows, should be within 5% tolerance
+            assert abs(masked_fraction - mask_percentage) < 0.05, \
+                f"Expected {mask_percentage:.2f}, got {masked_fraction:.2f}. " \
+                f"Difference of {abs(masked_fraction - mask_percentage):.2f} suggests overlapping windows."
+
 
 class TestChannelMasking:
     """Tests for ChannelMasking transform."""
