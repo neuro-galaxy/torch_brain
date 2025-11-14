@@ -2,7 +2,14 @@ defaults:
   - defaults.yaml
   - model: mlp.yaml
   - dataset: falcon_m2.yaml
-  - _self_
+  - _self_  # ensures current config overrides defaults
+
+train_transforms:
+  - _target_: torch_brain.transforms.UnitDropout
+    max_units: 300
+    min_units: 30
+    mode_units: 100
+    peak: 4
 
 wandb:
-  run_name: falcon_m2_mlp
+  run_name: test
