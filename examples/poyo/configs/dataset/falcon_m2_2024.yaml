@@ -1,0 +1,57 @@
+# FALCON M2: Monkey 2D reaching task
+# Dataset: https://dandiarchive.org/dandiset/000953
+# 96-channel Utah array, 2D finger velocity
+#
+# Split strategy:
+# - held-in-calib  → TRAIN (7 sessions: Run1/2 from Oct 19, 20, 27, 28)
+# - held-out-calib → VALID (6 sessions: Run1/2 from Oct 30, Nov 18, 19, 24)
+# - minival        → TEST  (7 sessions, small quick-test set)
+
+# Held-in calibration sessions (TRAINING)
+- selection:
+  - brainset: falcon_m2_2024
+    sessions:
+      - Run1_20201019_held_in
+      - Run2_20201019_held_in
+      - Run1_20201020_held_in
+      - Run2_20201020_held_in
+      - Run1_20201027_held_in
+      - Run2_20201027_held_in
+      - Run1_20201028_held_in
+  config:
+    readout:
+      readout_id: cursor_velocity_2d
+      timestamp_key: finger.timestamps
+      value_key: finger.vel
+      normalize_mean: 0.
+      normalize_std: 20.
+      weights:
+        eval_intervals: 1.0
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+      eval_interval: eval_intervals
+
+# Held-out calibration sessions (VALIDATION)
+- selection:
+  - brainset: falcon_m2_2024
+    sessions:
+      - Run1_20201030_held_out
+      - Run2_20201030_held_out
+      - Run1_20201118_held_out
+      - Run1_20201119_held_out
+      - Run1_20201124_held_out
+      - Run2_20201124_held_out
+  config:
+    readout:
+      readout_id: cursor_velocity_2d
+      timestamp_key: finger.timestamps
+      value_key: finger.vel
+      normalize_mean: 0.
+      normalize_std: 20.
+      weights:
+        eval_intervals: 1.0
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+      eval_interval: eval_intervals

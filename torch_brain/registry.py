@@ -122,6 +122,24 @@ register_modality(
 )
 
 register_modality(
+    "falcon_m1.emg_16d",
+    dim=16,
+    type=DataType.CONTINUOUS,
+    timestamp_key="emg.timestamps",
+    value_key="emg.data",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)
+
+register_modality(
+    "falcon_h1.kinematics_7d",
+    dim=7,
+    type=DataType.CONTINUOUS,
+    timestamp_key="kinematics.timestamps",
+    value_key="kinematics.vel",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)
+
+register_modality(
     "drifting_gratings_orientation",
     dim=8,
     type=DataType.MULTINOMIAL,
