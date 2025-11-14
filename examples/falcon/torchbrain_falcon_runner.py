@@ -30,6 +30,8 @@ class FalconTorchBrainWrapper(BCIDecoder):
             task_config: FalconConfig,
             max_bins: int,
             batch_size: int = 1,
+            readout_id: int = 0,
+            readout_str: str = '',
         ):
         super().__init__(task_config=task_config, batch_size=batch_size)
         pl.seed_everything(seed=0)
@@ -42,6 +44,9 @@ class FalconTorchBrainWrapper(BCIDecoder):
             self.batch_size,
             task_config.n_channels
         ), dtype=torch.uint8, device='cuda:0')
+        self.readout_id = readout_id
+        self.hidden_state = None
+        self.readout_str = readout_str
 
     def set_batch_size(self, batch_size: int):
         super().set_batch_size(batch_size)
@@ -56,6 +61,8 @@ class FalconTorchBrainWrapper(BCIDecoder):
         self.observation_buffer.zero_()
         self.cur_batch = len(dataset_tags)
 
+        self.hidden_state = None
+
     def predict(self, neural_observations: np.ndarray):
         r"""
             neural_observations: array of shape (batch, n_channels), binned spike counts
@@ -64,11 +71,13 @@ class FalconTorchBrainWrapper(BCIDecoder):
                 out: (batch, n_dims)
         """
         self.observe(neural_observations)
-        decoder_in = rearrange(self.observation_buffer[-self.set_steps:], 't b c -> b t c')
+        decoder_in = rearrange(self.observation_buffer[-1:], 't b c -> b t c')
         batch_in = decoder_in[:self.cur_batch]
-        batch_in_tokenized = self.model.tokenize(batch_in)
-        decoder_index = torch.tensor([[0]], device=self.model.device)
-        out = self.model(x=batch_in_tokenized, output_decoder_index=decoder_index)
+        batch_in_tokenized = batch_in.to(torch.float32)
+        decoder_index = torch.tensor([[self.readout_id]], device='cuda:0') # TODO move to init
+        with torch.no_grad():
+            out, self.hidden_state = self.model(x=batch_in_tokenized, output_decoder_index=decoder_index, h=self.hidden_state)
+        out = out[self.readout_str]
         return out.cpu().numpy()
 
     def observe(self, neural_observations: np.ndarray):
@@ -154,6 +163,8 @@ def main():
         task_config=config,
         max_bins=max_bins,
         batch_size=args.batch_size,
+        readout_id=readout_spec.id,
+        readout_str=readout,
     )
 
     evaluator.evaluate(decoder, phase=args.phase)
