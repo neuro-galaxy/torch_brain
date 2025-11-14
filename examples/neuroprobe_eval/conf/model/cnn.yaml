@@ -1,0 +1,10 @@
+# Convolutional Neural Network model (PyTorch)
+name: cnn
+batch_size: 128
+learning_rate: 0.0001
+max_iter: 100
+patience: 10
+tol: 1e-4
+val_size: 0.2
+random_state: 42
+

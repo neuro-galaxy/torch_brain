@@ -1,0 +1,10 @@
+# Multi-Layer Perceptron model (PyTorch)
+name: mlp
+hidden_dims: [1024, 1024]
+batch_size: 200
+learning_rate: 0.00001
+max_iter: 100
+patience: 100
+tol: 1e-8
+random_state: 42
+
