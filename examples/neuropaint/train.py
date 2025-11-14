@@ -2,15 +2,18 @@ import torch
 import numpy as np
 import os
 import warnings
-from torch_brain.models.neuropaint import MAE_with_region_stitcher, NeuralStitcher_cross_att
+from torch_brain.models.neuropaint.neuropaint import MAE_with_region_stitcher, NeuralStitcher_cross_att
 #TO-DO add utils files to neuropaint_utils
-from utils.config_utils import config_from_kwargs, update_config
+from config_utils import config_from_kwargs, update_config
 from utils.utils import set_seed
-
-
 from accelerate import Accelerator
 from torch.optim.lr_scheduler import OneCycleLR
 from trainer import trainer
+
+import random
+import torch.distributed as dist
+
+
 import argparse
 import pickle
 
@@ -26,11 +29,23 @@ os.environ["TORCH_USE_CUDA_DSA"] = "1"
 os.environ["WANDB_IGNORE_COPY_ERR"] = "true"
 
 
+def set_seed(seed):
+    rank = dist.get_rank() if dist.is_initialized() else 0
+    final_seed = seed + rank
+
+    # set seed for reproducibility
+    os.environ['PYTHONHASHSEED'] = str(final_seed)
+    torch.manual_seed(final_seed)
+    torch.cuda.manual_seed(final_seed)
+    torch.cuda.manual_seed_all(final_seed)
+    np.random.seed(final_seed)
+    random.seed(final_seed)
+    torch.backends.cudnn.deterministic = True
+    print('seed set to {}'.format(final_seed))
+
+
 #create dataset and dataloader
 def make_loader(base_path, example_path, batch_size = 16):
-    '''
-
-    '''
 
     dataset = Dataset(
         root= base_path + "/processed",
@@ -45,7 +60,7 @@ def make_loader(base_path, example_path, batch_size = 16):
     heldout_area_dict = {}
     unit_filter_dict = {}
     unit_heldout_filter_dict = {}
-    
+    eids = []
     for session_idx, session_id in enumerate(dataset.get_session_ids()):
         data = copy.deepcopy(dataset.get_recording_data(session_id))
 
@@ -85,7 +100,7 @@ def make_loader(base_path, example_path, batch_size = 16):
         area_ind_unique = np.unique(area_ind_list)
         areaoi_ind_exist = np.intersect1d(area_ind_unique, areaoi)
         unit_filter_dict[session_id] = unit_filter_mask
-
+        eids.append(session_id)
 
     train_sampler = TrialSampler(
     sampling_intervals=train_sampling_intervals_dict,
@@ -119,7 +134,7 @@ def make_loader(base_path, example_path, batch_size = 16):
     areaoi_ind = np.arange(len(areaoi))
     trial_type_dict = {'left': 0, 'right':1}
 
-    return dataloader, areaoi_ind, area_ind_list_dict, heldout_area_dict, trial_type_dict, unit_heldout_filter_dict, unit_filter_dict
+    return dataloader, areaoi_ind, area_ind_list_dict, heldout_area_dict, trial_type_dict, unit_heldout_filter_dict, unit_filter_dict, eids
 
 def main(with_reg, with_consistency):
 
@@ -135,7 +150,7 @@ def main(with_reg, with_consistency):
 
     base_path = '/work/hdd/bdye/jxia4/code/NeuroPaint_torchbrain/'
     example_path = base_path + 'torch_brain/examples/neuropaint/'
-    num_train_sessions = len(eids)
+    
     train = True
 
     mask_mode = 'region' # 'time' or 'region' or 'time_region'
@@ -184,16 +199,20 @@ def main(with_reg, with_consistency):
     rank = accelerator.process_index
     world_size = accelerator.num_processes
 
-    dataloader, areaoi_ind, area_ind_list_dict, heldout_area_dict, trial_type_dict, unit_heldout_filter_dict, unit_filter_dict = make_loader(base_path, example_path, batch_size)
+    dataloader, areaoi_ind, area_ind_list_dict, heldout_area_dict, trial_type_dict, unit_heldout_filter_dict, unit_filter_dict, session_id_strs = make_loader(base_path, example_path, batch_size)
+    num_train_sessions = len(session_id_strs)
+
     train_dataloader = dataloader['train']
     val_dataloader = dataloader['val']
 
     set_seed(config.seed)  
 
+    area_ind_list_list = [area_ind_list_dict[eid] for eid in session_id_strs] #a hack to make it compatible with previous code, so that area_ind_list_list is a list of arrays
+
     meta_data['area_ind_list_list'] = area_ind_list_list
     meta_data['areaoi_ind'] = areaoi_ind
-    meta_data['num_sessions'] = len(eids)
-    meta_data['eids'] = [eid_idx for eid_idx, eid in enumerate(eids)]
+    meta_data['num_sessions'] = num_train_sessions
+    meta_data['eids'] = [eid_idx for eid_idx, eid in enumerate(session_id_strs)] #a hack to make it compatible with previous code, so that eids are just indices
 
     #load pr_max_dict
     pr_max_dict_path = f"{example_path}/configs/dataset/pr_max_dict_ibl.pkl"
@@ -210,25 +229,29 @@ def main(with_reg, with_consistency):
 
     #for torch_brain
     meta_data['areaoi'] = [b"PO", b"LP", b"DG", b"CA1", b"VISa", b"VPM", b"APN", b"MRN"]
-    meta_data['session_id_strs'] = eids
-
+    meta_data['session_id_strs'] = session_id_strs
+    #meta_data['unit_heldout_filter_dict'] = unit_heldout_filter_dict # only useful during test
+    meta_data['unit_filter_dict'] = unit_filter_dict
+    meta_data['area_ind_list_dict'] = area_ind_list_dict
 
     config = update_config(config, meta_data) # so that everything is saved in the config file
-
     train_dataloader = dataloader['train']
     val_dataloader = dataloader['val']    
-
 
 #############
     #test if the model can run forward pass
     model = MAE_with_region_stitcher(config['model'], **meta_data)
-    model.to(accelerator.device)
+
+    train_dataloader.dataset.transform = model.tokenize
+    val_dataloader.dataset.transform = model.tokenize
+
+    accelerator.prepare(model, train_dataloader, val_dataloader)
+
     for batch in val_dataloader:
         with torch.no_grad():
             outputs = model(batch)
         print('forward pass successful')
         break
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

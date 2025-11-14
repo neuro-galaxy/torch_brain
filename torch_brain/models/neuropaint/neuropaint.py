@@ -511,7 +511,7 @@ class MAE_with_region_stitcher(nn.Module):
         self.region_to_ind = {region: i for i, region in enumerate(self.areaoi)}
 
         # for heldout area in tokenize()
-        self.heldout_filter = kwargs['heldout_filter']
+        self.unit_filter_dict = kwargs['unit_filter_dict']
         self.area_ind_list_dict = kwargs['area_ind_list_dict']
 
     def forward(
@@ -554,35 +554,19 @@ class MAE_with_region_stitcher(nn.Module):
             targets=targets
         )
     
-    # @cache
-    # def _helper(area_acronym_list):
-    #     return np.array(...)
-    
     def tokenize(self, data: Data) -> Dict:
         # held out data from a randomly selected area TO-DO? 
         spikes_data = bin_spikes(data.spikes,len(data.units.acronym), bin_size=0.01, right=True)
         spikes_data = spikes_data.T.contiguous() # (T,N)
         T = spikes_data.shape[0]
-        area_acronym_list = data.units.acronym.copy() #area name acronym list for all neurons
-        unit_filter_mask = np.isin(area_acronym_list, self.areaoi) #boolean mask for all neurons
-
-        # Q: is there a way to do it only once for all trials in the data? 
-        #data.units = data.units.select_by_mask(unit_filter_mask)
-        spikes_data = spikes_data[:, unit_filter_mask]
-
-        #only include spikes_data from neurons in areaoi
-        area_acronym_list = area_acronym_list[unit_filter_mask]
-
-        #combine some areas
-        unit_rename_mask = np.isin(area_acronym_list, [b'VISa', b'VISam'])
-        area_acronym_list[unit_rename_mask] = b'VISa'
-        
-        #get area ind from area acronym
-        area_ind_list = np.array(list(map(self.region_to_ind.get, area_acronym_list)), dtype=np.int64)
         N = spikes_data.shape[1]
         #turn session id str to session ind
         session_id_str = data.session.id
         eid = self.session_id_str_to_ind[session_id_str]
+
+        area_ind_list = self.area_ind_list_dict[session_id_str]
+        unit_filter = self.unit_filter_dict[session_id_str]
+        spikes_data = spikes_data[:, unit_filter]
 
         #get trial type
         trial_type = data.trials.choice #1 or 0 (instead of -1 or 1)
