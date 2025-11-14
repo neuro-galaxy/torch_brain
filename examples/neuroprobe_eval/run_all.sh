@@ -11,7 +11,7 @@ PROCESSED_DATA_PATH=${1:-/home/geeling/Projects/tb_buildathon/data/processed/neu
 PREPROCESSORS="laplacian_stft" # raw stft 
 
 # All tasks from neuroprobe config
-TASKS="onset" # speech volume delta_volume pitch word_index word_gap gpt2_surprisal word_head_pos word_part_speech word_length global_flow local_flow frame_brightness face_num
+TASKS="delta_volume" # onset speech volume delta_volume pitch word_index word_gap gpt2_surprisal word_head_pos word_part_speech word_length global_flow local_flow frame_brightness face_num
 
 # All subject/trial combinations (Neuroprobe Lite)
 SUBJECT_TRIALS=(
@@ -52,7 +52,7 @@ for prep in $PREPROCESSORS; do
             
             echo "Running: $task (subject $subject, trial $trial) - $prep"
             
-            python -m pdb -m run_eval \
+            python run_eval.py \
                 preprocessor=$prep \
                 eval_name=$task \
                 subject_id=$subject \
@@ -66,22 +66,27 @@ for prep in $PREPROCESSORS; do
     done
 done
 
-echo ""
-echo "=========================================="
-echo "Aggregating results"
-echo "=========================================="
+# # Aggregate results only if directory exists
+# if [ -d "eval_results/Within-Session" ] || [ -d "eval_results/Cross-Session" ]; then
+#     echo ""
+#     echo "=========================================="
+#     echo "Aggregating results"
+#     echo "=========================================="
+    
+#     python aggregate_results.py \
+#         --results-dir eval_results \
+#         --split-type all \
+#         --task all \
+#         --to-dataframe \
+#         --output-csv eval_results/results.csv \
+#         --print-summary
+# else
+#     echo ""
+#     echo "No results found to aggregate (directory does not exist yet)"
+# fi
 
-# Aggregate results
-python aggregate_results.py \
-    --results-dir eval_results \
-    --split-type all \
-    --task all \
-    --to-dataframe \
-    --output-csv eval_results/results.csv \
-    --print-summary
-
-echo ""
-echo "=========================================="
-echo "All experiments complete!"
-echo "=========================================="
+# echo ""
+# echo "=========================================="
+# echo "All experiments complete!"
+# echo "=========================================="
 

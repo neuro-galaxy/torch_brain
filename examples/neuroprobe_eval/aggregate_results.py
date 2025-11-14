@@ -93,13 +93,16 @@ def aggregate_results(results_dir, splits_type, task_name, output_dir=None):
     else:
         split_dirs = [splits_type]
     
-    aggregated = {}
+    all_aggregated = {}
     
+    # Aggregate results for each split_dir separately
     for split_dir in split_dirs:
         split_path = Path(results_dir) / split_dir
         if not split_path.exists():
-            print(f"Warning: Split directory not found: {split_path}")
+            print(f"Info: Split directory not found: {split_path} (skipping)")
             continue
+        
+        aggregated = {}
         
         for model_dir in split_path.iterdir():
             if not model_dir.is_dir():
@@ -135,19 +138,21 @@ def aggregate_results(results_dir, splits_type, task_name, output_dir=None):
                 except Exception as e:
                     print(f"Error loading {result_file}: {e}")
                     continue
-    
-    # Save aggregated results
-    for task, aggregated_result in aggregated.items():
-        output_path = Path(output_dir) / split_dirs[0] / f"population_{task}.json"
-        output_path.parent.mkdir(parents=True, exist_ok=True)
         
-        with open(output_path, 'w') as f:
-            json.dump(aggregated_result, f, indent=4)
+        # Save aggregated results for this split_dir
+        for task, aggregated_result in aggregated.items():
+            output_path = Path(output_dir) / split_dir / f"population_{task}.json"
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(output_path, 'w') as f:
+                json.dump(aggregated_result, f, indent=4)
+            
+            print(f"Saved aggregated results: {output_path}")
+            print(f"  Sessions included: {len(aggregated_result['evaluation_results'])}")
         
-        print(f"Saved aggregated results: {output_path}")
-        print(f"  Sessions included: {len(aggregated_result['evaluation_results'])}")
+        all_aggregated[split_dir] = aggregated
     
-    return aggregated
+    return all_aggregated
 
 
 def aggregate_to_dataframe(results_dir, model_name=None, preprocessor_name=None):
