@@ -1,0 +1,18 @@
+# falcon_m2
+- selection:
+  - brainset: falcon_m2
+    sessions:
+      - held-in-calib_ses-2020-10-19
+      - held-in-calib_ses-2020-10-20
+      - held-in-calib_ses-2020-10-27
+      - held-in-calib_ses-2020-10-28
+      - held-in-calib_ses-2020-10-30
+      - held-in-calib_ses-2020-11-18
+      - held-in-calib_ses-2020-11-19
+      - held-in-calib_ses-2020-11-24
+  config:
+    readout:
+      readout_id: hand_velocity_2d
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score

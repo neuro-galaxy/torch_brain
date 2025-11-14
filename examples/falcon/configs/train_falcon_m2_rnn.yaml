@@ -1,0 +1,8 @@
+defaults:
+  - defaults.yaml
+  - model: mlp.yaml
+  - dataset: falcon_m2.yaml
+  - _self_
+
+wandb:
+  run_name: falcon_m2_mlp

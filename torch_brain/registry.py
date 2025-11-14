@@ -112,6 +112,34 @@ register_modality(
     loss_fn=torch_brain.nn.loss.MSELoss(),
 )
 
+# FALCON Movement readouts
+register_modality(
+    "arm_velocity_7d",
+    dim=7,
+    type=DataType.CONTINUOUS,
+    timestamp_key="behavior.timestamps",
+    value_key="behavior.arm_vel",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)
+
+register_modality(
+    "hand_velocity_2d",
+    dim=2,
+    type=DataType.CONTINUOUS,
+    timestamp_key="behavior.timestamps",
+    value_key="behavior.hand_vel",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)
+
+register_modality(
+    "arm_emg_16d",
+    dim=16,
+    type=DataType.CONTINUOUS,
+    timestamp_key="behavior.timestamps",
+    value_key="behavior.emg",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)
+
 register_modality(
     "arm_velocity_2d",
     dim=2,
