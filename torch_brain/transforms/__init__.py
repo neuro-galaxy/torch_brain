@@ -5,3 +5,4 @@ from .random_time_scaling import RandomTimeScaling
 from .unit_dropout import TriangleDistribution, UnitDropout
 from .unit_filter import UnitFilter, UnitFilterById
 from .add_noise import RandomNoise
+from .jitter import TemporalJitter
