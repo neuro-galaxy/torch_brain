@@ -1,13 +1,17 @@
+defaults:
+  - model: poco.yaml
+  - dataset: zappbench.yaml
+  - _self_  # ensures current config overrides defaults
+
 
 # defaults used for training POYO
 # this file needs to be combined with a model config and a dataset config
 
 # Paths
-data_root: ./data/processed/
+data_root: /vast/projects/dyer1/lab/shared/neural_data/zapbench
 log_dir: ./logs
 
 # Transforms
-train_transforms: []
 eval_transforms: []
 
 # Training
@@ -16,7 +20,7 @@ batch_size: 128
 eval_epochs: 1  # frequency for doing validation
 eval_batch_size: null  # if null, will use batch_size
 seed: 42  # use to set random seed
-sanity_check_validation: false  # if true, will start the run with validation 
+sanity_check_validation: false  # if true, will start the run with validation
 
 optim:
   base_lr: 3.125e-5  # scaled linearly by batch size
@@ -25,9 +29,9 @@ optim:
 
 # Logging
 wandb:
-  enable: true
+  enable: false
   entity: null
-  project: poyo
+  project: poCo
   run_name: null
   log_model: false
 
@@ -39,3 +43,11 @@ num_workers: 4
 
 # Checkpointing
 ckpt_path: null  # for resuming training, or loading a model during finetuning
+
+
+
+train_transforms:
+  - _target_: torch_brain.transforms.PatchTokenize
+
+
+

@@ -131,7 +131,7 @@ def main(cfg: DictConfig):
 
     seed_everything(cfg.seed)
 
-    # readout spec (same pattern as your train.py)  :contentReference[oaicite:7]{index=7}
+    # readout spec (same pattern as your train.py)
     readout_id = cfg.dataset[0].config.readout.readout_id
     readout_spec = MODALITY_REGISTRY[readout_id]
 
