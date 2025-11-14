@@ -12,13 +12,14 @@ from torch_brain.nn import (
     RotarySelfAttention,
     RotaryTimeEmbedding,
 )
-from torch_brain_private.nn import (
+
+from torch_brain.nn.lora import (
     LoRALayer,
     LoRALinear,
     LoRALinearCombined,
     LoRAModelWrapper,
+    _deduce_projection_names_from_module_name,
 )
-from torch_brain_private.nn.lora import _deduce_projection_names_from_module_name
 
 
 class SimpleAttentionModel(nn.Module):
