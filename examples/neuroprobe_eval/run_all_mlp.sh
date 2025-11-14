@@ -1,6 +1,6 @@
 #!/bin/bash
-# Run all experiments to replicate neuroprobe_linear_baselines.ipynb
-# Usage: ./run_all.sh [processed_data_path]
+# Run all MLP experiments
+# Usage: ./run_all_mlp.sh [processed_data_path]
 
 set -e
 
@@ -31,7 +31,7 @@ SUBJECT_TRIALS=(
     # "10 1"
 
 echo "=========================================="
-echo "Running all Neuroprobe experiments"
+echo "Running all Neuroprobe MLP experiments"
 echo "=========================================="
 echo "Processed data path: $PROCESSED_DATA_PATH"
 echo "Preprocessors: $PREPROCESSORS"
@@ -52,18 +52,17 @@ for prep in $PREPROCESSORS; do
             
             echo "Running: $task (subject $subject, trial $trial) - $prep"
 
-            echo "Running: Logistic Regression"
+            echo "Running: MLP"
             python run_eval.py \
                 preprocessor=$prep \
                 eval_name=$task \
                 subject_id=$subject \
                 trial_id=$trial \
-                model=logistic \
+                model=mlp \
                 data_source=processed \
                 processed_data_path=$PROCESSED_DATA_PATH \
                 verbose=false \
                 overwrite=false || echo "Warning: Failed for $task (sub $subject, trial $trial)"
-
         done
     done
 done

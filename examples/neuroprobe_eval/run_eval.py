@@ -128,8 +128,8 @@ def run_processed_evaluation(cfg, preprocessor, runner, subject_id, trial_id, ev
             fold_idx = fold['fold_idx']
             log(f"Fold {fold_idx+1}", priority=0)
             
-            # Prepare data
-            X_train, y_train, X_test, y_test = prepare_processed_fold_data(
+            # Prepare data (returns train, val, test splits)
+            X_train, y_train, X_val, y_val, X_test, y_test = prepare_processed_fold_data(
                 fold, data, preprocessor, eval_name, fold_idx
             )
             
@@ -137,13 +137,18 @@ def run_processed_evaluation(cfg, preprocessor, runner, subject_id, trial_id, ev
             fold_model = build_model(cfg.model)
             
             # Train and evaluate
-            fold_result = runner.run_fold(fold_model, X_train, y_train, X_test, y_test)
+            # Pass all 3 splits to torch models, only train/test to sklearn models
+            if cfg.model.name == "logistic":
+                fold_result = runner.run_fold(fold_model, X_train, y_train, X_test, y_test)
+            else:
+                fold_result = runner.run_fold(fold_model, X_train, y_train, X_val, y_val, X_test, y_test)
+            
             fold_result["fold_idx"] = fold_idx
             results_population["one_second_after_onset"]["folds"].append(fold_result)
             
             log(f"Fold {fold_idx+1}: Test acc: {fold_result['test_accuracy']:.3f}, Test AUC: {fold_result['test_roc_auc']:.3f}", priority=0)
             
-            del X_train, y_train, X_test, y_test, fold_model
+            del X_train, y_train, X_val, y_val, X_test, y_test, fold_model
             gc.collect()
         
         regression_run_time = time.time() - regression_start_time

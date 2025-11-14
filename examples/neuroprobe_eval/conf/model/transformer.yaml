@@ -12,4 +12,6 @@ patience: 10
 tol: 1e-4
 val_size: 0.2
 random_state: 42
+# Device: 'auto' (default, auto-detect), 'cuda', 'cpu', or specific device like 'cuda:0'
+device: auto
 

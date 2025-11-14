@@ -14,9 +14,25 @@ class TorchRunner:
     
     def __init__(self, cfg):
         self.cfg = cfg
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = self._get_device(cfg)
     
-    def run_fold(self, model, X_train, y_train, X_test, y_test):
+    def _get_device(self, cfg):
+        """Get device from config or auto-detect."""
+        device_str = cfg.model.get("device", "auto")
+        
+        if device_str == "auto":
+            return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        elif device_str == "cuda":
+            if not torch.cuda.is_available():
+                raise RuntimeError("CUDA requested but not available")
+            return torch.device('cuda')
+        elif device_str == "cpu":
+            return torch.device('cpu')
+        else:
+            # Allow specific device strings like 'cuda:0'
+            return torch.device(device_str)
+    
+    def run_fold(self, model, X_train, y_train, X_val, y_val, X_test, y_test):
         """
         Train and evaluate a single fold with early stopping.
         
@@ -24,6 +40,8 @@ class TorchRunner:
             model: PyTorch model instance
             X_train: Training features
             y_train: Training labels
+            X_val: Validation features
+            y_val: Validation labels
             X_test: Test features
             y_test: Test labels
         
@@ -33,12 +51,15 @@ class TorchRunner:
         # Standardize
         scaler = StandardScaler(copy=False)
         X_train_scaled = scaler.fit_transform(X_train)
+        X_val_scaled = scaler.transform(X_val)
         X_test_scaled = scaler.transform(X_test)
         gc.collect()
         
         # Convert to torch tensors
         X_train_tensor = torch.FloatTensor(X_train_scaled)
         y_train_tensor = torch.LongTensor(y_train)
+        X_val_tensor = torch.FloatTensor(X_val_scaled)
+        y_val_tensor = torch.LongTensor(y_val)
         
         # Get unique classes
         classes = np.unique(y_train)
@@ -50,18 +71,7 @@ class TorchRunner:
             input_shape = X_train_scaled.shape[1:]
             model.build_model(input_shape, n_classes)
         
-        # Create train/val split
-        val_size = self.cfg.model.get("val_size", 0.2)
-        val_size_int = int(val_size * len(X_train_tensor))
-        train_indices = np.arange(len(X_train_tensor) - val_size_int)
-        val_indices = np.arange(len(X_train_tensor) - val_size_int, len(X_train_tensor))
-        
-        X_val_tensor = X_train_tensor[val_indices]
-        y_val_tensor = y_train_tensor[val_indices]
-        X_train_tensor = X_train_tensor[train_indices]
-        y_train_tensor = y_train_tensor[train_indices]
-        
-        # Train with early stopping
+        # Train with early stopping using provided validation set
         self._train_with_early_stopping(
             model, X_train_tensor, y_train_tensor, X_val_tensor, y_val_tensor, n_classes, classes
         )
