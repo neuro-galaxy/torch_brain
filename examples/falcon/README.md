@@ -22,18 +22,17 @@ python train.py --config-name train_rnn_m2.yaml
 
 ### Prepare a dockerfile for submission
 
-Symlink or link the data directory to where the local docker code expects it:
+Symlink or link the data directory to where the local docker code expects it (where ./data is local to `examples/falcon` working dir.):
 
 ```bash
-ln -s /path/to/torchbrain/raw/falcon_h1_2024 ./data/h1
-ln -s /path/to/torchbrain/raw/falcon_m1_2024 ./data/m1
-ln -s /path/to/torchbrain/raw/falcon_m2_2024 ./data/m2
+ln -s /path/to/torchbrain/raw/falcon_h1_2024/000954 ./data/h1
+ln -s /path/to/torchbrain/raw/falcon_m1_2024/000941 ./data/m1
+ln -s /path/to/torchbrain/raw/falcon_m2_2024/000953 ./data/m2
 ```
 
-# JY TODO
 ```
-# Build
-docker build -t torchbrain -f ./Dockerfile .
+# Build from torch brain root (Docker prohibits adding files from outside the working directory, so we need project root.)
+docker build -t torchbrain -f torchbrain.dockerfile .
 bash test_docker_local.sh --docker-name torchbrain:latest
 ```
 

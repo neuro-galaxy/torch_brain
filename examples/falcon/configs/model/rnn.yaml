@@ -1,7 +1,5 @@
-_target_: torch_brain.models.rnn
+_target_: torch_brain.models.rnn.RNN
 
-input_size: 480 # 5 timesteps x 96 channel array concat. FALCON M2
-hidden_sizes:
-- 64
-- 64
-output_size: 2 # FALCON M2
+input_size: 96 # FALCON M2
+hidden_size: 64
+rnn_type: "gru"
