@@ -1,0 +1,33 @@
+# Minimal FALCON H1 training config for pipeline validation
+# Run with: python train.py --config-name train_falcon_h1_test
+
+defaults:
+  - defaults.yaml
+  - model: poyo_1.3M.yaml
+  - dataset: falcon_h1_2024.yaml
+  - _self_
+
+# Quick training settings for validation
+epochs: 2
+batch_size: 32
+eval_epochs: 1
+sanity_check_validation: true  # Run validation before training
+
+# Unit dropout transform (H1 has 176 channels per session)
+train_transforms:
+  - _target_: torch_brain.transforms.UnitDropout
+    max_units: 176
+    min_units: 50
+    mode_units: 120
+    peak: 4
+
+# Disable wandb for testing
+wandb:
+  enable: false
+  run_name: falcon_h1_validation_test
+
+# Data path
+data_root: ./data/processed/
+
+# Use no workers for testing (avoids pickling issues)
+num_workers: 0
