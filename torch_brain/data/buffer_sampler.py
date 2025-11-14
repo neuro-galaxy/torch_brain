@@ -48,7 +48,7 @@ class BufferedSampler(torch.utils.data.Sampler):
         
         self.buffered_indices = []
         for base_idx in self.base_sampler:
-            sess = base_idx.session_name
+            sess = base_idx.recording_id
             orig_start = float(base_idx.start)
             orig_end = float(base_idx.end)
 
@@ -73,7 +73,6 @@ class BufferedSampler(torch.utils.data.Sampler):
             if (new_start >= s_i) and (new_end <= e_i):
                 idx = DatasetIndex(sess, new_start, new_end)
                 self.buffered_indices.append(idx)
-                yield idx
             else:
                 # overflow
                 if self.drop_overflow:  # drop this epoch
@@ -86,9 +85,9 @@ class BufferedSampler(torch.utils.data.Sampler):
                     if clipped_end > clipped_start:
                         idx = DatasetIndex(sess, clipped_start, clipped_end)
                         self.buffered_indices.append(idx)
-                        yield idx
                     else: # effectively too small, drop
                         continue
+        yield from self.buffered_indices 
 
     def __len__(self):
         # compute once if not cached
