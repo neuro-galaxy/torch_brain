@@ -14,24 +14,34 @@ class RegularPatching:
 
     Args:
         patch_duration (float): Duration of each patch in seconds.
-        stride (float, optional): Step size between patches in seconds. Defaults to 
+        stride (float, optional): Step size between patches in seconds. Defaults to
             patch_duration (non-overlapping). Can be smaller than patch_duration to
             create overlapping patches.
         timestamp_mode (str, optional): How to assign timestamps to patches. Options:
             - "start": Use the start time of the patch (default)
             - "middle": Use the middle time of the patch
-    
+
     Example:
+        >>> data = Data(
+        ...     lfp_recording=RegularTimeSeries(
+        ...         data=np.random.randn(500, 32),
+        ...         sampling_rate=250.0,
+        ...         domain=Interval(0.0, 2.0),
+        ...     ),
+        ...     domain=Interval(0.0, 2.0),
+        ... )
         >>> # Non-overlapping patches
         >>> transform = RegularPatching(patch_duration=1.0, stride=1.0)
         >>> patched_data = transform(data)
-        
+
         >>> # Overlapping patches (50% overlap)
         >>> transform = RegularPatching(patch_duration=2.0, stride=1.0)
         >>> patched_data = transform(data)
     """
 
-    def __init__(self, patch_duration: float, stride: float = None, timestamp_mode: str = "start"):
+    def __init__(
+        self, patch_duration: float, stride: float = None, timestamp_mode: str = "start"
+    ):
         self.patch_duration = patch_duration
         self.stride = stride if stride is not None else patch_duration
         self.timestamp_mode = timestamp_mode
@@ -78,7 +88,7 @@ class RegularPatching:
             if isinstance(value, RegularTimeSeries):
                 patched_domain = value.domain
                 break
-        
+
         if patched_domain is not None:
             out._domain = patched_domain
         else:
@@ -90,10 +100,10 @@ class RegularPatching:
 
     def _patch_regular_time_series(self, ts: RegularTimeSeries) -> RegularTimeSeries:
         """Patch a RegularTimeSeries object using efficient vectorized operations.
-        
+
         Args:
             ts: The RegularTimeSeries to patch.
-            
+
         Returns:
             A new RegularTimeSeries with patched data.
         """
@@ -101,47 +111,54 @@ class RegularPatching:
         data = ts.data
         time_samples = data.shape[0]
         sampling_rate = ts.sampling_rate
-        
+
         # Calculate patch parameters in samples
         patch_samples = int(np.round(self.patch_duration * sampling_rate))
         stride_samples = int(np.round(self.stride * sampling_rate))
-        
+
         # Calculate number of patches needed
         if time_samples <= patch_samples:
             num_patches = 1
         else:
-            num_patches = int(np.ceil((time_samples - patch_samples) / stride_samples)) + 1
-        
+            num_patches = (
+                int(np.ceil((time_samples - patch_samples) / stride_samples)) + 1
+            )
+
         # Calculate total samples needed after padding
         total_samples_needed = (num_patches - 1) * stride_samples + patch_samples
-        
+
         # Pad data if necessary using efficient numpy pad
         if time_samples < total_samples_needed:
-            pad_width = [(0, total_samples_needed - time_samples)] + [(0, 0)] * (data.ndim - 1)
-            padded_data = np.pad(data, pad_width, mode='constant', constant_values=0)
+            pad_width = [(0, total_samples_needed - time_samples)] + [(0, 0)] * (
+                data.ndim - 1
+            )
+            padded_data = np.pad(data, pad_width, mode="constant", constant_values=0)
         else:
             padded_data = data
-        
+
         # Create index array: shape (num_patches, patch_samples)
-        indices = np.arange(patch_samples)[None, :] + stride_samples * np.arange(num_patches)[:, None]
-        
+        indices = (
+            np.arange(patch_samples)[None, :]
+            + stride_samples * np.arange(num_patches)[:, None]
+        )
+
         patches = padded_data[indices]
         patches = np.moveaxis(patches, 2, 1)
         new_sampling_rate = 1.0 / self.stride
-        
+
         if self.timestamp_mode == "start":
             domain_start = 0.0
             domain_end = (num_patches - 1) / new_sampling_rate
         elif self.timestamp_mode == "middle":
             domain_start = self.patch_duration / 2
             domain_end = domain_start + (num_patches - 1) / new_sampling_rate
-        
+
         new_domain = Interval(start=domain_start, end=domain_end)
-        
+
         # Create new RegularTimeSeries with patched data
         patched_ts = RegularTimeSeries.__new__(RegularTimeSeries)
-        patched_ts.__dict__['data'] = patches
+        patched_ts.__dict__["data"] = patches
         patched_ts._sampling_rate = new_sampling_rate
         patched_ts._domain = new_domain
-        
+
         return patched_ts
