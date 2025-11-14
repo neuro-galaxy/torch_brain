@@ -31,8 +31,8 @@ class CrossAttention(nn.Module):
     Args:
         dim (int): Dimension of input query embeddings
         context_dim (Optional[int]): Dimension of input context embeddings. If None, uses same as dim
-        heads (int): Number of attention heads
-        dim_head (int): Dimension of each attention head
+        heads (int): Number of attention heads.
+        dim_head (Optional[int]): Dimension of each attention head. If None, use (dim // heads)
         dropout (float): Dropout probability
     """
 
@@ -41,11 +41,13 @@ class CrossAttention(nn.Module):
         *,
         dim: int,
         context_dim: Optional[int] = None,
-        heads: int,
-        dim_head: int,
+        heads: int = 8,
+        dim_head: Optional[int] = None,
         dropout: float = 0.0,
     ):
         super().__init__()
+
+        dim_head = dim_head or (dim // heads)
 
         inner_dim = dim_head * heads
         context_dim = context_dim or dim
@@ -192,11 +194,13 @@ class SelfAttention(nn.Module):
         self,
         *,
         dim: int,
-        heads: int,
-        dim_head: int,
-        dropout: float,
+        heads: int = 8,
+        dim_head: Optional[int] = None,
+        dropout: float = 0.0,
     ):
         super().__init__()
+
+        dim_head = dim_head or (dim // heads)
 
         inner_dim = dim_head * heads
         self.heads = heads
