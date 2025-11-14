@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 import pytest
 
 import numpy as np
@@ -9,6 +10,7 @@ from torch_brain.data.sampler import (
     SequentialFixedWindowSampler,
     RandomFixedWindowSampler,
     TrialSampler,
+    SameSessionBatchSampler,
 )
 from torch_brain.data.dataset import DatasetIndex
 
@@ -90,7 +92,6 @@ def test_sequential_sampler():
 
 
 def test_random_sampler():
-
     sampling_intervals = {
         "session1": Interval(
             start=np.array([0.0, 3.0]),
@@ -116,7 +117,7 @@ def test_random_sampler():
     # sample and check that all indices are within the expected range
     samples = list(sampler)
     assert len(samples) == 9
-    assert samples_in_sampling_intervals(samples, sampling_intervals) == True
+    assert samples_in_sampling_intervals(samples, sampling_intervals)
 
     # sample again and check that the indices are different this time
     samples2 = list(sampler)
@@ -132,7 +133,7 @@ def test_random_sampler():
         generator=torch.Generator().manual_seed(42),
     )
     samples = list(sampler)
-    assert samples_in_sampling_intervals(samples, sampling_intervals) == True
+    assert samples_in_sampling_intervals(samples, sampling_intervals)
 
     # Having window_length bigger than any interval should raise an error
     with pytest.raises(ValueError):
@@ -201,3 +202,81 @@ def test_trial_sampler():
     sampler1 = TrialSampler(sampling_intervals=sampling_intervals, shuffle=False)
     samples1 = list(sampler1)
     assert compare_slice_indices(samples1[0], DatasetIndex("session1", 0.0, 2.0))
+
+
+@pytest.mark.parametrize(
+    "batch_size, drop_last, expected_length, should_raise",
+    [
+        (2, True, 3, False),
+        (2, False, 4, False),
+        (3, True, 1, False),
+        (1, False, 7, False),
+        (1, True, 7, False),
+        (4, True, 1, True),
+    ],
+)
+def test_same_session_batch_sampler(
+    batch_size: int,
+    drop_last: bool,
+    expected_length: int,
+    should_raise: bool,
+):
+    sampling_intervals = {
+        "session1": Interval(
+            start=np.array([0.0, 3.0]),
+            end=np.array([2.0, 4.5]),
+        ),
+        "session2": Interval(
+            start=np.array([0.1, 2.5, 15.0]),
+            end=np.array([1.25, 5.0, 18.7]),
+        ),
+        "session3": Interval(
+            start=np.array([1000.0, 1002.0]),
+            end=np.array([1002.0, 1003.0]),
+        ),
+    }
+
+    ctx = pytest.raises(ValueError) if should_raise else nullcontext()
+
+    with ctx:
+        sampler = SameSessionBatchSampler(
+            sampling_intervals=sampling_intervals,
+            batch_size=batch_size,
+            drop_last=drop_last,
+            shuffle=True,
+            shuffle_session=True,
+        )
+    if should_raise:
+        return
+
+    assert len(sampler) == expected_length
+    # check that all elemetns in batch is in the same session
+    for batch in sampler:
+        assert len(set(i.recording_id for i in batch)) == 1
+    # check samples are in the sampling intervals
+    samples = sum(list(sampler), [])
+    assert samples_in_sampling_intervals(samples, sampling_intervals)
+
+    # with no shuffle, check in order
+    sampler = SameSessionBatchSampler(
+        sampling_intervals=sampling_intervals,
+        batch_size=batch_size,
+        drop_last=drop_last,
+        shuffle=False,
+        shuffle_session=False,
+    )
+    if not drop_last:
+        samples = iter(sum(list(sampler), []))
+        assert compare_slice_indices(next(samples), DatasetIndex("session1", 0.0, 2.0))
+        assert compare_slice_indices(next(samples), DatasetIndex("session1", 3.0, 4.5))
+        assert compare_slice_indices(next(samples), DatasetIndex("session2", 0.1, 1.25))
+        assert compare_slice_indices(next(samples), DatasetIndex("session2", 2.5, 5.0))
+        assert compare_slice_indices(
+            next(samples), DatasetIndex("session2", 15.0, 18.7)
+        )
+        assert compare_slice_indices(
+            next(samples), DatasetIndex("session3", 1000.0, 1002.0)
+        )
+        assert compare_slice_indices(
+            next(samples), DatasetIndex("session3", 1002.0, 1003.0)
+        )
