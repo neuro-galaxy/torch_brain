@@ -1,11 +1,14 @@
 #!/bin/bash
 # Run all experiments to replicate neuroprobe_linear_baselines.ipynb
-# Usage: ./run_all.sh [processed_data_path]
+# Usage: ./run_all.sh [processed_data_path] [hydra_output_dir]
 
 set -e
 
 # Get processed data path from argument or use default
 PROCESSED_DATA_PATH=${1:-/home/geeling/Projects/tb_buildathon/data/processed/neuroprobe_2025}
+
+# Get hydra output directory from argument or use default
+HYDRA_OUTPUT_DIR=${2:-outputs/run_all_logistic}
 
 # Preprocessors to run
 PREPROCESSORS="laplacian_stft" # raw stft 
@@ -34,6 +37,7 @@ echo "=========================================="
 echo "Running all Neuroprobe experiments"
 echo "=========================================="
 echo "Processed data path: $PROCESSED_DATA_PATH"
+echo "Hydra output directory: $HYDRA_OUTPUT_DIR"
 echo "Preprocessors: $PREPROCESSORS"
 echo "Tasks: $TASKS"
 echo "Subject/Trials: ${#SUBJECT_TRIALS[@]} combinations"
@@ -61,6 +65,7 @@ for prep in $PREPROCESSORS; do
                 model=logistic \
                 data_source=processed \
                 processed_data_path=$PROCESSED_DATA_PATH \
+                hydra.run.dir=$HYDRA_OUTPUT_DIR \
                 verbose=false \
                 overwrite=false || echo "Warning: Failed for $task (sub $subject, trial $trial)"
 

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Run all MLP experiments
-# Usage: ./run_all_mlp.sh [processed_data_path] [hydra_output_dir]
+# Run all CNN experiments
+# Usage: ./run_all_cnn.sh [processed_data_path] [hydra_output_dir]
 
 set -e
 
@@ -8,13 +8,13 @@ set -e
 PROCESSED_DATA_PATH=${1:-/home/geeling/Projects/tb_buildathon/data/processed/neuroprobe_2025}
 
 # Get hydra output directory from argument or use default
-HYDRA_OUTPUT_DIR=${2:-outputs/run_all_mlp}
+HYDRA_OUTPUT_DIR=${2:-outputs/run_all_cnn}
 
 # Preprocessors to run
 PREPROCESSORS="laplacian_stft" # raw stft 
 
 # All tasks from neuroprobe config
-TASKS="onset speech volume delta_volume" # onset speech volume delta_volume pitch word_index word_gap gpt2_surprisal word_head_pos word_part_speech word_length global_flow local_flow frame_brightness face_num
+TASKS="onset speech volume" # onset speech volume delta_volume pitch word_index word_gap gpt2_surprisal word_head_pos word_part_speech word_length global_flow local_flow frame_brightness face_num
 
 # All subject/trial combinations (Neuroprobe Lite)
 SUBJECT_TRIALS=(
@@ -34,7 +34,7 @@ SUBJECT_TRIALS=(
     # "10 1"
 
 echo "=========================================="
-echo "Running all Neuroprobe MLP experiments"
+echo "Running all Neuroprobe CNN experiments"
 echo "=========================================="
 echo "Processed data path: $PROCESSED_DATA_PATH"
 echo "Hydra output directory: $HYDRA_OUTPUT_DIR"
@@ -56,13 +56,14 @@ for prep in $PREPROCESSORS; do
             
             echo "Running: $task (subject $subject, trial $trial) - $prep"
 
-            echo "Running: MLP"
+            echo "Running: CNN"
             python run_eval.py \
                 preprocessor=$prep \
                 eval_name=$task \
                 subject_id=$subject \
                 trial_id=$trial \
-                model=mlp \
+                model=cnn \
+                model.device=cuda:2 \
                 data_source=processed \
                 processed_data_path=$PROCESSED_DATA_PATH \
                 hydra.run.dir=$HYDRA_OUTPUT_DIR \

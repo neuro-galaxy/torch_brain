@@ -31,6 +31,7 @@ from utils.logging_utils import (
     format_results,
     save_results,
 )
+import neuroprobe.config as neuroprobe_config
 
 
 
@@ -52,6 +53,64 @@ def model_name_from_classifier_type(classifier_type):
         'transformer': 'Transformer'
     }
     return mapping.get(classifier_type, classifier_type)
+
+
+def reshape_data_for_model(X, preprocessor, n_channels, model_name):
+    """
+    Reshape flattened data back to spatial structure for CNN/Transformer models.
+    
+    Args:
+        X: Flattened data array of shape (n_samples, flattened_features)
+        preprocessor: Preprocessor instance
+        n_channels: Number of channels/electrodes
+        model_name: Model name ('cnn', 'transformer', 'mlp', 'logistic')
+    
+    Returns:
+        Reshaped data array
+    """
+    # Only reshape for CNN and Transformer models
+    if model_name not in ['cnn', 'transformer']:
+        return X
+    
+    preprocess_type = preprocessor.cfg.name
+    
+    if 'stft' in preprocess_type:
+        # STFT preprocessing: CNN expects (n_samples, n_channels, n_freqs, n_timebins)
+        # This matches (channels, freq, time) format expected by Conv2d
+        # Calculate dimensions from preprocessor config
+        nperseg = preprocessor.cfg.get("nperseg", 512)
+        poverlap = preprocessor.cfg.get("poverlap", 0.75)
+        min_freq = preprocessor.cfg.get("min_frequency", 0)
+        max_freq = preprocessor.cfg.get("max_frequency", 150)
+        sampling_rate = preprocessor.cfg.get("sampling_rate", neuroprobe_config.SAMPLING_RATE)
+        
+        # Calculate n_freqs
+        freqs = np.fft.rfftfreq(nperseg, d=1.0 / sampling_rate)
+        n_freqs = int(np.sum((freqs >= min_freq) & (freqs <= max_freq)))
+        
+        # Calculate n_timebins from flattened size
+        # flattened_size = n_samples * n_channels * n_timebins * n_freqs
+        # So: n_timebins = flattened_size / (n_samples * n_channels * n_freqs)
+        n_samples = X.shape[0]
+        flattened_size_per_sample = X.shape[1]
+        n_timebins = flattened_size_per_sample // (n_channels * n_freqs)
+        
+        # Reshape to (n_samples, n_channels, n_timebins, n_freqs) first
+        # Then transpose to (n_samples, n_channels, n_freqs, n_timebins) for CNN
+        X_reshaped = X.reshape(n_samples, n_channels, n_timebins, n_freqs)
+        # Transpose to match CNN expectation: (channels, freq, time)
+        X_reshaped = np.transpose(X_reshaped, (0, 1, 3, 2))  # (n_samples, n_channels, n_freqs, n_timebins)
+        return X_reshaped
+    else:
+        # Raw preprocessing: shape should be (n_samples, n_channels, n_time)
+        # Calculate n_time from flattened size
+        n_samples = X.shape[0]
+        flattened_size_per_sample = X.shape[1]
+        n_time = flattened_size_per_sample // n_channels
+        
+        # Reshape to (n_samples, n_channels, n_time)
+        X_reshaped = X.reshape(n_samples, n_channels, n_time)
+        return X_reshaped
 
 
 @hydra.main(config_path="conf", config_name="config", version_base="1.1")
@@ -132,6 +191,21 @@ def run_processed_evaluation(cfg, preprocessor, runner, subject_id, trial_id, ev
             X_train, y_train, X_val, y_val, X_test, y_test = prepare_processed_fold_data(
                 fold, data, preprocessor, eval_name, fold_idx
             )
+            
+            # Get number of channels for reshaping (needed for CNN/Transformer)
+            split_included_channels_train = getattr(
+                data.channels, f'included_{eval_name}_fold{fold_idx}_train'
+            )
+            split_included_channels_test = getattr(
+                data.channels, f'included_{eval_name}_fold{fold_idx}_test'
+            )
+            n_channels_train = int(np.sum(split_included_channels_train))
+            n_channels_test = int(np.sum(split_included_channels_test))
+            
+            # Reshape data for CNN/Transformer models (preserve spatial structure)
+            X_train = reshape_data_for_model(X_train, preprocessor, n_channels_train, classifier_type)
+            X_val = reshape_data_for_model(X_val, preprocessor, n_channels_test, classifier_type)
+            X_test = reshape_data_for_model(X_test, preprocessor, n_channels_test, classifier_type)
             
             # Build fresh model instance for each fold
             fold_model = build_model(cfg.model)

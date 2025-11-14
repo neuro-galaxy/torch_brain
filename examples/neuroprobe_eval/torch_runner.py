@@ -48,12 +48,34 @@ class TorchRunner:
         Returns:
             Dictionary with train_accuracy, train_roc_auc, test_accuracy, test_roc_auc
         """
-        # Standardize
+        # Standardize (flatten if needed for StandardScaler, then reshape back)
+        original_shapes = {
+            'train': X_train.shape,
+            'val': X_val.shape,
+            'test': X_test.shape
+        }
+        
+        # Flatten for standardization if data is not 2D
+        if X_train.ndim > 2:
+            X_train_flat = X_train.reshape(X_train.shape[0], -1)
+            X_val_flat = X_val.reshape(X_val.shape[0], -1)
+            X_test_flat = X_test.reshape(X_test.shape[0], -1)
+        else:
+            X_train_flat = X_train
+            X_val_flat = X_val
+            X_test_flat = X_test
+        
         scaler = StandardScaler(copy=False)
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_val_scaled = scaler.transform(X_val)
-        X_test_scaled = scaler.transform(X_test)
+        X_train_scaled = scaler.fit_transform(X_train_flat)
+        X_val_scaled = scaler.transform(X_val_flat)
+        X_test_scaled = scaler.transform(X_test_flat)
         gc.collect()
+        
+        # Reshape back to original shape if it was multi-dimensional
+        if len(original_shapes['train']) > 2:
+            X_train_scaled = X_train_scaled.reshape(original_shapes['train'])
+            X_val_scaled = X_val_scaled.reshape(original_shapes['val'])
+            X_test_scaled = X_test_scaled.reshape(original_shapes['test'])
         
         # Convert to torch tensors
         X_train_tensor = torch.FloatTensor(X_train_scaled)
