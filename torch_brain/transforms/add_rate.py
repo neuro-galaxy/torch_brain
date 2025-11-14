@@ -34,19 +34,21 @@ class AddRate:
         nested = self.field.split(".")
         obj = getattr(data, nested[0])
 
-        binned = bin_spikes(obj, num_units=len(data.units), bin_size=self.bin_size)
+        binned = bin_spikes(
+            obj, num_units=len(data.units), bin_size=self.bin_size
+        )  # (num_units, num_bins)
 
         rates = compute_rates(
             binned,
             method=self.method,  # or "exponential" or "none"
             sigma=self.sigma,  # smoothing width
             normalize=True,  # optional
-        )
+        )  # (num_units, num_bins)
 
         start = obj.domain.start[0]
         # timestamps represent bin centers
         timestamps = start + (np.arange(rates.shape[1]) + 0.5) * self.bin_size
-        rates = rates.T
+        rates = rates.T  # (num_bins, num_units)
 
         data.rates = IrregularTimeSeries(
             values=rates, timestamps=timestamps, domain="auto"
