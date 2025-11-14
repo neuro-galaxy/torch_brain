@@ -3,5 +3,6 @@ from .output_sampler import RandomOutputSampler
 from .patching import RegularPatching
 from .random_crop import RandomCrop
 from .random_time_scaling import RandomTimeScaling
+from .rereferencing import Rereferencing
 from .unit_dropout import TriangleDistribution, UnitDropout
 from .unit_filter import UnitFilter, UnitFilterById
