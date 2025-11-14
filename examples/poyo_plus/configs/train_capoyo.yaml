@@ -1,7 +1,7 @@
 defaults:
   - defaults.yaml
   - model: capoyo.yaml
-  - dataset: capoyo.yaml
+  - dataset: mice_8_benchmark.yaml #capoyo.yaml
   - _self_  # ensures current config overrides defaults
 
 epochs: 2000
@@ -10,11 +10,11 @@ batch_size: 64
 train_transforms:
   - _target_: torch_brain.transforms.UnitDropout
     field: "calcium_traces.df_over_f"
-    min_units: 10
+    min_units: 10 # what are these units? O_o
     mode_units: 50
     max_units: 300
     tail_right: 100
 
 wandb:
-  run_name: capoyo_full
+  run_name: capoyo_full_first_try
   

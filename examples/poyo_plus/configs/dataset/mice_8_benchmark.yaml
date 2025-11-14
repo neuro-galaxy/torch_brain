@@ -1,0 +1,41 @@
+- selection:
+  - brainset: "torch_brain_polly_export"
+    sessions:
+    - "dynamic29234-6-9-Video-021a75e56847d574b9acbcc06c675055_30hz"
+    - "dynamic29514-2-9-Video-021a75e56847d574b9acbcc06c675055_30hz"
+    - "dynamic29513-3-5-Video-021a75e56847d574b9acbcc06c675055_30hz"
+    - "dynamic29156-11-10-Video-021a75e56847d574b9acbcc06c675055_30hz"
+    - "dynamic17797-8-5-Video-021a75e56847d574b9acbcc06c675055_30hz"
+    - "dynamic29228-2-10-Video-021a75e56847d574b9acbcc06c675055_30hz"
+    - "dynamic26872-17-20-Video-021a75e56847d574b9acbcc06c675055_30hz" 
+    - "dynamic27204-5-13-Video-021a75e56847d574b9acbcc06c675055_30hz"
+  config:
+    # I do not think we need it?
+    # sampling_intervals_modifier: |
+    #   sampling_intervals = sampling_intervals & data.drifting_gratings.coalesce(0.3)
+    multitask_readout:
+      - readout_id: running_speed
+        normalize_mean: 0 # we export already normalized data!
+        normalize_std: 1
+        timestamp_key: running.timestamps
+        value_key: running.running_speed
+        metrics:
+          - metric:
+              _target_: torchmetrics.MeanSquaredError
+      - readout_id: pupil_location
+        normalize_mean: 0 # we export already normalized data!
+        normalize_std: 1
+        timestamp_key: pupil.timestamps
+        value_key: pupil.location
+        metrics:
+          - metric:
+              _target_: torchmetrics.MeanSquaredError
+      - readout_id: pupil_location
+        normalize_mean: 0 # we export already normalized data!
+        normalize_std: 1
+        timestamp_key: pupil.timestamps
+        value_key: pupil.size
+        metrics:
+          - metric:
+              _target_: torchmetrics.MeanSquaredError
+              # _target_: torchmetrics.R2Score
