@@ -2,43 +2,147 @@
 import os
 import numpy as np
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from transformers.activations import ACT2FN
-
-from utils.config_utils import DictConfig
-from models.model_output import ModelOutput
-from utils.mask import random_mask, get_spikes_mask_from_mask
 import random
 
-from utils.pos_embed import * 
-from models.self_attention_layer import *
-
-
 #torchbrain imports
-from temporaldata import Interval
-from torch_brain.data import Dataset
-from torch_brain.utils.binning import bin_spikes
-
-
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 from temporaldata import Data
-
+from torch_brain.utils.binning import bin_spikes
+from torch_brain.models.neuropaint.utils import get_cos_sin, apply_rotary_pos_emb, DictConfig, random_mask, get_spikes_mask_from_mask
 
 #%%
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-
 @dataclass
-class MAE_Output(ModelOutput):
+class MAE_Output():
     loss: Optional[torch.FloatTensor] = None
     regularization_loss: Optional[torch.FloatTensor] = None
     preds: Optional[torch.FloatTensor] = None
     targets: Optional[torch.FloatTensor] = None
 
+    def to_dict(self):
+        return {k: getattr(self, k) for k in self.__dataclass_fields__.keys()}
+    
+##############blocks###############
+# MLP
+class NeuralMLP(nn.Module):
+
+    def __init__(self, hidden_size, inter_size, act, use_bias, dropout):
+        super().__init__()
+        self.up_proj    = nn.Linear(hidden_size, inter_size, bias=use_bias)
+        self.act        = ACT2FN[act]
+        self.down_proj  = nn.Linear(inter_size, hidden_size, bias=use_bias)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        
+        x = self.act(self.up_proj(x))
+        return self.dropout(self.down_proj(x))
+    
+# Attention module.
+class NeuralAttention(nn.Module):
+
+    def __init__(self, idx, hidden_size, n_heads, use_bias,  max_F, dropout, use_rope=True):
+        super().__init__()
+        
+        self.idx = idx
+
+        # Architecture config
+        self.hidden_size = hidden_size
+        self.n_heads = n_heads
+        assert self.hidden_size % self.n_heads == 0, f"Hidden dim is not multiple of head size"
+        self.head_size = self.hidden_size // self.n_heads
+        self.use_rope = use_rope
+
+        # Attention parameters
+        self.query = nn.Linear(hidden_size, hidden_size, bias=use_bias)
+        self.key = nn.Linear(hidden_size, hidden_size, bias=use_bias)
+        self.value  = nn.Linear(hidden_size, hidden_size, bias=use_bias)
+        self.attn_dropout = dropout
+
+        # Final projection
+        self.dropout = nn.Dropout(dropout)
+        self.out_proj = nn.Linear(hidden_size, hidden_size, bias=use_bias)
+
+        # RoPE parameters
+        if use_rope:
+            cos, sin = get_cos_sin(self.head_size, max_F, base=10000., dtype=self.query.weight.dtype, device=self.query.weight.device)
+            self.register_buffer("cos", cos, persistent=False)
+            self.register_buffer("sin", sin, persistent=False)
+
+
+    def forward(
+        self,       
+        x:          torch.FloatTensor,                      # (bs, seq_len, hidden_size)  
+        timestamp:  Optional[torch.LongTensor] = None,      # (bs, seq_len) 
+    ) -> torch.FloatTensor:                                 # (bs, seq_len, hidden_size)
+
+        B, T, _  = x.size()     # batch size and fea len
+
+        # Compute query, key, value for attention
+        q = self.query(x).view(B, T, self.n_heads, self.head_size).transpose(1, 2)      #(B,n_heads,T,head_size)
+        k = self.key(x).view(B, T, self.n_heads, self.head_size).transpose(1, 2)        #(B,n_heads,T,head_size)
+        v = self.value(x).view(B, T, self.n_heads, self.head_size).transpose(1, 2)      #(B,n_heads,T,head_size)
+
+        # Apply rotations to encode relative positions
+        if self.use_rope:
+            q, k = apply_rotary_pos_emb(q, k, timestamp, self.cos, self.sin, 1)  # (B,n_heads,T,head_size)
+
+        out = F.scaled_dot_product_attention(q, k, v, dropout_p=(self.attn_dropout if self.training else 0.0), is_causal=False) # (B,n_heads,T,head_size)
+        out = out.transpose(1, 2).contiguous().view(B,T, self.hidden_size)       # (B, T, hidden_size)
+
+        return self.out_proj(self.dropout(out)) # (B, T, hidden_size)
+
+# Transformer Block layer: bidirectional self-attention + mlp
+class Block(nn.Module):
+    
+    def __init__(self, idx, max_F, config: DictConfig):
+        super().__init__()
+
+        self.idx = idx
+        # Architecture config
+        self.use_rope = config.use_rope
+
+        # Encoder block
+        self.ln1 = nn.LayerNorm(config.hidden_size) 
+        self.attn = NeuralAttention(idx, config.hidden_size, config.n_heads, config.attention_bias, max_F, config.dropout, config.use_rope)
+        self.ln2 = nn.LayerNorm(config.hidden_size) 
+        self.mlp = NeuralMLP(config.hidden_size, config.inter_size, config.act, config.mlp_bias, config.dropout)
+
+        if config.fixup_init:
+            self.fixup_initialization(config.n_layers)
+
+    def forward(
+        self, 
+        x:          torch.FloatTensor,                  # (bs, seq_len, hidden_size)
+        timestamp:  Optional[torch.LongTensor] = None,  # (bs, seq_len) #tdb this need to be the kept timestamps after masking     
+    ) -> torch.FloatTensor :                            # (bs, seq_len, hidden_size)
+        
+        # LN -> Attention -> Residual connectiob
+        x = x + self.attn(self.ln1(x), timestamp if self.use_rope else None)
+
+        # LN -> MLP -> Residual connection
+        x = x + self.mlp(self.ln2(x))
+
+        return x
+
+    def fixup_initialization(self, n_layers):
+        temp_state_dic = {}
+        for name, param in self.named_parameters():
+            if name.endswith("_proj.weight"):
+                temp_state_dic[name] = (0.67 * (n_layers) ** (- 1. / 4.)) * param
+            elif name.endswith("value.weight"):
+                temp_state_dic[name] = (0.67 * (n_layers) ** (- 1. / 4.)) * (param * (2**0.5))
+
+        for name in self.state_dict():
+            if name not in temp_state_dic:
+                temp_state_dic[name] = self.state_dict()[name]
+        self.load_state_dict(temp_state_dic)   
+######################end of block#########################
 
 class NeuralStitcher_cross_att(nn.Module):
     def __init__(self, 
@@ -405,7 +509,10 @@ class MAE_with_region_stitcher(nn.Module):
         self.session_id_str_to_ind = {session_id_strs[i]: i for i in range(len(session_id_strs))}
         self.areaoi = kwargs['areaoi'] # list of area names of interest
         self.region_to_ind = {region: i for i, region in enumerate(self.areaoi)}
-        #
+
+        # for heldout area in tokenize()
+        self.heldout_filter = kwargs['heldout_filter']
+        self.area_ind_list_dict = kwargs['area_ind_list_dict']
 
     def forward(
         self, 
@@ -447,21 +554,20 @@ class MAE_with_region_stitcher(nn.Module):
             targets=targets
         )
     
+    # @cache
+    # def _helper(area_acronym_list):
+    #     return np.array(...)
+    
     def tokenize(self, data: Data) -> Dict:
         # held out data from a randomly selected area TO-DO? 
-
         spikes_data = bin_spikes(data.spikes,len(data.units.acronym), bin_size=0.01, right=True)
         spikes_data = spikes_data.T.contiguous() # (T,N)
         T = spikes_data.shape[0]
         area_acronym_list = data.units.acronym.copy() #area name acronym list for all neurons
-        
-        #this function needs to be simplied. 
-        area_acronym_list = self.update_area_ind_list_and_areaoi_ind(area_acronym_list, self.areaoi) #update the acronym
         unit_filter_mask = np.isin(area_acronym_list, self.areaoi) #boolean mask for all neurons
 
         # Q: is there a way to do it only once for all trials in the data? 
         #data.units = data.units.select_by_mask(unit_filter_mask)
-
         spikes_data = spikes_data[:, unit_filter_mask]
 
         #only include spikes_data from neurons in areaoi
@@ -485,7 +591,7 @@ class MAE_with_region_stitcher(nn.Module):
             "spikes_data": spikes_data,
             "spikes_timestamps": np.arange(T),
             "neuron_regions": area_ind_list,
-            "is_left": np.zeros((N,)),
+            "is_left": np.zeros((N,)), #this indicate which hemisphere the neurons are from, here we set all to 0 (left) for simplicity
             "trial_type": trial_type,
             "masking_mode": 'region',
             "eid": eid,

@@ -1,0 +1,50 @@
+model_class: MAE_with_region_stitcher
+
+encoder:
+
+  from_pt: null
+  region_embed_dim: 20
+  trial_type_embed_dim: 10
+
+  stitcher:
+    unit_embed_dim: 50
+    region_embed_dim: 20
+    hemisphere_embed_dim: 3
+    T: 200
+    hidden_size: 512
+    n_channels_per_region: 24 # number of embedding factors per region in stitchers
+    dropout_x: 0.2
+    dropout_cross_att: 0.4
+    
+  # Mask layer
+  masker:
+    mult: 2               # embedding multiplier. hiddden_sizd = n_channels * mult
+    act: gelu             # activation for the embedding layers
+    bias: true            # use bias in the embedding layer
+    dropout: 0.2          # dropout in embedding layer
+    fixup_init: false     # modify weight initialization
+    use_prompt: false     # use prompt in the embedding layer
+    mask_mode: region     # mask mode in the embedding layer
+    t_ratio: 0.3          # time mask ratio 
+
+  # Transformer
+  transformer:
+    max_F: 2000    # maximum sequence length
+    n_layers: 5           # number of transformer layers
+    hidden_size: 256     # hidden space of the transformer
+    use_rope: true       # use rotary postional encoding
+
+    n_heads: 8            # number of attentiomn heads
+    attention_bias: true  # learn bias in the attention layers
+
+    act: gelu             # activiation function in mlp layers
+    inter_size: 512      # intermediate dimension in the mlp layers
+    mlp_bias: true        # learn bias in the mlp layers
+    
+    dropout: 0.4          # dropout in transformer layers
+    fixup_init: true      # modify weight initialization
+    
+
+
+
+
