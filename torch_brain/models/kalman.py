@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 
+
 class KalmanFilter(nn.Module):
-    def __init__(self, state_dim, obs_dim, device='cpu'):
+    def __init__(self, state_dim, obs_dim, device="cpu"):
         """
         Kalman Filter for neural decoding (Wu et al., 2003 style).
         Args:
@@ -78,4 +79,3 @@ class KalmanFilter(nn.Module):
             x_prev, P_prev = x_new, P_new
 
         return torch.stack(x_filtered, dim=0)
-
