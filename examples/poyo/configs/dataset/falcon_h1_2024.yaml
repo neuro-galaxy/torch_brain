@@ -1,0 +1,89 @@
+# FALCON H1: Human 7-DoF arm control task
+# Dataset: https://dandiarchive.org/dandiset/000954
+# 176-channel intracortical BCI, 7D kinematics (3D translation + 4D rotation/gripper)
+#
+# Split strategy:
+# - held-in-calib  → TRAIN (13 sessions, large calibration set)
+# - held-out-calib → VALID (14 sessions, few-shot calibration)
+# - minival        → TEST  (13 sessions, small quick-test set)
+
+# Held-in calibration sessions (TRAINING)
+- selection:
+  - brainset: falcon_h1_2024
+    sessions:
+      - 19250101T111740_held_in
+      - 19250101T112404_held_in
+      - 19250108T110520_held_in
+      - 19250108T111022_held_in
+      - 19250108T111455_held_in
+      - 19250113T120811_held_in
+      - 19250113T121303_held_in
+      - 19250115T110633_held_in
+      - 19250115T111328_held_in
+      - 19250119T113543_held_in
+      - 19250119T114045_held_in
+      - 19250120T115044_held_in
+      - 19250120T115537_held_in
+  config:
+    readout:
+      readout_id: falcon_h1.kinematics_7d
+
+# Held-out calibration sessions (VALIDATION)
+- selection:
+  - brainset: falcon_h1_2024
+    sessions:
+      - 19250126T113454_held_out
+      - 19250126T114029_held_out
+      - 19250127T120333_held_out
+      - 19250127T120826_held_out
+      - 19250129T112555_held_out
+      - 19250129T113059_held_out
+      - 19250202T113958_held_out
+      - 19250202T114452_held_out
+      - 19250203T113515_held_out
+      - 19250203T114018_held_out
+      - 19250206T112219_held_out
+      - 19250206T112712_held_out
+      - 19250209T111826_held_out
+      - 19250209T112327_held_out
+  config:
+    readout:
+      readout_id: falcon_h1.kinematics_7d
+
+# Held-in calibration sessions (larger training sets - uncomment when ready)
+# - selection:
+#   - brainset: falcon_h1_2024
+#     sessions:
+#       # Add held-in-calib sessions here (13 files)
+#   config:
+#     readout:
+#       readout_id: kinematics_7d
+#       timestamp_key: kinematics.timestamps
+#       value_key: kinematics.vel
+#       normalize_mean: 0.
+#       normalize_std: 1.0
+#       weights:
+#         eval_intervals: 1.0
+#       metrics:
+#         - metric:
+#             _target_: torchmetrics.R2Score
+#       eval_interval: eval_intervals
+
+# Held-out sessions (for few-shot evaluation - uncomment when ready)
+# - selection:
+#   - brainset: falcon_h1_2024
+#     sessions:
+#       # Add held-out-calib sessions here (14 files)
+#   config:
+#     readout:
+#       readout_id: kinematics_7d
+#       timestamp_key: kinematics.timestamps
+#       value_key: kinematics.vel
+#       normalize_mean: 0.
+#       normalize_std: 1.0
+#       weights:
+#         eval_intervals: 1.0
+#       metrics:
+#         - metric:
+#             _target_: torchmetrics.R2Score
+#       eval_interval: eval_intervals
