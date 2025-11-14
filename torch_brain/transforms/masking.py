@@ -233,9 +233,9 @@ class TimeMasking(MaskingBase):
         # Place non-overlapping windows by iterating through shuffled positions
         for start_idx in possible_starts:
             # Check if this position is still available (no overlap with existing windows)
-            if time_mask[start_idx:start_idx + window_samples].all():
+            if time_mask[start_idx : start_idx + window_samples].all():
                 # Mask this window
-                time_mask[start_idx:start_idx + window_samples] = False
+                time_mask[start_idx : start_idx + window_samples] = False
                 samples_masked += window_samples
 
                 # Stop if we've masked enough samples

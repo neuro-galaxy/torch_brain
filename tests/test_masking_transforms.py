@@ -239,24 +239,25 @@ class TestTimeMasking:
             regular_ts=create_sample_regular_time_series(1000, 10, sampling_rate=100.0),
             domain=Interval(0.0, 10.0),
         )
-        
+
         # Test with various mask percentages
         for mask_percentage in [0.1, 0.2, 0.3, 0.4]:
             transform = TimeMasking(
-                mask_percentage=mask_percentage, 
+                mask_percentage=mask_percentage,
                 window_duration=0.05,  # 5 samples
-                random_seed=42
+                random_seed=42,
             )
             result = transform(data)
-            
+
             mask = result.regular_ts.mask
             # Calculate actual masked fraction
             masked_fraction = 1.0 - mask.any(axis=1).sum() / mask.shape[0]
-            
+
             # With non-overlapping windows, should be within 5% tolerance
-            assert abs(masked_fraction - mask_percentage) < 0.05, \
-                f"Expected {mask_percentage:.2f}, got {masked_fraction:.2f}. " \
+            assert abs(masked_fraction - mask_percentage) < 0.05, (
+                f"Expected {mask_percentage:.2f}, got {masked_fraction:.2f}. "
                 f"Difference of {abs(masked_fraction - mask_percentage):.2f} suggests overlapping windows."
+            )
 
 
 class TestChannelMasking:
