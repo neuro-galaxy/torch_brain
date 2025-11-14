@@ -1,5 +1,5 @@
 import numpy as np
-from temporaldata import Data
+from temporaldata import Data, IrregularTimeSeries
 
 from torch_brain.utils.binning import bin_spikes
 from torch_brain.utils.spike_rates import compute_rates
@@ -24,11 +24,13 @@ class RateDrift:
         field: str = "spikes",
         offset_scale: float = 0.05,
         drift_scale: float = 0.01,
+        bin_size: float = 0.02,
         seed: int = None,
     ):
         self.field = field
         self.offset_scale = offset_scale
         self.drift_scale = drift_scale
+        self.bin_size = bin_size
         self.rng = np.random.default_rng(seed)
 
     def __call__(self, data: Data):
@@ -37,7 +39,7 @@ class RateDrift:
         nested = self.field.split(".")
         obj = getattr(data, nested[0])
 
-        binned = bin_spikes(obj, num_units=len(data.units), bin_size=0.02)
+        binned = bin_spikes(obj, num_units=len(data.units), bin_size=self.bin_size)
 
         rates = compute_rates(
             binned,
@@ -68,8 +70,13 @@ class RateDrift:
         # ---------------------------------------------
         augmented = rates + offset_term + drift_term
 
-        data.rates = augmented
+        start = obj.domain.start[0]
+        # timestamps represent bin centers
+        timestamps = start + (np.arange(augmented.shape[1]) + 0.5) * self.bin_size
+        augmented = augmented.T
 
-        # # Assign back
-        # setattr(data, self.field, augmented)
+        data.rates = IrregularTimeSeries(
+            values=augmented, timestamps=timestamps, domain="auto"
+        )
+
         return data
