@@ -58,7 +58,7 @@ class RegularPatching:
             data: The temporalData object to patch.
 
         Returns:
-            A new Data object with patched RegularTimeSeries fields.
+            A new Data object with patched time series fields.
         """
         if data.domain is None:
             raise ValueError("Data object must have a domain to apply patching.")
@@ -70,10 +70,14 @@ class RegularPatching:
             if key in ["_domain", "_absolute_start"]:
                 continue
             elif isinstance(value, RegularTimeSeries):
-                out.__dict__[key] = self._patch_regular_time_series(value)
+                out.__dict__[key] = self._patch_time_series(value)
             elif isinstance(value, IrregularTimeSeries):
-                # Leave IrregularTimeSeries unchanged
-                out.__dict__[key] = copy.copy(value)
+                # Check if regularly spaced
+                if self._is_regularly_spaced(value):
+                    out.__dict__[key] = self._patch_time_series(value)
+                else:
+                    # Skip irregularly spaced time series
+                    out.__dict__[key] = copy.copy(value)
             elif isinstance(value, Interval):
                 out.__dict__[key] = copy.copy(value)
             elif isinstance(value, Data) and value.domain is not None:
@@ -85,7 +89,7 @@ class RegularPatching:
         # Update domain to reflect new time structure
         patched_domain = None
         for key, value in out.__dict__.items():
-            if isinstance(value, RegularTimeSeries):
+            if isinstance(value, (RegularTimeSeries, IrregularTimeSeries)):
                 patched_domain = value.domain
                 break
 
@@ -98,19 +102,55 @@ class RegularPatching:
 
         return out
 
-    def _patch_regular_time_series(self, ts: RegularTimeSeries) -> RegularTimeSeries:
-        """Patch a RegularTimeSeries object using efficient vectorized operations.
+    def _patch_time_series(self, ts):
+        """Patch a time series object (RegularTimeSeries or IrregularTimeSeries).
 
         Args:
-            ts: The RegularTimeSeries to patch.
+            ts: The time series to patch (RegularTimeSeries or IrregularTimeSeries).
 
         Returns:
-            A new RegularTimeSeries with patched data.
+            A new time series of the same type with patched data.
         """
-        # Get data shape and parameters
-        data = ts.data
-        time_samples = data.shape[0]
-        sampling_rate = ts.sampling_rate
+        # Get all array attributes (excluding timestamps for irregular)
+        array_attrs = {}
+        
+        if isinstance(ts, RegularTimeSeries):
+            sampling_rate = ts.sampling_rate
+            start_time = ts.domain.start[0] if ts.domain else 0.0
+            
+            # Get all array attributes from RegularTimeSeries
+            for key in ts.keys():
+                attr = getattr(ts, key)
+                if isinstance(attr, np.ndarray) and attr.ndim >= 2:
+                    array_attrs[key] = attr
+                    
+        elif isinstance(ts, IrregularTimeSeries):
+            # Get all array attributes (excluding timestamps)
+            for key in ts.keys():
+                if key == "timestamps":
+                    continue
+                attr = getattr(ts, key)
+                if isinstance(attr, np.ndarray) and attr.ndim >= 2:
+                    array_attrs[key] = attr
+            
+            # If no suitable array attributes or < 2 timestamps, return unchanged
+            if not array_attrs or len(ts.timestamps) < 2:
+                return copy.copy(ts)
+            
+            # Calculate effective sampling rate from timestamps
+            time_diffs = np.diff(ts.timestamps)
+            sampling_rate = 1.0 / np.mean(time_diffs)
+            start_time = ts.timestamps[0]
+        else:
+            return copy.copy(ts)
+
+        # If no suitable array attributes found, return unchanged
+        if not array_attrs:
+            return copy.copy(ts)
+
+        # Use the first array attribute to determine dimensions
+        first_attr = array_attrs[list(array_attrs.keys())[0]]
+        time_samples = first_attr.shape[0]
 
         # Calculate patch parameters in samples
         patch_samples = int(np.round(self.patch_duration * sampling_rate))
@@ -127,38 +167,71 @@ class RegularPatching:
         # Calculate total samples needed after padding
         total_samples_needed = (num_patches - 1) * stride_samples + patch_samples
 
-        # Pad data if necessary using efficient numpy pad
-        if time_samples < total_samples_needed:
-            pad_width = [(0, total_samples_needed - time_samples)] + [(0, 0)] * (
-                data.ndim - 1
-            )
-            padded_data = np.pad(data, pad_width, mode="constant", constant_values=0)
-        else:
-            padded_data = data
-
         # Create index array: shape (num_patches, patch_samples)
         indices = (
             np.arange(patch_samples)[None, :]
             + stride_samples * np.arange(num_patches)[:, None]
         )
 
-        patches = padded_data[indices]
-        patches = np.moveaxis(patches, 2, 1)
+        # Patch all array attributes
+        patched_attrs = {}
+        for key, attr_data in array_attrs.items():
+            # Pad data if necessary
+            if time_samples < total_samples_needed:
+                pad_width = [(0, total_samples_needed - time_samples)] + [(0, 0)] * (
+                    attr_data.ndim - 1
+                )
+                padded_data = np.pad(attr_data, pad_width, mode="constant", constant_values=0)
+            else:
+                padded_data = attr_data
+
+            # Create patches and move channel axis
+            patches = padded_data[indices]
+            patches = np.moveaxis(patches, 2, 1)
+            patched_attrs[key] = patches
+
+        # Calculate new timestamps
         new_sampling_rate = 1.0 / self.stride
 
         if self.timestamp_mode == "start":
-            domain_start = 0.0
-            domain_end = (num_patches - 1) / new_sampling_rate
+            domain_start = start_time
+            domain_end = domain_start + (num_patches - 1) / new_sampling_rate
         elif self.timestamp_mode == "middle":
-            domain_start = self.patch_duration / 2
+            domain_start = start_time + self.patch_duration / 2
             domain_end = domain_start + (num_patches - 1) / new_sampling_rate
 
         new_domain = Interval(start=domain_start, end=domain_end)
 
-        # Create new RegularTimeSeries with patched data
-        patched_ts = RegularTimeSeries.__new__(RegularTimeSeries)
-        patched_ts.__dict__["data"] = patches
-        patched_ts._sampling_rate = new_sampling_rate
-        patched_ts._domain = new_domain
+        # Create appropriate output type
+        if isinstance(ts, RegularTimeSeries):
+            patched_ts = RegularTimeSeries.__new__(RegularTimeSeries)
+            for key, value in patched_attrs.items():
+                patched_ts.__dict__[key] = value
+            patched_ts._sampling_rate = new_sampling_rate
+            patched_ts._domain = new_domain
+        else:  # IrregularTimeSeries
+            new_timestamps = np.linspace(domain_start, domain_end, num_patches)
+            patched_ts = IrregularTimeSeries.__new__(IrregularTimeSeries)
+            patched_ts.__dict__["timestamps"] = new_timestamps
+            for key, value in patched_attrs.items():
+                patched_ts.__dict__[key] = value
+            patched_ts._domain = new_domain
 
         return patched_ts
+
+    def _is_regularly_spaced(self, ts: IrregularTimeSeries, tolerance=1e-6) -> bool:
+        """Check if timestamps are regularly spaced.
+
+        Args:
+            ts: IrregularTimeSeries object.
+            tolerance: Tolerance for checking regular spacing.
+
+        Returns:
+            True if timestamps are regularly spaced, False otherwise.
+        """
+        timestamps = ts.timestamps
+        if len(timestamps) < 2:
+            return True
+
+        diffs = np.diff(timestamps)
+        return np.allclose(diffs, diffs[0], atol=tolerance)

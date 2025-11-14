@@ -420,3 +420,259 @@ def test_preserves_absolute_start():
 
     # _absolute_start should be preserved
     assert patched_data._absolute_start == 5.0
+
+
+def test_irregular_time_series_regularly_spaced():
+    """Test patching of IrregularTimeSeries with regularly spaced timestamps."""
+    # Create regularly spaced timestamps (same as 10 Hz)
+    timestamps = np.arange(0, 10.0, 0.1)  # 100 samples at 0.1s intervals
+    num_samples = len(timestamps)
+    num_channels = 3
+    
+    # Create IrregularTimeSeries with regularly spaced timestamps
+    irregular_ts = IrregularTimeSeries(
+        timestamps=timestamps,
+        data=np.random.randn(num_samples, num_channels),
+        domain="auto",
+    )
+    data = Data(irregular_ts=irregular_ts, domain=irregular_ts.domain)
+    
+    patch_duration = 1.0  # 10 samples per patch
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
+    patched_data = transform(data)
+    
+    # Should be patched like regular time series: (num_patches, channels, patch_samples)
+    assert patched_data.irregular_ts.data.shape == (10, 3, 10)
+    
+    # Verify timestamps
+    expected_timestamps = np.arange(10) * stride
+    np.testing.assert_array_almost_equal(
+        patched_data.irregular_ts.timestamps, expected_timestamps
+    )
+
+
+def test_irregular_time_series_irregularly_spaced():
+    """Test that irregularly spaced IrregularTimeSeries is NOT patched."""
+    # Create irregularly spaced timestamps
+    timestamps = np.array([0.0, 0.1, 0.25, 0.4, 0.7, 1.0, 1.5, 2.0, 2.8, 3.5])
+    num_samples = len(timestamps)
+    num_channels = 3
+    
+    irregular_ts = IrregularTimeSeries(
+        timestamps=timestamps,
+        data=np.random.randn(num_samples, num_channels),
+        domain="auto",
+    )
+    data = Data(irregular_ts=irregular_ts, domain=irregular_ts.domain)
+    
+    patch_duration = 1.0
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
+    patched_data = transform(data)
+    
+    # Should be unchanged (not patched)
+    assert patched_data.irregular_ts.data.shape == (num_samples, num_channels)
+    np.testing.assert_array_equal(
+        patched_data.irregular_ts.timestamps, timestamps
+    )
+
+
+def test_irregular_time_series_with_padding():
+    """Test patching of regularly spaced IrregularTimeSeries with padding."""
+    # Create regularly spaced timestamps (95 samples)
+    timestamps = np.arange(0, 9.5, 0.1)  # 95 samples
+    num_samples = len(timestamps)
+    
+    irregular_ts = IrregularTimeSeries(
+        timestamps=timestamps,
+        data=np.ones((num_samples, 2)),
+        domain="auto",
+    )
+    data = Data(irregular_ts=irregular_ts, domain=irregular_ts.domain)
+    
+    patch_duration = 1.0  # 10 samples per patch
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
+    patched_data = transform(data)
+    
+    # Should create 10 patches (last one padded)
+    assert patched_data.irregular_ts.data.shape == (10, 2, 10)
+    
+    # Last patch should have padding
+    last_patch = patched_data.irregular_ts.data[-1]
+    # First 5 samples should be data (ones)
+    np.testing.assert_array_equal(last_patch[:, :5], np.ones((2, 5)))
+    # Last 5 samples should be padding (zeros)
+    np.testing.assert_array_equal(last_patch[:, 5:], np.zeros((2, 5)))
+
+
+def test_irregular_time_series_overlapping_patches():
+    """Test overlapping patches with regularly spaced IrregularTimeSeries."""
+    timestamps = np.arange(0, 10.0, 0.1)  # 100 samples
+    num_samples = len(timestamps)
+    
+    irregular_ts = IrregularTimeSeries(
+        timestamps=timestamps,
+        data=np.random.randn(num_samples, 3),
+        domain="auto",
+    )
+    data = Data(irregular_ts=irregular_ts, domain=irregular_ts.domain)
+    
+    patch_duration = 2.0  # 20 samples
+    stride = 1.0  # 10 samples
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
+    patched_data = transform(data)
+    
+    # Should create 9 patches
+    expected_num_patches = 9
+    assert patched_data.irregular_ts.data.shape == (expected_num_patches, 3, 20)
+
+
+def test_irregular_time_series_timestamp_mode_middle():
+    """Test middle timestamp mode with regularly spaced IrregularTimeSeries."""
+    timestamps = np.arange(0, 10.0, 0.1)  # 100 samples at 10 Hz
+    num_samples = len(timestamps)
+    
+    irregular_ts = IrregularTimeSeries(
+        timestamps=timestamps,
+        data=np.random.randn(num_samples, 2),
+        domain="auto",
+    )
+    data = Data(irregular_ts=irregular_ts, domain=irregular_ts.domain)
+    
+    patch_duration = 1.0
+    stride = 0.5
+    transform = RegularPatching(
+        patch_duration=patch_duration, stride=stride, timestamp_mode="middle"
+    )
+    
+    patched_data = transform(data)
+    
+    # Middle timestamps should be patch_duration/2 + patch_index * stride
+    num_patches = patched_data.irregular_ts.data.shape[0]
+    expected_timestamps = np.arange(num_patches) * stride + patch_duration / 2
+    np.testing.assert_array_almost_equal(
+        patched_data.irregular_ts.timestamps, expected_timestamps
+    )
+
+
+def test_mixed_regular_and_irregular_time_series():
+    """Test patching with both regular and regularly-spaced irregular time series."""
+    # Regular time series
+    lfp = RegularTimeSeries(
+        sampling_rate=10.0,
+        data=np.random.randn(100, 3),
+        domain="auto",
+    )
+    
+    # Regularly spaced irregular time series
+    timestamps = np.arange(0, 10.0, 0.1)
+    irregular_ts = IrregularTimeSeries(
+        timestamps=timestamps,
+        data=np.random.randn(100, 2),
+        domain="auto",
+    )
+    
+    data = Data(lfp=lfp, irregular_ts=irregular_ts, domain=lfp.domain)
+    
+    patch_duration = 1.0
+    stride = 1.0
+    transform = RegularPatching(patch_duration=patch_duration, stride=stride)
+    
+    patched_data = transform(data)
+    
+    # Both should be patched
+    assert patched_data.lfp.data.shape == (10, 3, 10)
+    assert patched_data.irregular_ts.data.shape == (10, 2, 10)
+    
+    # Both should have consistent timestamps
+    np.testing.assert_array_almost_equal(
+        patched_data.lfp.timestamps, patched_data.irregular_ts.timestamps
+    )
+
+
+def test_irregular_time_series_with_non_zero_start():
+    """Test patching of IrregularTimeSeries with non-zero start timestamp."""
+    # Create regularly spaced timestamps starting at 5.0
+    timestamps = np.arange(5.0, 15.0, 0.1)  # 100 samples
+    num_samples = len(timestamps)
+    
+    irregular_ts = IrregularTimeSeries(
+        timestamps=timestamps,
+        data=np.random.randn(num_samples, 3),
+        domain="auto",
+    )
+    data = Data(irregular_ts=irregular_ts, domain=irregular_ts.domain)
+    
+    patch_duration = 1.0
+    stride = 1.0
+    transform = RegularPatching(
+        patch_duration=patch_duration, stride=stride, timestamp_mode="start"
+    )
+    
+    patched_data = transform(data)
+    
+    # Should create 10 patches
+    assert patched_data.irregular_ts.data.shape == (10, 3, 10)
+    
+    # Timestamps should start at 5.0
+    expected_timestamps = 5.0 + np.arange(10) * stride
+    np.testing.assert_array_almost_equal(
+        patched_data.irregular_ts.timestamps, expected_timestamps
+    )
+
+
+def test_irregular_time_series_single_timestamp():
+    """Test edge case: IrregularTimeSeries with single timestamp."""
+    timestamps = np.array([0.5])
+    irregular_ts = IrregularTimeSeries(
+        timestamps=timestamps,
+        data=np.random.randn(1, 2),
+        domain="auto",
+    )
+    data = Data(irregular_ts=irregular_ts, domain=irregular_ts.domain)
+    
+    transform = RegularPatching(patch_duration=1.0, stride=1.0)
+    patched_data = transform(data)
+    
+    # Should be unchanged (cannot patch with < 2 timestamps)
+    assert patched_data.irregular_ts.data.shape == (1, 2)
+    np.testing.assert_array_equal(
+        patched_data.irregular_ts.timestamps, timestamps
+    )
+
+
+def test_regular_time_series_with_non_zero_start():
+    """Test patching of RegularTimeSeries with non-zero start timestamp."""
+    sampling_rate = 10.0
+    num_samples = 100
+    
+    # Create RegularTimeSeries with domain starting at 5.0
+    lfp = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        data=np.random.randn(num_samples, 3),
+        domain=Interval(5.0, 15.0),
+    )
+    data = Data(lfp=lfp, domain=lfp.domain)
+    
+    patch_duration = 1.0
+    stride = 1.0
+    transform = RegularPatching(
+        patch_duration=patch_duration, stride=stride, timestamp_mode="start"
+    )
+    
+    patched_data = transform(data)
+    
+    # Should create 10 patches
+    assert patched_data.lfp.data.shape == (10, 3, 10)
+    
+    # Timestamps should start at 5.0
+    expected_timestamps = 5.0 + np.arange(10) * stride
+    np.testing.assert_array_almost_equal(
+        patched_data.lfp.timestamps, expected_timestamps
+    )
