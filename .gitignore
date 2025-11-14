@@ -162,3 +162,5 @@ data/raw
 **/.DS_Store
 
 checkpoint.pth
+
+uv.lock
