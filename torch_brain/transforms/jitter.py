@@ -33,11 +33,6 @@ class TemporalJitter:
     def __call__(self, data: Data):
 
         nested = self.field.split(".")
-        if len(nested) != 2:
-            raise ValueError(
-                f"Field '{self.field}' must be of form 'object.attribute', "
-                f"got '{self.field}'."
-            )
 
         obj = getattr(data, nested[0])
 
