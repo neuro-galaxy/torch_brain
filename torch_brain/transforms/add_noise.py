@@ -43,6 +43,11 @@ class RandomNoise:
             )
 
         self.kind = kind
+
+        valid_kinds = {"additive", "multiplicative"}
+        if kind not in valid_kinds:
+            raise ValueError(f"Invalid kind: {kind}. Must be one of {valid_kinds}")
+
         self.clip = clip
         self.rng = np.random.RandomState(seed)
 
