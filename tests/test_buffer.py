@@ -1,11 +1,12 @@
 # need to make it as a proper test, it is not now...
 # test with random one
 
-
+import torch
 import random
 from types import SimpleNamespace
 from torch_brain.data.sampler import SequentialFixedWindowSampler
 from torch_brain.data.sampler import RandomFixedWindowSampler
+from torch_brain.data.sampler import TrialSampler
 from torch_brain.data.buffer_sampler import BufferedSampler
 
 def make_fake_sampling_intervals(num_records=5, max_time=100, n_interval=5):
@@ -29,30 +30,33 @@ fake_sampling_intervals = make_fake_sampling_intervals(num_records=1)
 for rec_id, domain in fake_sampling_intervals.items():
     print(rec_id, domain.start, domain.end)
 
-#sampler = SequentialFixedWindowSampler(
+# sampler = SequentialFixedWindowSampler(
 #    sampling_intervals=fake_sampling_intervals,
 #    window_length=5.0,
-#)
+# )
 
-sampler = RandomFixedWindowSampler(
-    sampling_intervals=fake_sampling_intervals,
-    window_length=5.0,
+sampler = TrialSampler(
+   sampling_intervals=fake_sampling_intervals,
 )
 
-base_windows = list(sampler)
+# sampler = RandomFixedWindowSampler(
+#     sampling_intervals=fake_sampling_intervals,
+#     window_length=5.0,
+#     generator = torch.Generator().manual_seed(1115), 
+# )
 
-for didx in base_windows: #sampler:
+#base_windows = list(sampler)
+for didx in sampler:
     print(f'start: {didx.start:.2f}, end: {didx.end:.2f}')
 
 print("=======")
 
 buffered_sampler = BufferedSampler(
-    base_sampler = base_windows,
+    base_sampler = sampler,
     sampling_intervals=fake_sampling_intervals,
-    buffer_len =3.0,
+    buffer_len = 3.0,
+    IsTrialSampler = True,
 )
 
-sample = next(iter(buffered_sampler))
-
-for didx in buffered_sampler.buffered_indices:
+for didx in buffered_sampler:
     print(f'start: {didx.start:.2f}, end: {didx.end:.2f}')
