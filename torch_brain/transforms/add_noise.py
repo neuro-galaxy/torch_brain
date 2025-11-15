@@ -34,6 +34,9 @@ class RandomNoise:
         # TODO: Add support for defining loc and scale for each field and channel.
         self.loc = loc
         self.scale = scale
+        if scale <= 0:
+            raise ValueError(f"Scale must be positive, got {scale}")
+
         self.distribution = distribution
 
         valid_distributions = {"gaussian", "laplace", "uniform"}
