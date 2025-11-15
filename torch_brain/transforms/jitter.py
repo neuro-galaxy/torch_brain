@@ -4,7 +4,7 @@ from temporaldata import IrregularTimeSeries, Data
 
 class TemporalJitter:
     """
-    Add temporal jitter to IrregularTimeSeries timestamps.
+    Add temporal jitter.
 
     Disclaimer: This transform is only compatible with IrregularTimeSeries.
 
