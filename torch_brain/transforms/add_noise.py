@@ -68,7 +68,7 @@ class RandomNoise:
             if self.kind == "additive":
                 values_noisy = values + noise
             elif self.kind == "multiplicative":
-                values_noisy = values * noise
+                values_noisy = values * (1 + noise)
             else:
                 raise ValueError(f"Invalid kind: {self.kind}")
 
