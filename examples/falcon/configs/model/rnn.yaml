@@ -1,5 +1,5 @@
 _target_: torch_brain.models.rnn.RNN
-sequence_length: 1.0
+sequence_length: 1.00001 # FP error
 input_size: 96 # FALCON M2
 hidden_size: 64
 rnn_type: "gru"

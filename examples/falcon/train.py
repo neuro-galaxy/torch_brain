@@ -2,7 +2,7 @@ import copy
 import logging
 from collections import defaultdict
 from typing import Callable, Dict
-
+from einops import rearrange, repeat
 import hydra
 import lightning as L
 import torch
@@ -94,36 +94,34 @@ class TrainWrapper(L.LightningModule):
         }
 
     def training_step(self, batch, batch_idx):
-
         # forward pass
-        output_values = self.model(**batch["model_inputs"], unpack_output=False)
+        output_values, hidden = self.model(**batch["model_inputs"], unpack_output=False)
 
         # compute loss
         target_values = batch["target_values"]
-        target_weights = batch["target_weights"]
         loss = torch.tensor(0, device=self.device, dtype=torch.float32)
         taskwise_loss = {}
         for readout_id in output_values.keys():
             output = output_values[readout_id]
-            target = target_values[readout_id]
+            target = target_values # TODO: Not sure how to deliver a dict of target values.
+            # target = target_values[readout_id]
 
             spec = self.model.readout.readout_specs[readout_id]
 
-            weights = 1.0
-            if readout_id in target_weights and target_weights[readout_id] is not None:
-                weights = target_weights[readout_id]
-
-            taskwise_loss[readout_id] = spec.loss_fn(output, target, weights)
+            # output = rearrange(output, 'b t c -> b (t c)') # torchbrain MSE doesn't take 3d...
+            target = rearrange(target, 'b t c -> (b t) c')
+            taskwise_loss[readout_id] = spec.loss_fn(output, target)
 
             # count the number of sequences in the batch that have the current task
-            num_sequences_with_current_task = torch.any(
-                batch["model_inputs"]["output_decoder_index"]
-                == MODALITY_REGISTRY[readout_id].id,
-                dim=1,
-            ).sum()
-            loss = loss + taskwise_loss[readout_id] * num_sequences_with_current_task
+            # num_sequences_with_current_task = torch.any(
+            #     batch["model_inputs"]["output_decoder_index"]
+            #     == MODALITY_REGISTRY[readout_id].id,
+            #     dim=1,
+            # ).sum()
+            loss = loss + taskwise_loss[readout_id] # Actually a single task... * num_sequences_with_current_task
 
-        batch_size = batch["model_inputs"]["input_unit_index"].shape[0]
+        batch_size = output.size(0)
+        # batch_size = batch["model_inputs"]["input_unit_index"].shape[0]
         # TODO change batch_size when POYOPlusEfficient is used
         loss = loss / batch_size
 
@@ -140,25 +138,22 @@ class TrainWrapper(L.LightningModule):
         #     self.log(f"targets/mean_{name}", targets.mean())
         #     self.log(f"targets/std_{name}", targets.std())
 
-        unit_index = batch["model_inputs"]["input_unit_index"].float()
-        self.log("inputs/mean_unit_index", unit_index.mean())
-        self.log("inputs/std_unit_index", unit_index.std())
-
         return loss
 
     def validation_step(self, batch, batch_idx):
 
         # forward pass
-        output_values = self.model(**batch["model_inputs"], unpack_output=True)
+        output_values, _hidden = self.model(**batch["model_inputs"], unpack_output=True)
 
         # prepare data for evaluator
         # (goes to MultiTaskDecodingStitchEvaluator.on_validation_batch_end)
+        flat_target_values = rearrange(batch["target_values"], 'b t c -> (b t) c')
         data_for_eval = DataForMultiTaskDecodingStitchEvaluator(
-            timestamps=batch["model_inputs"]["output_timestamps"],
+            timestamps=batch["target_timestamps"],
             preds=output_values,
-            targets=batch["target_values"],
+            targets={"hand_velocity_2d": flat_target_values},
             decoder_indices=batch["model_inputs"]["output_decoder_index"],
-            eval_masks=batch["eval_mask"],
+            eval_masks={"hand_velocity_2d": torch.ones_like(flat_target_values[..., 0], dtype=bool)}, # TODO get proper eval mask
             session_ids=batch["session_id"],
             absolute_starts=batch["absolute_start"],
         )
