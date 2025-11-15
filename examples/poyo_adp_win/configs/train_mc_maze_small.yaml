@@ -1,0 +1,15 @@
+defaults:
+  - defaults.yaml
+  - model: poyo_1.3M.yaml
+  - dataset: pei_pandarinath_nlb_2021.yaml
+  - _self_
+
+train_transforms:
+  - _target_: torch_brain.transforms.UnitDropout
+    max_units: 1000
+    min_units: 60
+    mode_units: 300
+    peak: 4
+
+wandb:
+  run_name: poyo_nlb_mc_maze_small
