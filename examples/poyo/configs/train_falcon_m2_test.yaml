@@ -1,0 +1,33 @@
+# Minimal FALCON M2 training config for pipeline validation
+# Run with: python train.py --config-name train_falcon_m2_test
+
+defaults:
+  - defaults.yaml
+  - model: poyo_1.3M.yaml
+  - dataset: falcon_m2_2024.yaml
+  - _self_
+
+# Quick training settings for validation
+epochs: 2
+batch_size: 32
+eval_epochs: 1
+sanity_check_validation: true  # Run validation before training
+
+# Unit dropout transform (M2 has 96 channels per session)
+train_transforms:
+  - _target_: torch_brain.transforms.UnitDropout
+    max_units: 96
+    min_units: 30
+    mode_units: 60
+    peak: 4
+
+# Disable wandb for testing
+wandb:
+  enable: false
+  run_name: falcon_m2_validation_test
+
+# Data path
+data_root: ./data/processed/
+
+# Use fewer workers for testing
+num_workers: 2

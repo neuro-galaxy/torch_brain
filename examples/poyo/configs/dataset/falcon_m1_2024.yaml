@@ -1,0 +1,47 @@
+# FALCON M1: Monkey hEMG
+# Dataset: https://dandiarchive.org/dandiset/000941
+# 64-channel Utah array, 16D EMG
+#
+# Split strategy:
+# - held-in-calib  → TRAIN (4 sessions: 20120924-20120928)
+# - held-out-calib → VALID (3 sessions: 20121004, 20121017, 20121024)
+# - minival        → TEST  (4 sessions, small quick-test set)
+
+# Held-in calibration sessions (TRAINING)
+- selection:
+  - brainset: falcon_m1_2024
+    sessions:
+      - 20120924_held_in
+      - 20120926_held_in
+      - 20120927_held_in
+      - 20120928_held_in
+  config:
+    readout:
+      readout_id: falcon_m1.emg_16d
+      normalize_mean: 0.
+      normalize_std: 1.0
+      weights:
+        eval_intervals: 1.0
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+      eval_interval: eval_intervals
+
+# Held-out calibration sessions (VALIDATION)
+- selection:
+  - brainset: falcon_m1_2024
+    sessions:
+      - 20121004_held_out
+      - 20121017_held_out
+      - 20121024_held_out
+  config:
+    readout:
+      readout_id: falcon_m1.emg_16d
+      normalize_mean: 0.
+      normalize_std: 1.0
+      weights:
+        eval_intervals: 1.0
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+      eval_interval: eval_intervals
