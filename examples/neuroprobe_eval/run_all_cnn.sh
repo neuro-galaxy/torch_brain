@@ -14,24 +14,26 @@ HYDRA_OUTPUT_DIR=${2:-outputs/run_all_cnn}
 PREPROCESSORS="laplacian_stft" # raw stft 
 
 # All tasks from neuroprobe config
-TASKS="onset speech volume" # onset speech volume delta_volume pitch word_index word_gap gpt2_surprisal word_head_pos word_part_speech word_length global_flow local_flow frame_brightness face_num
+TASKS="onset speech volume delta_volume" # onset speech volume delta_volume pitch word_index word_gap gpt2_surprisal word_head_pos word_part_speech word_length global_flow local_flow frame_brightness face_num
 
 # All subject/trial combinations (Neuroprobe Lite)
 SUBJECT_TRIALS=(
-    "1 1"
-    
+    "2 4"
+    "1 2"
+    "2 0"
 )
+# "1 1"
 # "1 2"
-#     "2 0"
-    # "2 4"
-    # "3 0"
-    # "3 1"
-    # "4 0"
-    # "4 1"
-    # "7 0"
-    # "7 1"
-    # "10 0"
-    # "10 1"
+# "2 0"
+# "2 4"
+# "3 0"
+# "3 1"
+# "4 0"
+# "4 1"
+# "7 0"
+# "7 1"
+# "10 0"
+# "10 1"
 
 echo "=========================================="
 echo "Running all Neuroprobe CNN experiments"
