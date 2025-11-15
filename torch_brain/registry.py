@@ -261,6 +261,6 @@ register_modality(
     dim=2,
     type=DataType.CONTINUOUS,
     timestamp_key="pupil.timestamps",
-    value_key="pupil.size_2d",
+    value_key="pupil.size",
     loss_fn=torch_brain.nn.loss.MSELoss(),
 )

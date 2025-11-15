@@ -196,7 +196,7 @@ class CaPOYO(nn.Module):
 
         # input
         inputs = cat(
-            (self.input_value_map(input_values), self.unit_emb(input_unit_index)),
+            (self.input_value_map(input_values.float()), self.unit_emb(input_unit_index)),
             dim=-1,
         )
         input_timestamp_emb = self.rotary_emb(input_timestamps)

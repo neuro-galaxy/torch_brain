@@ -2,7 +2,8 @@
 # this file needs to be combined with a model config and a dataset config
 
 # Paths
-data_root: /mnt/vast-react/projects/neural_foundation_model/
+# data_root: /mnt/vast-react/projects/neural_foundation_model/
+data_root: /mnt/vast-react/projects/neural_foundation_model/torch_brain_polly_export/
 log_dir: ./logs
 
 # Transforms
