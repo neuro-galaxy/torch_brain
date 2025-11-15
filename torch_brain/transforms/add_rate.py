@@ -5,7 +5,7 @@ from torch_brain.utils.spike_rates import compute_rates
 from temporaldata import IrregularTimeSeries
 
 
-class AddRate:
+class AddSpikeRate:
     """
     Add a spikerate to the data.
 
