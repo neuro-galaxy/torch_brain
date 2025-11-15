@@ -35,6 +35,13 @@ class RandomNoise:
         self.loc = loc
         self.scale = scale
         self.distribution = distribution
+
+        valid_distributions = {"gaussian", "laplace", "uniform"}
+        if distribution not in valid_distributions:
+            raise ValueError(
+                f"Invalid distribution: {distribution}. Must be one of {valid_distributions}"
+            )
+
         self.kind = kind
         self.clip = clip
         self.rng = np.random.RandomState(seed)
