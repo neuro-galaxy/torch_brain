@@ -315,7 +315,6 @@ class DataModule(L.LightningDataModule):
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train_falcon_m2_rnn.yaml")
 def main(cfg: DictConfig):
-    logger.info("POYO+!")
     # fix random seed, skipped if cfg.seed is None
     seed_everything(cfg.seed)
 

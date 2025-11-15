@@ -23,7 +23,8 @@ class RNN(nn.Module):
         readout_specs,
         num_layers=1,
         rnn_type="simple",
-        nonlinearity="tanh"
+        nonlinearity="tanh",
+        sequence_length=1.0
     ):
         super(RNN, self).__init__()
         if rnn_type.lower() == "simple":
@@ -39,6 +40,8 @@ class RNN(nn.Module):
             dim=hidden_size,
             readout_specs=readout_specs,
         )
+        self.sequence_length = sequence_length
+        self.readout_specs = readout_specs
 
     def forward(
         self,
@@ -91,13 +94,15 @@ class RNN(nn.Module):
         readout_id = self.readout_specs[data.config["multitask_readout"][0]["readout_id"]]["id"]
 
         assert len(data.finger.vel) == 50
+        # breakpoint() # TODO counts shouldn't be flattened
         data_dict = {
             "model_inputs": {
-                "input_bins": pad8(counts_flat),
+                "x": pad8(counts_flat),
                 # create a per-output scalar readout index (one id per timestep),
                 # not one per-channel (data.finger.vel may be 2D: timesteps x channels)
                 # "output_decoder_index": pad8(np.full((len(data.finger.vel),), 4, dtype=int)),
-                "output_decoder_index": np.full((len(data.finger.vel),), 4, dtype=int),
+                "output_decoder_index": np.full(((readout_id),), dtype=int),
+                # "output_decoder_index": np.full((len(data.finger.vel),), 4, dtype=int),
             },
             "target_values": chain(data.finger.vel),
             "session_id": data.session.id,
