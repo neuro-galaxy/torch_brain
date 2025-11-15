@@ -18,9 +18,15 @@ TASKS="onset speech volume delta_volume" # onset speech volume delta_volume pitc
 
 # All subject/trial combinations (Neuroprobe Lite)
 SUBJECT_TRIALS=(
-    "2 4"
-    "1 2"
-    "2 0"
+    "4 1"
+    "7 0"
+    "7 1"
+    "10 0"
+    "10 1"
+    "3 0"
+    "3 1"
+    "4 0"
+
 )
 # "1 1"
 # "1 2"
