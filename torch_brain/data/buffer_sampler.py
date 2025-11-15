@@ -55,6 +55,7 @@ class BufferedSampler(torch.utils.data.Sampler):
             new_start = orig_start - self.buffer_len
             new_end = orig_end + self.buffer_len
 
+
             # find which interval the sample belongs to
             intervals = self._interval_map.get(sess, [])
             if not intervals:
