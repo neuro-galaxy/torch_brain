@@ -16,10 +16,26 @@ class TorchBaseModel(BaseModel):
     def __init__(self, cfg: DictConfig):
         super().__init__()
         self.cfg = cfg
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = self._get_device(cfg)
         self.model = None
         self.random_state = cfg.get("random_state", 42)
         torch.manual_seed(self.random_state)
+    
+    def _get_device(self, cfg):
+        """Get device from config or auto-detect."""
+        device_str = cfg.get("device", "auto")
+        
+        if device_str == "auto":
+            return torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        elif device_str == "cuda":
+            if not torch.cuda.is_available():
+                raise RuntimeError("CUDA requested but not available")
+            return torch.device('cuda')
+        elif device_str == "cpu":
+            return torch.device('cpu')
+        else:
+            # Allow specific device strings like 'cuda:0'
+            return torch.device(device_str)
     
     @abstractmethod
     def _create_network(self, input_shape, n_classes):

@@ -174,9 +174,26 @@ def get_processed_folds(data, eval_name, n_folds=None):
 
 
 def prepare_processed_fold_data(fold, data, preprocessor, eval_name, fold_idx):
-    """Prepare data arrays from processed fold."""
+    """Prepare data arrays from processed fold.
+    
+    Splits test_split into validation (first half by start time) and test (second half).
+    
+    Returns:
+        Tuple of (X_train, y_train, X_val, y_val, X_test, y_test) as numpy arrays
+    """
     train_split = fold['train_split']
     test_split = fold['test_split']
+    
+    # Sort test_split by start time and split into val (first half) and test (second half)
+    test_start_times = test_split.start
+    sorted_indices = np.argsort(test_start_times)
+    n_test_samples = len(test_split)
+    n_val_samples = n_test_samples // 2
+    val_indices = sorted_indices[:n_val_samples]
+    test_indices = sorted_indices[n_val_samples:]
+    
+    # Create val_split and test_split by selecting indices
+    # We'll work with indices directly when processing
     
     # Get included channels
     split_included_channels_train = getattr(
@@ -221,9 +238,11 @@ def prepare_processed_fold_data(fold, data, preprocessor, eval_name, fold_idx):
         
         n_timebins_test = _n_timebins_(n_raw_samples_test, nperseg, poverlap, True)
         n_freqs_test = _n_freqs_(neuroprobe_config.SAMPLING_RATE, nperseg, min_freq, max_freq)
+        num_samples_val = n_timebins_test * n_freqs_test * sum(split_included_channels_test)
         num_samples_test = n_timebins_test * n_freqs_test * sum(split_included_channels_test)
     else:
         num_samples_train = neuroprobe_config.SAMPLING_RATE * sum(split_included_channels_train)
+        num_samples_val = neuroprobe_config.SAMPLING_RATE * sum(split_included_channels_test)
         num_samples_test = neuroprobe_config.SAMPLING_RATE * sum(split_included_channels_test)
     
     # Process training data
@@ -241,11 +260,26 @@ def prepare_processed_fold_data(fold, data, preprocessor, eval_name, fold_idx):
         X_train[i, :] = preprocessed.flatten()
         y_train[i] = train_split.label[i]
     
-    # Process test data
-    X_test = np.zeros((len(test_split), num_samples_test), dtype=np.float32)
-    y_test = np.zeros(len(test_split), dtype=np.int32)
+    # Process validation data (first half of test_split by start time)
+    X_val = np.zeros((len(val_indices), num_samples_val), dtype=np.float32)
+    y_val = np.zeros(len(val_indices), dtype=np.int32)
     
-    for i in range(len(test_split)):
+    for idx, i in enumerate(val_indices):
+        data_val = data.slice(test_split.start[i], test_split.end[i])
+        neural_data = data_val.seeg_data.data[:, split_included_channels_test].T
+        preprocessed = preprocessor.preprocess(neural_data, test_electrode_labels)
+        if hasattr(preprocessed, 'numpy'):
+            preprocessed = preprocessed.numpy()
+        elif hasattr(preprocessed, 'float'):
+            preprocessed = preprocessed.float().numpy()
+        X_val[idx, :] = preprocessed.flatten()
+        y_val[idx] = test_split.label[i]
+    
+    # Process test data (second half of test_split by start time)
+    X_test = np.zeros((len(test_indices), num_samples_test), dtype=np.float32)
+    y_test = np.zeros(len(test_indices), dtype=np.int32)
+    
+    for idx, i in enumerate(test_indices):
         data_test = data.slice(test_split.start[i], test_split.end[i])
         neural_data = data_test.seeg_data.data[:, split_included_channels_test].T
         preprocessed = preprocessor.preprocess(neural_data, test_electrode_labels)
@@ -253,8 +287,8 @@ def prepare_processed_fold_data(fold, data, preprocessor, eval_name, fold_idx):
             preprocessed = preprocessed.numpy()
         elif hasattr(preprocessed, 'float'):
             preprocessed = preprocessed.float().numpy()
-        X_test[i, :] = preprocessed.flatten()
-        y_test[i] = test_split.label[i]
+        X_test[idx, :] = preprocessed.flatten()
+        y_test[idx] = test_split.label[i]
     
-    return X_train, y_train, X_test, y_test
+    return X_train, y_train, X_val, y_val, X_test, y_test
 
