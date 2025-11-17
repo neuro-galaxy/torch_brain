@@ -12,11 +12,12 @@ from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )
-from torch_brain.models.poco import POCO  # <-- the model above
+from torch_brain.models import POCO
+from torch_brain.models.poco import NeuralPredictionConfig
 from torch_brain.optim import SparseLamb
 from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
 from torch_brain.transforms import Compose
-from torch_brain.transforms.patchify import PatchTokenize  # <-- the file above
+from torch_brain.transforms.patchify import RegularPatching
 from torch_brain.utils import seed_everything
 
 logger = logging.getLogger(__name__)
@@ -107,17 +108,13 @@ class DataModule(L.LightningDataModule):
         # transforms: patchify first, then model.tokenize LAST (POYO pattern)
         train_tf = Compose(
             [
-                PatchTokenize(
-                    key=self.cfg.signal_field, patch_size=self.cfg.patch_size
-                ),
+                # RegularPatching(key=self.cfg.signal_field, patch_size=1),
                 model.tokenize,
             ]
         )
         eval_tf = Compose(
             [
-                PatchTokenize(
-                    key=self.cfg.signal_field, patch_size=self.cfg.patch_size
-                ),
+                # RegularPatching(key=self.cfg.signal_field, patch_size=1),
                 model.tokenize,
             ]
         )
@@ -199,45 +196,33 @@ class DataModule(L.LightningDataModule):
 
 
 # ---------------- Hydra entry ----------------
-@hydra.main(
-    version_base="1.3", config_path="./configs", config_name="train_poco_forecast.yaml"
-)
+@hydra.main(version_base="1.3", config_path="./configs", config_name="train_poco.yaml")
 def main(cfg: DictConfig):
     logger.info("POCO forecasting")
 
     seed_everything(cfg.seed)
 
     # readout spec (same pattern as your train.py)
-    readout_id = cfg.dataset[0].config.readout.readout_id
-    readout_spec = MODALITY_REGISTRY[readout_id]
 
     # instantiate model via Hydra (readout_spec is injected here)
-    model = hydra.utils.instantiate(
-        cfg.model,
-        readout_spec=readout_spec,
-    )
+    config = NeuralPredictionConfig()
+    config.conditioning_dim = 128  # feel free to change parameters
+    config.decoder_hidden_size = 64
+
+    config.seq_length = 64
+    config.pred_length = 16  # context length is 64 - 16 = 48
+
+    input_size = [[1, 71721]]  # 2 sessions, 5 and 10 units
+    model = POCO(config, input_size)
+    cfg.context_window = config.seq_length - config.pred_length
+    cfg.forecast_window = config.pred_length
 
     # TODO: ADD THE OPTIMIZER HERE
 
     dm = DataModule(cfg)
-    dm.setup_dataset_and_link_model(model, readout_spec)
+    dm.setup_dataset_and_link_model(model, model.readout_spec)
 
-    wrapper = TrainWrapper(cfg, model, readout_spec)
-    callbacks = [
-        stitch_evaluator,
-        ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
-        ModelCheckpoint(
-            save_last=True,
-            monitor="average_val_metric",
-            mode="max",
-            save_on_train_epoch_end=True,
-            every_n_epochs=cfg.eval_epochs,
-        ),
-        LearningRateMonitor(logging_interval="step"),
-        tbrain_callbacks.MemInfo(),
-        tbrain_callbacks.EpochTimeLogger(),
-        tbrain_callbacks.ModelWeightStatsLogger(),
-    ]
+    wrapper = TrainWrapper(cfg, model, model.readout_spec)
 
     trainer = L.Trainer(
         default_root_dir=cfg.log_dir,
