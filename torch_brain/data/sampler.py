@@ -37,7 +37,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
         self,
         *,
         sampling_intervals: Dict[str, Interval],
-        window_length: float,
+        window_length: float, # window length is equal to sequence length, which should be 1 in this case
         generator: Optional[torch.Generator] = None,
         drop_short: bool = True,
     ):
@@ -45,6 +45,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
         self.window_length = window_length
         self.generator = generator
         self.drop_short = drop_short
+        self._indices = None  # Cache generated indices
 
     @cached_property
     def _estimated_len(self):
@@ -75,13 +76,8 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
                 raise ValueError("All intervals are too short to sample from.")
         return num_samples
 
-    def __len__(self):
-        return self._estimated_len
-
-    def __iter__(self):
-        if len(self) == 0.0:
-            raise ValueError("All intervals are too short to sample from.")
-
+    def _generate_indices(self):
+        """Generate indices once per epoch"""
         indices = []
         for session_name, sampling_intervals in self.sampling_intervals.items():
             for start, end in zip(sampling_intervals.start, sampling_intervals.end):
@@ -95,7 +91,6 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
                             f"Minimum length is {self.window_length}."
                         )
 
-                # sample a random offset
                 left_offset = (
                     torch.rand(1, generator=self.generator).item() * self.window_length
                 )
@@ -119,8 +114,6 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
                 else:
                     right_offset = end - start - left_offset
 
-                # if there is one sample worth of data, add it
-                # this ensures that the number of samples is always consistent
                 if right_offset + left_offset >= self.window_length:
                     if right_offset > left_offset:
                         indices.append(
@@ -132,10 +125,24 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
                                 session_name, start, start + self.window_length
                             )
                         )
+        
+        return indices
 
-        # shuffle
-        for idx in torch.randperm(len(indices), generator=self.generator):
-            yield indices[idx]
+    def __len__(self):
+        # Generate indices if not cached
+        if self._indices is None:
+            self._indices = self._generate_indices()
+        return len(self._indices)
+
+    def __iter__(self):
+        # Generate new indices for this epoch
+        self._indices = self._generate_indices()
+        if len(self._indices) == 0:
+            raise ValueError("All intervals are too short to sample from.")
+        
+        # Shuffle and yield
+        for idx in torch.randperm(len(self._indices), generator=self.generator):
+            yield self._indices[idx]
 
 
 class SequentialFixedWindowSampler(torch.utils.data.Sampler):

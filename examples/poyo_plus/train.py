@@ -111,7 +111,7 @@ class TrainWrapper(L.LightningModule):
             weights = 1.0
             if readout_id in target_weights and target_weights[readout_id] is not None:
                 weights = target_weights[readout_id]
-
+                        
             taskwise_loss[readout_id] = spec.loss_fn(output, target, weights)
 
             # count the number of sequences in the batch that have the current task
@@ -315,7 +315,8 @@ class DataModule(L.LightningDataModule):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
         test_sampler = DistributedStitchingFixedWindowSampler(
-            sampling_intervals=self.test_dataset.get_sampling_intervals(),
+            #todo - maybe replace it with validation here?
+            sampling_intervals=self.val_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
             batch_size=batch_size,
@@ -324,12 +325,13 @@ class DataModule(L.LightningDataModule):
         )
 
         test_loader = DataLoader(
-            self.test_dataset,
+            self.val_dataset,
             sampler=test_sampler,
             shuffle=False,
             batch_size=batch_size,
             collate_fn=collate,
             num_workers=0,
+            drop_last=False,
         )
 
         self.log.info(f"Testing on {len(test_sampler)} samples")
