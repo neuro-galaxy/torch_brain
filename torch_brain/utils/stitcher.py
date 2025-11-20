@@ -373,7 +373,6 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
 
             if target.dtype == torch.long:
                 stitched_target = torch.round(stitched_target).long()
-
             for metric_name in self.metrics[session_id][task_name].keys():
                 self.metrics[session_id][task_name][metric_name].update(
                     stitched_pred, stitched_target
@@ -399,7 +398,7 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                         self.metrics[recording_id][task_name][metric_name]
                         .to(pl_module.device)
                         .compute()
-                    )
+                    ).mean()
                     self.metrics[recording_id][task_name][metric_name].reset()
                     self.metrics[recording_id][task_name][metric_name].to("cpu")
 

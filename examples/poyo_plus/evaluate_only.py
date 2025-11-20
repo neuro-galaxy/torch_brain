@@ -316,6 +316,8 @@ class DataModule(L.LightningDataModule):
 
         test_sampler = DistributedStitchingFixedWindowSampler(
             #todo - maybe replace it with validation here?
+            # todo - fix it somehow
+            # sampling_intervals=self.test_dataset.get_sampling_intervals(),
             sampling_intervals=self.val_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
@@ -325,12 +327,14 @@ class DataModule(L.LightningDataModule):
         )
 
         test_loader = DataLoader(
+            #todo - fix this somehow
             self.val_dataset,
+            # self.test_dataset,
             sampler=test_sampler,
             shuffle=False,
             batch_size=batch_size,
             collate_fn=collate,
-            num_workers=0,
+            num_workers=4,
             drop_last=False,
         )
 
@@ -348,15 +352,7 @@ def main(cfg: DictConfig):
 
     # setup loggers
     log = logging.getLogger(__name__)
-    wandb_logger = None
-    if cfg.wandb.enable:
-        wandb_logger = L.pytorch.loggers.WandbLogger(
-            save_dir=cfg.log_dir,
-            entity=cfg.wandb.entity,
-            name=cfg.wandb.run_name,
-            project=cfg.wandb.project,
-            log_model=cfg.wandb.log_model,
-        )
+    
 
     # make model and datamodule
     # TODO: resolve the readout_id from dataset, only build readouts needed
@@ -372,25 +368,13 @@ def main(cfg: DictConfig):
     callbacks = [
         evaluator,
         ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
-        ModelCheckpoint(
-            dirpath=f"/scratch-grete/projects/nim00012/adapted_torch_brain/torch_brain/examples/poyo_plus/checkpoints/{cfg.wandb.run_name}/", 
-            save_last=True,
-            monitor="average_val_metric",
-            mode="min",#"max",
-            save_on_train_epoch_end=True,
-            every_n_epochs=cfg.eval_epochs,
-            save_top_k=5,  # Save the 3 best checkpoints
-        ),
-        LearningRateMonitor(
-            logging_interval="step"
-        ),  # Create a callback to log the learning rate.
         tbrain_callbacks.MemInfo(),
         tbrain_callbacks.EpochTimeLogger(),
         tbrain_callbacks.ModelWeightStatsLogger(),
     ]
 
     trainer = L.Trainer(
-        logger=wandb_logger,
+        logger=None,
         default_root_dir=cfg.log_dir,
         check_val_every_n_epoch=cfg.eval_epochs,
         max_epochs=cfg.epochs,
@@ -412,11 +396,28 @@ def main(cfg: DictConfig):
         f"{trainer.local_rank}/{trainer.node_rank}/{trainer.world_size}/{trainer.num_nodes}"
     )
 
-    # Train
-    trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path)
 
     # Test
-    trainer.test(wrapper, data_module, ckpt_path="best")
+    checkpoint_pre_path = '/scratch-grete/projects/nim00012/adapted_torch_brain/torch_brain/examples/poyo_plus/checkpoints/'
+    trainer.test(wrapper, data_module, 
+                #  ckpt_path=f"{checkpoint_pre_path}capoyo_8_mice_bs_256_ep_300_depth_12_4_workers/epoch=259-step=28080.ckpt",
+                #  ckpt_path=f"{checkpoint_pre_path}capoyo_8_mice_bs_256_ep_300_depth_18/epoch=39-step=4320.ckpt",
+                #  ckpt_path=f"{checkpoint_pre_path}capoyo_8_mice_bs_128_ep_300_dim_256_dim_head_128/epoch=259-step=56160.ckpt",
+                #  ckpt_path=f"{checkpoint_pre_path}capoyo_8_mice_bs_256_ep_300_dim_256_dim_head_64/epoch=74-step=8100.ckpt",
+                #  ckpt_path=f"{checkpoint_pre_path}capoyo_8_mice_bs_256_ep_300_dim_64_dim_head_32/epoch=249-step=27000.ckpt",
+                #  ckpt_path=f"{checkpoint_pre_path}capoyo_8_mice_bs_256_ep_300_16_latents/epoch=19-step=2160.ckpt",
+                #  ckpt_path=f"{checkpoint_pre_path}capoyo_8_mice_bs_256_ep_300_8_workers/epoch=244-step=26460.ckpt",
+                #  ckpt_path=f"{checkpoint_pre_path}capoyo_8_mice_fixed_checkpoints_bs_128_ep_300_1_sec_depth_6_ca_heads_2/epoch=130-step=28296.ckpt",
+                #  ckpt_path=f"{checkpoint_pre_path}capoyo_8_mice_fixed_checkpoints_bs_128_ep_300_2_sec/epoch=178-step=18616.ckpt",
+                #  ckpt_path=f"{checkpoint_pre_path}capoyo_8_mice_fixed_checkpoints_bs_128_ep_300", # still training!,
+                # ckpt_path=f"{checkpoint_pre_path}poyo_single_sesssion_conf_bs_256_ep_300_seq_len_2_max_unit_500_min_100_mode_250_dim_128/epoch=204-step=10660.ckpt",
+                # ckpt_path=f"{checkpoint_pre_path}poyo_single_sesssion_conf_bs_256_ep_300_seq_len_2_max_unit_500_min_100_mode_250/epoch=179-step=9360.ckpt",
+                # ckpt_path=f"{checkpoint_pre_path}poyo_single_sesssion_conf_bs_256_ep_300_seq_len_2/epoch=234-step=12220.ckpt",
+                # ckpt_path=f"{checkpoint_pre_path}poyo_single_sesssion_conf_bs_256_ep_300_seq_len_1/epoch=109-step=11880.ckpt",
+                # ckpt_path=f"{checkpoint_pre_path}poyo_single_sesssion_conf_bs_256_ep_300_seq_len_2_max_unit_1000/epoch=269-step=14040.ckpt",
+                ckpt_path=f"{checkpoint_pre_path}poyo_single_sesssion_conf_bs_256_ep_300_seq_len_2_max_unit_500_min_10_mode_50_with_new_norm/epoch=39-step=2080.ckpt",
+                # ckpt_path=f"{checkpoint_pre_path}",
+                 )
 
 
 if __name__ == "__main__":
