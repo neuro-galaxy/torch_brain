@@ -1,0 +1,35 @@
+name: Release to TestPyPI
+
+on:
+  push:
+    branches: [ "main" ]  # Triggers Nightly builds (e.g., 0.1.1.dev5)
+    tags: [ "v*" ]        # Triggers Stable releases (e.g., 0.1.1)
+
+permissions:
+  contents: read
+  id-token: write # REQUIRED for Trusted Publishing authentication
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for hatch-vcs to see git tags
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Build package
+        # uv will use the build-system defined in pyproject.toml (hatchling)
+        run: uv build
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # THIS URL IS KEY: It forces the upload to the Sandbox instead of real PyPI
+          repository-url: https://test.pypi.org/legacy/ 
+          skip-existing: true
+          verbose: true

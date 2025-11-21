@@ -1,10 +1,6 @@
-[build-system]
-requires = ["setuptools>=60.2.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "pytorch_brain"
-version = "0.1.0"
+name = "torch_brain_test"
+dynamic = ["version"]
 description = "A package for deep learning models for neuroscience"
 readme = "README.md"
 authors = [
@@ -55,3 +51,13 @@ packages = [
     "torch_brain.utils",
     "torch_brain.transforms",
 ]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "torch_brain/_version.py"
