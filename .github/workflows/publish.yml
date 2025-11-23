@@ -1,0 +1,84 @@
+name: Publish to PyPI and TestPyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build distribution 📦
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # IMPORTANT: Required for setuptools-scm to see tags!
+        persist-credentials: false
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+
+    - name: Install pypa/build
+      run: python3 -m pip install build --user
+
+    - name: Build a binary wheel and a source tarball
+      run: python3 -m build
+
+    - name: Store the distribution packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+
+  publish-to-testpypi:
+    name: Publish Python 🐍 distribution 📦 to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # LOGIC: Only run this if the tag contains "rc", "a", or "b" (e.g., v0.1.2rc1)
+    if: contains(github.ref, 'rc') || contains(github.ref, 'a') || contains(github.ref, 'b')
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/pytorch-brain
+    permissions:
+      id-token: write # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish distribution 📦 to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-to-pypi:
+    name: Publish Python 🐍 distribution 📦 to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # LOGIC: Only run this if the tag DOES NOT contain pre-release strings
+    if: >-
+      !contains(github.ref, 'rc') && 
+      !contains(github.ref, 'a') && 
+      !contains(github.ref, 'b') &&
+      !contains(github.ref, 'dev')
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pytorch-brain
+    permissions:
+      id-token: write # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
