@@ -12,4 +12,4 @@ from .registry import register_modality, get_modality_by_id, MODALITY_REGISTRY
 try:
     __version__ = version("pytorch-brain")
 except PackageNotFoundError:
-    pass
+    pass  # pragma: no cover
