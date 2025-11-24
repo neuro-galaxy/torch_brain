@@ -10,7 +10,7 @@ permissions:
   id-token: write # REQUIRED for Trusted Publishing authentication
 
 jobs:
-  build-and-publish:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,9 +18,9 @@ jobs:
           fetch-depth: 0 # Required for hatch-vcs to see git tags
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v5
         with:
-          enable-cache: true
+          version: "0.6.11"
 
       - name: Build package
         # uv will use the build-system defined in pyproject.toml (hatchling)
