@@ -59,5 +59,8 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "vcs"
 
+[tool.hatch.version.raw-options]
+local_scheme = "no-local-version"
+
 [tool.hatch.build.hooks.vcs]
 version-file = "torch_brain/_version.py"
