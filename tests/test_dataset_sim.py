@@ -1,6 +1,5 @@
 import os
 import tempfile
-from pathlib import Path
 
 import h5py
 import numpy as np
@@ -12,7 +11,6 @@ from temporaldata import (
     Data,
     Interval,
     IrregularTimeSeries,
-    RegularTimeSeries,
 )
 
 from torch_brain.data import Dataset
@@ -382,6 +380,7 @@ def test_disable_data_leakage_check(dummy_data):
     assert ds._check_for_data_leakage_flag == False
 
 
+@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_brainset_ids(dummy_data):
     include_config = [
         {
