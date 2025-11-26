@@ -72,6 +72,7 @@ class RotaryCrossAttention(nn.Module):
         query_pos_emb,
         context_pos_emb,
         context_mask=None,
+        query_mask=None,
     ):
         """Forward pass for regular or padded sequences.
 
@@ -81,6 +82,7 @@ class RotaryCrossAttention(nn.Module):
             - query_pos_emb: (B, N_q, D_h)
             - context_pos_emb: (B, N_c, D_h)
             - context_mask: Optional[Tensor[B, N_c]]
+            - query_mask: Optional[Tensor[B, N_q]]
             - Output: (B, N_q, D)
 
             where B is batch size, N_q is query sequence length, N_c is context sequence
@@ -106,7 +108,16 @@ class RotaryCrossAttention(nn.Module):
             # attention kernel (math, mem_efficient or flash) based on the hardware and
             # other factors.
             rotary_attn_func = rotary_attn_pytorch_func
-
+        
+        if query_mask is None:
+            # padding only in context sequence
+            attn_mask = context_mask
+        else:
+            # padding in both context and query sequence, integrate them into matrix
+            if context_mask is None:
+                context_mask = torch.ones(x_context.size(0), x_context.size(1)).to(query_mask)
+            attn_mask = torch.einsum('bi,bj->bij', query_mask, context_mask).to(query_mask)
+            
         # apply attention
         out = rotary_attn_func(
             query=q,
@@ -117,7 +128,7 @@ class RotaryCrossAttention(nn.Module):
             num_heads=self.heads,
             dropout_p=self.dropout if self.training else 0,
             rotate_value=self.rotate_value,
-            attn_mask=context_mask,
+            attn_mask=attn_mask,
         )
 
         # project back to dim
@@ -250,7 +261,7 @@ class RotarySelfAttention(nn.Module):
         Shape:
             - x: (B, N, D)
             - rotary_time_emb: (B, N, D_h)
-            - x_mask: (B, N, N)
+            - x_mask: (B, N) 
             - Output: (B, N, D)
 
             where B is batch size, N is sequence length, D is input dimension,
@@ -267,7 +278,12 @@ class RotarySelfAttention(nn.Module):
             rotary_attn_func = rotary_attn_xformers_func
         else:
             rotary_attn_func = rotary_attn_pytorch_func
-
+        
+        attn_mask = None
+        if not (x_mask is None):
+            # padding in input sequence, outer-product into matrix
+            attn_mask = torch.einsum('bi,bj->bij', x_mask, x_mask).to(x_mask)
+        
         # apply attention
         out = rotary_attn_func(
             query=q,
@@ -278,7 +294,7 @@ class RotarySelfAttention(nn.Module):
             num_heads=self.heads,
             dropout_p=self.dropout if self.training else 0,
             rotate_value=self.rotate_value,
-            attn_mask=x_mask,
+            attn_mask=attn_mask,
         )
 
         # project back to dim
@@ -390,7 +406,12 @@ def rotary_attn_pytorch_func(
 
     # attention mask
     if attn_mask is not None:
-        attn_mask = rearrange(attn_mask, "b n -> b () () n")
+        if attn_mask.dim() == 2: # attn_mask is (B, n_kv)
+            attn_mask = rearrange(attn_mask, "b n -> b () () n")
+        elif attn_mask.dim() == 3: # attn_mask is (B, n_q, n_kv)
+            attn_mask = rearrange(attn_mask, "b l s -> b () l s")
+        else:
+            raise ValueError("accepted dimension of attn_mask is 2 or 3")
 
     # perform attention, by default will use the optimal attention implementation
     out = F.scaled_dot_product_attention(
