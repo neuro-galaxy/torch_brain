@@ -356,10 +356,10 @@ class InfiniteVocabEmbedding(nn.Module):
     def _save_to_state_dict(self, destination, prefix, keep_vars):
         if self.is_lazy():
             destination[prefix + "weight"] = self.weight
-            destination[prefix + "vocab"] = self.vocab
+            destination[prefix + "vocab"] = self.vocab.copy() if self.vocab else None
         else:
             super()._save_to_state_dict(destination, prefix, keep_vars)
-            destination[prefix + "vocab"] = self.vocab
+            destination[prefix + "vocab"] = self.vocab.copy()
 
     def _hook_vocab_on_load_state_dict(
         self,
