@@ -38,4 +38,9 @@ jobs:
 
     - name: Test with pytest
       run: |
-        uv run pytest tests/
+        uv run pytest --cov=brainsets --cov-report=xml --cov-report=term-missing -v
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
