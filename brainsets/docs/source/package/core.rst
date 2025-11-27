@@ -34,3 +34,4 @@ Serialization Functions
 .. autofunction:: brainsets.core.datetime_serialize_fn
 
 .. autodata:: brainsets.core.serialize_fn_map
+

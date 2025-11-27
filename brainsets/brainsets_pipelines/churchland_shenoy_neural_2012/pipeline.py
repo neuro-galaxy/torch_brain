@@ -1,29 +1,179 @@
-import argparse
 import datetime
-import logging
-import h5py
 import os
+from argparse import ArgumentParser, Namespace
+from pathlib import Path
+from typing import Optional
 
+import h5py
 import numpy as np
+import pandas as pd
 from pynwb import NWBHDF5IO
 from scipy.ndimage import binary_dilation
-import pandas as pd
-from temporaldata import (
-    Data,
-    IrregularTimeSeries,
-    Interval,
-    ArrayDict,
-)
+from temporaldata import ArrayDict, Data, Interval, IrregularTimeSeries
+
+from brainsets import serialize_fn_map
 from brainsets.descriptions import (
     BrainsetDescription,
-    SessionDescription,
     DeviceDescription,
+    SessionDescription,
 )
+from brainsets.pipeline import BrainsetPipeline
 from brainsets.taxonomy import RecordingTech, Task
-from brainsets.utils.dandi_utils import extract_subject_from_nwb
-from brainsets import serialize_fn_map
+from brainsets.utils.dandi_utils import (
+    download_file,
+    extract_subject_from_nwb,
+    get_nwb_asset_list,
+)
 
-logging.basicConfig(level=logging.INFO)
+parser = ArgumentParser()
+parser.add_argument("--redownload", action="store_true")
+parser.add_argument("--reprocess", action="store_true")
+
+
+class Pipeline(BrainsetPipeline):
+    brainset_id = "churchland_shenoy_neural_2012"
+    dandiset_id = "DANDI:000070/draft"
+    parser = parser
+
+    @classmethod
+    def get_manifest(
+        cls,
+        raw_dir: Path,
+        args: Optional[Namespace],
+    ) -> pd.DataFrame:
+        asset_list = get_nwb_asset_list(cls.dandiset_id)
+        manifest_list = [{"path": x.path, "url": x.download_url} for x in asset_list]
+
+        for m in manifest_list:
+            path = m["path"]
+            subject = path.split("/")[0].replace("sub-", "").lower()
+            session = path.split("_ses-")[1].split("_")[0]
+
+            m["session_id"] = f"{subject}_{session}"
+
+        manifest = pd.DataFrame(manifest_list).set_index("session_id")
+        return manifest
+
+    def download(self, manifest_item):
+        self.update_status("DOWNLOADING")
+        self.raw_dir.mkdir(exist_ok=True, parents=True)
+        fpath = download_file(
+            manifest_item.path,
+            manifest_item.url,
+            self.raw_dir,
+            overwrite=self.args.redownload,
+        )
+        return fpath
+
+    def process(self, fpath):
+        # open file
+        self.update_status("Loading NWB")
+        io = NWBHDF5IO(fpath, "r")
+        nwbfile = io.read()
+
+        self.processed_dir.mkdir(exist_ok=True, parents=True)
+
+        brainset_description = BrainsetDescription(
+            id="churchland_shenoy_neural_2012",
+            origin_version="dandi/000070/draft",
+            derived_version="1.0.0",
+            source="https://dandiarchive.org/dandiset/000070",
+            description="Monkeys recordings of Motor Cortex (M1) and dorsal Premotor Cortex"
+            " (PMd) using two 96 channel high density Utah Arrays (Blackrock Microsystems) "
+            "while performing reaching tasks with right hand.",
+        )
+
+        self.update_status("Extracting Metadata")
+        # extract subject metadata
+        # this dataset is from dandi, which has structured subject metadata, so we
+        # can use the helper function extract_subject_from_nwb
+        subject = extract_subject_from_nwb(nwbfile)
+
+        # extract experiment metadata
+        recording_date = nwbfile.session_start_time.strftime("%Y%m%d")
+        subject_id = subject.id
+        device_id = f"{subject_id}_{recording_date}"
+        session_id = f"{device_id}_center_out_reaching"
+
+        store_path = self.processed_dir / f"{session_id}.h5"
+        if store_path.exists() and not self.args.reprocess:
+            io.close()
+            self.update_status("Skipped Processing")
+            return
+
+        # register session
+        session_description = SessionDescription(
+            id=session_id,
+            recording_date=datetime.datetime.strptime(recording_date, "%Y%m%d"),
+            task=Task.REACHING,
+        )
+
+        device_description = DeviceDescription(
+            id=device_id,
+            recording_tech=RecordingTech.UTAH_ARRAY_THRESHOLD_CROSSINGS,
+        )
+
+        # extract data about trial structure
+        trials, movement_phases, artifact_dict = extract_trials(nwbfile, session_id)
+
+        # extract spiking activity
+        self.update_status("Extracting Spikes")
+        # TODO test extract_spikes_from_nwbfile
+        spikes, units = extract_spikes(nwbfile, trials, artifact_dict)
+
+        # extract behavior
+        self.update_status("Extracting Behavior")
+        cursor, hand, eye = extract_behavior(nwbfile, artifact_dict)
+        assert len(cursor.domain) == len(trials)
+
+        cursor_outlier_segments = detect_outliers(cursor)
+
+        for key in movement_phases.keys():
+            setattr(
+                movement_phases,
+                key,
+                getattr(movement_phases, key).difference(cursor_outlier_segments),
+            )
+
+        # close file
+        io.close()
+
+        data = Data(
+            brainset=brainset_description,
+            subject=subject,
+            session=session_description,
+            device=device_description,
+            # neural activity
+            spikes=spikes,
+            units=units,
+            # stimuli and behavior
+            trials=trials,
+            movement_phases=movement_phases,
+            cursor=cursor,
+            hand=hand,
+            eye=eye,
+            cursor_outlier_segments=cursor_outlier_segments,
+            domain=cursor.domain | spikes.domain,
+        )
+
+        # split trials into train, validation and test
+        successful_trials = trials.select_by_mask(trials.is_valid)
+        assert successful_trials.is_disjoint()
+
+        train_trials, valid_trials, test_trials = successful_trials.split(
+            [0.7, 0.1, 0.2], shuffle=True, random_seed=42
+        )
+
+        # we will still use the invalid trials for training
+        train_trials = train_trials | trials.select_by_mask(~trials.is_valid)
+
+        data.set_train_domain(train_trials)
+        data.set_valid_domain(valid_trials)
+        data.set_test_domain(test_trials)
+
+        self.update_status("Storing")
+        with h5py.File(store_path, "w") as file:
+            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
 
 
 def extract_trials(nwbfile, session_id):
@@ -53,7 +203,7 @@ def extract_trials(nwbfile, session_id):
     )[0]
     artifact_dict = {}
     if len(artifact_index) > 0:
-        logging.info(f"Found {len(artifact_index)} artifacts in the trial table.")
+        # logging.info(f"Found {len(artifact_index)} artifacts in the trial table.")
         if session_id in [
             "nitschke_20090910_center_out_reaching",
             "nitschke_20090920_center_out_reaching",
@@ -61,7 +211,7 @@ def extract_trials(nwbfile, session_id):
             # the first artifact corresponds to two overlapping trials
             # we will skip those two trials
             skip_trials = [artifact_index[0], artifact_index[0] + 1]
-            logging.info(f"Dropping trials {skip_trials} due to artifacts.")
+            # logging.info(f"Dropping trials {skip_trials} due to artifacts.")
             artifact_dict["skip_start"] = trial_table.start.to_numpy()[skip_trials][0]
             artifact_dict["skip_end"] = trial_table.end.to_numpy()[skip_trials][1]
             trial_table = trial_table.drop(index=skip_trials).reset_index(drop=True)
@@ -339,11 +489,11 @@ def extract_spikes(nwbfile, trials, artifact_dict):
                 artifact_index = np.where(spikes_times[1:] < spikes_times[:-1])[0]
 
             if len(artifact_dict["original_start_times"]) < len(artifact_index) + 1:
-                logging.warning(
-                    f"Unit {i} has {len(artifact_index) + 1} non-contiguous blocks, but "
-                    f"found {len(artifact_dict['original_start_times'])} in the "
-                    f"trials. Skipping this unit."
-                )
+                # logging.warning(
+                #     f"Unit {i} has {len(artifact_index) + 1} non-contiguous blocks, but "
+                #     f"found {len(artifact_dict['original_start_times'])} in the "
+                #     f"trials. Skipping this unit."
+                # )
                 num_skipped_units += 1
                 continue
             block_index = np.concatenate(
@@ -366,9 +516,9 @@ def extract_spikes(nwbfile, trials, artifact_dict):
                         spikes_times_blocks[j] <= artifact_dict["original_end_times"][j]
                     )
                 ):
-                    logging.warning(
-                        f"Unit {i} has a spike time block that is not contiguous. Skipping this block."
-                    )
+                    # logging.warning(
+                    #     f"Unit {i} has a spike time block that is not contiguous. Skipping this block."
+                    # )
                     num_skipped_units += 1
                     flag = False
                     break
@@ -394,10 +544,10 @@ def extract_spikes(nwbfile, trials, artifact_dict):
 
         else:
             if len(artifact_index) != 0:
-                logging.warning(
-                    f"Unit {i} has {len(artifact_index)} non-contiguous blocks, but no "
-                    f"artifact_dict. Skipping this unit."
-                )
+                # logging.warning(
+                #     f"Unit {i} has {len(artifact_index)} non-contiguous blocks, but no "
+                #     f"artifact_dict. Skipping this unit."
+                # )
                 num_skipped_units += 1
                 continue
 
@@ -425,10 +575,11 @@ def extract_spikes(nwbfile, trials, artifact_dict):
         unit_ctr += 1
 
     if num_skipped_units > 0:
-        logging.warning(
-            f"Unable to resolve {num_skipped_units} out of {len(nwbfile.units)} units. "
-            f"These units were excluded."
-        )
+        # logging.warning(
+        #     f"Unable to resolve {num_skipped_units} out of {len(nwbfile.units)} units. "
+        #     f"These units were excluded."
+        # )
+        pass
 
     # convert unit metadata to a Data object
     unit_meta_df = pd.DataFrame(unit_meta)  # list of dicts to dataframe
@@ -449,115 +600,3 @@ def extract_spikes(nwbfile, trials, artifact_dict):
     )
     spikes.sort()
     return spikes, units
-
-
-def main():
-    # use argparse to get arguments from the command line
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input_file", type=str)
-    parser.add_argument("--output_dir", type=str, default="./processed")
-
-    args = parser.parse_args()
-
-    brainset_description = BrainsetDescription(
-        id="churchland_shenoy_neural_2012",
-        origin_version="dandi/000070/draft",
-        derived_version="1.0.0",
-        source="https://dandiarchive.org/dandiset/000070",
-        description="Monkeys recordings of Motor Cortex (M1) and dorsal Premotor Cortex"
-        " (PMd) using two 96 channel high density Utah Arrays (Blackrock Microsystems) "
-        "while performing reaching tasks with right hand.",
-    )
-
-    logging.info(f"Processing file: {args.input_file}")
-
-    # open file
-    io = NWBHDF5IO(args.input_file, "r")
-    nwbfile = io.read()
-
-    # extract subject metadata
-    # this dataset is from dandi, which has structured subject metadata, so we
-    # can use the helper function extract_subject_from_nwb
-    subject = extract_subject_from_nwb(nwbfile)
-
-    # extract experiment metadata
-    recording_date = nwbfile.session_start_time.strftime("%Y%m%d")
-    subject_id = subject.id
-    device_id = f"{subject_id}_{recording_date}"
-    session_id = f"{device_id}_center_out_reaching"
-
-    # register session
-    session_description = SessionDescription(
-        id=session_id,
-        recording_date=datetime.datetime.strptime(recording_date, "%Y%m%d"),
-        task=Task.REACHING,
-    )
-
-    device_description = DeviceDescription(
-        id=device_id,
-        recording_tech=RecordingTech.UTAH_ARRAY_THRESHOLD_CROSSINGS,
-    )
-
-    # extract data about trial structure
-    trials, movement_phases, artifact_dict = extract_trials(nwbfile, session_id)
-    # extract spiking activity
-    # this data is from dandi, we can use our helper function
-    spikes, units = extract_spikes(nwbfile, trials, artifact_dict)
-
-    # extract behavior
-    cursor, hand, eye = extract_behavior(nwbfile, artifact_dict)
-    assert len(cursor.domain) == len(trials)
-
-    cursor_outlier_segments = detect_outliers(cursor)
-
-    for key in movement_phases.keys():
-        setattr(
-            movement_phases,
-            key,
-            getattr(movement_phases, key).difference(cursor_outlier_segments),
-        )
-
-    # close file
-    io.close()
-
-    data = Data(
-        brainset=brainset_description,
-        subject=subject,
-        session=session_description,
-        device=device_description,
-        # neural activity
-        spikes=spikes,
-        units=units,
-        # stimuli and behavior
-        trials=trials,
-        movement_phases=movement_phases,
-        cursor=cursor,
-        hand=hand,
-        eye=eye,
-        cursor_outlier_segments=cursor_outlier_segments,
-        domain=cursor.domain | spikes.domain,
-    )
-
-    # split trials into train, validation and test
-    successful_trials = trials.select_by_mask(trials.is_valid)
-    assert successful_trials.is_disjoint()
-
-    train_trials, valid_trials, test_trials = successful_trials.split(
-        [0.7, 0.1, 0.2], shuffle=True, random_seed=42
-    )
-
-    # we will still use the invalid trials for training
-    train_trials = train_trials | trials.select_by_mask(~trials.is_valid)
-
-    data.set_train_domain(train_trials)
-    data.set_valid_domain(valid_trials)
-    data.set_test_domain(test_trials)
-
-    # save data to disk
-    path = os.path.join(args.output_dir, f"{session_id}.h5")
-    with h5py.File(path, "w") as file:
-        data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
-
-
-if __name__ == "__main__":
-    main()

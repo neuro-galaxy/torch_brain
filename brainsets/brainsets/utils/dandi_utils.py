@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 import pandas as pd
 
@@ -102,3 +103,36 @@ def extract_spikes_from_nwbfile(nwbfile, recording_tech):
     spikes.sort()
 
     return spikes, units
+
+
+def download_file(path, url, raw_dir, overwrite=False) -> Path:
+    try:
+        import dandi.download
+    except:
+        raise RuntimeError("dandi package not present, and is required")
+
+    asset_path = Path(path)
+    download_dir = raw_dir / asset_path.parent
+    download_dir.mkdir(exist_ok=True, parents=True)
+    dandi.download.download(
+        url,
+        download_dir,
+        existing=(
+            dandi.download.DownloadExisting.REFRESH
+            if not overwrite
+            else dandi.download.DownloadExisting.OVERWRITE
+        ),
+    )
+    return raw_dir / asset_path
+
+
+def get_nwb_asset_list(dandiset_id: str):
+    try:
+        from dandi import dandiarchive
+    except:
+        raise RuntimeError("dandi package not present, and is required")
+
+    parsed_url = dandiarchive.parse_dandi_url(dandiset_id)
+    with parsed_url.navigate() as (client, dandiset, assets):
+        asset_list = [x for x in assets if x.path.endswith(".nwb")]
+    return asset_list

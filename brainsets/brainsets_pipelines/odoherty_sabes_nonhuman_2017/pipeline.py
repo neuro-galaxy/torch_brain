@@ -1,34 +1,213 @@
-import argparse
-import datetime
-import logging
 import os
+import datetime
+import hashlib
+import logging
+import subprocess
+from argparse import ArgumentParser
 from pathlib import Path
 
 import h5py
 import numpy as np
 import pandas as pd
+from temporaldata import ArrayDict, Data, Interval, IrregularTimeSeries
 
 from brainsets import serialize_fn_map
 from brainsets.descriptions import (
     BrainsetDescription,
+    DeviceDescription,
     SessionDescription,
     SubjectDescription,
-    DeviceDescription,
 )
-
-from brainsets.taxonomy import (
-    RecordingTech,
-    Species,
-    Task,
-)
-from temporaldata import (
-    ArrayDict,
-    Data,
-    Interval,
-    IrregularTimeSeries,
-)
+from brainsets.pipeline import BrainsetPipeline
+from brainsets.taxonomy import RecordingTech, Species, Task
 
 logging.basicConfig(level=logging.INFO)
+
+parser = ArgumentParser()
+parser.add_argument("--redownload", action="store_true")
+parser.add_argument("--reprocess", action="store_true")
+
+
+class Pipeline(BrainsetPipeline):
+    brainset_id = "odoherty_sabes_nonhuman_2017"
+    parser = parser
+
+    @classmethod
+    def get_manifest(cls, raw_dir, args) -> pd.DataFrame:
+        raw_dir.mkdir(exist_ok=True, parents=True)
+
+        # list files to download
+        r_fd = os.popen(f"zenodo_get -w - 3854034")
+        manifest_out = r_fd.read()
+        exit_code = r_fd.close()
+        if exit_code is not None and exit_code != 0:
+            raise RuntimeError("zenodo_get (list) failed with exit code {exit_code}")
+
+        # fetch md5sums
+        exit_code = os.system(f'cd "{raw_dir}" && zenodo_get -m 3854034')
+        if exit_code != 0:
+            raise RuntimeError("zenodo_get (md5) failed")
+
+        # parse md5sums
+        with open(raw_dir / "md5sums.txt", "r") as f:
+            md5sums = {}
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split(None, 1)
+                if len(parts) != 2:
+                    continue
+                md5, filename = parts
+                if filename.startswith("*"):
+                    filename = filename[1:]
+                md5sums[filename] = md5.lower()
+
+        # create manifest
+        manifest_list = []
+        for line in manifest_out.split("\n"):
+            line = line.strip()
+            if line:
+                file_name = line.split("/")[-2]
+                if not file_name.endswith(".mat"):
+                    continue
+                manifest_list.append(
+                    {
+                        "session_id": file_name.split(".")[0],
+                        "file": file_name,
+                        "url": line,
+                        "md5": md5sums[file_name],
+                    }
+                )
+
+        manifest = pd.DataFrame(manifest_list).set_index("session_id")
+        return manifest
+
+    def download(self, manifest_item):
+        self.update_status("DOWNLOADING")
+        self.raw_dir.mkdir(exist_ok=True, parents=True)
+        fpath = self.raw_dir / Path(manifest_item.file)
+
+        if (
+            not self.args.redownload
+            and fpath.exists()
+            and hashlib.md5(fpath.read_bytes()).hexdigest() == manifest_item.md5
+        ):
+            logging.info(f"Skipping download for {fpath} because it already exists")
+            self.update_status("Skipped Download")
+            return fpath
+
+        # download file
+        exit_code = os.system(f'wget -O "{fpath}" "{manifest_item.url}"')
+        if exit_code != 0:
+            logging.error(
+                f"Failed to download {manifest_item.url} with exit code {exit_code}"
+            )
+            self.update_status("Failed Download")
+            raise RuntimeError(f"Failed to download {manifest_item.url}")
+
+        # verify md5sum
+        md5 = hashlib.md5(fpath.read_bytes()).hexdigest()
+        if md5 != manifest_item.md5:
+            logging.error(f"MD5 mismatch for {fpath}: {md5} != {manifest_item.md5}")
+            self.update_status("Failed Download Verification")
+            raise ValueError(f"MD5 mismatch for {fpath}: {md5} != {manifest_item.md5}")
+        return fpath
+
+    def process(self, fpath):
+        processed_dir = self.processed_dir / self.brainset_id
+        processed_dir.mkdir(exist_ok=True, parents=True)
+
+        brainset_description = BrainsetDescription(
+            id="odoherty_sabes_nonhuman_2017",
+            origin_version="583331",  # Zenodo version
+            derived_version="1.0.0",
+            source="https://zenodo.org/record/583331",
+            description="The behavioral task was to make self-paced reaches to targets "
+            "arranged in a grid (e.g. 8x8) without gaps or pre-movement delay intervals. "
+            "One monkey reached with the right arm (recordings made in the left hemisphere)"
+            "The other reached with the left arm (right hemisphere). In some sessions "
+            "recordings were made from both M1 and S1 arrays (192 channels); "
+            "in most sessions M1 recordings were made alone (96 channels).",
+        )
+
+        logging.info(f"Processing file: {fpath}")
+
+        # open file
+        self.update_status("Loading mat")
+        h5file = h5py.File(fpath, "r")
+
+        # extract experiment metadata
+        # determine session_id and sortset_id
+        session_id = Path(fpath).stem  # type: ignore
+        if not self.args.reprocess and (processed_dir / f"{session_id}.h5").exists():
+            logging.info(
+                f"Skipping processing for {session_id} because it already exists"
+            )
+            self.update_status("Skipped Processing")
+            return
+        device_id = session_id[:-3]
+        assert device_id.count("_") == 1, f"Unexpected file name: {device_id}"
+
+        animal, recording_date = device_id.split("_")
+        subject = SubjectDescription(
+            id=animal,
+            species=Species.MACACA_MULATTA,
+        )
+
+        session_description = SessionDescription(
+            id=session_id,
+            recording_date=datetime.datetime.strptime(recording_date, "%Y%m%d"),
+            task=Task.REACHING,
+        )
+
+        device_description = DeviceDescription(
+            id=device_id,
+            recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
+        )
+
+        # extract spiking activity, unit metadata and channel names info
+        self.update_status("Extracting spikes")
+        spikes, units = extract_spikes(h5file)
+
+        # extract behavior
+        self.update_status("Extracting behavior")
+        cursor, finger = extract_behavior(h5file)
+        no_movement_segments = detect_no_movement(cursor)
+
+        # close file
+        h5file.close()
+
+        # register session
+        data = Data(
+            brainset=brainset_description,
+            subject=subject,
+            session=session_description,
+            device=device_description,
+            # neural activity
+            spikes=spikes,
+            units=units,
+            # stimuli and behavior
+            cursor=cursor,
+            finger=finger,
+            no_movement_segments=no_movement_segments,
+            domain=cursor.domain,
+        )
+
+        self.update_status("Creating splits")
+        train_sampling_intervals, valid_sampling_intervals, test_sampling_intervals = (
+            split_intervals(data)
+        )
+        # set the domains
+        data.set_train_domain(train_sampling_intervals)
+        data.set_valid_domain(valid_sampling_intervals)
+        data.set_test_domain(test_sampling_intervals)
+
+        # save data to disk
+        self.update_status("Storing")
+        path = processed_dir / f"{session_id}.h5"
+        with h5py.File(str(path), "w") as file:
+            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
 
 
 def extract_behavior(h5file):
@@ -256,96 +435,3 @@ def split_intervals(data):
             test_sampling_intervals,
         ] = intervals.split([8, 1, 1], shuffle=True, random_seed=42)
     return train_sampling_intervals, valid_sampling_intervals, test_sampling_intervals
-
-
-def main():
-    # use argparse to get arguments from the command line
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input_file", type=str)
-    parser.add_argument("--output_dir", type=str, default="./processed")
-
-    args = parser.parse_args()
-
-    brainset_description = BrainsetDescription(
-        id="odoherty_sabes_nonhuman_2017",
-        origin_version="583331",  # Zenodo version
-        derived_version="1.0.0",
-        source="https://zenodo.org/record/583331",
-        description="The behavioral task was to make self-paced reaches to targets "
-        "arranged in a grid (e.g. 8x8) without gaps or pre-movement delay intervals. "
-        "One monkey reached with the right arm (recordings made in the left hemisphere)"
-        "The other reached with the left arm (right hemisphere). In some sessions "
-        "recordings were made from both M1 and S1 arrays (192 channels); "
-        "in most sessions M1 recordings were made alone (96 channels).",
-    )
-
-    logging.info(f"Processing file: {args.input_file}")
-
-    # open file
-    h5file = h5py.File(args.input_file, "r")
-
-    # extract experiment metadata
-    # determine session_id and sortset_id
-    session_id = Path(args.input_file).stem  # type: ignore
-    device_id = session_id[:-3]
-    assert device_id.count("_") == 1, f"Unexpected file name: {device_id}"
-
-    animal, recording_date = device_id.split("_")
-    subject = SubjectDescription(
-        id=animal,
-        species=Species.MACACA_MULATTA,
-    )
-
-    session_description = SessionDescription(
-        id=session_id,
-        recording_date=datetime.datetime.strptime(recording_date, "%Y%m%d"),
-        task=Task.REACHING,
-    )
-
-    device_description = DeviceDescription(
-        id=device_id,
-        recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
-    )
-
-    # extract spiking activity, unit metadata and channel names info
-    spikes, units = extract_spikes(h5file)
-
-    # extract behavior
-    cursor, finger = extract_behavior(h5file)
-    no_movement_segments = detect_no_movement(cursor)
-
-    # close file
-    h5file.close()
-
-    # register session
-    data = Data(
-        brainset=brainset_description,
-        subject=subject,
-        session=session_description,
-        device=device_description,
-        # neural activity
-        spikes=spikes,
-        units=units,
-        # stimuli and behavior
-        cursor=cursor,
-        finger=finger,
-        no_movement_segments=no_movement_segments,
-        domain=cursor.domain,
-    )
-
-    train_sampling_intervals, valid_sampling_intervals, test_sampling_intervals = (
-        split_intervals(data)
-    )
-    # set the domains
-    data.set_train_domain(train_sampling_intervals)
-    data.set_valid_domain(valid_sampling_intervals)
-    data.set_test_domain(test_sampling_intervals)
-
-    # save data to disk
-    path = os.path.join(args.output_dir, f"{session_id}.h5")
-    with h5py.File(path, "w") as file:
-        data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
-
-
-if __name__ == "__main__":
-    main()
