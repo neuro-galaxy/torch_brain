@@ -19,19 +19,29 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
+
     - name: Install dependencies
       run: |
         python -m pip install --no-user --upgrade pip 
         pip install --no-user -e ".[dev]" 
+
     - name: Install plugin
       run: pip install pytest-github-actions-annotate-failures
+
     - name: Test with pytest
       run: |
-        pytest tests/
+        pytest tests/ --cov=temporaldata --cov-report=xml --cov-report=term-missing -v
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+
     - name: Test documentation
       run: |
         pytest --doctest-modules temporaldata/ -v
