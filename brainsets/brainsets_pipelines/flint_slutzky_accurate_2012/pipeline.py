@@ -1,34 +1,175 @@
-import argparse
-import logging
+# import logging
 import os
+from argparse import ArgumentParser, Namespace
+from pathlib import Path
+from typing import Optional
 
 import h5py
 import numpy as np
 import pandas as pd
+import requests
 from scipy.io import loadmat
-from temporaldata import (
-    ArrayDict,
-    Data,
-    Interval,
-    IrregularTimeSeries,
-)
+from temporaldata import ArrayDict, Data, Interval, IrregularTimeSeries
 
 from brainsets import serialize_fn_map
 from brainsets.descriptions import (
     BrainsetDescription,
+    DeviceDescription,
     SessionDescription,
     SubjectDescription,
-    DeviceDescription,
 )
-from brainsets.taxonomy import (
-    RecordingTech,
-    Species,
-    Task,
-    Sex,
-)
+from brainsets.pipeline import BrainsetPipeline
+from brainsets.taxonomy import RecordingTech, Sex, Species, Task
+
+parser = ArgumentParser()
+parser.add_argument("--redownload", action="store_true")
+parser.add_argument("--reprocess", action="store_true")
 
 
-logging.basicConfig(level=logging.INFO)
+BASE_URL = "https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012"
+FLINT_URL = "dream/data_sets/Flint_2012"
+LOGIN_DATA = {
+    "2Fdata_sets%2FFlint_2012": "",
+    "agree_terms": "on",
+    "submit": "Login Anonymously",
+}
+
+REQUEST_PARAMS = {
+    "username": "",
+    "password": "",
+    "guest": "1",
+    "agree_terms": "on",
+    "submit": "Login Anonymously",
+}
+
+MANIFEST_LIST = [
+    "Flint_2012_e1.mat",
+    "Flint_2012_e2.mat",
+    "Flint_2012_e3.mat",
+    "Flint_2012_e4.mat",
+    "Flint_2012_e5.mat",
+]
+
+
+class Pipeline(BrainsetPipeline):
+    brainset_id = "flint_slutzky_accurate_2012"
+    parser = parser
+
+    @classmethod
+    def get_manifest(
+        cls,
+        raw_dir: Path,
+        args: Optional[Namespace],
+    ) -> pd.DataFrame:
+        manifest_list = [
+            {"session_id": x.split(".")[0].lower(), "fname": x} for x in MANIFEST_LIST
+        ]
+
+        manifest = pd.DataFrame(manifest_list).set_index("session_id")
+
+        return manifest
+
+    def download(self, manifest_item):
+        self.update_status("DOWNLOADING")
+        session = requests.Session()
+        session.post(BASE_URL, data=LOGIN_DATA)
+
+        params = REQUEST_PARAMS.copy()
+        params["fn"] = f"{FLINT_URL}/{manifest_item.fname}"
+
+        self.raw_dir.mkdir(parents=True, exist_ok=True)
+        fpath = self.raw_dir / f"{manifest_item.fname}"
+
+        with session.get(BASE_URL, params=params, stream=True) as response:
+            response.raise_for_status()
+            with open(fpath, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+        return fpath
+
+    def process(self, fpath):
+        # open file
+        self.update_status("Loading mat")
+        mat = loadmat(fpath)
+
+        self.processed_dir.mkdir(exist_ok=True, parents=True)
+
+        brainset_description = BrainsetDescription(
+            id="flint_slutzky_accurate_2012",
+            origin_version="0.0.0",
+            derived_version="1.0.0",
+            source="https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012",
+            description="Monkeys recordings of Motor Cortex (M1) and dorsal Premotor Cortex"
+            " (PMd)  128-channel acquisition system (Cerebus,Blackrock, Inc.)  "
+            "while performing reaching tasks on right hand",
+        )
+
+        self.update_status("Extracting Metadata")
+
+        subject = SubjectDescription(
+            id="monkey_c",
+            species=Species.MACACA_MULATTA,
+            sex=Sex.UNKNOWN,
+        )
+
+        session_tag = str(fpath).split("_")[-1].split(".mat")[0]  # e1, e2, e3...
+        device_id = f"{subject.id}_{session_tag}"
+        session_id = f"{device_id}_reaching"
+
+        store_path = self.processed_dir / f"{session_id}.h5"
+        if store_path.exists() and not self.args.reprocess:
+            self.update_status("Skipped Processing")
+            return
+
+        # register session
+        session = SessionDescription(
+            id=session_id,
+            recording_date="20130530",  # using .mat file creation date
+            task=Task.REACHING,
+        )
+
+        device = DeviceDescription(
+            id=device_id,
+            recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
+        )
+
+        units = extract_units(mat)  # Data obj
+
+        self.update_status("Extracting Spikes")
+        spikes = extract_spikes(mat)  # IrregularTimeSeries obj
+
+        trials = extract_trials(mat)  # Interval obj
+
+        self.update_status("Extracting Behavior")
+        hand = extract_behavior(mat, trials)  # IrregularTimeSeries obj
+
+        data = Data(
+            brainset=brainset_description,
+            subject=subject,
+            session=session,
+            device=device,
+            # neural activity
+            spikes=spikes,
+            units=units,
+            # stimuli and behavior
+            trials=trials,
+            hand=hand,
+            domain=trials,
+        )
+
+        # split trials into train, validation and test
+        train_trials, valid_trials, test_trials = trials.split(
+            [0.7, 0.1, 0.2], shuffle=True, random_seed=42
+        )
+
+        data.set_train_domain(train_trials)
+        data.set_valid_domain(valid_trials)
+        data.set_test_domain(test_trials)
+
+        # save data to disk
+        with h5py.File(store_path, "w") as file:
+            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
 
 
 def extract_units(mat):
@@ -244,7 +385,3 @@ def main():
     path = os.path.join(args.output_dir, f"{session_id}.h5")
     with h5py.File(path, "w") as file:
         data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
-
-
-if __name__ == "__main__":
-    main()
