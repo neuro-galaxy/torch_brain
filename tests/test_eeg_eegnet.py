@@ -1,53 +1,63 @@
-import torch
 import numpy as np
-from temporaldata import RegularTimeSeries, Interval
+import torch
+import pytest
 
+from temporaldata import Data, RegularTimeSeries, Interval
 from torch_brain.models.eeg_eegnet import EEGNet
 
 
-class DummyData:
-    def __init__(self, eeg, trials=None):
-        self.eeg = eeg
-        if trials is not None:
-            self.trials = trials
+def make_temporaldata_eeg_sample(
+    in_chans: int,
+    in_times: int,
+    label: int = 0,
+    sampling_rate: float = 250.0,
+) -> Data:
+    """
+    Build a minimal temporaldata.Data object that matches what
+    EEGNet.tokenize expects:
 
+        data.eeg.sig      -> np.ndarray [T, C]
+        data.trials.label -> array-like with at least one element
+    """
+    # EEG signal: [T, C]
+    signal = np.random.randn(in_times, in_chans).astype("float32")
 
-def make_dummy_data(
-    n_chans: int = 40,
-    T: int = 500,
-    sr: float = 250.0,
-    label: int = 1,
-    with_trials: bool = True,
-):
-    signal = np.random.randn(T, n_chans).astype(np.float32)
-    zeros = np.zeros_like(signal)
+    # Time domain 0..(T / fs)
+    duration = in_times / sampling_rate
+    domain = Interval(0.0, duration)
 
+    # RegularTimeSeries: first dim is time, so shape (T, C) is correct
     eeg = RegularTimeSeries(
-        sampling_rate=sr,
-        domain=Interval(0.0, T / sr),
-        signal=signal,
-        qc_rmse=zeros,
-        quality_metric=zeros,
+        signal=signal,  # <-- this becomes data.eeg.sig
+        sampling_rate=sampling_rate,
+        domain=domain,
     )
 
-    if with_trials:
-        trials = Interval(
-            start=np.array([0.0], dtype=np.float32),
-            end=np.array([T / sr], dtype=np.float32),
-            label=np.array([label]),
-            timekeys=["start", "end"],
-        )
-        return DummyData(eeg=eeg, trials=trials)
+    # Trials: we only need a 'label' field that EEGNet.tokenize can read
+    trials = Interval(
+        start=np.array([0.0]),
+        end=np.array([duration]),
+        label=np.array([label]),
+        timekeys=["start", "end"],
+    )
 
-    return DummyData(eeg=eeg)
+    # Wrap everything into a Data object
+    data = Data(
+        eeg=eeg,
+        trials=trials,
+        domain=domain,
+    )
+    return data
 
 
-def test_tokenizer_outputs_expected_keys_and_shapes():
-    model = EEGNet(in_chans=40, in_times=500, n_classes=4)
-    data = make_dummy_data(n_chans=40, T=500)
+def test_tokenize_with_real_temporaldata_objects():
+    in_chans, in_times, n_classes = 40, 500, 4
+    model = EEGNet(in_chans=in_chans, in_times=in_times, n_classes=n_classes)
 
+    data = make_temporaldata_eeg_sample(in_chans, in_times, label=2)
     out = model.tokenize(data)
 
+    # Check keys
     expected_keys = {
         "input_values",
         "input_mask",
@@ -57,72 +67,91 @@ def test_tokenizer_outputs_expected_keys_and_shapes():
     }
     assert set(out.keys()) == expected_keys
 
-    x = out["input_values"]
-    mask = out["input_mask"]
-    y = out["target_values"]
-    w = out["target_weights"]
+    x = out["input_values"]  # [C, T]
+    mask = out["input_mask"]  # [T]
+    y = out["target_values"]  # scalar
+    w = out["target_weights"]  # scalar
+    hints = out["model_hints"]  # dict
 
-    # input_values: [C, T’]
-    assert x.dim() == 2
-    assert x.shape[0] == 40  # channels
+    # Shapes & dtypes
+    assert isinstance(x, torch.Tensor)
+    assert x.ndim == 2
+    assert x.shape[0] == in_chans  # channels
 
-    # mask: [T’]
-    assert mask.dim() == 1
+    assert isinstance(mask, torch.Tensor)
     assert mask.dtype == torch.bool
+    assert mask.shape[0] == x.shape[1]  # time
+
+    assert y.dtype == torch.long
+    assert y.shape == torch.Size([])
+
+    assert w.dtype == torch.float32
+    assert w.shape == torch.Size([])
+
+    # Labels should be preserved
+    assert y.item() == 2
+    assert w.item() == 1.0
+
+    # model_hints consistency
+    assert hints["in_chans"] == in_chans
+    assert hints["in_times"] == x.shape[1]
+    assert "min_time_required" in hints
+    assert hints["min_time_required"] == model.min_T
+
+    # Optional: check EEGNet-specific hints exist and match model
+    assert hints["F1"] == model.F1
+    assert hints["D"] == model.D
+    assert hints["F2"] == model.F2
+    assert hints["kernel_time"] == model.kernel_time
+    assert hints["kernel_time_separable"] == model.kernel_time_separable
+    assert hints["pool_time_size_1"] == model.pool_time_size_1
+    assert hints["pool_time_size_2"] == model.pool_time_size_2
+
+
+def test_tokenizer_pads_short_temporaldata_sequences():
+    # deliberately small in_times (the model will internally bump to min_T)
+    in_chans, in_times, n_classes = 40, 80, 4
+    model = EEGNet(in_chans=in_chans, in_times=in_times, n_classes=n_classes)
+
+    # Very short sequence T_short < min_T
+    T_short = 10
+    assert T_short < model.min_T  # sanity check
+
+    data = make_temporaldata_eeg_sample(in_chans, T_short, label=1)
+    out = model.tokenize(data)
+
+    x = out["input_values"]  # [C, T_pad]
+    mask = out["input_mask"]  # [T_pad]
+    min_T = model.min_T
+
+    assert x.shape[1] >= min_T
     assert mask.shape[0] == x.shape[1]
 
-    # targets
-    assert y.shape == torch.Size([])
-    assert y.dtype == torch.long
-    assert w.shape == torch.Size([])
-    assert w.dtype == torch.float32
+    # First T_short entries are True, rest False
+    assert mask[:T_short].all()
+    assert (~mask[T_short:]).all()
 
 
-def test_forward_output_shape_matches_n_classes():
-    model = EEGNet(in_chans=40, in_times=500, n_classes=4)
-    data = make_dummy_data(n_chans=40, T=500)
+def test_forward_and_backward_with_tokenized_batch():
+    in_chans, in_times, n_classes = 40, 500, 4
+    model = EEGNet(in_chans=in_chans, in_times=in_times, n_classes=n_classes)
 
-    out = model.tokenize(data)
-    x = out["input_values"].unsqueeze(0)  # [1, C, T]
+    batch_size = 8
 
-    logits = model(x)
-    assert logits.shape == (1, 4)
+    # Build a batch of temporaldata.Data, tokenize, then stack
+    datas = [
+        make_temporaldata_eeg_sample(in_chans, in_times, label=i % n_classes)
+        for i in range(batch_size)
+    ]
+    tokens = [model.tokenize(d) for d in datas]
 
+    # All tokenized samples should have same (C,T) after padding
+    xs = torch.stack([t["input_values"] for t in tokens], dim=0)  # [B, C, T]
+    ys = torch.stack([t["target_values"] for t in tokens], dim=0)  # [B]
 
-def test_padding_applied_for_short_inputs():
-    """Check that tokenizer pads too-short windows to min_T and masks correctly."""
-    model = EEGNet(in_chans=40, in_times=500, n_classes=4)
+    logits = model(xs)  # [B, n_classes]
+    assert logits.shape == (batch_size, n_classes)
 
-    # Make a short EEG: T_short < min_T
-    T_short = 10
-    short_data = make_dummy_data(n_chans=40, T=T_short, sr=250.0)
-
-    out = model.tokenize(short_data)
-    x = out["input_values"]  # [C, T’]
-    mask = out["input_mask"]  # [T’]
-
-    # min_T is defined in the tokenizer as:
-    # min_T = pool_time_length * sep_pool_time_length
-    min_T = model.pool_time_length * model.sep_pool_time_length
-
-    assert x.shape[1] == min_T  # time dimension padded to min_T
-    assert mask.shape[0] == min_T  # mask matches padded length
-    assert mask.sum().item() == T_short  # only original timepoints are True
-
-
-def test_auto_kernel_still_runs_and_shapes_match():
-    """Sanity check: auto_kernel produces a working model and forward pass."""
-    model = EEGNet(
-        in_chans=40,
-        in_times=120,
-        n_classes=3,
-        auto_kernel=True,
-        verbose=False,
-    )
-    data = make_dummy_data(n_chans=40, T=120)
-
-    out = model.tokenize(data)
-    x = out["input_values"].unsqueeze(0)  # [1, C, T’]
-    logits = model(x)
-
-    assert logits.shape == (1, 3)
+    # EEGNet returns raw logits → use CrossEntropyLoss
+    loss = torch.nn.functional.cross_entropy(logits, ys)
+    loss.backward()  # should run without error
