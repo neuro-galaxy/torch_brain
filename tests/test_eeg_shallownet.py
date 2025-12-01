@@ -16,7 +16,7 @@ def make_temporaldata_eeg_sample(
     Build a minimal temporaldata.Data object that matches what
     ShallowNet.tokenize expects:
 
-        data.eeg.signal  -> np.ndarray [T, C]
+        data.eeg.sig      -> np.ndarray [T, C]
         data.trials.label -> array-like with at least one element
     """
     # EEG signal: [T, C]
@@ -28,7 +28,7 @@ def make_temporaldata_eeg_sample(
 
     # RegularTimeSeries: first dim is time, so shape (T, C) is correct
     eeg = RegularTimeSeries(
-        signal=signal,  # <-- this becomes data.eeg.signal
+        signal=signal,  # <-- this becomes data.eeg.sig
         sampling_rate=sampling_rate,
         domain=domain,
     )
@@ -77,11 +77,11 @@ def test_tokenize_with_real_temporaldata_objects():
     # Shapes & dtypes
     assert isinstance(x, torch.Tensor)
     assert x.ndim == 2
-    assert x.shape[0] == in_chans
+    assert x.shape[0] == in_chans  # channels
 
     assert isinstance(mask, torch.Tensor)
     assert mask.dtype == torch.bool
-    assert mask.shape[0] == x.shape[1]
+    assert mask.shape[0] == x.shape[1]  # time
 
     assert y.dtype == torch.long
     assert y.shape == torch.Size([])
@@ -89,13 +89,21 @@ def test_tokenize_with_real_temporaldata_objects():
     assert w.dtype == torch.float32
     assert w.shape == torch.Size([])
 
+    # model_hints consistency
     assert hints["in_chans"] == in_chans
     assert hints["in_times"] == x.shape[1]
     assert "min_time_required" in hints
+    assert hints["min_time_required"] == model.min_T
+
+    # Optional: check kernel info is present
+    assert hints["kernel_time"] == model.kernel_time
+    assert hints["pool_time_size"] == model.pool_time_size
+    assert hints["pool_time_stride"] == model.pool_time_stride
 
 
 def test_tokenizer_pads_short_temporaldata_sequences():
-    in_chans, in_times, n_classes = 40, 80, 4  # deliberately small in_times
+    # deliberately small in_times to force internal padding logic
+    in_chans, in_times, n_classes = 40, 80, 4
     model = ShallowNet(in_chans=in_chans, in_times=in_times, n_classes=n_classes)
 
     # Very short sequence T_short < min_T
@@ -106,7 +114,7 @@ def test_tokenizer_pads_short_temporaldata_sequences():
 
     x = out["input_values"]  # [C, T_pad]
     mask = out["input_mask"]  # [T_pad]
-    min_T = model.filter_time_length + model.pool_time_length - 1
+    min_T = model.min_T
 
     assert x.shape[1] >= min_T
     assert mask.shape[0] == x.shape[1]
@@ -136,5 +144,6 @@ def test_forward_and_backward_with_tokenized_batch():
     logits = model(xs)  # [B, n_classes]
     assert logits.shape == (batch_size, n_classes)
 
+    # By default ShallowNet uses log-softmax, so nll_loss is appropriate
     loss = torch.nn.functional.nll_loss(logits, ys)
     loss.backward()  # should run without error
