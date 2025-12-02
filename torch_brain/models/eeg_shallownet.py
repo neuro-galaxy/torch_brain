@@ -246,7 +246,7 @@ class ShallowNet(nn.Module):
         Convert a temporaldata.Data sample into a Torch Brain compatible dict.
 
         Expects:
-            data.eeg.sig : array-like [T, C]
+            data.eeg.signal : array-like [T, C]
 
         Returns:
             dict with keys:
@@ -259,7 +259,7 @@ class ShallowNet(nn.Module):
         # 1) get EEG
         sig = getattr(data.eeg, "signal", None)
         if sig is None:
-            raise ValueError("Sample missing EEG at data.eeg.sig")
+            raise ValueError("Sample missing EEG at data.eeg.signal")
 
         x = np.asarray(sig, dtype=np.float32)  # [T, C]
         if x.ndim != 2:

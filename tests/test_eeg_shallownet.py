@@ -16,7 +16,7 @@ def make_temporaldata_eeg_sample(
     Build a minimal temporaldata.Data object that matches what
     ShallowNet.tokenize expects:
 
-        data.eeg.sig      -> np.ndarray [T, C]
+        data.eeg.signal      -> np.ndarray [T, C]
         data.trials.label -> array-like with at least one element
     """
     # EEG signal: [T, C]
