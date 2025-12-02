@@ -164,3 +164,4 @@ data/raw
 checkpoint.pth
 
 uv.lock
+notebooks/testing.ipynb
