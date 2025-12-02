@@ -1,31 +1,5 @@
-"""
-Deep ConvNet (DeepConvNet) for EEG — Torch Brain compatible
-===========================================================
+from typing import Dict, Any, Tuple
 
-A deep convolutional baseline for EEG window classification from:
-
-    Schirrmeister, R. T., et al. (2017).
-    "Deep learning with convolutional neural networks for EEG decoding
-     and visualization." Human Brain Mapping.
-     https://arxiv.org/abs/1703.05051
-
-This implementation follows Torch Brain conventions:
-
-- Forward accepts EEG windows as tensors of shape [B, C, T] (or [B, C, T, 1]).
-- A built-in tokenizer takes `temporaldata.Data` and returns a Torch Brain style
-  dict with input values, masks, targets, and model hints.
-- `min_T` is computed analytically from the conv/pool stack: it is the true
-  minimum temporal length required for the network to produce at least one
-  output time step. Shorter windows are padded by the tokenizer.
-
-Compared to ShallowNet, DeepConvNet uses more conv–pool blocks and a wider
-filter hierarchy, but exposes the same tokenizer API so switching baselines in
-tutorials or training scripts is frictionless.
-
-This model is inspired by the Braindecode BSD-3 Deep4Net implementation.
-"""
-
-from typing import Dict, Any
 import numpy as np
 import torch
 from torch import nn
@@ -39,57 +13,67 @@ class DeepConvNet(nn.Module):
     """
     Deep ConvNet for EEG window classification.
 
-    Architecture (time × channels view)
-    -----------------------------------
-    The model applies four successive temporal convolution + pooling stages:
+    Core interface
+    --------------
+    Args
+    ----
+    in_chans : int
+        Number of EEG channels.
+    in_times : int
+        Number of time samples per window.
+    n_classes : int
+        Number of output classes.
 
-        Block 1:
-            conv_time (over time)
-            conv_spat (across channels)
-            batch norm → ELU → max-pool → dropout
+    Architecture hyperparameters
+    ----------------------------
+    kernel_time_1 : int, default=10
+        Temporal kernel size for block 1 conv_time.
+    kernel_time_2 : int, default=10
+        Temporal kernel size for block 2 conv.
+    kernel_time_3 : int, default=10
+        Temporal kernel size for block 3 conv.
+    kernel_time_4 : int, default=10
+        Temporal kernel size for block 4 conv.
+    pool_time_size : int, default=3
+        Temporal pooling kernel size (same for all 4 blocks).
+    pool_time_stride : int, default=3
+        Temporal pooling stride (same for all 4 blocks).
 
-        Blocks 2–4:
-            temporal conv → batch norm → ELU → max-pool → dropout
+    n_filters_time : int, default=25
+        Number of temporal filters in block 1.
+    n_filters_spat : int, default=25
+        Number of spatial filters in block 1.
+    n_filters_2 : int, default=50
+    n_filters_3 : int, default=100
+    n_filters_4 : int, default=200
 
-    A final temporal conv (`conv_classifier`) collapses the remaining time
-    dimension and produces logits of shape [B, n_classes]. If `logsoftmax=True`,
-    the outputs are log-probabilities suitable for `torch.nn.NLLLoss`.
+    dropout : float, default=0.5
+        Dropout probability after each pooling layer.
+    use_logsoftmax : bool, default=True
+        If True, apply log-softmax to outputs (for NLLLoss).
+        If False, return raw logits (for CrossEntropyLoss).
 
-    Input
-    -----
-    x : FloatTensor
-        - [B, C, T]   (preferred)
-        - [B, C, T, 1] (legacy / compatibility)
+    auto_kernel : bool, default=False
+        If True, kernel sizes are suggested heuristically from in_times.
+    verbose : bool, default=False
+        If True and auto_kernel is enabled, print chosen kernels.
 
-    Output
-    ------
-    logits : FloatTensor [B, n_classes]
+    Tokenizer
+    ---------
+    tokenize(data: Data) expects:
 
-    Tokenizer interface (Torch Brain standard)
-    -----------------------------------------
-    `tokenize(data: temporaldata.Data) -> dict` with keys:
+        data.eeg.sig : array-like [T, C]
+        data.trials.label : array-like with at least one label (optional)
 
-        - input_values   : FloatTensor [C, T_pad]
-        - input_mask     : BoolTensor [T_pad]
-        - target_values  : LongTensor scalar
-        - target_weights : FloatTensor scalar
-        - model_hints    : dict (includes min_time_required)
+    It returns:
 
-    Normalization and options
-    -------------------------
-    - `set_tokenizer_eval(flag: bool)`      : reserved for future stochastic aug.
-    - `set_tokenizer_opts(normalize_mode=)` :
-        * "zscore" (default): per-channel z-score over time
-        * "none"            : no normalization
-
-    Minimum temporal length (min_T)
-    --------------------------------
-    `min_T` is derived analytically from the conv/pool configuration: it is the
-    smallest number of time samples T such that all conv + pool layers can be
-    applied and yield at least one output position.
-
-    The tokenizer pads any window with T < min_T up to min_T along the time
-    dimension, and builds an input mask that marks real vs. padded samples.
+        {
+            "input_values"   : FloatTensor [C, T_pad],
+            "input_mask"     : BoolTensor [T_pad],
+            "target_values"  : LongTensor scalar,
+            "target_weights" : FloatTensor scalar,
+            "model_hints"    : dict
+        }
     """
 
     def __init__(
@@ -97,32 +81,31 @@ class DeepConvNet(nn.Module):
         in_chans: int,
         in_times: int,
         n_classes: int,
-        #
-        # Temporal kernels (optionally auto-adjusted)
-        #
-        filter_time_length: int = 10,
-        conv2_kernel: int = 10,
-        conv3_kernel: int = 10,
-        conv4_kernel: int = 10,
-        #
-        pool_time_length: int = 3,
+        *,
+        # temporal kernels (optionally auto-adjusted)
+        kernel_time_1: int = 10,
+        kernel_time_2: int = 10,
+        kernel_time_3: int = 10,
+        kernel_time_4: int = 10,
+        # pooling
+        pool_time_size: int = 3,
         pool_time_stride: int = 3,
-        #
+        # filters
         n_filters_time: int = 25,
         n_filters_spat: int = 25,
         n_filters_2: int = 50,
         n_filters_3: int = 100,
         n_filters_4: int = 200,
-        #
-        dropout_p: float = 0.5,
-        logsoftmax: bool = True,
+        # regularization / head
+        dropout: float = 0.5,
+        use_logsoftmax: bool = True,
+        # kernel heuristics
         auto_kernel: bool = False,
-        verbose: bool = True,
+        verbose: bool = False,
     ) -> None:
         super().__init__()
 
         self.in_chans = in_chans
-        self.in_times = in_times
         self.n_classes = n_classes
 
         # --------------------------------------------------------------
@@ -130,118 +113,118 @@ class DeepConvNet(nn.Module):
         # --------------------------------------------------------------
         if auto_kernel:
             (
-                filter_time_length,
-                conv2_kernel,
-                conv3_kernel,
-                conv4_kernel,
-                pool_time_length,
+                kernel_time_1,
+                kernel_time_2,
+                kernel_time_3,
+                kernel_time_4,
+                pool_time_size,
                 pool_time_stride,
             ) = self.suggest_kernels(in_times)
             if verbose:
                 print(
                     "[DeepConvNet] auto kernels:"
-                    f" conv1={filter_time_length}, conv2={conv2_kernel},"
-                    f" conv3={conv3_kernel}, conv4={conv4_kernel},"
-                    f" pool={pool_time_length}, stride={pool_time_stride}"
+                    f" k1={kernel_time_1}, k2={kernel_time_2},"
+                    f" k3={kernel_time_3}, k4={kernel_time_4},"
+                    f" pool={pool_time_size}, stride={pool_time_stride}"
                 )
 
-        # store on self for tokenizer + min_T logic
-        self.filter_time_length = int(filter_time_length)
-        self.conv2_kernel = int(conv2_kernel)
-        self.conv3_kernel = int(conv3_kernel)
-        self.conv4_kernel = int(conv4_kernel)
-        self.pool_time_length = int(pool_time_length)
+        # store hyperparameters
+        self.kernel_time_1 = int(kernel_time_1)
+        self.kernel_time_2 = int(kernel_time_2)
+        self.kernel_time_3 = int(kernel_time_3)
+        self.kernel_time_4 = int(kernel_time_4)
+        self.pool_time_size = int(pool_time_size)
         self.pool_time_stride = int(pool_time_stride)
+
+        # analytic minimum temporal length and effective in_times
+        self.min_T = self._compute_min_T()
+        self.in_times = max(in_times, self.min_T)
 
         # --------------------------------------------------------------
         # Block 1: temporal + spatial conv
         # --------------------------------------------------------------
         self.conv_time = nn.Conv2d(
-            1,
-            n_filters_time,
-            (self.filter_time_length, 1),
+            in_channels=1,
+            out_channels=n_filters_time,
+            kernel_size=(self.kernel_time_1, 1),
             bias=False,
         )
         self.conv_spat = nn.Conv2d(
-            n_filters_time,
-            n_filters_spat,
-            (1, in_chans),
+            in_channels=n_filters_time,
+            out_channels=n_filters_spat,
+            kernel_size=(1, in_chans),
             bias=True,
         )
         self.bn1 = nn.BatchNorm2d(n_filters_spat)
         self.pool1 = nn.MaxPool2d(
-            (self.pool_time_length, 1),
-            (self.pool_time_stride, 1),
+            kernel_size=(self.pool_time_size, 1),
+            stride=(self.pool_time_stride, 1),
         )
-        self.drop1 = nn.Dropout(dropout_p)
+        self.drop1 = nn.Dropout(dropout)
 
         # --------------------------------------------------------------
         # Block 2
         # --------------------------------------------------------------
         self.conv2 = nn.Conv2d(
-            n_filters_spat,
-            n_filters_2,
-            (self.conv2_kernel, 1),
+            in_channels=n_filters_spat,
+            out_channels=n_filters_2,
+            kernel_size=(self.kernel_time_2, 1),
             bias=False,
         )
         self.bn2 = nn.BatchNorm2d(n_filters_2)
         self.pool2 = nn.MaxPool2d(
-            (self.pool_time_length, 1),
-            (self.pool_time_stride, 1),
+            kernel_size=(self.pool_time_size, 1),
+            stride=(self.pool_time_stride, 1),
         )
-        self.drop2 = nn.Dropout(dropout_p)
+        self.drop2 = nn.Dropout(dropout)
 
         # --------------------------------------------------------------
         # Block 3
         # --------------------------------------------------------------
         self.conv3 = nn.Conv2d(
-            n_filters_2,
-            n_filters_3,
-            (self.conv3_kernel, 1),
+            in_channels=n_filters_2,
+            out_channels=n_filters_3,
+            kernel_size=(self.kernel_time_3, 1),
             bias=False,
         )
         self.bn3 = nn.BatchNorm2d(n_filters_3)
         self.pool3 = nn.MaxPool2d(
-            (self.pool_time_length, 1),
-            (self.pool_time_stride, 1),
+            kernel_size=(self.pool_time_size, 1),
+            stride=(self.pool_time_stride, 1),
         )
-        self.drop3 = nn.Dropout(dropout_p)
+        self.drop3 = nn.Dropout(dropout)
 
         # --------------------------------------------------------------
         # Block 4
         # --------------------------------------------------------------
         self.conv4 = nn.Conv2d(
-            n_filters_3,
-            n_filters_4,
-            (self.conv4_kernel, 1),
+            in_channels=n_filters_3,
+            out_channels=n_filters_4,
+            kernel_size=(self.kernel_time_4, 1),
             bias=False,
         )
         self.bn4 = nn.BatchNorm2d(n_filters_4)
         self.pool4 = nn.MaxPool2d(
-            (self.pool_time_length, 1),
-            (self.pool_time_stride, 1),
+            kernel_size=(self.pool_time_size, 1),
+            stride=(self.pool_time_stride, 1),
         )
-        self.drop4 = nn.Dropout(dropout_p)
+        self.drop4 = nn.Dropout(dropout)
 
         # --------------------------------------------------------------
-        # Analytic min_T + final conv length
+        # Final conv length: probe with a dummy forward
         # --------------------------------------------------------------
-        self.min_T = self._compute_min_T()
-
-        # Use a single dummy forward at min_T to determine the temporal
-        # dimension right before the classifier.
         with torch.no_grad():
-            dummy = torch.zeros(1, self.in_chans, self.min_T)  # [B, C, T]
+            dummy = torch.zeros(1, self.in_chans, self.in_times)  # [B, C, T]
             final_T = self._forward_features(dummy).shape[2]
 
         self.conv_classifier = nn.Conv2d(
-            n_filters_4,
-            n_classes,
-            (final_T, 1),
+            in_channels=n_filters_4,
+            out_channels=n_classes,
+            kernel_size=(final_T, 1),
             bias=True,
         )
 
-        self.logsoftmax = nn.LogSoftmax(dim=1) if logsoftmax else nn.Identity()
+        self.activation = nn.LogSoftmax(dim=1) if use_logsoftmax else nn.Identity()
 
         # --------------------------------------------------------------
         # Init
@@ -262,29 +245,24 @@ class DeepConvNet(nn.Module):
             nn.init.constant_(bn.weight, 1.0)
             nn.init.constant_(bn.bias, 0.0)
 
-        # tokenizer state (mirrors ShallowNet)
+        # tokenizer state (ShallowNet/EEGNet-compatible)
         self._tokenizer_eval = False
         self._normalize_mode = "zscore"  # "zscore" | "none"
 
     # ==================================================================
     # Kernel suggestion (DeepConvNet-aware)
     # ==================================================================
-    def suggest_kernels(self, T: int):
+    def suggest_kernels(self, T: int) -> Tuple[int, int, int, int, int, int]:
         """
         Heuristic kernel sizing based on window length.
 
-        - conv1 kernel ~1% of input length, clipped to [10, 40].
-        - conv2–4 use the same temporal kernel as conv1 by default.
+        - conv kernels ~1% of input length, clipped to [10, 40].
         - pooling uses small, stable (3, 3) settings.
         """
-        conv1 = max(10, min(int(T * 0.01), 40))
-        conv2 = conv1
-        conv3 = conv1
-        conv4 = conv1
-
+        k = max(10, min(int(T * 0.01), 40))
         pool = 3
         stride = 3
-        return conv1, conv2, conv3, conv4, pool, stride
+        return k, k, k, k, pool, stride
 
     # ==================================================================
     # Analytic min_T: true architectural minimum temporal length
@@ -298,12 +276,12 @@ class DeepConvNet(nn.Module):
         length of 1 and reversing each pool + conv pair.
         """
         conv_k = [
-            self.filter_time_length,
-            self.conv2_kernel,
-            self.conv3_kernel,
-            self.conv4_kernel,
+            self.kernel_time_1,
+            self.kernel_time_2,
+            self.kernel_time_3,
+            self.kernel_time_4,
         ]
-        pool_k = [self.pool_time_length] * 4
+        pool_k = [self.pool_time_size] * 4
         pool_s = [self.pool_time_stride] * 4
 
         L = 1  # require final temporal length >= 1
@@ -318,7 +296,7 @@ class DeepConvNet(nn.Module):
         return int(L)
 
     # ==================================================================
-    # Tokenizer controls (ShallowNet-compatible)
+    # Tokenizer controls
     # ==================================================================
     def set_tokenizer_eval(self, flag: bool = True) -> None:
         """
@@ -329,11 +307,7 @@ class DeepConvNet(nn.Module):
         """
         self._tokenizer_eval = flag
 
-    def set_tokenizer_opts(
-        self,
-        *,
-        normalize_mode: str = "zscore",
-    ) -> None:
+    def set_tokenizer_opts(self, *, normalize_mode: str = "zscore") -> None:
         """
         Configure tokenizer options.
 
@@ -415,7 +389,7 @@ class DeepConvNet(nn.Module):
         return x
 
     # ==================================================================
-    # Tokenizer (ShallowNet-compatible output dict)
+    # Tokenizer (ShallowNet/EEGNet-compatible output dict)
     # ==================================================================
     def tokenize(self, data: Data) -> Dict[str, Any]:
         """
@@ -427,7 +401,7 @@ class DeepConvNet(nn.Module):
         """
         sig = getattr(data.eeg, "signal", None)
         if sig is None:
-            raise ValueError("Sample missing EEG at data.eeg.signal")
+            raise ValueError("Sample missing EEG at data.eeg.sig")
 
         # temporaldata uses [T, C]; convert to [C, T]
         x = np.asarray(sig, dtype=np.float32)
@@ -445,7 +419,7 @@ class DeepConvNet(nn.Module):
         else:
             raise ValueError(f"Unknown normalize_mode={self._normalize_mode}")
 
-        # label + weight (mirrors ShallowNet behavior)
+        # label + weight (mirrors ShallowNet/EEGNet behavior)
         if hasattr(data, "trials") and len(getattr(data.trials, "label", [])) > 0:
             try:
                 y_val = int(data.trials.label[0])
@@ -453,8 +427,8 @@ class DeepConvNet(nn.Module):
             except Exception:
                 y_val, y_w = 0, 0.0
         else:
-            # Fallback for dummy or unlabeled data; keep loss computable
-            y_val, y_w = 1, 1.0
+            # unlabeled → dummy label, zero weight (ignored in loss)
+            y_val, y_w = 0, 0.0
 
         C, T = x_t.shape
 
@@ -477,11 +451,11 @@ class DeepConvNet(nn.Module):
         model_hints = {
             "in_chans": C,
             "in_times": T_out,
-            "filter_time_length": self.filter_time_length,
-            "conv2_kernel": self.conv2_kernel,
-            "conv3_kernel": self.conv3_kernel,
-            "conv4_kernel": self.conv4_kernel,
-            "pool_time_length": self.pool_time_length,
+            "kernel_time_1": self.kernel_time_1,
+            "kernel_time_2": self.kernel_time_2,
+            "kernel_time_3": self.kernel_time_3,
+            "kernel_time_4": self.kernel_time_4,
+            "pool_time_size": self.pool_time_size,
             "pool_time_stride": self.pool_time_stride,
             "min_time_required": self.min_T,
         }
@@ -509,10 +483,11 @@ class DeepConvNet(nn.Module):
 
         Returns
         -------
-        logits : FloatTensor [B, n_classes]
+        outputs : FloatTensor [B, n_classes]
+            Either log-probabilities (if use_logsoftmax=True) or logits.
         """
         feats = self._forward_features(x)
         out = self.conv_classifier(feats)
-        out = self.logsoftmax(out)
+        out = self.activation(out)
         out = out.squeeze(-1).squeeze(-1)  # [B, n_classes]
         return out
