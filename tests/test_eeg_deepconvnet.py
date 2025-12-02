@@ -28,7 +28,7 @@ def make_temporaldata_eeg_sample(
 
     # RegularTimeSeries: first dim is time, so shape (T, C) is correct
     eeg = RegularTimeSeries(
-        signal=signal,  # <-- this becomes data.eeg.sig
+        signal=signal,  # <-- this becomes data.eeg.signal
         sampling_rate=sampling_rate,
         domain=domain,
     )

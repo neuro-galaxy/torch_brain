@@ -62,7 +62,7 @@ class DeepConvNet(nn.Module):
     ---------
     tokenize(data: Data) expects:
 
-        data.eeg.sig : array-like [T, C]
+        data.eeg.signal : array-like [T, C]
         data.trials.label : array-like with at least one label (optional)
 
     It returns:
@@ -401,7 +401,7 @@ class DeepConvNet(nn.Module):
         """
         sig = getattr(data.eeg, "signal", None)
         if sig is None:
-            raise ValueError("Sample missing EEG at data.eeg.sig")
+            raise ValueError("Sample missing EEG at data.eeg.signal")
 
         # temporaldata uses [T, C]; convert to [C, T]
         x = np.asarray(sig, dtype=np.float32)
