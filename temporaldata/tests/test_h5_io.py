@@ -117,3 +117,37 @@ def test_load_from_h5(test_filepath):
         assert np.all(d.x[:] == np.array([0, 1, 2]))
         assert np.all(d.y[:] == np.array([1, 2, 3]))
         assert np.all(d.z[:] == np.array([2, 3, 4]))
+
+
+def test_load_classmethod(test_filepath):
+
+    a = IrregularTimeSeries(
+        np.array([0.0, 1.0, 2.0]), x=np.array([1.0, 2.0, 3.0]), domain="auto"
+    )
+    b = Interval(start=np.array([0, 1, 2]), end=np.array([1, 2, 3]))
+    c = RegularTimeSeries(
+        x=np.random.random((100, 48)), sampling_rate=10, domain=Interval(0.0, 10.0)
+    )
+    d = Data(
+        a_timeseries=a,
+        b_intervals=b,
+        c_timeseries=c,
+        x=np.array([0, 1, 2]),
+        y=np.array([1, 2, 3]),
+        z=np.array([2, 3, 4]),
+        domain=Interval(0.0, 3.0),
+    )
+
+    with h5py.File(test_filepath, "w") as file:
+        d.to_hdf5(file)
+
+    del d
+
+    d = Data.load(test_filepath)
+    assert np.all(d.a_timeseries.timestamps[:] == np.array([0, 1, 2]))
+    assert np.all(d.a_timeseries.x[:] == np.array([1, 2, 3]))
+    assert np.all(d.b_intervals.start[:] == np.array([0, 1, 2]))
+    assert np.all(d.b_intervals.end[:] == np.array([1, 2, 3]))
+    assert np.all(d.x[:] == np.array([0, 1, 2]))
+    assert np.all(d.y[:] == np.array([1, 2, 3]))
+    assert np.all(d.z[:] == np.array([2, 3, 4]))

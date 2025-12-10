@@ -4,6 +4,7 @@ import copy
 from collections.abc import Mapping, Sequence
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Type
 import logging
+from pathlib import Path
 
 import h5py
 import numpy as np
@@ -3039,6 +3040,11 @@ class Data(object):
         obj._absolute_start = file.attrs["absolute_start"]
 
         return obj
+
+    @classmethod
+    def load(cls, path: Union[Path, str], lazy=True) -> Data:
+        file = h5py.File(path)
+        return cls.from_hdf5(file, lazy=lazy)
 
     def set_train_domain(self, interval: Interval):
         """Set the train domain for all attributes."""
