@@ -1,39 +1,290 @@
 import pytest
 import numpy as np
-from temporaldata import Interval
+import h5py
+from temporaldata import Interval, LazyInterval
 
 
-# def test_indexing():
-#     # same code but with numpy arrays
-#     interval = Interval(start=np.array([0, 1, 2]), end=np.array([1, 2, 3]))
+@pytest.fixture
+def test_filepath(request):
+    import os, tempfile
 
-#     # Test single index
-#     result = interval[0]
-#     expected = Interval(np.array([0]), np.array([1]))
-#     assert np.allclose(result.start, expected.start) and np.allclose(
-#         result.end, expected.end
-#     )
+    tmpfile = tempfile.NamedTemporaryFile(suffix=".h5", delete=False)
+    filepath = tmpfile.name
 
-#     # Test slice indexing
-#     result = interval[0:2]
-#     expected = Interval(np.array([0, 1]), np.array([1, 2]))
-#     assert np.allclose(result.start, expected.start) and np.allclose(
-#         result.end, expected.end
-#     )
+    def finalizer():
+        tmpfile.close()
+        # clean up the temporary file after the test
+        if os.path.exists(filepath):
+            os.remove(filepath)
 
-#     # Test list indexing
-#     result = interval[[0, 2]]
-#     expected = Interval(np.array([0, 2]), np.array([1, 3]))
-#     assert np.allclose(result.start, expected.start) and np.allclose(
-#         result.end, expected.end
-#     )
+    request.addfinalizer(finalizer)
+    return filepath
 
-#     # Test boolean indexing
-#     result = interval[[True, False, True]]
-#     expected = Interval(np.array([0, 2]), np.array([1, 3]))
-#     assert np.allclose(result.start, expected.start) and np.allclose(
-#         result.end, expected.end
-#     )
+
+def test_interval():
+    data = Interval(
+        start=np.array([0.0, 1, 2]),
+        end=np.array([1, 2, 3]),
+        go_cue_time=np.array([0.5, 1.5, 2.5]),
+        drifting_gratings_dir=np.array([0, 45, 90]),
+        timekeys=["start", "end", "go_cue_time"],
+    )
+
+    assert data.keys() == ["start", "end", "go_cue_time", "drifting_gratings_dir"]
+    assert len(data) == 3
+
+    assert data.is_sorted()
+    assert data.is_disjoint()
+
+    # setting an incorrect attribute
+    with pytest.raises(ValueError):
+        data.wrong_len = np.array([0, 1, 2, 3])
+
+    with pytest.raises(AssertionError):
+        data = Interval(
+            start=np.array([0.1, np.nan, 0.3, 0.4, 0.5, 0.6]),
+            end=np.array([1, 2, 3, 4, 5, 6]),
+        )
+
+
+def test_interval_select_by_mask():
+    # test masking
+    data = Interval(
+        start=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
+        end=np.array([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        go_cue_time=np.array([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5]),
+        drifting_gratings_dir=np.array([0, 45, 90, 45, 180, 90, 0, 90, 45]),
+        timekeys=["start", "end", "go_cue_time"],
+    )
+
+    mask = data.drifting_gratings_dir == 90
+
+    data = data.select_by_mask(mask)
+
+    assert len(data) == 3
+    assert np.array_equal(data.start, np.array([2, 5, 7]))
+    assert np.array_equal(data.end, np.array([3, 6, 8]))
+
+
+def test_interval_slice():
+    data = Interval(
+        start=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
+        end=np.array([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        go_cue_time=np.array([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5]),
+        drifting_gratings_dir=np.array([0, 45, 90, 45, 180, 90, 0, 90, 45]),
+        timekeys=["start", "end", "go_cue_time"],
+    )
+
+    data = data.slice(2.0, 6.0)
+
+    assert len(data) == 4
+    assert np.allclose(data.start, np.array([0, 1, 2, 3]))
+    assert np.allclose(data.end, np.array([1, 2, 3, 4]))
+    assert np.allclose(data.go_cue_time, np.array([0.5, 1.5, 2.5, 3.5]))
+    assert np.allclose(data.drifting_gratings_dir, np.array([90, 45, 180, 90]))
+
+    data = data.slice(0.0, 2.0)
+
+    assert len(data) == 2
+    assert np.allclose(data.start, np.array([0, 1]))
+    assert np.allclose(data.end, np.array([1, 2]))
+    assert np.allclose(data.go_cue_time, np.array([0.5, 1.5]))
+    assert np.allclose(data.drifting_gratings_dir, np.array([90, 45]))
+
+    data = Interval(
+        start=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
+        end=np.array([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        go_cue_time=np.array([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5]),
+        drifting_gratings_dir=np.array([0, 45, 90, 45, 180, 90, 0, 90, 45]),
+        timekeys=["start", "end", "go_cue_time"],
+    )
+
+    data = data.slice(2.0, 6.0, reset_origin=False)
+
+    assert len(data) == 4
+    assert np.allclose(data.start, np.array([2, 3, 4, 5]))
+    assert np.allclose(data.end, np.array([3, 4, 5, 6]))
+    assert np.allclose(data.go_cue_time, np.array([2.5, 3.5, 4.5, 5.5]))
+    assert np.allclose(data.drifting_gratings_dir, np.array([90, 45, 180, 90]))
+
+    data = data.slice(2.0, 4.0, reset_origin=True)
+
+    assert len(data) == 2
+    assert np.allclose(data.start, np.array([0, 1]))
+    assert np.allclose(data.end, np.array([1, 2]))
+    assert np.allclose(data.go_cue_time, np.array([0.5, 1.5]))
+    assert np.allclose(data.drifting_gratings_dir, np.array([90, 45]))
+
+
+def test_lazy_interval(test_filepath):
+    data = Interval(
+        start=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
+        end=np.array([1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        go_cue_time=np.array([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5]),
+        drifting_gratings_dir=np.array([0, 45, 90, 45, 180, 90, 0, 90, 45]),
+        timekeys=["start", "end", "go_cue_time"],
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    del data
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyInterval.from_hdf5(f)
+
+        assert len(data) == 9
+
+        # make sure that nothing is loaded yet
+        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys())
+
+        # try loading one attribute
+        start = data.start
+        # make sure that the attribute is loaded
+        assert isinstance(start, np.ndarray)
+        # make sure that the attribute is loaded correctly
+        assert np.array_equal(start, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]))
+        # make sure that the loaded attribute replaced the h5py.Dataset reference
+        assert isinstance(data.__dict__["start"], np.ndarray)
+        assert all(
+            isinstance(data.__dict__[key], h5py.Dataset)
+            for key in data.keys()
+            if key != "start"
+        )
+
+        assert data.__class__ == LazyInterval
+
+        data.end
+        assert data.__class__ == LazyInterval
+
+        data.go_cue_time
+        data.drifting_gratings_dir
+        # final attribute was accessed, the object should automatically convert to ArrayDict
+        assert data.__class__ == Interval
+
+    del data
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyInterval.from_hdf5(f)
+
+        # try masking
+        mask = data.drifting_gratings_dir == 90
+        data = data.select_by_mask(mask)
+
+        # make sure only brain_region was loaded
+        assert isinstance(data.__dict__["drifting_gratings_dir"], np.ndarray)
+        assert all(
+            isinstance(data.__dict__[key], h5py.Dataset)
+            for key in data.keys()
+            if key != "drifting_gratings_dir"
+        )
+
+        assert len(data) == 3
+        assert np.array_equal(data.start, np.array([2, 5, 7]))
+
+        assert np.array_equal(data._lazy_ops["mask"], mask)
+
+        # load another attribute
+        go_cue_time = data.go_cue_time
+        assert isinstance(go_cue_time, np.ndarray)
+        assert np.array_equal(go_cue_time, np.array([2.5, 5.5, 7.5]))
+
+        # mask again!
+        mask = data.start >= 6
+
+        # make a new object data2 (mask is not inplace)
+        data2 = data.select_by_mask(mask)
+
+        assert len(data2) == 1
+        # make sure that the attribute was never accessed, is still not accessed
+        assert isinstance(data2.__dict__["end"], h5py.Dataset)
+
+        # check if the mask was applied twice correctly!
+        assert np.allclose(data2.end, np.array([8]))
+
+        # make sure that data is still intact
+        assert len(data) == 3
+        assert np.array_equal(data.end, np.array([3, 6, 8]))
+
+    del data, data2
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyInterval.from_hdf5(f)
+
+        data = data.slice(2.0, 6.0)
+
+        assert len(data) == 4
+        assert np.allclose(data.start, np.array([0, 1, 2, 3]))
+        assert np.allclose(data.end, np.array([1, 2, 3, 4]))
+
+        assert all(
+            isinstance(data.__dict__[key], h5py.Dataset)
+            for key in data.keys()
+            if key not in ["start", "end"]
+        )
+
+        assert np.allclose(data.go_cue_time, np.array([0.5, 1.5, 2.5, 3.5]))
+
+        data = data.slice(0.0, 2.0)
+
+        assert len(data) == 2
+        assert np.allclose(data.start, np.array([0, 1]))
+        assert np.allclose(data.end, np.array([1, 2]))
+        assert np.allclose(data.go_cue_time, np.array([0.5, 1.5]))
+        assert np.allclose(data.drifting_gratings_dir, np.array([90, 45]))
+
+    del data
+
+    # try slicing and masking
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyInterval.from_hdf5(f)
+
+        data = data.slice(2.0, 6.0)
+        mask = data.drifting_gratings_dir == 90
+        data = data.select_by_mask(mask)
+
+        assert np.allclose(data.start, np.array([0, 3]))
+
+
+def test_interval_select_by_interval():
+    data = Interval(
+        start=np.array([0.0, 1, 2]),
+        end=np.array([1, 2, 3]),
+        go_cue_time=np.array([0.5, 1.5, 2.5]),
+        drifting_gratings_dir=np.array([0, 45, 90]),
+        timekeys=["start", "end", "go_cue_time"],
+    )
+
+    selection_interval = Interval(
+        start=np.array([0.2, 2.5]),
+        end=np.array([0.4, 3.12]),
+    )
+    data = data.select_by_interval(selection_interval)
+
+    assert len(data) == 2
+    assert np.allclose(data.start, np.array([0.0, 2.0]))
+    assert np.allclose(data.end, np.array([1.0, 3.0]))
+    assert np.allclose(data.go_cue_time, np.array([0.5, 2.5]))
+    assert np.allclose(data.drifting_gratings_dir, np.array([0, 90]))
+
+
+def test_interval_iter():
+    data = Interval(
+        start=np.array([0.0, 1, 2]),
+        end=np.array([1, 2, 3]),
+        some_other_attribute=np.array([0, 1, 2]),
+    )
+
+    assert list(data) == [(0.0, 1.0), (1.0, 2.0), (2.0, 3.0)]
+
+    # test a single interval
+    data = Interval(0.0, 1.0)
+    assert list(data) == [(0.0, 1.0)]
+
+    # test an empty interval
+    data = Interval(np.array([]), np.array([]))
+    assert list(data) == []
 
 
 def test_linspace():
@@ -407,3 +658,30 @@ def test_is_dijoint_is_sorted():
     empty_interval = Interval(np.array([]), np.array([]))
     assert empty_interval.is_disjoint() == True
     assert empty_interval.is_sorted() == True
+
+
+def test_interval_coalesce():
+    data = Interval(
+        start=np.array([0.0, 1.0, 2.0]),
+        end=np.array([1.0, 2.0, 3.0]),
+        go_cue_time=np.array([0.5, 1.5, 2.5]),
+        drifting_gratings_dir=np.array([0, 45, 90]),
+        timekeys=["start", "end", "go_cue_time"],
+    )
+
+    coalesced_data = data.coalesce()
+    assert len(coalesced_data) == 1
+    # only keep start and end
+    assert len(coalesced_data.keys()) == 2
+    assert np.allclose(coalesced_data.start, np.array([0.0]))
+    assert np.allclose(coalesced_data.end, np.array([3.0]))
+
+    data = Interval(
+        start=np.array([0.0, 1.0, 2.0, 4.0, 4.5, 5.0, 10.0]),
+        end=np.array([0.5, 2.0, 2.5, 4.5, 5.0, 6.0, 11.0]),
+    )
+
+    coalesced_data = data.coalesce()
+    assert len(coalesced_data) == 4
+    assert np.allclose(coalesced_data.start, np.array([0.0, 1.0, 4.0, 10.0]))
+    assert np.allclose(coalesced_data.end, np.array([0.5, 2.5, 6.0, 11.0]))

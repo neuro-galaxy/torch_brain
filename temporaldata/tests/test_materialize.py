@@ -8,9 +8,9 @@ from temporaldata import (
     IrregularTimeSeries,
     RegularTimeSeries,
     Interval,
+    LazyInterval,
     Data,
 )
-from temporaldata.temporaldata import LazyInterval
 
 
 @pytest.fixture
