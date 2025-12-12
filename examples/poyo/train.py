@@ -349,7 +349,7 @@ def main(cfg: DictConfig):
     trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path)
 
     # Test
-    trainer.test(wrapper, data_module, ckpt_path="best")
+    trainer.test(wrapper, data_module, ckpt_path="best", weights_only=False)
 
 
 if __name__ == "__main__":
