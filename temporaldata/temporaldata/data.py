@@ -368,7 +368,10 @@ class Data(object):
                     group_cls = globals()[f"Lazy{class_name}"]
                 else:
                     group_cls = globals()[class_name]
-                data[key] = group_cls.from_hdf5(value)
+                if class_name == "Data":
+                    data[key] = group_cls.from_hdf5(value, lazy=lazy)
+                else:
+                    data[key] = group_cls.from_hdf5(value)
             else:
                 # if array, it will be loaded no matter what, always prefer ArrayDict
                 data[key] = value[:]
