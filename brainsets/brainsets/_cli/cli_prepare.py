@@ -205,18 +205,11 @@ def _determine_brainsets_spec() -> str:
     Determine how to install brainsets when not specified in requirements.txt.
 
     Priority:
-    1. CI environment (install from current branch)
-    2. Detect current installation source (git, local)
-    3. Default (assume downloaded from PyPI)
+    1. Detect current installation source (git, local) from package metadata
+    2. Default (assume downloaded from PyPI)
     """
 
-    # First, check if we're in CI
-    if os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true":
-        repo_url = os.environ.get("GITHUB_REPOSITORY", "neuro-galaxy/brainsets")
-        commit_sha = os.environ.get("GITHUB_SHA")
-        return f"git+https://github.com/{repo_url}.git@{commit_sha}"
-
-    # Second, try to detect if brainsets was installed via a URL or local file
+    # Try to detect if brainsets was installed via a URL or local file
     url_source = _detect_brainsets_installation_url()
     if url_source:
         return url_source
