@@ -11,6 +11,11 @@ This is an example training script for the model in [Azabou and Pan et al. 2025]
 
 ## Training POYO+ on Calcium Traces
 
+**Installing necessary packages**
+```bash
+pip install pytorch_brain lightning wandb brainsets
+```
+
 **Data Preparation**  
 There are 1304 sessions in the full CaPOYO model and 30 holdout drifting gratings sessions.
 The raw data for all sessions is ~360GB and processed data uses ~58GB.
