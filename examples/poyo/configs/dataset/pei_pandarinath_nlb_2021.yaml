@@ -1,5 +1,7 @@
 - selection:
   - brainset: pei_pandarinath_nlb_2021
+    sessions:
+      - jenkins_maze_train
   config:
     readout:
       readout_id: cursor_velocity_2d
