@@ -1,6 +1,8 @@
 - selection:
   - brainset: pei_pandarinath_nlb_2021
   config:
+    sessions:
+    - jenkins_maze_train
     readout:
       readout_id: cursor_velocity_2d
       timestamp_key: hand.timestamps
