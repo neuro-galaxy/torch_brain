@@ -3,8 +3,6 @@
     sessions:
       - jenkins_maze_train
   config:
-    sessions:
-    - jenkins_maze_train
     readout:
       readout_id: cursor_velocity_2d
       timestamp_key: hand.timestamps
