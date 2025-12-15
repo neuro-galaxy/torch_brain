@@ -37,6 +37,7 @@ If you encounter any bugs or have feature requests, please submit them to our
    :maxdepth: 1
    :caption: Concepts
 
+   concepts/multitask_readout
    concepts/sampler
 
 .. toctree::
