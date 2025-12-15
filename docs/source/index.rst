@@ -32,11 +32,14 @@ If you encounter any bugs or have feature requests, please submit them to our
    :caption: Get Started
 
    concepts/installation
+   concepts/getting_started
 
 .. toctree::
    :maxdepth: 1
    :caption: Concepts
 
+   concepts/data_pipeline
+   concepts/training
    concepts/multitask_readout
    concepts/sampler
 
@@ -50,4 +53,4 @@ If you encounter any bugs or have feature requests, please submit them to our
    package/registry
    package/optim
    package/transforms
-   package/utils
+   package/utils/index

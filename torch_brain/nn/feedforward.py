@@ -5,6 +5,13 @@ import torch.nn.functional as F
 class GEGLU(nn.Module):
     """Gated Gaussian Error Linear Unit (GEGLU) activation function, as introduced in
     the paper "GLU Variants Improve Transformer" (https://arxiv.org/abs/2002.05202).
+
+    The input tensor is split in half along the last dimension. One half is passed
+    through GELU and used as a gate for the other half.
+
+    Shape:
+        - Input: ``(..., 2 * dim)``
+        - Output: ``(..., dim)``
     """
 
     def forward(self, x):

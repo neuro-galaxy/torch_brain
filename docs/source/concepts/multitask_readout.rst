@@ -165,14 +165,29 @@ Data Types
 
 The :class:`~torch_brain.registry.DataType` enum specifies how the output should be interpreted:
 
-.. code-block:: python
+.. list-table::
+   :widths: 25 35 40
+   :header-rows: 1
 
-    from torch_brain.registry import DataType
+   * - DataType
+     - Target Format
+     - Typical Loss
+   * - ``CONTINUOUS``
+     - Float tensor ``(batch, dim)``
+     - ``MSELoss``
+   * - ``BINARY``
+     - Long tensor ``(batch,)`` with values 0 or 1
+     - ``CrossEntropyLoss`` with ``dim=2``
+   * - ``MULTINOMIAL``
+     - Long tensor ``(batch,)`` with class indices
+     - ``CrossEntropyLoss``
+   * - ``MULTILABEL``
+     - Float tensor ``(batch, num_labels)`` with 0/1 values
+     - ``BCEWithLogitsLoss``
 
-    DataType.CONTINUOUS   # For regression tasks (uses MSELoss)
-    DataType.BINARY       # For binary classification
-    DataType.MULTINOMIAL  # For multi-class classification (uses CrossEntropyLoss)
-    DataType.MULTILABEL   # For multi-label classification
+The ``dim`` parameter in the modality registration should match the output dimension of
+the linear projection (number of classes for classification, or output dimensions for
+regression).
 
 The ``ModalitySpec`` Dataclass
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -249,11 +264,46 @@ The forward pass routes each output token to the appropriate task-specific head:
 
     # predictions is a dict: {"cursor_velocity_2d": Tensor, "running_speed": Tensor, ...}
 
+The ``unpack_output`` Parameter
+"""""""""""""""""""""""""""""""
+
+- ``unpack_output=False`` (default): Returns a single dict where predictions for each task
+  are **concatenated across all samples** in the batch. Use this during training when
+  computing a single loss over the entire batch.
+
+  .. code-block:: python
+
+      # Shape: {"task_name": (total_tokens_for_task, task_dim)}
+      predictions = readout(..., unpack_output=False)
+
+- ``unpack_output=True``: Returns a **list of dicts**, one per sample in the batch. Use this
+  during validation when you need to track which predictions belong to which sample
+  (e.g., for stitching overlapping windows).
+
+  .. code-block:: python
+
+      # Shape: [{"task_name": (tokens_in_sample, task_dim)}, ...]
+      predictions = readout(..., unpack_output=True)
+      predictions[0]["cursor_velocity_2d"]  # Predictions for first sample
+
+Missing Tasks in a Batch
+""""""""""""""""""""""""
+
+If a task has no tokens in a batch (no output indices match that task's ID), the task
+is simply skipped and won't appear in the output dict. Your training loop should handle
+this by only iterating over the keys present in the output:
+
+.. code-block:: python
+
+    for task_name in output_values.keys():  # Only tasks present in this batch
+        # ...
+
 Understanding ``output_readout_index``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``output_readout_index`` tensor tells the readout module which task each output
-token belongs to. Each value corresponds to the ``.id`` attribute of a registered modality:
+The ``output_readout_index`` tensor (called ``output_decoder_index`` in model inputs) tells
+the readout module which task each output token belongs to. Each value corresponds to
+the ``.id`` attribute of a registered modality:
 
 .. code-block:: python
 
@@ -270,6 +320,31 @@ The readout module uses boolean masking to efficiently route tokens:
 2. Apply the task-specific linear layer: ``task_output = projection[task_name](output_embs[mask])``
 3. Collect outputs into the result dictionary
 
+This same index is also used by the model's **task embedding layer** (``self.task_emb``) to
+add task-specific information to the output queries before decoding. This allows the
+transformer to produce different representations depending on which task is being decoded.
+
+Variable-Length Sequences
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For memory-efficient processing of variable-length sequences (avoiding padding), use the
+``forward_varlen`` method. This expects sequences to be **chained** (concatenated) rather
+than padded:
+
+.. code-block:: python
+
+    # Chained sequences: all samples concatenated into one dimension
+    output_embs = torch.randn(total_tokens, dim)  # Not (batch, seq_len, dim)
+    output_readout_index = torch.tensor([1, 1, 15, 15, 1, ...])  # (total_tokens,)
+    output_batch_index = torch.tensor([0, 0, 0, 1, 1, ...])  # Which sample each token belongs to
+
+    predictions = readout.forward_varlen(
+        output_embs=output_embs,
+        output_readout_index=output_readout_index,
+        output_batch_index=output_batch_index,
+        unpack_output=True,
+    )
+
 --------------
 
 Dataset Configuration
@@ -277,6 +352,39 @@ Dataset Configuration
 
 The dataset configuration file defines which modalities to decode and how to preprocess
 the target values. This is specified in YAML format.
+
+Data Object Requirements
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :func:`~torch_brain.nn.prepare_for_multitask_readout` function expects your
+:obj:`temporaldata.Data` object to have:
+
+1. A ``config`` attribute containing the ``multitask_readout`` list
+2. The timestamp and value arrays accessible via the keys specified in the modality
+   (or overridden in the config)
+
+Example data structure:
+
+.. code-block:: python
+
+    from temporaldata import Data
+
+    data = Data(
+        # Behavioral data
+        cursor=Data(
+            timestamps=np.array([0.0, 0.01, 0.02, ...]),  # Shape: (n_samples,)
+            vel=np.array([[1.0, 2.0], [1.1, 2.1], ...]),  # Shape: (n_samples, 2)
+        ),
+        # Config specifying what to decode
+        config={
+            "multitask_readout": [
+                {"readout_id": "cursor_velocity_2d", ...}
+            ]
+        },
+    )
+
+    # The keys "cursor.timestamps" and "cursor.vel" are resolved via
+    # data.get_nested_attribute("cursor.timestamps")
 
 Basic Configuration
 ~~~~~~~~~~~~~~~~~~~
@@ -309,7 +417,7 @@ Each entry in ``multitask_readout`` supports these fields:
      - Description
    * - ``readout_id``
      - Yes
-     - Name of the registered modality
+     - Name of the registered modality (must exist in ``MODALITY_REGISTRY``)
    * - ``timestamp_key``
      - No
      - Override the modality's default timestamp location
@@ -318,19 +426,97 @@ Each entry in ``multitask_readout`` supports these fields:
      - Override the modality's default value location
    * - ``normalize_mean``
      - No
-     - Mean for z-score normalization (scalar or list)
+     - Mean for z-score normalization (scalar or list for per-channel)
    * - ``normalize_std``
      - No
-     - Standard deviation for z-score normalization
+     - Standard deviation for z-score normalization (scalar or list)
    * - ``weights``
      - No
-     - Configuration for sample weighting
+     - Dict mapping interval keys to weight values (see below)
    * - ``metrics``
      - No
-     - Evaluation metrics (using torchmetrics)
+     - List of torchmetrics for evaluation (see below)
    * - ``eval_interval``
      - No
-     - Key to interval data for evaluation masking
+     - Key to an ``Interval`` object; only timestamps within this interval are used for metric computation
+
+Normalization
+"""""""""""""
+
+Target values are z-score normalized **before** being passed to the loss function. This is 
+applied during tokenization:
+
+.. code-block:: python
+
+    normalized_values = (raw_values - normalize_mean) / normalize_std
+
+For multi-dimensional outputs (e.g., x/y coordinates), use lists:
+
+.. code-block:: yaml
+
+    normalize_mean: [0.0, 0.0]      # Per-channel means
+    normalize_std: [100.0, 100.0]   # Per-channel stds
+
+.. note::
+
+    Metrics are computed on the normalized predictions and targets. If you need metrics
+    in original units, you must denormalize the outputs manually.
+
+Sample Weights
+""""""""""""""
+
+The ``weights`` field allows weighting different time periods differently in the loss.
+It maps interval keys (from your data object) to weight values:
+
+.. code-block:: yaml
+
+    weights:
+      movement_periods.reach_period: 5.0    # Weight reach periods 5x more
+      movement_periods.hold_period: 0.1     # Down-weight hold periods
+      cursor_outlier_segments: 0.0          # Ignore outlier segments
+
+Weights are multiplicative when intervals overlap. Timestamps outside all specified
+intervals get a default weight of 1.0.
+
+Evaluation Interval
+"""""""""""""""""""
+
+The ``eval_interval`` field specifies which timestamps to include when computing metrics.
+This is useful when you only want to evaluate on specific trial phases:
+
+.. code-block:: yaml
+
+    eval_interval: nlb_eval_intervals  # Key to an Interval in your data object
+
+Timestamps outside this interval are excluded from metric computation but still
+contribute to training loss.
+
+Metrics
+"""""""
+
+The ``metrics`` field specifies which torchmetrics to compute during validation/test.
+These metrics are **not** computed in the training loop—they are handled by the
+:class:`~torch_brain.utils.stitcher.MultiTaskDecodingStitchEvaluator` callback.
+
+.. code-block:: yaml
+
+    metrics:
+      - metric:
+          _target_: torchmetrics.R2Score
+      - metric:
+          _target_: torchmetrics.MeanSquaredError
+
+For classification tasks, specify the task type and number of classes:
+
+.. code-block:: yaml
+
+    metrics:
+      - metric:
+          _target_: torchmetrics.Accuracy
+          task: multiclass
+          num_classes: 8
+
+See :ref:`evaluation-stitching` for how these metrics are computed.
 
 
 Overriding Default Keys
@@ -418,6 +604,11 @@ Models like :class:`~torch_brain.models.POYOPlus` call this function in their ``
                 # ...
             }
 
+After tokenization, the data is batched using :func:`~torch_brain.data.collate`. The collate
+function pads sequences to equal length within a batch. The ``target_values`` and
+``target_weights`` dicts are collated such that predictions and targets can be matched
+by task name in the training loop.
+
 --------------
 
 Training Loop Integration
@@ -428,6 +619,11 @@ Here's how the components work together during training:
 Computing the Loss
 ~~~~~~~~~~~~~~~~~~
 
+The loss computation has two levels of weighting:
+
+1. **Sample weights** (from the ``weights`` config): Per-timestamp weights within a task
+2. **Task balancing**: Tasks are weighted by how many batch samples contain that task
+
 .. code-block:: python
 
     def training_step(self, batch, batch_idx):
@@ -435,8 +631,8 @@ Computing the Loss
         output_values = self.model(**batch["model_inputs"], unpack_output=False)
 
         # output_values is a dict: {"task_name": predictions_tensor, ...}
+        # Note: predictions for each task are concatenated across all batch samples
 
-        # Compute task-wise losses
         target_values = batch["target_values"]
         target_weights = batch["target_weights"]
 
@@ -444,20 +640,27 @@ Computing the Loss
         for task_name in output_values.keys():
             predictions = output_values[task_name]
             targets = target_values[task_name]
+
+            # Sample weights (from config, e.g., down-weighting hold periods)
+            # None means uniform weighting
             weights = target_weights.get(task_name, None)
 
-            # Get the loss function from the modality spec
+            # Loss function from the modality spec handles the weighting internally
             spec = self.model.readout.readout_specs[task_name]
             task_loss = spec.loss_fn(predictions, targets, weights)
 
-            # Weight by number of samples with this task
-            num_samples = torch.any(
+            # Task balancing: weight by number of batch samples containing this task
+            # This ensures tasks appearing in fewer samples aren't dominated
+            num_samples_with_task = torch.any(
                 batch["model_inputs"]["output_decoder_index"] == spec.id,
                 dim=1
             ).sum()
-            total_loss += task_loss * num_samples
+            total_loss += task_loss * num_samples_with_task
 
         return total_loss / batch_size
+
+The built-in loss functions (``MSELoss``, ``CrossEntropyLoss``) handle sample weights
+by computing a weighted average: ``(weights * loss).sum() / weights.sum()``.
 
 Filtering by Task
 ~~~~~~~~~~~~~~~~~
@@ -477,6 +680,159 @@ The registry provides a convenient way to get task-specific model outputs:
 
     # Get predictions for this task only
     velocity_predictions = output_values["cursor_velocity_2d"]
+
+--------------
+
+.. _evaluation-stitching:
+
+Evaluation and Stitching
+------------------------
+
+When using overlapping sliding windows for validation/test (which improves metric stability),
+the same timestamp may receive predictions from multiple windows. The
+:class:`~torch_brain.utils.stitcher.MultiTaskDecodingStitchEvaluator` callback handles
+**stitching** these overlapping predictions before computing metrics.
+
+Why Stitching is Needed
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Consider a 2-second recording evaluated with 1-second windows and 0.5-second steps:
+
+.. code-block:: text
+
+    Recording:    |-------- 0.0s to 2.0s --------|
+    Window 1:     |---- 0.0s to 1.0s ----|
+    Window 2:          |---- 0.5s to 1.5s ----|
+    Window 3:               |---- 1.0s to 2.0s ----|
+
+Timestamps between 0.5s and 1.5s receive predictions from multiple windows. Stitching
+combines these predictions before computing the final metric.
+
+How Stitching Works
+~~~~~~~~~~~~~~~~~~~
+
+The :func:`~torch_brain.utils.stitcher.stitch` function pools predictions by timestamp:
+
+- **Continuous outputs** (float): Mean pooling across overlapping predictions
+- **Categorical outputs** (long): Mode pooling (majority vote) across overlapping predictions
+
+.. code-block:: python
+
+    from torch_brain.utils.stitcher import stitch
+
+    # Multiple predictions for the same timestamps
+    timestamps = torch.tensor([0.5, 0.5, 0.6, 0.6, 0.6])
+    predictions = torch.tensor([[1.0, 2.0], [1.2, 1.8], [0.9, 2.1], [1.1, 1.9], [1.0, 2.0]])
+
+    unique_timestamps, stitched = stitch(timestamps, predictions)
+    # unique_timestamps: [0.5, 0.6]
+    # stitched: mean of predictions at each timestamp
+
+MultiTaskDecodingStitchEvaluator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This Lightning callback orchestrates the entire evaluation pipeline:
+
+**Setup** (called by the DataModule):
+
+.. code-block:: python
+
+    from torch_brain.utils.stitcher import MultiTaskDecodingStitchEvaluator
+
+    # metrics dict structure: {session_id: {task_name: {metric_name: metric_instance}}}
+    evaluator = MultiTaskDecodingStitchEvaluator(metrics=data_module.get_metrics())
+
+**Validation step** (your code returns data for the evaluator):
+
+.. code-block:: python
+
+    from torch_brain.utils.stitcher import DataForMultiTaskDecodingStitchEvaluator
+
+    def validation_step(self, batch, batch_idx):
+        # Forward pass with unpack_output=True to get per-sample predictions
+        output_values = self.model(**batch["model_inputs"], unpack_output=True)
+
+        # Package data for the evaluator
+        return DataForMultiTaskDecodingStitchEvaluator(
+            timestamps=batch["model_inputs"]["output_timestamps"],
+            preds=output_values,                                    # List of dicts
+            targets=batch["target_values"],                         # Dict of tensors
+            decoder_indices=batch["model_inputs"]["output_decoder_index"],
+            eval_masks=batch["eval_mask"],                          # Dict of masks
+            session_ids=batch["session_id"],                        # List of strings
+            absolute_starts=batch["absolute_start"],                # For timestamp alignment
+        )
+
+**What the evaluator does internally:**
+
+1. **Caches predictions**: Accumulates predictions, targets, and timestamps for each
+   recording sequence
+2. **Applies eval_mask**: Filters out timestamps outside the evaluation interval
+3. **Adds absolute_start**: Converts relative window timestamps to absolute recording time
+4. **Stitches when ready**: Once all windows for a sequence are processed, stitches the
+   predictions using mean (continuous) or mode (categorical) pooling
+5. **Updates metrics**: Passes stitched predictions and targets to the torchmetrics instances
+6. **Logs results**: At epoch end, computes and logs metrics per session/task combination
+
+The ``DataForMultiTaskDecodingStitchEvaluator`` Dataclass
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :widths: 25 75
+   :header-rows: 1
+
+   * - Field
+     - Description
+   * - ``timestamps``
+     - Output timestamps, shape ``(batch, n_out)``. Relative to window start.
+   * - ``preds``
+     - List of dicts (one per batch sample) from ``model(..., unpack_output=True)``
+   * - ``targets``
+     - Dict mapping task names to target tensors (from ``batch["target_values"]``)
+   * - ``decoder_indices``
+     - Task IDs for each output token, shape ``(batch, n_out)``
+   * - ``eval_masks``
+     - Dict mapping task names to boolean masks for evaluation filtering
+   * - ``session_ids``
+     - List of session ID strings (one per batch sample)
+   * - ``absolute_starts``
+     - Absolute start time of each window, shape ``(batch,)``
+
+Metric Logging Format
+~~~~~~~~~~~~~~~~~~~~~
+
+Metrics are logged with the format ``{session_id}/{task_name}/{metric_name}/{prefix}``:
+
+.. code-block:: text
+
+    session_001/cursor_velocity_2d/R2Score/val: 0.85
+    session_001/running_speed/MeanSquaredError/val: 0.12
+    session_002/cursor_velocity_2d/R2Score/val: 0.82
+    ...
+    average_val_metric: 0.78
+
+The ``average_val_metric`` (or ``average_test_metric``) is the mean across all
+session/task/metric combinations and is used for model checkpointing.
+
+Distributed Evaluation
+~~~~~~~~~~~~~~~~~~~~~~
+
+For multi-GPU training, use :class:`~torch_brain.data.sampler.DistributedStitchingFixedWindowSampler`
+to ensure windows from the same recording sequence stay on the same GPU. This is required
+because stitching happens per-GPU and windows split across GPUs cannot be stitched together.
+
+.. code-block:: python
+
+    from torch_brain.data.sampler import DistributedStitchingFixedWindowSampler
+
+    val_sampler = DistributedStitchingFixedWindowSampler(
+        sampling_intervals=val_dataset.get_sampling_intervals(),
+        window_length=sequence_length,
+        step=sequence_length / 2,  # 50% overlap
+        batch_size=batch_size,
+        num_replicas=trainer.world_size,
+        rank=trainer.global_rank,
+    )
 
 --------------
 
@@ -585,13 +941,20 @@ Each modality gets a unique numeric ID assigned at registration time:
 These IDs are used for:
 
 - Fast tensor-based routing in ``MultitaskReadout.forward()``
-- Embedding lookups for task embeddings in the model
+- Embedding lookups for task embeddings in the model (``self.task_emb(decoder_index)``)
 - Efficient masking operations during training
+
+You can look up a modality name from its ID using:
+
+.. code-block:: python
+
+    modality_name = torch_brain.get_modality_by_id(1)  # Returns "task_a"
 
 .. warning::
 
-    IDs depend on registration order. For reproducibility, ensure modalities are always
-    registered in the same order (e.g., by importing modules consistently).
+    IDs depend on registration order. The built-in modalities in ``torch_brain.registry``
+    are registered when the module is imported. If you register custom modalities, do so
+    **before** creating models to ensure consistent ID assignment across runs.
 
 --------------
 
@@ -600,9 +963,20 @@ API Reference
 
 .. seealso::
 
+    **Registry**
+
     - :class:`torch_brain.registry.ModalitySpec` - Modality specification dataclass
     - :class:`torch_brain.registry.DataType` - Data type enumeration
     - :func:`torch_brain.register_modality` - Registration function
+
+    **Readout**
+
     - :class:`torch_brain.nn.MultitaskReadout` - Multi-task readout module
     - :func:`torch_brain.nn.prepare_for_multitask_readout` - Data preparation function
+
+    **Evaluation**
+
+    - :class:`torch_brain.utils.stitcher.MultiTaskDecodingStitchEvaluator` - Evaluation callback
+    - :class:`torch_brain.utils.stitcher.DataForMultiTaskDecodingStitchEvaluator` - Data container for evaluator
+    - :func:`torch_brain.utils.stitcher.stitch` - Timestamp-based prediction pooling
 
