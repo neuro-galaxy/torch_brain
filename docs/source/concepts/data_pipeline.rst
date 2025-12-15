@@ -3,10 +3,6 @@ Data Pipeline
 
 This guide explains how data flows from raw recordings to model inputs in **torch_brain**.
 
-.. contents:: Table of Contents
-   :local:
-   :depth: 2
-
 --------------
 
 Overview

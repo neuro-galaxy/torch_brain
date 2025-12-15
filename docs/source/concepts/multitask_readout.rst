@@ -13,10 +13,6 @@ two core abstractions:
 These components work together to enable a single model to learn multiple decoding tasks
 while sharing neural representations.
 
-.. contents:: Table of Contents
-   :local:
-   :depth: 3
-
 --------------
 
 Core Concepts

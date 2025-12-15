@@ -3,10 +3,6 @@ Model Training
 
 This guide covers training **torch_brain** models using PyTorch Lightning.
 
-.. contents:: Table of Contents
-   :local:
-   :depth: 2
-
 --------------
 
 Overview
