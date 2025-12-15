@@ -412,14 +412,50 @@ class Interval(ArrayDict):
         before splitting.
 
         Args:
-            sizes: A list of integers or floats. If integers, the list must sum to the
-            number of intervals. If floats, the list must sum to 1.0.
+            sizes: A list of integers or floats.
+
+                - **Integers**: The list must sum to the number of intervals.
+                  Example: ``[60, 20, 20]`` for 100 intervals.
+
+                - **Floats**: The list must sum to 1.0.
+                  Example: ``[0.6, 0.2, 0.2]`` for a 60/20/20 split.
+
             shuffle: If :obj:`True`, the intervals will be shuffled before splitting.
             random_seed: The random seed to use for shuffling.
+
+        Returns:
+            A list of :obj:`Interval` objects, one for each element in ``sizes``.
 
         .. note::
             This method will not guarantee that the resulting sets will be disjoint, if
             the intervals are not already disjoint.
+
+        Examples:
+            Split 10 intervals into 60/20/20 sets using integers:
+
+            >>> from temporaldata import Interval
+            >>> intervals = Interval.linspace(0, 1, 10)
+            >>> train, val, test = intervals.split([6, 2, 2])
+            >>> print(len(train), len(val), len(test))
+            6 2 2
+
+            Split using proportions (floats):
+
+            >>> intervals = Interval.linspace(0, 1, 100)
+            >>> train, val, test = intervals.split([0.7, 0.15, 0.15])
+            >>> print(len(train), len(val), len(test))
+            70 15 15
+
+            Split with shuffling:
+
+            >>> intervals = Interval.linspace(0, 1, 100)
+            >>> train, test = intervals.split(
+            ...     [0.8, 0.2],
+            ...     shuffle=True,
+            ...     random_seed=42
+            ... )
+            >>> print(len(train), len(test))
+            80 20
         """
 
         assert len(sizes) > 1, "must split into at least two sets"
