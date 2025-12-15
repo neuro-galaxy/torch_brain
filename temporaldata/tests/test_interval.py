@@ -685,3 +685,170 @@ def test_interval_coalesce():
     assert len(coalesced_data) == 4
     assert np.allclose(coalesced_data.start, np.array([0.0, 1.0, 4.0, 10.0]))
     assert np.allclose(coalesced_data.end, np.array([0.5, 2.5, 6.0, 11.0]))
+
+
+def test_segment():
+    interval = Interval(start=np.array([0.0]), end=np.array([10.0]))
+    result = interval.segment(2.0)
+    expected = Interval(
+        start=np.array([0.0, 2.0, 4.0, 6.0, 8.0]),
+        end=np.array([2.0, 4.0, 6.0, 8.0, 10.0]),
+    )
+    assert np.allclose(result.start, expected.start) and np.allclose(
+        result.end, expected.end
+    )
+
+    interval = Interval(
+        start=np.array([0.0, 20.0]),
+        end=np.array([10.0, 30.0]),
+    )
+    result = interval.segment(2.5)
+    expected = Interval(
+        start=np.array([0.0, 2.5, 5.0, 7.5, 20.0, 22.5, 25.0, 27.5]),
+        end=np.array([2.5, 5.0, 7.5, 10.0, 22.5, 25.0, 27.5, 30.0]),
+    )
+    assert np.allclose(result.start, expected.start) and np.allclose(
+        result.end, expected.end
+    )
+
+    interval = Interval(start=np.array([0.0]), end=np.array([10.5]))
+    result = interval.segment(3.0)
+    expected = Interval(
+        start=np.array([0.0, 3.0, 6.0, 9.0]),
+        end=np.array([3.0, 6.0, 9.0, 10.5]),
+    )
+    assert np.allclose(result.start, expected.start) and np.allclose(
+        result.end, expected.end
+    )
+
+    interval = Interval(start=np.array([0.0]), end=np.array([0.5]))
+    result = interval.segment(2.0)
+    expected = Interval(start=np.array([0.0]), end=np.array([0.5]))
+    assert np.allclose(result.start, expected.start) and np.allclose(
+        result.end, expected.end
+    )
+
+    interval = Interval(start=np.array([]), end=np.array([]))
+    result = interval.segment(2.0)
+    expected = Interval(start=np.array([]), end=np.array([]))
+    assert np.allclose(result.start, expected.start) and np.allclose(
+        result.end, expected.end
+    )
+
+    interval = Interval(start=np.array([0.0]), end=np.array([2.0]))
+    result = interval.segment(2.0)
+    expected = Interval(start=np.array([0.0]), end=np.array([2.0]))
+    assert np.allclose(result.start, expected.start) and np.allclose(
+        result.end, expected.end
+    )
+
+
+def test_segment_remove_short():
+    interval = Interval(start=np.array([0.0]), end=np.array([10.5]))
+    result = interval.segment(3.0, remove_short=False)
+    expected = Interval(
+        start=np.array([0.0, 3.0, 6.0, 9.0]),
+        end=np.array([3.0, 6.0, 9.0, 10.5]),
+    )
+    assert np.allclose(result.start, expected.start) and np.allclose(
+        result.end, expected.end
+    )
+
+    interval = Interval(start=np.array([0.0]), end=np.array([10.5]))
+    result = interval.segment(3.0, remove_short=True)
+    expected = Interval(
+        start=np.array([0.0, 3.0, 6.0]),
+        end=np.array([3.0, 6.0, 9.0]),
+    )
+    assert np.allclose(result.start, expected.start) and np.allclose(
+        result.end, expected.end
+    )
+
+    interval = Interval(start=np.array([0.0, 20.0]), end=np.array([10.5, 25.0]))
+    result = interval.segment(3.0, remove_short=True)
+    expected = Interval(
+        start=np.array([0.0, 3.0, 6.0, 20.0]),
+        end=np.array([3.0, 6.0, 9.0, 23.0]),
+    )
+    assert np.allclose(result.start, expected.start) and np.allclose(
+        result.end, expected.end
+    )
+
+    interval = Interval(start=np.array([0.0]), end=np.array([0.5]))
+    result = interval.segment(2.0, remove_short=True)
+    expected = Interval(start=np.array([]), end=np.array([]))
+    assert np.allclose(result.start, expected.start) and np.allclose(
+        result.end, expected.end
+    )
+
+
+def test_segment_metadata_preservation():
+    interval = Interval(
+        start=np.array([0.0, 20.0]),
+        end=np.array([6.0, 26.0]),
+        trial_id=np.array([1, 2]),
+        condition=np.array(["A", "B"]),
+        timekeys=["start", "end"],
+    )
+    result = interval.segment(2.0)
+
+    expected_start = np.array([0.0, 2.0, 4.0, 20.0, 22.0, 24.0])
+    expected_end = np.array([2.0, 4.0, 6.0, 22.0, 24.0, 26.0])
+    expected_trial_id = np.array([1, 1, 1, 2, 2, 2])
+    expected_condition = np.array(["A", "A", "A", "B", "B", "B"])
+
+    assert np.allclose(result.start, expected_start)
+    assert np.allclose(result.end, expected_end)
+    assert np.array_equal(result.trial_id, expected_trial_id)
+    assert np.array_equal(result.condition, expected_condition)
+
+    interval = Interval(
+        start=np.array([0.0]),
+        end=np.array([5.5]),
+        session_id=np.array([42]),
+        timekeys=["start", "end"],
+    )
+    result = interval.segment(2.0, remove_short=False)
+
+    expected_start = np.array([0.0, 2.0, 4.0])
+    expected_end = np.array([2.0, 4.0, 5.5])
+    expected_session_id = np.array([42, 42, 42])
+
+    assert np.allclose(result.start, expected_start)
+    assert np.allclose(result.end, expected_end)
+    assert np.array_equal(result.session_id, expected_session_id)
+
+    interval = Interval(
+        start=np.array([0.0]),
+        end=np.array([5.5]),
+        session_id=np.array([42]),
+        timekeys=["start", "end"],
+    )
+    result = interval.segment(2.0, remove_short=True)
+
+    expected_start = np.array([0.0, 2.0])
+    expected_end = np.array([2.0, 4.0])
+    expected_session_id = np.array([42, 42])
+
+    assert np.allclose(result.start, expected_start)
+    assert np.allclose(result.end, expected_end)
+    assert np.array_equal(result.session_id, expected_session_id)
+
+
+def test_segment_timekeys_preservation():
+    interval = Interval(
+        start=np.array([0.0, 10.0]),
+        end=np.array([4.0, 14.0]),
+        go_cue_time=np.array([1.0, 11.0]),
+        timekeys=["start", "end", "go_cue_time"],
+    )
+    result = interval.segment(2.0)
+
+    expected_start = np.array([0.0, 2.0, 10.0, 12.0])
+    expected_end = np.array([2.0, 4.0, 12.0, 14.0])
+    expected_go_cue_time = np.array([1.0, 1.0, 11.0, 11.0])
+
+    assert np.allclose(result.start, expected_start)
+    assert np.allclose(result.end, expected_end)
+    assert np.array_equal(result.go_cue_time, expected_go_cue_time)
+    assert "go_cue_time" in result.timekeys()
