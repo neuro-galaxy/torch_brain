@@ -32,7 +32,8 @@ dependencies = [
     "prompt_toolkit",
     "numpy>=1.14.0",
     "pulp<2.8",
-    "ray>=2.30.0"
+    "ray>=2.30.0",
+    "tomli; python_version < \"3.11\"", # tomllib was not part of stddlib before 3.11
 ]
 
 [project.optional-dependencies]

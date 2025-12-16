@@ -34,22 +34,19 @@ If you are brand new to the brainsets CLI, start with
 Step 1 – Create a pipeline directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A pipelines lives in a directory with (typically) two files::
+A pipeline lives in a directory containing at least a ``pipeline.py`` file::
 
    my_brainset/
    ├── pipeline.py
-   └── requirements.txt
+   └── ...              # optional supporting files
 
-``pipeline.py`` contains the pipeline class. ``requirements.txt`` is optional
-and lists extra Python dependencies that should be installed into the temporary
-environment before your pipeline runs. If you do not need extras, you can omit
-the file entirely.
-However, it is recommended to keep your ``requirements.txt`` as pinned as possible
-so that collaborators can reproduce results.
+``pipeline.py`` contains your pipeline class along with any metadata (Python version,
+dependencies) declared inline at the top of the file. You may include additional
+supporting files (helper modules, session lists, etc.) in the same directory.
 
-The ``brainsets prepare`` command inspects this directory, installs the
-requirements (using `uv <https://github.com/astral-sh/uv>`_), and finally runs
-``pipeline.py`` through :mod:`brainsets.runner`.
+The ``brainsets prepare`` command reads the metadata, creates an isolated environment
+with the specified dependencies (using `uv <https://github.com/astral-sh/uv>`_), and
+runs ``pipeline.py`` through :mod:`brainsets.runner`.
 
 
 Step 2 – Subclass :class:`BrainsetPipeline`
@@ -61,6 +58,14 @@ Pipelines can also expose custom CLI arguments by attaching an
 :class:`argparse.ArgumentParser` to the ``parser`` attribute.
 
 .. code-block:: python
+
+    # /// brainset-pipeline
+    # python-version = "3.11"
+    # dependencies = [
+    #     "dandi==0.61.2",
+    #     "scikit-learn==1.5.1",
+    # ]
+    # ///
 
     from argparse import ArgumentParser
     import pandas as pd
@@ -87,6 +92,10 @@ Pipelines can also expose custom CLI arguments by attaching an
 
         def process(self, download_output):
             ...
+
+If your pipeline requires specific dependencies or a specific Python version,
+add an inline metadata block at the very top of ``pipeline.py`` (see
+:ref:`declaring-dependencies` below).
 
 The `Perich & Miller (2018) pipeline <https://github.com/neuro-galaxy/brainsets/blob/main/brainsets_pipelines/perich_miller_population_2018/pipeline.py>`__
 is a complete example that uses all of these hooks.
@@ -143,8 +152,8 @@ Tips:
 Step 4 – Download each session
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The |download| method receives one row of the manifest at a time (as an object
-with dot-style attribute access). It should fetch raw data for that session and
+The |download| method receives one row of the manifest at a time. 
+It should fetch raw data for that session and
 return whatever object |process| needs to process this item. 
 
 As an example, here we download the file referred in a given manifest row, and 
@@ -176,8 +185,8 @@ Key things to remember:
 Step 5 – Process into :obj:`Data` objects
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-|process| receives the object returned by |download| and converts
-it into processed :obj:`temporaldata.Data` object(s) and stores these inside ``self.processed_dir``.
+|process| receives the object returned by |download|, converts
+it into processed :obj:`temporaldata.Data` object(s), and stores these inside ``self.processed_dir``.
 
 .. code-block:: python
 
@@ -215,7 +224,7 @@ Most of the logic for implementing the |process| method will follow the tutorial
 
 Best practices:
 
-* Use ``self.processed_dir`` to writing data in the configured space.
+* Use ``self.processed_dir`` for writing data in the configured space.
 * Gate reprocessing with CLI flags like ``--reprocess``.
 * Call ``self.update_status(...)`` to emit status updates visible in the CLI log.
 
@@ -231,7 +240,7 @@ Once your class is in place you can run it through the CLI.
    Preparing my_brainset...
    Raw data directory: /path/to/raw
    Processed data directory: /path/to/processed
-   Building temporary virtual environment using requirements from ...
+   Building temporary virtual environment for .../pipeline.py
    ...
 
 
@@ -240,7 +249,7 @@ For local development outside the ``brainsets`` repository, you can point the CL
 
 .. code-block:: console
 
-   $ brainsets prepare my_brainset /path/to/my_brainset --local --cores 8
+   $ brainsets prepare /path/to/my_brainset --local --cores 8
 
 
 
@@ -251,3 +260,47 @@ While developing:
 
 
 Once your pipeline is reliable, commit the new directory inside ``brainsets_pipelines``, and submit a Pull Request.
+
+
+.. _declaring-dependencies:
+
+Declaring dependencies and Python version
+-----------------------------------------
+
+Pipelines declare their dependencies and Python version using a
+`PEP 723 <https://peps.python.org/pep-0723/>`__-style inline metadata block
+at the top of ``pipeline.py``. This block is parsed by the CLI to create an
+isolated environment before running your pipeline.
+
+.. code-block:: python
+
+    # /// brainset-pipeline
+    # python-version = "3.11"
+    # dependencies = [
+    #     "dandi==0.61.2",
+    #     "scikit-learn==1.5.1",
+    # ]
+    # ///
+
+    from argparse import ArgumentParser
+    ...
+
+The metadata block must:
+
+* Start with ``# /// brainset-pipeline`` and end with ``# ///``
+* Use TOML syntax for the content (each line prefixed with ``#`` or ``# ``)
+
+Supported keys:
+
+``python-version``
+    A single Python version string (e.g., ``"3.10"``, ``"3.11"``). Version ranges
+    are not supported—specify the exact version your pipeline needs.
+
+``dependencies``
+    A list of pip-installable package specifiers. Pin versions for reproducibility.
+
+.. note::
+
+    The ``brainsets`` package itself is automatically added to the environment
+    if not explicitly listed in ``dependencies``. Not adding ``brainsets`` to the 
+    dependencies list is the recommended practice.

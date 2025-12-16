@@ -1,3 +1,12 @@
+# /// brainset-pipeline
+# python-version = "3.11"
+# dependencies = [
+#   "allensdk==2.16.2",
+#   "psycopg2-binary==2.9.10",
+# ]
+# ///
+
+
 import argparse
 import logging
 import os

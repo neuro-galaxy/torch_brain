@@ -1,2 +1,0 @@
-allensdk==2.16.2
-psycopg2-binary==2.9.10
