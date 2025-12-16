@@ -3,13 +3,63 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    Union,
+    runtime_checkable,
+)
 
 import h5py
 import numpy as np
 import omegaconf
 import torch
 from temporaldata import Data, Interval
+
+
+@runtime_checkable
+class BaseSplitConfig(Protocol):
+    """Contract for all split configurations.
+
+    Each brainset can define its own SplitConfig class that implements this protocol.
+    The resolve method knows how to navigate the brainset's internal split structure
+    and return the appropriate sampling interval.
+    """
+
+    def resolve(self, data: Data) -> Interval:
+        """Return the sampling interval for this split."""
+        ...
+
+    @property
+    def partition(self) -> str:
+        """Return the partition name ('train', 'valid', or 'test')."""
+        ...
+
+    def __str__(self) -> str:
+        """Return a human-readable string representation of the split configuration."""
+        ...
+
+
+@dataclass
+class LegacySplitConfig:
+    """Wraps legacy string-based splits (e.g., 'train', 'valid', 'test').
+
+    This class provides backwards compatibility with the original string-based
+    split parameter by implementing the BaseSplitConfig protocol.
+    """
+
+    partition: str
+
+    def resolve(self, data: Data) -> Interval:
+        return getattr(data, f"{self.partition}_domain")
+
+    def __str__(self) -> str:
+        return self.partition
 
 
 @dataclass
@@ -57,9 +107,11 @@ class Dataset(torch.utils.data.Dataset):
             and can only be used if config is not provided.
         session: The session to include. This is used to specify a single session, and
             can only be used if config is not provided.
-        split: The split of the dataset. This is used to determine the sampling intervals
-            for each session. The split is optional, and is used to load a subset of the data
-            in a session based on a predefined split.
+        split: The split configuration for the dataset. Can be:
+            - A string (e.g., 'train', 'valid', 'test') for legacy compatibility
+            - A BaseSplitConfig instance for typed split configuration
+            - A dict mapping recording_id to BaseSplitConfig for per-recording splits
+            - None to use the full domain
         transform: A transform to apply to the data. This transform should be a callable
             that takes a Data object and returns a Data object.
         unit_id_prefix_fn:
@@ -85,7 +137,7 @@ class Dataset(torch.utils.data.Dataset):
         *,
         config: Optional[str] = None,
         recording_id: Optional[str] = None,
-        split: Optional[str] = None,
+        split: Union[BaseSplitConfig, Dict[str, BaseSplitConfig], str, None] = None,
         transform: Optional[Callable[[Data], Any]] = None,
         unit_id_prefix_fn: Callable[[Data], str] = default_unit_id_prefix_fn,
         session_id_prefix_fn: Callable[[Data], str] = default_session_id_prefix_fn,
@@ -304,8 +356,10 @@ class Dataset(torch.utils.data.Dataset):
         data = self._get_data_object(recording_id)
         sample = data.slice(start, end)
 
-        if self._check_for_data_leakage_flag and self.split is not None:
-            sample._check_for_data_leakage(self.split)
+        if self._check_for_data_leakage_flag:
+            split_config = self._get_split_for_recording(recording_id)
+            if split_config is not None:
+                sample._check_for_data_leakage(split_config.partition)
 
         self._update_data_with_prefixed_ids(sample)
         sample.config = self.recording_dict[recording_id]["config"]
@@ -319,6 +373,23 @@ class Dataset(torch.utils.data.Dataset):
             file = h5py.File(self.recording_dict[recording_id]["filename"], "r")
             return Data.from_hdf5(file, lazy=True)
 
+    def _get_split_for_recording(self, recording_id: str) -> Optional[BaseSplitConfig]:
+        """Resolve the split config for a given recording.
+
+        Handles the different types of split input:
+        - None: returns None
+        - str: wraps in LegacySplitConfig for backwards compatibility
+        - dict: looks up the recording_id in the dict
+        - BaseSplitConfig: returns as-is
+        """
+        if self.split is None:
+            return None
+        if isinstance(self.split, str):
+            return LegacySplitConfig(partition=self.split)
+        if isinstance(self.split, dict):
+            return self.split.get(recording_id)
+        return self.split
+
     def get_recording_data(self, recording_id: str):
         r"""Returns the data object corresponding to the recording :obj:`recording_id`.
         If the split is not :obj:`None`, the data object is sliced to the allowed sampling
@@ -331,13 +402,13 @@ class Dataset(torch.utils.data.Dataset):
             to this method if possible.
         """
         data = self._get_data_object(recording_id)
+        split_config = self._get_split_for_recording(recording_id)
 
-        # get allowed sampling intervals
-        if self.split is not None:
+        if split_config is not None:
             sampling_intervals = self.get_sampling_intervals()[recording_id]
             data = data.select_by_interval(sampling_intervals)
             if self._check_for_data_leakage_flag:
-                data._check_for_data_leakage(self.split)
+                data._check_for_data_leakage(split_config.partition)
         else:
             data = copy.deepcopy(data)
 
@@ -353,20 +424,22 @@ class Dataset(torch.utils.data.Dataset):
         """
         sampling_intervals_dict = {}
         for recording_id in self.recording_dict.keys():
-            sampling_domain = (
-                f"{self.split}_domain" if self.split is not None else "domain"
-            )
-            sampling_intervals = getattr(
-                self._get_data_object(recording_id), sampling_domain
-            )
+            data = self._get_data_object(recording_id)
+            split_config = self._get_split_for_recording(recording_id)
+
+            if split_config is not None:
+                sampling_intervals = split_config.resolve(data)
+            else:
+                sampling_intervals = data.domain
+
             sampling_intervals_modifier_code = self.recording_dict[recording_id][
                 "config"
             ].get("sampling_intervals_modifier", None)
             if sampling_intervals_modifier_code is not None:
                 local_vars = {
-                    "data": self._get_data_object(recording_id),
+                    "data": data,
                     "sampling_intervals": sampling_intervals,
-                    "split": self.split,
+                    "split": str(split_config) if split_config else None,
                 }
                 try:
                     exec(sampling_intervals_modifier_code, {}, local_vars)
