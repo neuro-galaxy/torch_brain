@@ -13,10 +13,6 @@ jobs:
   dandi-testing:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-
     steps:
     - uses: actions/checkout@v4
 
@@ -25,10 +21,10 @@ jobs:
       with:
         version: "0.6.11"
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.10"
 
     - name: Install the project
       run: uv sync --all-extras
@@ -45,8 +41,6 @@ jobs:
 
 
     - name: Download allen_visual_coding_ophys_2016
-      if: matrix.python-version <= '3.11'
-      # allen SDK needs numpy < 1.24, which is not compatible with python3.12+
       run: |
         uv run brainsets config --raw-dir data/raw --processed-dir data/processed
         uv run brainsets prepare allen_visual_coding_ophys_2016 -s 717913184
@@ -57,8 +51,6 @@ jobs:
         uv run brainsets prepare churchland_shenoy_neural_2012 -s jenkins_20090912
 
     - name: Download flint_slutzky_accurate_2012
-      if: matrix.python-version <= '3.11'
-      # uses scipy==1.10.1 which won't work with 3.12+
       run: |
         uv run brainsets config --raw-dir data/raw --processed-dir data/processed
         uv run brainsets prepare flint_slutzky_accurate_2012 -s flint_2012_e1

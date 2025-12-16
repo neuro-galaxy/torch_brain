@@ -1,5 +1,8 @@
-# import logging
-import os
+# /// brainset-pipeline
+# python-version = "3.11"
+# dependencies = ["scipy==1.10.1"]
+# ///
+
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Optional
@@ -303,85 +306,3 @@ def extract_trials(mat):
     assert trials.is_disjoint()
     assert trials.is_sorted()
     return trials
-
-
-def main():
-    # Use argparse to extract two arguments from the command line:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--input_file", type=str)
-    parser.add_argument("--output_dir", type=str, default="./processed")
-
-    args = parser.parse_args()
-
-    brainset_description = BrainsetDescription(
-        id="flint_slutzky_accurate_2012",
-        origin_version="0.0.0",
-        derived_version="1.0.0",
-        source="https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012",
-        description="Monkeys recordings of Motor Cortex (M1) and dorsal Premotor Cortex"
-        " (PMd)  128-channel acquisition system (Cerebus,Blackrock, Inc.)  "
-        "while performing reaching tasks on right hand",
-    )
-
-    logging.info(f"Processing file: {args.input_file}")
-
-    # open file
-    mat = loadmat(args.input_file)
-
-    subject = SubjectDescription(
-        id="monkey_c",
-        species=Species.MACACA_MULATTA,
-        sex=Sex.UNKNOWN,
-    )
-
-    session_tag = args.input_file.split("_")[-1].split(".mat")[0]  # e1, e2, e3...
-    device_id = f"{subject.id}_{session_tag}"
-    session_id = f"{device_id}_reaching"
-
-    # register session
-    session = SessionDescription(
-        id=session_id,
-        recording_date="20130530",  # using .mat file creation date
-        task=Task.REACHING,
-    )
-
-    device = DeviceDescription(
-        id=device_id,
-        recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
-    )
-
-    units = extract_units(mat)  # Data obj
-
-    spikes = extract_spikes(mat)  # IrregularTimeSeries obj
-
-    trials = extract_trials(mat)  # Interval obj
-
-    hand = extract_behavior(mat, trials)  # IrregularTimeSeries obj
-
-    data = Data(
-        brainset=brainset_description,
-        subject=subject,
-        session=session,
-        device=device,
-        # neural activity
-        spikes=spikes,
-        units=units,
-        # stimuli and behavior
-        trials=trials,
-        hand=hand,
-        domain=trials,
-    )
-
-    # split trials into train, validation and test
-    train_trials, valid_trials, test_trials = trials.split(
-        [0.7, 0.1, 0.2], shuffle=True, random_seed=42
-    )
-
-    data.set_train_domain(train_trials)
-    data.set_valid_domain(valid_trials)
-    data.set_test_domain(test_trials)
-
-    # save data to disk
-    path = os.path.join(args.output_dir, f"{session_id}.h5")
-    with h5py.File(path, "w") as file:
-        data.to_hdf5(file, serialize_fn_map=serialize_fn_map)

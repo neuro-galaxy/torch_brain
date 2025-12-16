@@ -1,3 +1,8 @@
+# /// brainset-pipeline
+# python-version = "3.11"
+# dependencies = ["zenodo_get==2.0.0"]
+# ///
+
 import os
 import datetime
 import hashlib

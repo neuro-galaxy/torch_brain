@@ -1,3 +1,11 @@
+# /// brainset-pipeline
+# python-version = "3.11"
+# dependencies = [
+#   "dandi==0.61.2",
+#   "scikit-learn==1.5.1",
+# ]
+# ///
+
 from argparse import ArgumentParser
 from typing import NamedTuple
 from pynwb import NWBHDF5IO

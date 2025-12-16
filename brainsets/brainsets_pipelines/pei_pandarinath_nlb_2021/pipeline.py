@@ -1,3 +1,8 @@
+# /// brainset-pipeline
+# python-version = "3.11"
+# dependencies = ["dandi==0.71.3"]
+# ///
+
 from argparse import ArgumentParser
 import datetime
 
