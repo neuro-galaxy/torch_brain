@@ -4,7 +4,7 @@ from torch_brain.transforms import TransformType
 from torch_brain.utils import np_string_prefix
 from temporaldata import Data
 
-from .dataset import Dataset, SpikingDatasetMixin, MultiDataset
+from .dataset import Dataset, SpikingDatasetMixin
 
 
 class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
@@ -43,17 +43,3 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
         )
 
         super().get_recording_hook(data)
-
-
-if __name__ == "__main__":
-    ds = PerichMillerPopulation2018(root="../brainsets/data/processed", split="train")
-    print(ds.recording_ids)
-    print(ds.get_unit_ids())
-    # print(ds.get_subject_ids())
-
-    mds = MultiDataset({"pm": ds})
-    print(mds.recording_ids)
-    print(mds.datasets["pm"].get_unit_ids())
-    # print(mds.get_sampling_intervals())
-
-    # print(ds.get_sampling_intervals())
