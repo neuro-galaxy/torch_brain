@@ -96,6 +96,14 @@ class Dataset(torch.utils.data.Dataset):
     def get_recording_hook(self, data: Data) -> None:
         pass
 
+    def __repr__(self) -> str:
+        cls = self.__class__.__name__
+        n_rec = len(self._recording_ids)
+        attrs = []
+        if self.transform is not None:
+            attrs.append("transform=...")
+        return f"<{cls}(n_recordings={n_rec}{', ' if attrs else ''}{', '.join(attrs)})>"
+
 
 class NestedDataset(Dataset):
     def __init__(
