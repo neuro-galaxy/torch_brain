@@ -1,5 +1,16 @@
 _target_: torch_brain.datasets.PeiPandarinathNLB2021
-transform:
-  _target_: transforms.NLBReadoutConfigTransform
 recording_ids:
   - jenkins_maze_train
+transform:
+  _target_: torch_brain.transforms.AddConfig
+  config: 
+    readout:
+      readout_id: cursor_velocity_2d
+      timestamp_key: hand.timestamps
+      value_key: hand.vel
+      normalize_mean: 0.
+      normalize_std: 100.
+      metrics:
+        - metric:
+            _target_: torchmetrics.R2Score
+      eval_interval: nlb_eval_intervals
