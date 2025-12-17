@@ -64,7 +64,7 @@ class Dataset(torch.utils.data.Dataset):
             data = Data.from_hdf5(file, lazy=True)
 
         self.get_recording_hook(data)
-        self.apply_namespace_(self._namespace, data)
+        self.apply_namespace(self._namespace, data)
         return data
 
     def get_slice(self, recording_id: str, start: float, end: float) -> Data:
@@ -79,12 +79,11 @@ class Dataset(torch.utils.data.Dataset):
             sample = self.transform(sample)
         return sample
 
-    def set_namespace_(self, name: str) -> "Dataset":
-        self._namespace = f"{name}/"
+    def set_namespace(self, name: str):
+        self._namespace = name + "/"
         self._recording_ids = np_string_prefix(self._namespace, self._recording_ids)
-        return self
 
-    def apply_namespace_(self, namespace: str, data: Data) -> Data:
+    def apply_namespace(self, namespace: str, data: Data) -> Data:
         if not namespace:
             return data
 
@@ -137,7 +136,7 @@ class MultiDataset(Dataset):
         self._datasets = dataset_dict
         rec_ids = []
         for name, dataset in self._datasets.items():
-            dataset.set_namespace_(name)
+            dataset.set_namespace(name)
             rec_ids.append(dataset.recording_ids)
         self._recording_ids = np.sort(np.concat(rec_ids))
 
