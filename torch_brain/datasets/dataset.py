@@ -210,6 +210,8 @@ def _namespace_join(a: str, b: str) -> str:
 
 
 def _ensure_index_has_namespace(index: DatasetIndex) -> DatasetIndex:
+    r"""Older DatasetIndex objects did not have a namespace attribute, 
+    so we add it if it is not present to support backwards compatibility."""
     if not hasattr(index, "_namespace"):
         index._namespace = ""
     return index
