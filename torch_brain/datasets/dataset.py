@@ -9,7 +9,6 @@ import torch
 from torch_brain.transforms import TransformType
 from torch_brain.utils import numpy_string_prefix
 from temporaldata import Data, Interval
-from brainsets.descriptions import SessionDescription, SubjectDescription
 
 
 @dataclass
@@ -77,11 +76,19 @@ class Dataset(torch.utils.data.Dataset):
         return sample
 
     def prefix_session_id(self, data: Data):
-        if hasattr(data, "session") and isinstance(data.session, SessionDescription):
+        if (
+            hasattr(data, "session")
+            and hasattr(data.session, "id")
+            and isinstance(data.session.id, str)
+        ):
             data.session.id = f"{self.id_namespace}{data.session.id}"
 
     def prefix_subject_id(self, data: Data):
-        if hasattr(data, "subject") and isinstance(data.session, SubjectDescription):
+        if (
+            hasattr(data, "subject")
+            and hasattr(data.subject, "id")
+            and isinstance(data.subject.id, str)
+        ):
             data.subject.id = f"{self.id_namespace}{data.subject.id}"
 
     def get_recording_hook(self, data: Data) -> None:
@@ -92,6 +99,10 @@ class Dataset(torch.utils.data.Dataset):
 
     def get_sampling_intervals(self) -> dict[str, Interval]:
         return {rid: self.get_recording(rid).domain for rid in self.recording_ids}
+
+    def get_subject_ids(self) -> np.ndarray:
+        ids = [self.get_recording(rid).subject.id for rid in self.recording_ids]
+        return np.sort(np.unique(ids))
 
 
 class MultiDataset(Dataset):
@@ -132,13 +143,6 @@ class MultiDataset(Dataset):
 
 
 class SpikingDatasetMixin:
-    def get_unit_ids(self):
-        return np.sort(
-            np.concatenate(
-                [self.get_recording(rid).units.id for rid in self.recording_ids]
-            )
-        )
-
     def get_recording_hook(self, data: Data):
         if len(self.id_namespace) > 0:
             # All spiking datasets have units, which need to be prefixed appropriately
@@ -146,3 +150,7 @@ class SpikingDatasetMixin:
                 self.id_namespace,
                 data.units.id.astype(str),
             )
+
+    def get_unit_ids(self):
+        ans = [self.get_recording(rid).units.id for rid in self.recording_ids]
+        return np.sort(np.concatenate(ans))
