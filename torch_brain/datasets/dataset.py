@@ -133,10 +133,10 @@ class MultiDataset(Dataset):
             dataset_dict = {name: x for name, x in zip(dataset_names, datasets)}
 
         self._datasets = dataset_dict
-        rec_ids = []
         for name, dataset in self._datasets.items():
             dataset.set_namespace(name)
-            rec_ids.extend(dataset.recording_ids)
+
+        rec_ids = sum(ds.recording_ids for ds in self.datasets.values())
         self._recording_ids = np.sort(rec_ids)
 
         self.transform = transform
