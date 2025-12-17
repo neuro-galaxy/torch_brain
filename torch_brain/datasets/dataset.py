@@ -32,14 +32,13 @@ class Dataset(torch.utils.data.Dataset):
 
         if not isinstance(dataset_dir, Path):
             dataset_dir = Path(dataset_dir)
-        self._dataset_dir = dataset_dir
 
         if recording_ids is None:
             recording_ids = [x.stem for x in dataset_dir.glob("*.h5")]
         self._recording_ids = np.sort(np.array(recording_ids))
 
+        self._filepaths = [dataset_dir / f"{rid}.h5" for rid in self._recording_ids]
         if keep_files_open:
-            self._filepaths = [dataset_dir / f"{rid}.h5" for rid in self._recording_ids]
             self._data_objects = [Data.from_hdf5(h5py.File(x)) for x in self._filepaths]
 
         self.transform = transform
