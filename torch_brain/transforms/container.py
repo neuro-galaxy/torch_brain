@@ -4,6 +4,8 @@ import numpy as np
 
 import temporaldata
 
+TransformType = Callable[[temporaldata.Data], temporaldata.Data]
+
 
 class Compose:
     r"""Compose several transforms together. All transforms will be called sequentially,
@@ -21,6 +23,9 @@ class Compose:
         for transform in self.transforms:
             data = transform(data)
         return data
+
+    def append(self, transform: TransformType):
+        self.transforms.append(transform)
 
 
 # similar to torchvision.transforms.v2.RandomChoice

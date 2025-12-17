@@ -4,7 +4,7 @@ from torch_brain.transforms import TransformType
 from torch_brain.utils import np_string_prefix
 from temporaldata import Data
 
-from dataset import Dataset, SpikingDatasetMixin, MultiDataset
+from .dataset import Dataset, SpikingDatasetMixin, MultiDataset
 
 
 class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
@@ -14,7 +14,7 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
         dirname: str = "perich_miller_population_2018",
         recording_ids: Optional[list[str]] = None,
         transform: Optional[TransformType] = None,
-        split: Optional[Literal["train", "val", "test"]] = None,
+        split: Optional[Literal["train", "valid", "test"]] = None,
         **kwargs,
     ):
         super().__init__(
