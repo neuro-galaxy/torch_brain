@@ -19,7 +19,7 @@ class Timeslice:
     end: float
 
 
-class TemporalDataset(torch.utils.data.Dataset):
+class Dataset(torch.utils.data.Dataset):
     def __init__(
         self,
         dataset_dir: str,
@@ -97,13 +97,55 @@ class SpikingDatasetMixin:
     def get_recording_hook(self, data: Data):
         if self.autoprefix_ids:
             unit_prefix_str = f"{data.brainset.id}/{data.session.id}/"
-            if np.__version__ >= "2.0":
-                data.units.id = np.strings.add(
-                    unit_prefix_str,
-                    data.units.id.astype(str),
+            data.units.id = _numpy_string_prefix(
+                data.units.id.astype(str),
+                unit_prefix_str,
+            )
+
+
+class MultiDataset(Dataset):
+    def __init__(
+        self,
+        datasets: list[Dataset] | dict[str, Dataset],
+        transform: Optional[TransformType] = None,
+    ):
+        if isinstance(datasets, dict[str, Dataset]):
+            dataset_dict = datasets
+        else:
+            dataset_names = [x.__clas__.__name__ for x in datasets]
+            if len(dataset_names) != len(set(dataset_names)):
+                raise ValueError(
+                    "Duplicate dataset class names found in provided datasets."
+                    " Please use a dictionary instead to specify dataset names explicitly."
                 )
-            else:
-                data.units.id = np.core.defchararray.add(
-                    unit_prefix_str,
-                    data.units.id.astype(str),
-                )
+            dataset_dict = {name: x for name, x in zip(dataset_names, datasets)}
+
+        self._datasets = dataset_dict
+        self.transform = transform
+
+        rec_ids = []
+        for name, dataset in self.datasets.items():
+            rec_ids.append(_numpy_string_prefix(dataset.recoring_ids, f"{name}/"))
+        self._recording_ids = np.sort(np.concat(rec_ids))
+
+    @property
+    def datasets(self):
+        return self._datasets
+
+    def get_recording(self, recording_id: str) -> Data:
+        dataset_name, recording_id = recording_id.split("/", 1)
+        return self.datasets[dataset_name].get_recording(recording_id)
+
+    def get_sampling_intervals(self) -> dict[str, Interval]:
+        ans = {}
+        for name, dataset in self.datasets.items():
+            samp_intervals_this = dataset.get_sampling_intervals()
+            ans.update({f"{name}/{k}": v for k, v in samp_intervals_this.items()})
+        return ans
+
+
+def _numpy_string_prefix(array: np.ndarray, prefix: str) -> np.ndarray:
+    if np.__version__ >= "2.0":
+        return np.strings.add(prefix, array)
+    else:
+        return np.core.defchararray.add(prefix, array)
