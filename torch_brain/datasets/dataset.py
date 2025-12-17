@@ -94,23 +94,6 @@ class Dataset(torch.utils.data.Dataset):
         return {rid: self.get_recording(rid).domain for rid in self.recording_ids}
 
 
-class SpikingDatasetMixin:
-    def get_unit_ids(self):
-        return np.sort(
-            np.concatenate(
-                [self.get_recording(rid).units.id for rid in self.recording_ids]
-            )
-        )
-
-    def get_recording_hook(self, data: Data):
-        if len(self.id_namespace) > 0:
-            # All spiking datasets have units, which need to be prefixed appropriately
-            data.units.id = numpy_string_prefix(
-                self.id_namespace,
-                data.units.id.astype(str),
-            )
-
-
 class MultiDataset(Dataset):
     def __init__(
         self,
@@ -146,3 +129,20 @@ class MultiDataset(Dataset):
     def get_recording(self, recording_id: str) -> Data:
         dataset_name, recording_id = recording_id.split("/", 1)
         return self.datasets[dataset_name].get_recording(recording_id)
+
+
+class SpikingDatasetMixin:
+    def get_unit_ids(self):
+        return np.sort(
+            np.concatenate(
+                [self.get_recording(rid).units.id for rid in self.recording_ids]
+            )
+        )
+
+    def get_recording_hook(self, data: Data):
+        if len(self.id_namespace) > 0:
+            # All spiking datasets have units, which need to be prefixed appropriately
+            data.units.id = numpy_string_prefix(
+                self.id_namespace,
+                data.units.id.astype(str),
+            )
