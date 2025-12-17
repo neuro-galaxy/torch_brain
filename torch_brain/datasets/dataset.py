@@ -8,6 +8,7 @@ import torch
 
 from torch_brain.transforms import TransformType
 from temporaldata import Data, Interval
+from brainsets.descriptions import SessionDescription, SubjectDescription
 
 
 @dataclass
@@ -26,7 +27,6 @@ class Dataset(torch.utils.data.Dataset):
         recording_ids: Optional[list[str]] = None,
         transform: Optional[TransformType] = None,
         keep_files_open: bool = True,
-        autoprefix_ids: bool = True,
     ):
 
         if not isinstance(dataset_dir, Path):
@@ -37,7 +37,7 @@ class Dataset(torch.utils.data.Dataset):
             recording_ids = [x.stem for x in dataset_dir.glob("*.h5")]
         self._recording_ids = np.sort(np.array(recording_ids))
 
-        self.autoprefix_ids = autoprefix_ids
+        self.id_namespace = ""
 
         if keep_files_open:
             self._data_objects = {
@@ -51,6 +51,16 @@ class Dataset(torch.utils.data.Dataset):
     def recording_ids(self) -> np.ndarray:
         return self._recording_ids
 
+    def _prefix_ids(self, data: Data):
+        if not self.autoprefix_ids:
+            return
+
+        if hasattr(data, "session") and isinstance(data.session, SessionDescription):
+            data.session.id = f"{self.id_namespace}{data.session.id}"
+
+        if hasattr(data, "subject") and isinstance(data.session, SubjectDescription):
+            data.subject.id = f"{self.id_namespace}{data.brainset.id}/{data.subject.id}"
+
     def get_recording(self, recording_id: str) -> Data:
         if hasattr(self, "_data_objects"):
             data = copy.deepcopy(self._data_objects[recording_id])
@@ -58,9 +68,7 @@ class Dataset(torch.utils.data.Dataset):
             file = h5py.File(self._dataset_dir / recording_id, "r")
             data = Data.from_hdf5(file, lazy=True)
 
-        if self.autoprefix_ids:
-            data.subject.id = f"{data.brainset.id}/{data.subject.id}"
-
+        self._prefix_ids(data)
         self.get_recording_hook(data)
         return data
 
@@ -96,10 +104,12 @@ class SpikingDatasetMixin:
 
     def get_recording_hook(self, data: Data):
         if self.autoprefix_ids:
-            unit_prefix_str = f"{data.brainset.id}/{data.session.id}/"
+            unit_prefix_str = (
+                f"{self.id_namespace}{data.brainset.id}/{data.session.id}/"
+            )
             data.units.id = _numpy_string_prefix(
-                data.units.id.astype(str),
                 unit_prefix_str,
+                data.units.id.astype(str),
             )
 
 
@@ -109,10 +119,10 @@ class MultiDataset(Dataset):
         datasets: list[Dataset] | dict[str, Dataset],
         transform: Optional[TransformType] = None,
     ):
-        if isinstance(datasets, dict[str, Dataset]):
+        if isinstance(datasets, dict):
             dataset_dict = datasets
         else:
-            dataset_names = [x.__clas__.__name__ for x in datasets]
+            dataset_names = [x.__class__.__name__ for x in datasets]
             if len(dataset_names) != len(set(dataset_names)):
                 raise ValueError(
                     "Duplicate dataset class names found in provided datasets."
@@ -121,30 +131,26 @@ class MultiDataset(Dataset):
             dataset_dict = {name: x for name, x in zip(dataset_names, datasets)}
 
         self._datasets = dataset_dict
+        for name, dataset in self._datasets.items():
+            dataset.id_namespace = f"{name}/"
+
         self.transform = transform
 
         rec_ids = []
         for name, dataset in self.datasets.items():
-            rec_ids.append(_numpy_string_prefix(dataset.recoring_ids, f"{name}/"))
+            rec_ids.append(_numpy_string_prefix(f"{name}/", dataset.recording_ids))
         self._recording_ids = np.sort(np.concat(rec_ids))
 
     @property
-    def datasets(self):
+    def datasets(self) -> dict[str, Dataset]:
         return self._datasets
 
     def get_recording(self, recording_id: str) -> Data:
         dataset_name, recording_id = recording_id.split("/", 1)
         return self.datasets[dataset_name].get_recording(recording_id)
 
-    def get_sampling_intervals(self) -> dict[str, Interval]:
-        ans = {}
-        for name, dataset in self.datasets.items():
-            samp_intervals_this = dataset.get_sampling_intervals()
-            ans.update({f"{name}/{k}": v for k, v in samp_intervals_this.items()})
-        return ans
 
-
-def _numpy_string_prefix(array: np.ndarray, prefix: str) -> np.ndarray:
+def _numpy_string_prefix(prefix: str, array: np.ndarray) -> np.ndarray:
     if np.__version__ >= "2.0":
         return np.strings.add(prefix, array)
     else:
