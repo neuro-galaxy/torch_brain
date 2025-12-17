@@ -107,7 +107,7 @@ class Dataset(torch.utils.data.Dataset):
     def get_slice_hook(self, data_slice: Data) -> None:
         pass
 
-    def get_sampling_intervals(self) -> dict[str, Interval]:
+    def get_sampling_intervals(self, *args, **kwargs) -> dict[str, Interval]:
         return {rid: self.get_recording(rid).domain for rid in self._recording_ids}
 
     def get_subject_ids(self) -> list[str]:

@@ -14,7 +14,6 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
         dirname: str = "perich_miller_population_2018",
         recording_ids: Optional[list[str]] = None,
         transform: Optional[TransformType] = None,
-        split: Optional[Literal["train", "valid", "test"]] = None,
         **kwargs,
     ):
         super().__init__(
@@ -25,10 +24,8 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
             **kwargs,
         )
 
-        self.split = split
-
-    def get_sampling_intervals(self):
-        domain_key = "domain" if self.split is None else f"{self.split}_domain"
+    def get_sampling_intervals(self, split: Literal["train", "valid", "test"]):
+        domain_key = "domain" if split is None else f"{split}_domain"
         return {
             rid: getattr(self.get_recording(rid), domain_key)
             for rid in self.recording_ids
