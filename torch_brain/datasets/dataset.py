@@ -80,8 +80,8 @@ class Dataset(torch.utils.data.Dataset):
         return sample
 
     def set_namespace(self, name: str):
-        self._namespace = name + "/"
-        self._recording_ids = np_string_prefix(self._namespace, self._recording_ids)
+        self._namespace = name + "/" + self._namespace
+        self._recording_ids = np_string_prefix(name + "/", self._recording_ids)
 
     def apply_namespace(self, namespace: str, data: Data) -> Data:
         if not namespace:
