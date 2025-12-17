@@ -52,9 +52,6 @@ class Dataset(torch.utils.data.Dataset):
         return self._recording_ids
 
     def _prefix_ids(self, data: Data):
-        if not self.autoprefix_ids:
-            return
-
         if hasattr(data, "session") and isinstance(data.session, SessionDescription):
             data.session.id = f"{self.id_namespace}{data.session.id}"
 
@@ -103,14 +100,11 @@ class SpikingDatasetMixin:
         )
 
     def get_recording_hook(self, data: Data):
-        if self.autoprefix_ids:
-            unit_prefix_str = (
-                f"{self.id_namespace}{data.brainset.id}/{data.session.id}/"
-            )
-            data.units.id = _numpy_string_prefix(
-                unit_prefix_str,
-                data.units.id.astype(str),
-            )
+        unit_prefix_str = f"{self.id_namespace}{data.brainset.id}/{data.session.id}/"
+        data.units.id = _numpy_string_prefix(
+            unit_prefix_str,
+            data.units.id.astype(str),
+        )
 
 
 class MultiDataset(Dataset):
