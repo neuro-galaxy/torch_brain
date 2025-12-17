@@ -39,7 +39,7 @@ class Dataset(torch.utils.data.Dataset):
         self._recording_ids = np.sort(np.array(recording_ids))
 
         if keep_files_open:
-            self._filepaths = [dataset_dir / f"{rid}.h5" for rid in recording_ids]
+            self._filepaths = [dataset_dir / f"{rid}.h5" for rid in self._recording_ids]
             self._data_objects = [Data.from_hdf5(h5py.File(x)) for x in self._filepaths]
 
         self.transform = transform
