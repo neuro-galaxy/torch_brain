@@ -2,3 +2,5 @@ from .dataset import Dataset, SpikingDatasetMixin, MultiDataset
 
 from .PerichMillerPopulation2018 import PerichMillerPopulation2018
 from .PeiPandarinathNLB2021 import PeiPandarinathNLB2021
+from .FlintSlutzkyAccurate2012 import FlintSlutzkyAccurate2012
+from .ChurchlandShenoyNeural2012 import ChurchlandShenoyNeural2012
