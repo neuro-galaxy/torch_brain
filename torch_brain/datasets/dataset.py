@@ -53,7 +53,7 @@ class Dataset(torch.utils.data.Dataset):
 
     def get_recording(self, recording_id: str) -> Data:
         idx = np.searchsorted(self._recording_ids, recording_id)
-        if self.recording_ids[idx] != recording_id:
+        if self._recording_ids[idx] != recording_id:
             raise ValueError(f"Recording id '{recording_id}' not found in dataset.")
 
         if hasattr(self, "_data_objects"):
@@ -108,10 +108,10 @@ class Dataset(torch.utils.data.Dataset):
         pass
 
     def get_sampling_intervals(self) -> dict[str, Interval]:
-        return {rid: self.get_recording(rid).domain for rid in self.recording_ids}
+        return {rid: self.get_recording(rid).domain for rid in self._recording_ids}
 
     def get_subject_ids(self) -> list[str]:
-        ids = [self.get_recording(rid).subject.id for rid in self.recording_ids]
+        ids = [self.get_recording(rid).subject.id for rid in self._recording_ids]
         return np.sort(np.unique(ids)).tolist()
 
 
