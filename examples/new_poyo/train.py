@@ -22,8 +22,7 @@ from torch_brain.utils.stitcher import (
     DecodingStitchEvaluator,
     DataForDecodingStitchEvaluator,
 )
-from torch_brain.data import collate
-from torch_brain.datasets import Dataset
+from torch_brain.data import Dataset, collate
 from torch_brain.data.sampler import (
     DistributedStitchingFixedWindowSampler,
     RandomFixedWindowSampler,
@@ -149,51 +148,57 @@ class DataModule(L.LightningDataModule):
         self.cfg = cfg
         self.log = logging.getLogger(__name__)
 
+    def setup_dataset_and_link_model(self, model: POYO):
+        r"""Setup Dataset objects, and update a given model's embedding vocabs (session
+        and unit_emb)
+        """
+        self.sequence_length = model.sequence_length
+
         train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
-        self.train_dataset, self.readout_spec = hydra.utils.instantiate(
+        self.train_dataset = hydra.utils.instantiate(
             self.cfg.dataset,
             root=self.cfg.data_root,
             split="train",
         )
         self.train_dataset.transform = Compose(
-            [self.train_dataset.transform, *train_transforms]
+            [self.train_dataset.transform, *train_transforms, model.tokenize]
         )
+        # self.train_dataset.disable_data_leakage_check()
+
+        self._init_model_vocab(model)
 
         eval_transforms = hydra.utils.instantiate(self.cfg.eval_transforms)
-        self.val_dataset, _ = hydra.utils.instantiate(
+
+        self.val_dataset = hydra.utils.instantiate(
             self.cfg.dataset,
             root=self.cfg.data_root,
             split="valid",
         )
         self.val_dataset.transform = Compose(
-            [self.val_dataset.transform, *eval_transforms]
+            [self.val_dataset.transform, *eval_transforms, model.tokenize]
         )
+        # self.val_dataset.disable_data_leakage_check()
 
-        self.test_dataset, _ = hydra.utils.instantiate(
+        self.eval_dataset = hydra.utils.instantiate(
             self.cfg.dataset,
             root=self.cfg.data_root,
             split="test",
         )
-        self.test_dataset.transform = Compose(
-            [self.test_dataset.transform, *eval_transforms]
+        self.eval_dataset.transform = Compose(
+            [self.eval_dataset.transform, *eval_transforms, model.tokenize]
         )
+        # self.test_dataset.disable_data_leakage_check()
 
-    def link_model(self, model: POYO):
-        r"""Setup Dataset objects, and update a given model's embedding vocabs (session
-        and unit_emb)
-        """
-
-        model.unit_emb.initialize_vocab(self.train_dataset.get_unit_ids())
+    def _init_model_vocab(self, model: POYO):
+        # TODO: Add code for finetuning situation (when model already has a vocab)
+        model.unit_emb.initialize_vocab(self.get_unit_ids())
         model.session_emb.initialize_vocab(self.get_session_ids())
-
-        self.sequence_length = model.sequence_length
-
-        self.train_dataset.transform.append(model.tokenize)
-        self.val_dataset.transform.append(model.tokenize)
-        self.test_dataset.transform.append(model.tokenize)
 
     def get_session_ids(self):
         return self.train_dataset.recording_ids
+
+    def get_unit_ids(self):
+        return self.train_dataset.get_unit_ids()
 
     def get_recording_config_dict(self):
         return self.train_dataset.get_recording_config_dict()
@@ -293,11 +298,15 @@ def main(cfg: DictConfig):
             log_model=cfg.wandb.log_model,
         )
 
+    # get modality details
+    # TODO: add test to verify that all recordings have the same readout
+    # readout_id = cfg.dataset[0].config.readout.readout_id
+    readout_spec = MODALITY_REGISTRY["cursor_velocity_2d"]
+
     # make model and data module
-    data_module = DataModule(cfg=cfg)
-    readout_spec = data_module.readout_spec
     model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)
-    data_module.link_model(model)
+    data_module = DataModule(cfg=cfg)
+    data_module.setup_dataset_and_link_model(model)
 
     # Lightning train wrapper
     wrapper = TrainWrapper(

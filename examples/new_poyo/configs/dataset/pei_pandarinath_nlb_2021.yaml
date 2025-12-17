@@ -1,0 +1,5 @@
+_target_: torch_brain.datasets.PeiPandarinathNLB2021
+transform:
+  _target_: transforms.NLBReadoutConfigTransform
+recording_ids:
+  - jenkins_maze_train
