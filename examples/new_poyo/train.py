@@ -14,7 +14,7 @@ from lightning.pytorch.callbacks import (
 from omegaconf import DictConfig, OmegaConf
 from temporaldata import Data
 
-from torch_brain.datasets.dataset import MultiDataset
+from torch_brain.datasets.dataset import NestedDataset
 from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
 from torch_brain.optim import SparseLamb
 from torch_brain.models.poyo import POYO
@@ -180,29 +180,28 @@ class DataModule(L.LightningDataModule):
         return self.train_dataset.recording_ids
 
     def get_unit_ids(self):
-        if isinstance(self.train_dataset, MultiDataset):
-            unit_ids = sum(
-                [ds.get_unit_ids() for ds in self.train_dataset.datasets.values()], []
-            )
-            return sorted(unit_ids)
-
+        # if isinstance(self.train_dataset, MultiDataset):
+        #     unit_ids = sum(
+        #         [ds.get_unit_ids() for ds in self.train_dataset.datasets.values()], []
+        #     )
+        #     return sorted(unit_ids)
         return self.train_dataset.get_unit_ids()
 
     def get_recording_config_dict(self):
         return self.train_dataset.get_recording_config_dict()
 
-    def get_sampling_intervals(self, split: Literal["train", "valid", "test"]):
-        if isinstance(self.train_dataset, MultiDataset):
-            samp_intervals = {}
-            for dataset in self.train_dataset.datasets.values():
-                samp_intervals.update(dataset.get_sampling_intervals(split))
-            return samp_intervals
+    # def get_sampling_intervals(self, split: Literal["train", "valid", "test"]):
+    #     if isinstance(self.train_dataset, MultiDataset):
+    #         samp_intervals = {}
+    #         for dataset in self.train_dataset.datasets.values():
+    #             samp_intervals.update(dataset.get_sampling_intervals(split))
+    #         return samp_intervals
 
-        self.train_dataset.get_sampling_intervals(split)
+    #     self.train_dataset.get_sampling_intervals(split)
 
     def train_dataloader(self):
         train_sampler = RandomFixedWindowSampler(
-            sampling_intervals=self.get_sampling_intervals("train"),
+            sampling_intervals=self.train_dataset.get_sampling_intervals("train"),
             window_length=self.sequence_length,
             generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
@@ -219,6 +218,9 @@ class DataModule(L.LightningDataModule):
             prefetch_factor=2 if self.cfg.num_workers > 0 else None,
         )
 
+        breakpoint()
+
+
         self.log.info(f"Training on {len(train_sampler)} samples")
         self.log.info(f"Training on {len(self.get_unit_ids())} units")
         self.log.info(f"Training on {len(self.get_session_ids())} sessions")
@@ -229,7 +231,7 @@ class DataModule(L.LightningDataModule):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
         val_sampler = DistributedStitchingFixedWindowSampler(
-            sampling_intervals=self.get_sampling_intervals("valid"),
+            sampling_intervals=self.eval_dataset.get_sampling_intervals("valid"),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
             batch_size=batch_size,
@@ -255,7 +257,7 @@ class DataModule(L.LightningDataModule):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
         test_sampler = DistributedStitchingFixedWindowSampler(
-            sampling_intervals=self.get_sampling_intervals("test"),
+            sampling_intervals=self.eval_dataset.get_sampling_intervals("test"),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
             batch_size=batch_size,

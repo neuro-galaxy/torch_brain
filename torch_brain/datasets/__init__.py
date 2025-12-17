@@ -1,4 +1,10 @@
-from .dataset import Dataset, SpikingDatasetMixin, MultiDataset
+from .dataset import (
+    Dataset,
+    NestedDataset,
+    SpikingDatasetMixin,
+    NestedSpikingDataset,
+    DatasetIndex,
+)
 
 from .PerichMillerPopulation2018 import PerichMillerPopulation2018
 from .PeiPandarinathNLB2021 import PeiPandarinathNLB2021

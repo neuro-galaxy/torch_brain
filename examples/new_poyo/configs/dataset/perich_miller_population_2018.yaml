@@ -1,4 +1,4 @@
-_target_: torch_brain.datasets.MultiDataset
+_target_: torch_brain.datasets.NestedSpikingDataset
 datasets:
   mp_co:
     _target_: torch_brain.datasets.PerichMillerPopulation2018
