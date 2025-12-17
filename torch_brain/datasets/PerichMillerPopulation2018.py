@@ -1,7 +1,7 @@
 from typing import Optional, Literal
 from pathlib import Path
 from torch_brain.transforms import TransformType
-from torch_brain.utils import numpy_string_prefix
+from torch_brain.utils import np_string_prefix
 from temporaldata import Data
 
 from dataset import Dataset, SpikingDatasetMixin, MultiDataset
@@ -21,6 +21,7 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
             dataset_dir=Path(root) / dirname,
             recording_ids=recording_ids,
             transform=transform,
+            namespace_attributes=["session.id", "subject.id", "units.id"],
             **kwargs,
         )
 
@@ -36,7 +37,7 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
     def get_recording_hook(self, data: Data):
         # This dataset does not have unique unit ids across sessions
         # so we prefix the unit ids with the session id to ensure uniqueness
-        data.units.id = numpy_string_prefix(
+        data.units.id = np_string_prefix(
             f"{data.session.id}/",
             data.units.id.astype(str),
         )

@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def numpy_string_prefix(prefix: str, array: np.ndarray) -> np.ndarray:
+def np_string_prefix(prefix: str, array: np.ndarray) -> np.ndarray:
     """
     Adds a string prefix to each element of a numpy string array.
 
