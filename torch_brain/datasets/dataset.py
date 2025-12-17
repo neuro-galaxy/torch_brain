@@ -65,17 +65,19 @@ class Dataset(torch.utils.data.Dataset):
         self.apply_namespace(self._namespace, data)
         return data
 
-    def get_slice(self, recording_id: str, start: float, end: float) -> Data:
-        data = self.get_recording(recording_id)
-        sample = data.slice(start, end)
-        self.get_slice_hook(sample)
-        return sample
-
     def __getitem__(self, index: DatasetIndex) -> Data:
-        sample = self.get_slice(index.recording_id, index.start, index.end)
+        data = self.get_recording(index.recording_id)
+        sample = data.slice(index.start, index.end)
         if self.transform is not None:
             sample = self.transform(sample)
         return sample
+
+    def get_sampling_intervals(self, *args, **kwargs) -> dict[str, Interval]:
+        return {rid: self.get_recording(rid).domain for rid in self._recording_ids}
+
+    def get_subject_ids(self) -> list[str]:
+        ids = [self.get_recording(rid).subject.id for rid in self._recording_ids]
+        return np.sort(np.unique(ids)).tolist()
 
     def set_namespace(self, name: str):
         self._namespace = name + "/" + self._namespace
@@ -102,16 +104,6 @@ class Dataset(torch.utils.data.Dataset):
 
     def get_recording_hook(self, data: Data) -> None:
         pass
-
-    def get_slice_hook(self, data_slice: Data) -> None:
-        pass
-
-    def get_sampling_intervals(self, *args, **kwargs) -> dict[str, Interval]:
-        return {rid: self.get_recording(rid).domain for rid in self._recording_ids}
-
-    def get_subject_ids(self) -> list[str]:
-        ids = [self.get_recording(rid).subject.id for rid in self._recording_ids]
-        return np.sort(np.unique(ids)).tolist()
 
 
 class MultiDataset(Dataset):
