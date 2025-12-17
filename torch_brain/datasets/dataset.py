@@ -52,12 +52,11 @@ class Dataset(torch.utils.data.Dataset):
         return self._recording_ids.tolist()
 
     def get_recording(self, recording_id: str) -> Data:
-        idx = np.searchsorted(self.recording_ids, recording_id)
+        idx = np.searchsorted(self._recording_ids, recording_id)
         if self.recording_ids[idx] != recording_id:
             raise ValueError(f"Recording id '{recording_id}' not found in dataset.")
 
         if hasattr(self, "_data_objects"):
-            self.recording_ids
             data = copy.deepcopy(self._data_objects[idx])
         else:
             file = h5py.File(self._filepaths[idx], "r")
