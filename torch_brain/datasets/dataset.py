@@ -121,9 +121,11 @@ class MultiDataset(Dataset):
         datasets: list[Dataset] | dict[str, Dataset],
         transform: Optional[TransformType] = None,
     ):
-        if isinstance(datasets, dict):
+
+        if _is_dict_like(datasets):
+            # To support Python dicts, OmegaConf.DictConfig, etc.
             dataset_dict = datasets
-        else:
+        elif isinstance(datasets, (list, tuple)):
             dataset_names = [x.__class__.__name__ for x in datasets]
             if len(dataset_names) != len(set(dataset_names)):
                 raise ValueError(
@@ -131,12 +133,17 @@ class MultiDataset(Dataset):
                     " Please use a dictionary instead to specify dataset names explicitly."
                 )
             dataset_dict = {name: x for name, x in zip(dataset_names, datasets)}
+        else:
+            raise TypeError(
+                f"datasets must be a list/tuple or a dict-like object"
+                f" (got {type(datasets)})"
+            )
 
         self._datasets = dataset_dict
         for name, dataset in self._datasets.items():
             dataset.set_namespace(name)
 
-        rec_ids = sum(ds.recording_ids for ds in self.datasets.values())
+        rec_ids = sum([ds.recording_ids for ds in self.datasets.values()], [])
         self._recording_ids = np.sort(rec_ids)
 
         self.transform = transform
@@ -150,6 +157,13 @@ class MultiDataset(Dataset):
         data = self.datasets[dataset_name].get_recording(recording_id)
         self.get_recording_hook(data)
         return data
+
+    def __getitem__(self, index: DatasetIndex) -> Data:
+        dataset_name, _ = index.recording_id.split("/", 1)
+        sample = self.datasets[dataset_name][index]
+        if self.transform is not None:
+            sample = self.transform(sample)
+        return sample
 
 
 class SpikingDatasetMixin:
@@ -172,3 +186,7 @@ def set_nested_attribute_(data: Data, path: str, value: Any) -> Data:
 
     setattr(obj, components[-1], value)
     return data
+
+
+def _is_dict_like(obj) -> bool:
+    return hasattr(obj, "keys") and hasattr(obj, "__getitem__")

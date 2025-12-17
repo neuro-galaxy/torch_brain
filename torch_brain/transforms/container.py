@@ -21,7 +21,8 @@ class Compose:
 
     def __call__(self, data: temporaldata.Data) -> temporaldata.Data:
         for transform in self.transforms:
-            data = transform(data)
+            if transform is not None:
+                data = transform(data)
         return data
 
     def append(self, transform: TransformType):
