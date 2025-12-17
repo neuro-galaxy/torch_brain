@@ -97,7 +97,7 @@ class Dataset(torch.utils.data.Dataset):
                     f"Attribute '{attrib}' is of unsupported type: {type(value)}. "
                     "Expected str or np.ndarray."
                 )
-            set_nested_attribute_(data, attrib, value)
+            set_nested_attribute(data, attrib, value)
 
         return data
 
@@ -172,7 +172,7 @@ class SpikingDatasetMixin:
         return np.sort(np.concatenate(ans)).tolist()
 
 
-def set_nested_attribute_(data: Data, path: str, value: Any) -> Data:
+def set_nested_attribute(data: Data, path: str, value: Any) -> Data:
     # Split key by dots, resolve using getattr
     components = path.split(".")
     obj = data
