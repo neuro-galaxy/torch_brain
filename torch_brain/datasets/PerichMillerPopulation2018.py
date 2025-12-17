@@ -1,7 +1,10 @@
 from typing import Optional, Literal
 from pathlib import Path
-from dataset import Dataset, SpikingDatasetMixin, MultiDataset
 from torch_brain.transforms import TransformType
+from torch_brain.utils import numpy_string_prefix
+from temporaldata import Data
+
+from dataset import Dataset, SpikingDatasetMixin, MultiDataset
 
 
 class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
@@ -30,20 +33,26 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
             for rid in self.recording_ids
         }
 
+    def get_recording_hook(self, data: Data):
+        # This dataset does not have unique unit ids across sessions
+        # so we prefix the unit ids with the session id to ensure uniqueness
+        data.units.id = numpy_string_prefix(
+            f"{data.session.id}/",
+            data.units.id.astype(str),
+        )
+
+        super().get_recording_hook(data)
+
 
 if __name__ == "__main__":
     ds = PerichMillerPopulation2018(root="../brainsets/data/processed", split="train")
+    print(ds.recording_ids)
     print(ds.get_unit_ids())
-    breakpoint()
+    # print(ds.get_subject_ids())
 
-    mds = MultiDataset([ds])
+    mds = MultiDataset({"pm": ds})
+    print(mds.recording_ids)
+    print(mds.datasets["pm"].get_unit_ids())
+    # print(mds.get_sampling_intervals())
+
     # print(ds.get_sampling_intervals())
-
-model = Linear()
-
-model.fit(data_train, target_key="sfsdfs")
-model.predict(data_test)
-
-
-model = POYO.from_pretrained()
-model.fit()

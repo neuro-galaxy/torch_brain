@@ -7,6 +7,7 @@ import numpy as np
 import torch
 
 from torch_brain.transforms import TransformType
+from torch_brain.utils import numpy_string_prefix
 from temporaldata import Data, Interval
 from brainsets.descriptions import SessionDescription, SubjectDescription
 
@@ -51,13 +52,6 @@ class Dataset(torch.utils.data.Dataset):
     def recording_ids(self) -> np.ndarray:
         return self._recording_ids
 
-    def _prefix_ids(self, data: Data):
-        if hasattr(data, "session") and isinstance(data.session, SessionDescription):
-            data.session.id = f"{self.id_namespace}{data.session.id}"
-
-        if hasattr(data, "subject") and isinstance(data.session, SubjectDescription):
-            data.subject.id = f"{self.id_namespace}{data.brainset.id}/{data.subject.id}"
-
     def get_recording(self, recording_id: str) -> Data:
         if hasattr(self, "_data_objects"):
             data = copy.deepcopy(self._data_objects[recording_id])
@@ -65,7 +59,8 @@ class Dataset(torch.utils.data.Dataset):
             file = h5py.File(self._dataset_dir / recording_id, "r")
             data = Data.from_hdf5(file, lazy=True)
 
-        self._prefix_ids(data)
+        self.prefix_session_id(data)
+        self.prefix_subject_id(data)
         self.get_recording_hook(data)
         return data
 
@@ -80,6 +75,14 @@ class Dataset(torch.utils.data.Dataset):
         if self.transform is not None:
             sample = self.transform(sample)
         return sample
+
+    def prefix_session_id(self, data: Data):
+        if hasattr(data, "session") and isinstance(data.session, SessionDescription):
+            data.session.id = f"{self.id_namespace}{data.session.id}"
+
+    def prefix_subject_id(self, data: Data):
+        if hasattr(data, "subject") and isinstance(data.session, SubjectDescription):
+            data.subject.id = f"{self.id_namespace}{data.subject.id}"
 
     def get_recording_hook(self, data: Data) -> None:
         pass
@@ -100,11 +103,12 @@ class SpikingDatasetMixin:
         )
 
     def get_recording_hook(self, data: Data):
-        unit_prefix_str = f"{self.id_namespace}{data.brainset.id}/{data.session.id}/"
-        data.units.id = _numpy_string_prefix(
-            unit_prefix_str,
-            data.units.id.astype(str),
-        )
+        if len(self.id_namespace) > 0:
+            # All spiking datasets have units, which need to be prefixed appropriately
+            data.units.id = numpy_string_prefix(
+                self.id_namespace,
+                data.units.id.astype(str),
+            )
 
 
 class MultiDataset(Dataset):
@@ -132,7 +136,7 @@ class MultiDataset(Dataset):
 
         rec_ids = []
         for name, dataset in self.datasets.items():
-            rec_ids.append(_numpy_string_prefix(f"{name}/", dataset.recording_ids))
+            rec_ids.append(numpy_string_prefix(f"{name}/", dataset.recording_ids))
         self._recording_ids = np.sort(np.concat(rec_ids))
 
     @property
@@ -142,10 +146,3 @@ class MultiDataset(Dataset):
     def get_recording(self, recording_id: str) -> Data:
         dataset_name, recording_id = recording_id.split("/", 1)
         return self.datasets[dataset_name].get_recording(recording_id)
-
-
-def _numpy_string_prefix(prefix: str, array: np.ndarray) -> np.ndarray:
-    if np.__version__ >= "2.0":
-        return np.strings.add(prefix, array)
-    else:
-        return np.core.defchararray.add(prefix, array)
