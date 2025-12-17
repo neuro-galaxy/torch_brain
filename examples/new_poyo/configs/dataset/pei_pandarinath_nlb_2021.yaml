@@ -1,4 +1,5 @@
 _target_: torch_brain.datasets.PeiPandarinathNLB2021
+root: ${data_root}
 recording_ids:
   - jenkins_maze_train
 transform:

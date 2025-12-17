@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 import hydra
 import lightning as L
@@ -13,6 +14,7 @@ from lightning.pytorch.callbacks import (
 from omegaconf import DictConfig, OmegaConf
 from temporaldata import Data
 
+from torch_brain.datasets.dataset import MultiDataset
 from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
 from torch_brain.optim import SparseLamb
 from torch_brain.models.poyo import POYO
@@ -155,39 +157,19 @@ class DataModule(L.LightningDataModule):
         self.sequence_length = model.sequence_length
 
         train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
-        self.train_dataset = hydra.utils.instantiate(
-            self.cfg.dataset,
-            root=self.cfg.data_root,
-            split="train",
-        )
+        self.train_dataset = hydra.utils.instantiate(self.cfg.dataset)
         self.train_dataset.transform = Compose(
             [self.train_dataset.transform, *train_transforms, model.tokenize]
         )
-        # self.train_dataset.disable_data_leakage_check()
 
         self._init_model_vocab(model)
 
         eval_transforms = hydra.utils.instantiate(self.cfg.eval_transforms)
 
-        self.val_dataset = hydra.utils.instantiate(
-            self.cfg.dataset,
-            root=self.cfg.data_root,
-            split="valid",
-        )
-        self.val_dataset.transform = Compose(
-            [self.val_dataset.transform, *eval_transforms, model.tokenize]
-        )
-        # self.val_dataset.disable_data_leakage_check()
-
-        self.eval_dataset = hydra.utils.instantiate(
-            self.cfg.dataset,
-            root=self.cfg.data_root,
-            split="test",
-        )
+        self.eval_dataset = hydra.utils.instantiate(self.cfg.dataset)
         self.eval_dataset.transform = Compose(
             [self.eval_dataset.transform, *eval_transforms, model.tokenize]
         )
-        # self.test_dataset.disable_data_leakage_check()
 
     def _init_model_vocab(self, model: POYO):
         # TODO: Add code for finetuning situation (when model already has a vocab)
@@ -198,14 +180,29 @@ class DataModule(L.LightningDataModule):
         return self.train_dataset.recording_ids
 
     def get_unit_ids(self):
+        if isinstance(self.train_dataset, MultiDataset):
+            unit_ids = sum(
+                [ds.get_unit_ids() for ds in self.train_dataset.datasets.values()], []
+            )
+            return sorted(unit_ids)
+
         return self.train_dataset.get_unit_ids()
 
     def get_recording_config_dict(self):
         return self.train_dataset.get_recording_config_dict()
 
+    def get_sampling_intervals(self, split: Literal["train", "valid", "test"]):
+        if isinstance(self.train_dataset, MultiDataset):
+            samp_intervals = {}
+            for dataset in self.train_dataset.datasets.values():
+                samp_intervals.update(dataset.get_sampling_intervals(split))
+            return samp_intervals
+
+        self.train_dataset.get_sampling_intervals(split)
+
     def train_dataloader(self):
         train_sampler = RandomFixedWindowSampler(
-            sampling_intervals=self.train_dataset.get_sampling_intervals(),
+            sampling_intervals=self.train_dataset.get_sampling_intervals("train"),
             window_length=self.sequence_length,
             generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
@@ -223,7 +220,7 @@ class DataModule(L.LightningDataModule):
         )
 
         self.log.info(f"Training on {len(train_sampler)} samples")
-        self.log.info(f"Training on {len(self.train_dataset.get_unit_ids())} units")
+        self.log.info(f"Training on {len(self.get_unit_ids())} units")
         self.log.info(f"Training on {len(self.get_session_ids())} sessions")
 
         return train_loader
@@ -232,7 +229,7 @@ class DataModule(L.LightningDataModule):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
         val_sampler = DistributedStitchingFixedWindowSampler(
-            sampling_intervals=self.val_dataset.get_sampling_intervals(),
+            sampling_intervals=self.eval_dataset.get_sampling_intervals("valid"),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
             batch_size=batch_size,
@@ -241,7 +238,7 @@ class DataModule(L.LightningDataModule):
         )
 
         val_loader = DataLoader(
-            self.val_dataset,
+            self.eval_dataset,
             sampler=val_sampler,
             shuffle=False,
             batch_size=batch_size,
@@ -258,7 +255,7 @@ class DataModule(L.LightningDataModule):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
         test_sampler = DistributedStitchingFixedWindowSampler(
-            sampling_intervals=self.test_dataset.get_sampling_intervals(),
+            sampling_intervals=self.eval_dataset.get_sampling_intervals("test"),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
             batch_size=batch_size,
@@ -267,7 +264,7 @@ class DataModule(L.LightningDataModule):
         )
 
         test_loader = DataLoader(
-            self.test_dataset,
+            self.eval_dataset,
             sampler=test_sampler,
             shuffle=False,
             batch_size=batch_size,
