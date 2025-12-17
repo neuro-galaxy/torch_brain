@@ -136,8 +136,8 @@ class MultiDataset(Dataset):
         rec_ids = []
         for name, dataset in self._datasets.items():
             dataset.set_namespace(name)
-            rec_ids.append(dataset.recording_ids)
-        self._recording_ids = np.sort(np.concat(rec_ids))
+            rec_ids.extend(dataset.recording_ids)
+        self._recording_ids = np.sort(rec_ids)
 
         self.transform = transform
 
