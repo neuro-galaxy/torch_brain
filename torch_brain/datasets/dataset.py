@@ -12,7 +12,7 @@ from brainsets.descriptions import SessionDescription, SubjectDescription
 
 
 @dataclass
-class Timeslice:
+class DatasetIndex:
     r"""The dataset can be indexed by specifying a recording id and a start and end time."""
 
     recording_id: str
@@ -78,7 +78,7 @@ class Dataset(torch.utils.data.Dataset):
         self.get_slice_hook(sample)
         return sample
 
-    def __getitem__(self, index: Timeslice) -> Data:
+    def __getitem__(self, index: DatasetIndex) -> Data:
         sample = self.get_slice(index.recording_id, index.start, index.end)
         if self.transform is not None:
             sample = self.transform(sample)
