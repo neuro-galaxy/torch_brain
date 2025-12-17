@@ -48,8 +48,8 @@ class Dataset(torch.utils.data.Dataset):
         self.namespace_attributes = namespace_attributes
 
     @property
-    def recording_ids(self) -> np.ndarray:
-        return self._recording_ids
+    def recording_ids(self) -> list[str]:
+        return self._recording_ids.tolist()
 
     def get_recording(self, recording_id: str) -> Data:
         idx = np.searchsorted(self.recording_ids, recording_id)
@@ -111,9 +111,9 @@ class Dataset(torch.utils.data.Dataset):
     def get_sampling_intervals(self) -> dict[str, Interval]:
         return {rid: self.get_recording(rid).domain for rid in self.recording_ids}
 
-    def get_subject_ids(self) -> np.ndarray:
+    def get_subject_ids(self) -> list[str]:
         ids = [self.get_recording(rid).subject.id for rid in self.recording_ids]
-        return np.sort(np.unique(ids))
+        return np.sort(np.unique(ids)).tolist()
 
 
 class MultiDataset(Dataset):
@@ -154,9 +154,9 @@ class MultiDataset(Dataset):
 
 
 class SpikingDatasetMixin:
-    def get_unit_ids(self):
+    def get_unit_ids(self) -> list[str]:
         ans = [self.get_recording(rid).units.id for rid in self.recording_ids]
-        return np.sort(np.concatenate(ans))
+        return np.sort(np.concatenate(ans)).tolist()
 
 
 def set_nested_attribute_(data: Data, path: str, value: Any) -> Data:
