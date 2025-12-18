@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Iterable, Mapping
 import numpy as np
 from torch_brain.transforms import TransformType
 from torch_brain.utils import np_string_prefix
@@ -24,7 +24,7 @@ class NestedDataset(Dataset):
 
     def __init__(
         self,
-        datasets: list[Dataset] | dict[str, Dataset],
+        datasets: Iterable[Dataset] | Mapping[str, Dataset],
         transform: Optional[TransformType] = None,
     ):
         """Create a `NestedDataset`.
@@ -40,12 +40,9 @@ class NestedDataset(Dataset):
             transform: Optional transform that is applied to samples in :meth:`__getitem__`.
 
         """
-        if _is_dict_like(datasets):
-            # this check supports Python dicts, OmegaConf.DictConfig, etc.
-            # Why do we want to support OmegaConf.DictConfig? It is received when using
-            # hydra.utils.instantiate() to instantiate the NestedDataset
+        if isinstance(datasets, Mapping):
             dataset_dict = datasets
-        elif isinstance(datasets, (list, tuple)):
+        elif isinstance(datasets, Iterable):
             dataset_names = [x.__class__.__name__ for x in datasets]
             if len(dataset_names) != len(set(dataset_names)):
                 raise ValueError(
@@ -161,11 +158,6 @@ class NestedSpikingDataset(SpikingDatasetMixin, NestedDataset):
     """
 
     ...
-
-
-def _is_dict_like(obj) -> bool:
-    """Return ``True`` if *obj* behaves like a mapping."""
-    return hasattr(obj, "keys") and hasattr(obj, "__getitem__")
 
 
 def _namespace_join(a: str, b: str) -> str:
