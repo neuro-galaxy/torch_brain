@@ -4,7 +4,7 @@ from torch_brain.transforms import TransformType
 from torch_brain.utils import np_string_prefix
 from temporaldata import Data
 
-from .dataset import Dataset, SpikingDatasetMixin
+from torch_brain.dataset import Dataset, SpikingDatasetMixin
 
 
 class PeiPandarinathNLB2021(SpikingDatasetMixin, Dataset):

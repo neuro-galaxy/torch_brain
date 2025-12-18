@@ -4,14 +4,14 @@ from torch_brain.transforms import TransformType
 from torch_brain.utils import np_string_prefix
 from temporaldata import Data
 
-from .dataset import Dataset, SpikingDatasetMixin
+from torch_brain.dataset import Dataset, SpikingDatasetMixin
 
 
-class OdohertySabesNonhuman2017(SpikingDatasetMixin, Dataset):
+class ChurchlandShenoyNeural2012(SpikingDatasetMixin, Dataset):
     def __init__(
         self,
         root: str,
-        dirname: str = "odoherty_sabes_nonhuman_2017",
+        dirname: str = "churchland_shenoy_neural_2012",
         recording_ids: Optional[list[str]] = None,
         transform: Optional[TransformType] = None,
         split_type: Optional[Literal["cursor_velocity"]] = "cursor_velocity",

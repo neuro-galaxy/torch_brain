@@ -4,16 +4,17 @@ from torch_brain.transforms import TransformType
 from torch_brain.utils import np_string_prefix
 from temporaldata import Data
 
-from .dataset import Dataset, SpikingDatasetMixin
+from torch_brain.dataset import Dataset, SpikingDatasetMixin
 
 
-class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
+class FlintSlutzkyAccurate2012(SpikingDatasetMixin, Dataset):
     def __init__(
         self,
         root: str,
-        dirname: str = "perich_miller_population_2018",
+        dirname: str = "flint_slutzky_accurate_2012",
         recording_ids: Optional[list[str]] = None,
         transform: Optional[TransformType] = None,
+        split_type: Optional[Literal["hand_velocity"]] = "hand_velocity",
         **kwargs,
     ):
         super().__init__(
@@ -24,12 +25,19 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
             **kwargs,
         )
 
+        self.split_type = split_type
+
     def get_sampling_intervals(self, split: Literal["train", "valid", "test"]):
         domain_key = "domain" if split is None else f"{split}_domain"
-        return {
-            rid: getattr(self.get_recording(rid), domain_key)
-            for rid in self.recording_ids
-        }
+        ans = {}
+        for rid in self.recording_ids:
+            data = self.get_recording(rid)
+            ans[rid] = getattr(data, domain_key)
+
+            if self.split_type == "hand_velocity":
+                ans[rid] = ans[rid] & data.hand.domain & data.spikes.domain
+
+        return ans
 
     def get_recording_hook(self, data: Data):
         # This dataset does not have unique unit ids across sessions
