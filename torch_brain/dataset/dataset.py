@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 from torch_brain.transforms import TransformType
-from torch_brain.utils import np_string_prefix
+from torch_brain.utils import np_string_prefix, set_nested_attribute_in_data
 from temporaldata import Data, Interval
 
 
@@ -89,7 +89,7 @@ class Dataset(torch.utils.data.Dataset):
                     f"Attribute '{attrib}' is of unsupported type: {type(value)}. "
                     "Expected str or np.ndarray of shape (N,)."
                 )
-            set_nested_attribute(data, attrib, value)
+            set_nested_attribute_in_data(data, attrib, value)
 
         return data
 
@@ -105,25 +105,10 @@ class Dataset(torch.utils.data.Dataset):
         return f"<{cls}(n_recordings={n_rec}{', ' if attrs else ''}{', '.join(attrs)})>"
 
 
-def set_nested_attribute(data: Data, path: str, value: Any) -> Data:
-    # Split key by dots, resolve using getattr
-    components = path.split(".")
-    obj = data
-    for c in components[:-1]:
-        try:
-            obj = getattr(obj, c)
-        except AttributeError:
-            raise AttributeError(
-                f"Could not resolve {path} in data (specifically, at level {c}))"
-            )
-
-    setattr(obj, components[-1], value)
-    return data
-
-
 def _ensure_index_has_namespace(index: DatasetIndex) -> DatasetIndex:
-    r"""Older DatasetIndex objects did not have a namespace attribute,
-    so we add it if it is not present to support backwards compatibility."""
+    r"""Ensure a DatasetIndex has a _namespace attribute for backwards compatibility.
+    This is a temporary solution and should be deprecated when older version of Dataset
+    is no longer supported."""
     if not hasattr(index, "_namespace"):
         index._namespace = ""
     return index
