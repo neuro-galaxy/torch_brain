@@ -9,7 +9,7 @@ from .mixins import SpikingDatasetMixin
 
 
 class NestedDataset(Dataset):
-    """Dataset that composes multiple `Dataset` instances under a single interface.
+    """Dataset that composes multiple :class:`Dataset` instances under a single interface.
 
     Each child dataset is namespaced by a string prefix (its *dataset name*).
     Exposed `recording_id`s therefore take the form
