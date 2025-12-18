@@ -20,7 +20,7 @@ from brainsets.descriptions import (
 )
 from brainsets.taxonomy import RecordingTech, Species, Task
 
-from torch_brain.dataset import Dataset, DatasetIndex
+from torch_brain.dataset import Dataset, DatasetIndex, NestedDataset
 
 
 def create_spiking_data(brainset_id, subject_id, session_id, length):
@@ -196,8 +196,7 @@ class TestDataset:
         ds = Dataset(dummy_spiking_brainset)
         assert str(ds) == "Dataset(n_recordings=4)"
 
-        class ChildDataset(Dataset):
-            pass
+        class ChildDataset(Dataset): ...
 
         ds = ChildDataset(dummy_spiking_brainset)
         assert str(ds) == "ChildDataset(n_recordings=4)"
@@ -216,6 +215,37 @@ class TestDataset:
         ds = Dataset(dummy_spiking_brainset)
         with pytest.raises(KeyError):
             ds.get_recording("illegal_recording_id")
+
+
+class TestNestedDataset:
+    def test_init(self, dummy_spiking_brainset):
+        # List based datasets that conflict in names
+        ds1 = Dataset(dummy_spiking_brainset, recording_ids=["session1", "session2"])
+        ds2 = Dataset(dummy_spiking_brainset, recording_ids=["session4", "session3"])
+        with pytest.raises(ValueError, match="^Duplicate dataset class names found"):
+            nested = NestedDataset([ds1, ds2])
+
+        # List based datasets that don't conflict in names
+        class ChildDataset(Dataset): ...
+
+        ds2r = ChildDataset(
+            dummy_spiking_brainset, recording_ids=["session4", "session3"]
+        )
+        nested = NestedDataset([ds1, ds2r])
+        expected_rids = [
+            "ChildDataset/session3",
+            "ChildDataset/session4",
+            "Dataset/session1",
+            "Dataset/session2",
+        ]
+        assert nested.recording_ids == expected_rids
+
+        # dict based datasets
+        nested = NestedDataset({"ds1": ds1, "ds2": ds2})
+        expected_rids = ["ds1/session1", "ds1/session2", "ds2/session3", "ds2/session4"]
+        assert nested.recording_ids == expected_rids
+
+        # check TypeError if something other than list/tuple/dict-like
 
 
 def test_ensure_index_has_namespace():
