@@ -7,3 +7,8 @@ NestedDataset
     :members:
     :show-inheritance:
     :undoc-members:
+
+.. autoclass:: NestedSpikingDataset
+    :members:
+    :show-inheritance:
+    :undoc-members:
