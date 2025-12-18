@@ -176,5 +176,19 @@ class TestDataset:
 
     def test_illegal_recording_id(self, dummy_spiking_brainset):
         ds = Dataset(dummy_spiking_brainset)
-        with pytest.raises(ValueError):
+        with pytest.raises(KeyError):
             ds.get_recording("illegal_recording_id")
+
+
+def test_ensure_index_has_namespace():
+    from torch_brain.dataset.dataset import _ensure_index_has_namespace
+
+    # Ensure it doesn't curropt existing namespace
+    idx = DatasetIndex("test", 0.0, 1.1, "real_namespace")
+    idx = _ensure_index_has_namespace(idx)
+    assert idx._namespace == "real_namespace"
+
+    # Ensure it adds a "" if no namespace present
+    delattr(idx, "_namespace")
+    idx = _ensure_index_has_namespace(idx)
+    assert idx._namespace == ""

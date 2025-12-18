@@ -79,9 +79,12 @@ class Dataset(torch.utils.data.Dataset):
             recording_ids = [x.stem for x in dataset_dir.glob("*.h5")]
         self._recording_ids = np.sort(np.array(recording_ids))
 
-        self._filepaths = [dataset_dir / f"{rid}.h5" for rid in self._recording_ids]
+        self._filepaths = {r: dataset_dir / f"{r}.h5" for r in self._recording_ids}
         if keep_files_open:
-            self._data_objects = [Data.from_hdf5(h5py.File(x)) for x in self._filepaths]
+            self._data_objects = {
+                r: Data.from_hdf5(h5py.File(self._filepaths[r]))
+                for r in self._recording_ids
+            }
 
         self.transform = transform
         self.namespace_attributes = namespace_attributes
@@ -108,14 +111,10 @@ class Dataset(torch.utils.data.Dataset):
         Raises:
             ValueError: If the ``recording_id`` is not found in the dataset.
         """
-        idx = np.searchsorted(self._recording_ids, recording_id)
-        if self._recording_ids[idx] != recording_id:
-            raise ValueError(f"Recording id '{recording_id}' not found in dataset.")
-
         if hasattr(self, "_data_objects"):
-            data = copy.deepcopy(self._data_objects[idx])
+            data = copy.deepcopy(self._data_objects[recording_id])
         else:
-            file = h5py.File(self._filepaths[idx], "r")
+            file = h5py.File(self._filepaths[recording_id], "r")
             data = Data.from_hdf5(file, lazy=True)
 
         self.get_recording_hook(data)
