@@ -102,6 +102,13 @@ class TestDataset:
         for actual_id, expected_id in zip(ds.recording_ids, expected_rec_ids):
             assert actual_id == expected_id
 
+    def test_incorrect_paths(self, dummy_spiking_brainset):
+        with pytest.raises(ValueError, match="No recordings found at"):
+            Dataset("idonotexist")
+
+        with pytest.raises(FileNotFoundError):
+            Dataset(dummy_spiking_brainset, recording_ids=["session1", "nonexistent"])
+
     def test_get_recording(self, dummy_spiking_brainset):
         ds = Dataset(dummy_spiking_brainset)
         rec = ds.get_recording("session1")

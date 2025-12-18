@@ -77,9 +77,17 @@ class Dataset(torch.utils.data.Dataset):
 
         if recording_ids is None:
             recording_ids = [x.stem for x in dataset_dir.glob("*.h5")]
+            if len(recording_ids) == 0:
+                raise ValueError(f"No recordings found at {str(dataset_dir)}")
         self._recording_ids = np.sort(np.array(recording_ids))
 
         self._filepaths = {r: dataset_dir / f"{r}.h5" for r in self._recording_ids}
+        missing_files = [str(p) for p in self._filepaths.values() if not p.exists()]
+        if missing_files:
+            raise FileNotFoundError(
+                f"The following recording files do not exist: {missing_files}"
+            )
+
         if keep_files_open:
             self._data_objects = {
                 r: Data.from_hdf5(h5py.File(self._filepaths[r]))
