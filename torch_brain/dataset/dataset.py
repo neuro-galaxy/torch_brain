@@ -30,7 +30,7 @@ class DatasetIndex:
 
 
 class Dataset(torch.utils.data.Dataset):
-    f"""PyTorch Dataset for loading time-slices of neural data recordings from HDF5 files.
+    r"""PyTorch Dataset for loading time-slices of neural data recordings from HDF5 files.
 
     The dataset can be indexed by a :class:`DatasetIndex` object, which contains a
     recording id and a start and end times.
@@ -38,7 +38,7 @@ class Dataset(torch.utils.data.Dataset):
     This definition is a deviation from the standard PyTorch Dataset definition,
     In this case, the Dataset by itself does not provide you with samples, but rather the
     means to flexibly work and access complete recordings.
-    Within this framework, it is the job of the sampler to provide the indices that 
+    Within this framework, it is the job of the sampler to provide the indices that
     are used to slice the dataset into samples (see Samplers).
 
     The lazy loading is done both in:
