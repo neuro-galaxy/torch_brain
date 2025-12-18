@@ -16,6 +16,10 @@ class NestedDataset(Dataset):
     ``"<dataset_name>/<recording_id>"``. The nested dataset behaves like a
     regular `Dataset`, dispatching all operations to the appropriate child
     dataset based on this prefix.
+
+    Instances of :class:`NestedDataset` can themselves be nested inside other
+    :class:`NestedDataset` objects, allowing for arbitrary-depth hierarchies of
+    datasets while preserving the same prefix-based naming convention.
     """
 
     def __init__(
