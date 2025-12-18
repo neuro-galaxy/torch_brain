@@ -12,14 +12,17 @@ class NestedDataset(Dataset):
     """Dataset that composes multiple :class:`Dataset` instances under a single interface.
 
     Each child dataset is namespaced by a string prefix (its *dataset name*).
-    Exposed `recording_id`s therefore take the form
-    ``"<dataset_name>/<recording_id>"``. The nested dataset behaves like a
+    Exposed ``recording_ids`` therefore take the form
+    ``"<dataset_name>/<recording_id>"``.
+    The nested dataset behaves like a
     regular `Dataset`, dispatching all operations to the appropriate child
     dataset based on this prefix.
 
     Instances of :class:`NestedDataset` can themselves be nested inside other
     :class:`NestedDataset` objects, allowing for arbitrary-depth hierarchies of
     datasets while preserving the same prefix-based naming convention.
+
+    See :ref:`Namespacing` for how Data attributes are namespaced.
     """
 
     def __init__(

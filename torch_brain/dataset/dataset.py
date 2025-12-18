@@ -72,13 +72,14 @@ class Dataset(torch.utils.data.Dataset):
 
     Namespacing:
         When operating under a :class:`NestedDataset`,
-        *"namespacing"* automatically prefixes attribute values (e.g., `session.id`, `subject.id`) with a dataset-specific
-        namespace (such as the dataset name) to avoid naming collisions when combining multiple datasets
-        (e.g., in a :class:`NestedDataset`). The list of namespaced attributes can be set with ``namespace_attributes``.
+        *"namespacing"* automatically prefixes attribute values (e.g., `session.id`, `subject.id`)
+        with the dataset name to avoid naming collisions when combining multiple datasets.
+        The list of attributes that are to be namespaced can be set with ``namespace_attributes``.
 
-        Example: With the deafult value of ``namespace_attributes``, say you create a nested dataset with two datasets,
-        ``ds1`` and ``ds2``. Now, when you load a recording from ``ds1``, the recording's
-        ``session.id`` and ``subject.id`` attributes will be prefixed with ``ds1/``.
+        Example: With the deafult value of ``namespace_attributes``, say you create a nested dataset
+        with two datasets named ``ds1`` and ``ds2``. Now, when you load a recording from
+        ``ds1``, the recording's ``session.id`` and ``subject.id`` attributes will be
+        prefixed with ``ds1/``.
 
         Subclasses can override :meth:`apply_namespace` to customize how a namespace is applied.
     """
