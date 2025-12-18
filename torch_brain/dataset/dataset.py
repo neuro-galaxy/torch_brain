@@ -56,11 +56,31 @@ class Dataset(torch.utils.data.Dataset):
         keep_files_open: If ``True``, keeps HDF5 files open in memory for faster
             access. If ``False``, files are opened on-demand. Default is ``True``.
         namespace_attributes: List of nested attribute paths (e.g., "session.id")
-            that should be namespaced when loading recordings in a :class:`torch_brain.dataset.NestedDataset`
+            that should be namespaced when loading recordings in a :class:`NestedDataset`
             situation. Defaults to ``["session.id", "subject.id"]``.
-            Example: With the deafult value, if you create a nested dataset with two datasets,
-            ``ds1`` and ``ds2``, and you load a recording from ``ds1``, the recording's
-            ``session.id`` and ``subject.id`` attributes will be prefixed with ``ds1/``.
+            See Namespacing_.
+
+    Subclassing:
+        Users are encouraged to subclass :class:`Dataset` and override:
+
+        - :meth:`get_recording_hook` to run light-weight custom post-processing on recordings
+          just before :meth:`get_recording` returns.
+        - :meth:`get_sampling_intervals` to customize how time-domain intervals are computed.
+        - :meth:`apply_namespace` to change how namespacing is applied to attributes. See Namespacing_.
+
+    .. _Namespacing:
+
+    Namespacing:
+        When operating under a :class:`NestedDataset`,
+        *"namespacing"* automatically prefixes attribute values (e.g., `session.id`, `subject.id`) with a dataset-specific
+        namespace (such as the dataset name) to avoid naming collisions when combining multiple datasets
+        (e.g., in a :class:`NestedDataset`). The list of namespaced attributes can be set with ``namespace_attributes``.
+
+        Example: With the deafult value of ``namespace_attributes``, say you create a nested dataset with two datasets,
+        ``ds1`` and ``ds2``. Now, when you load a recording from ``ds1``, the recording's
+        ``session.id`` and ``subject.id`` attributes will be prefixed with ``ds1/``.
+
+        Subclasses can override :meth:`apply_namespace` to customize how a namespace is applied.
     """
 
     def __init__(
