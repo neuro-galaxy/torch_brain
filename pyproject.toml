@@ -39,6 +39,7 @@ dev = [
     "boto3",
     "tqdm",
     "pytest-cov",
+    "brainsets",
 ]
 
 [project.urls]
