@@ -120,8 +120,7 @@ class Pipeline(BrainsetPipeline):
         return fpath
 
     def process(self, fpath):
-        processed_dir = self.processed_dir / self.brainset_id
-        processed_dir.mkdir(exist_ok=True, parents=True)
+        self.processed_dir.mkdir(exist_ok=True, parents=True)
 
         brainset_description = BrainsetDescription(
             id="odoherty_sabes_nonhuman_2017",
@@ -145,7 +144,8 @@ class Pipeline(BrainsetPipeline):
         # extract experiment metadata
         # determine session_id and sortset_id
         session_id = Path(fpath).stem  # type: ignore
-        if not self.args.reprocess and (processed_dir / f"{session_id}.h5").exists():
+        store_path = self.processed_dir / f"{session_id}.h5"
+        if not self.args.reprocess and store_path.exists():
             logging.info(
                 f"Skipping processing for {session_id} because it already exists"
             )
@@ -210,8 +210,7 @@ class Pipeline(BrainsetPipeline):
 
         # save data to disk
         self.update_status("Storing")
-        path = processed_dir / f"{session_id}.h5"
-        with h5py.File(str(path), "w") as file:
+        with h5py.File(store_path, "w") as file:
             data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
 
 
