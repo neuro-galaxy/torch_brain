@@ -39,7 +39,6 @@ jobs:
         uv run brainsets config --raw-dir data/raw --processed-dir data/processed
         uv run brainsets prepare perich_miller_population_2018 -s c_20131219_center_out_reaching
 
-
     - name: Download allen_visual_coding_ophys_2016
       run: |
         uv run brainsets config --raw-dir data/raw --processed-dir data/processed
@@ -54,4 +53,11 @@ jobs:
       run: |
         uv run brainsets config --raw-dir data/raw --processed-dir data/processed
         uv run brainsets prepare flint_slutzky_accurate_2012 -s flint_2012_e1
+
+    - name: Download kemp_sleep_edf_2013
+      if: matrix.python-version != '3.9'
+      # scikit-learn>=1.7.2 is not compatible with python3.9
+      run: |
+        uv run brainsets config --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets prepare kemp_sleep_edf_2013 -s sleep_cassette_SC4002E0-PSG
 

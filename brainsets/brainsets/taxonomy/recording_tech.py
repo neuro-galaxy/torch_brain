@@ -28,6 +28,8 @@ class RecordingTech(StringIntEnum):
 
     TWO_PHOTON_IMAGING = 40
 
+    POLYSOMNOGRAPHY = 50
+
 
 class Hemisphere(StringIntEnum):
     UNKNOWN = 0
@@ -39,15 +41,15 @@ class Hemisphere(StringIntEnum):
 # class Channel(Dictable):
 #     """Channels are the physical channels used to record the data. Channels are grouped
 #     into probes."""
-
+#
 #     id: str
 #     local_index: int
-
+#
 #     # Position relative to the reference location of the probe, in microns.
 #     relative_x_um: float
 #     relative_y_um: float
 #     relative_z_um: float
-
+#
 #     area: StringIntEnum
 #     hemisphere: Hemisphere = Hemisphere.UNKNOWN
 
@@ -55,7 +57,7 @@ class Hemisphere(StringIntEnum):
 # @dataclass
 # class Probe(Dictable):
 #     """Probes are the physical probes used to record the data."""
-
+#
 #     id: str
 #     type: RecordingTech
 #     lfp_sampling_rate: float
