@@ -194,8 +194,8 @@ class Dataset(torch.utils.data.Dataset):
         n_rec = len(self._recording_ids)
         attrs = []
         if self.transform is not None:
-            attrs.append("transform=...")
-        return f"<{cls}(n_recordings={n_rec}{', ' if attrs else ''}{', '.join(attrs)})>"
+            attrs.append(f"transform={self.transform}")
+        return f"{cls}(n_recordings={n_rec}{', ' if attrs else ''}{', '.join(attrs)})"
 
 
 def _ensure_index_has_namespace(index: DatasetIndex) -> DatasetIndex:
