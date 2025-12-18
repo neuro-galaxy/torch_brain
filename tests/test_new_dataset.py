@@ -184,6 +184,14 @@ class TestDataset:
         with pytest.raises(TypeError):
             sample = ds[DatasetIndex("session1", 0.2, 0.4, _namespace="test_space")]
 
+        # Test error at non-existent attribute
+        ds = Dataset(
+            dummy_spiking_brainset,
+            namespace_attributes=["session.id", "subject.id", "does.not.exist"],
+        )
+        with pytest.raises(AttributeError):
+            sample = ds[DatasetIndex("session1", 0.2, 0.4, _namespace="test_space")]
+
     def test_repr(self, dummy_spiking_brainset):
         ds = Dataset(dummy_spiking_brainset)
         assert str(ds) == "Dataset(n_recordings=4)"
