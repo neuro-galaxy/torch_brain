@@ -4,7 +4,13 @@ import pytest
 from datetime import datetime
 import numpy as np
 
-from temporaldata import Data, Interval, IrregularTimeSeries, ArrayDict
+from temporaldata import (
+    Data,
+    Interval,
+    IrregularTimeSeries,
+    ArrayDict,
+    RegularTimeSeries,
+)
 from brainsets import serialize_fn_map
 from brainsets.descriptions import (
     BrainsetDescription,
@@ -36,6 +42,11 @@ def create_spiking_data(brainset_id, subject_id, session_id, length):
             domain="auto",
         ),
         units=ArrayDict(id=np.array([f"unit_{i}" for i in range(num_units)])),
+        lfp=RegularTimeSeries(
+            sampling_rate=10.0,
+            value=np.random.normal(0.0, 1.0, (int(length * 10.0), 30)),
+            domain="auto",
+        ),
         domain=Interval(0, length),
     )
 
@@ -141,7 +152,7 @@ class TestDataset:
             assert (actual.start == expect.start).all()
             assert (actual.end == expect.end).all()
 
-    def test_apply_namespace(self, dummy_spiking_brainset):
+    def test_default_apply_namespace(self, dummy_spiking_brainset):
         # Test default
         ds = Dataset(dummy_spiking_brainset)
         sample = ds[DatasetIndex("session1", 0.2, 0.4, _namespace="test_space")]
@@ -153,6 +164,25 @@ class TestDataset:
         sample = ds[DatasetIndex("session1", 0.2, 0.4, _namespace="test_space")]
         assert sample.session.id == "test_space/session1"
         assert sample.subject.id == "alice"
+
+        # Test namespacing of unit ids
+        ds = Dataset(
+            dummy_spiking_brainset,
+            namespace_attributes=["session.id", "subject.id", "units.id"],
+        )
+        sample = ds[DatasetIndex("session1", 0.2, 0.4, _namespace="test_space")]
+        assert sample.session.id == "test_space/session1"
+        assert sample.subject.id == "test_space/alice"
+        for unit_id in sample.units.id:
+            assert str(unit_id).startswith("test_space/")
+
+        # Test error at incorrect attribute
+        ds = Dataset(
+            dummy_spiking_brainset,
+            namespace_attributes=["session.id", "subject.id", "lfp.value"],
+        )
+        with pytest.raises(TypeError):
+            sample = ds[DatasetIndex("session1", 0.2, 0.4, _namespace="test_space")]
 
     def test_repr(self, dummy_spiking_brainset):
         ds = Dataset(dummy_spiking_brainset)
