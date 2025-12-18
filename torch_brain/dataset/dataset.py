@@ -125,6 +125,9 @@ class Dataset(torch.utils.data.Dataset):
     def __getitem__(self, index: DatasetIndex) -> Data:
         """Get a time-sliced sample from the dataset.
 
+        If a transform was provided during construction, it will be applied to the sliced sample
+        before returning.
+
         Args:
             index: Container for the recording ID and time interval.
 
