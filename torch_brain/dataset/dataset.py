@@ -76,7 +76,7 @@ class Dataset(torch.utils.data.Dataset):
         with the dataset name to avoid naming collisions when combining multiple datasets.
         The list of attributes that are to be namespaced can be set with ``namespace_attributes``.
 
-        Example: With the deafult value of ``namespace_attributes``, say you create a nested dataset
+        Example: With the default value of ``namespace_attributes``, say you create a nested dataset
         with two datasets named ``ds1`` and ``ds2``. Now, when you load a recording from
         ``ds1``, the recording's ``session.id`` and ``subject.id`` attributes will be
         prefixed with ``ds1/``.
@@ -172,7 +172,12 @@ class Dataset(torch.utils.data.Dataset):
         return sample
 
     def get_sampling_intervals(self, *args, **kwargs) -> dict[str, Interval]:
-        """Get the time domain intervals for all recordings in the dataset.
+        """Returns a dictionary of sampling intervals for each recording.
+        This represents the intervals that can be sampled from each session.
+
+        The default method returns intervals containing the entire domain of each
+        recording. This behavior can be overridden by subclasses to give out
+        custom sampling intervals.
 
         Returns:
             Dictionary mapping recording IDs to their time domain intervals.
