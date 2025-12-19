@@ -174,6 +174,9 @@ class Dataset(torch.utils.data.Dataset):
         """Returns a dictionary of sampling intervals for each recording.
         This represents the intervals that can be sampled from each session.
 
+        This dictionary will be used by ``torch_brain``'s
+        :ref:`Samplers <sampler-api>` to know where to sample from.
+
         The default method returns intervals containing the entire domain of each
         recording. This behavior can be overridden by subclasses to give out
         custom sampling intervals.
