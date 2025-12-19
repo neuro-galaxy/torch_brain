@@ -1,6 +1,5 @@
-from typing import Optional, Iterable, Mapping
+from typing import Optional, Iterable, Mapping, Callable
 import numpy as np
-from torch_brain.transforms import TransformType
 from torch_brain.utils import np_string_prefix
 from temporaldata import Data, Interval
 
@@ -28,7 +27,7 @@ class NestedDataset(Dataset):
     def __init__(
         self,
         datasets: Iterable[Dataset] | Mapping[str, Dataset],
-        transform: Optional[TransformType] = None,
+        transform: Optional[Callable] = None,
     ):
         """Create a `NestedDataset`.
 

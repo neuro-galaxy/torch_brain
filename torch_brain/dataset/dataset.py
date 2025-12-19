@@ -1,12 +1,11 @@
 import copy
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Callable
 from pathlib import Path
 import h5py
 import numpy as np
 import torch
 
-from torch_brain.transforms import TransformType
 from torch_brain.utils import np_string_prefix, set_nested_attribute_in_data
 from temporaldata import Data, Interval
 
@@ -88,7 +87,7 @@ class Dataset(torch.utils.data.Dataset):
         self,
         dataset_dir: str,
         recording_ids: Optional[list[str]] = None,
-        transform: Optional[TransformType] = None,
+        transform: Optional[Callable] = None,
         keep_files_open: bool = True,
         namespace_attributes: list[str] = ["session.id", "subject.id"],
     ):
