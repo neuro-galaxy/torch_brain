@@ -1,12 +1,12 @@
 import copy
 from dataclasses import dataclass
-from typing import Optional, Callable
+from typing import Optional, Callable, Any
 from pathlib import Path
 import h5py
 import numpy as np
 import torch
 
-from torch_brain.utils import np_string_prefix, set_nested_attribute_in_data
+from torch_brain.utils import np_string_prefix
 from temporaldata import Data, Interval
 
 
@@ -212,7 +212,7 @@ class Dataset(torch.utils.data.Dataset):
                     f"Attribute '{attrib}' is of unsupported type: {type(value)}. "
                     "Expected str or np.ndarray of shape (N,)."
                 )
-            set_nested_attribute_in_data(data, attrib, value)
+            _set_nested_attribute(data, attrib, value)
 
         return data
 
@@ -243,3 +243,32 @@ def _ensure_index_has_namespace(index: DatasetIndex) -> DatasetIndex:
     if not hasattr(index, "_namespace"):
         index._namespace = ""
     return index
+
+
+def _set_nested_attribute(data: Data, path: str, value: Any) -> Data:
+    f"""Set a nested attribute in a :class:`temporaldata.Data` object using a dot-separated path.
+
+    Args:
+        data: The :class:`temporaldata.Data` object to modify.
+        path: The dot-separated path to the nested attribute (e.g., "session.id").
+        value: The value to set for the attribute.
+
+    Returns:
+        The modified data object (same instance, modified in-place).
+
+    Raises:
+        AttributeError: If any component of the path cannot be resolved.
+    """
+    # Split key by dots, resolve using getattr
+    components = path.split(".")
+    obj = data
+    for c in components[:-1]:
+        try:
+            obj = getattr(obj, c)
+        except AttributeError:
+            raise AttributeError(
+                f"Could not resolve {path} in data (specifically, at level {c}))"
+            )
+
+    setattr(obj, components[-1], value)
+    return data
