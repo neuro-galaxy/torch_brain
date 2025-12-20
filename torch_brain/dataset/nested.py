@@ -45,13 +45,13 @@ class NestedDataset(Dataset):
         if isinstance(datasets, Mapping):
             dataset_dict = datasets
         elif isinstance(datasets, Iterable):
-            dataset_names = [x.__class__.__name__ for x in datasets]
+            dataset_names = [ds.__class__.__name__ for ds in datasets]
             if len(dataset_names) != len(set(dataset_names)):
                 raise ValueError(
                     "Duplicate dataset class names found in provided datasets."
                     " Please use a dictionary instead to specify dataset names explicitly."
                 )
-            dataset_dict = {name: x for name, x in zip(dataset_names, datasets)}
+            dataset_dict = {name: ds for name, ds in zip(dataset_names, datasets)}
         else:
             raise TypeError(
                 f"datasets must be a list/tuple or a dict-like object"
