@@ -21,6 +21,7 @@ from brainsets.descriptions import (
 from brainsets.taxonomy import RecordingTech, Species, Task
 
 from torch_brain.dataset import Dataset, DatasetIndex, NestedDataset
+from torch_brain.dataset.mixins import SpikingDatasetMixin
 
 
 def create_spiking_data(brainset_id, subject_id, session_id, length):
@@ -253,6 +254,21 @@ class TestNestedDataset:
         assert nested.recording_ids == expected_rids
 
         # check TypeError if something other than list/tuple/dict-like
+
+
+class TestSpikingDatasetMixin:
+    def test_get_unit_ids(self, dummy_spiking_brainset):
+        class SpikingDataset(SpikingDatasetMixin, Dataset): ...
+
+        ds = SpikingDataset(dummy_spiking_brainset)
+        expected_unit_ids = sorted(
+            sum(
+                [ds.get_recording(rid).units.id.tolist() for rid in ds.recording_ids],
+                [],
+            )
+        )
+        actual_unit_ids = ds.get_unit_ids()
+        assert actual_unit_ids == expected_unit_ids
 
 
 def test_ensure_index_has_namespace():
