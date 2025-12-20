@@ -253,6 +253,10 @@ class TestNestedDataset:
         expected_rids = ["ds1/session1", "ds1/session2", "ds2/session3", "ds2/session4"]
         assert nested.recording_ids == expected_rids
 
+        # test if input type other than expected:
+        with pytest.raises(TypeError):
+            NestedDataset(1)
+
 
 class TestSpikingDatasetMixin:
     def test_get_unit_ids(self, dummy_spiking_brainset):
