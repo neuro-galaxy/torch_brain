@@ -1,23 +1,11 @@
 from typing import Literal
 import torchmetrics
-from brainsets.datasets import PeiPandarinathNLB2021
+import brainsets.datasets as datasets
 from temporaldata import Data
 
-from torch_brain.registry import MODALITY_REGISTRY
 
-
-def nlb_dataset(root: str):
-    ds = PeiPandarinathNLB2021(
-        root=root,
-        recording_ids=["jenkins_maze_train"],
-        transform=NLBReadoutConfigTransform(),
-    )
-    readout_spec = MODALITY_REGISTRY["cursor_velocity_2d"]
-    return ds, readout_spec
-
-
-class NLBReadoutConfigTransform:
-    CONFIG = {
+class POYONLBDataset(datasets.PeiPandarinathNLB2021):
+    READOUT_CONFIG = {
         "readout": {
             "readout_id": "cursor_velocity_2d",
             "timestamp_key": "hand.timestamps",
@@ -29,6 +17,14 @@ class NLBReadoutConfigTransform:
         }
     }
 
-    def __call__(self, data: Data) -> Data:
-        data.config = self.CONFIG
-        return data
+    def __init__(self, root, transform=None, **kwargs):
+        super().__init__(
+            root,
+            recording_ids=["jenkins_maze_train"],
+            transform=transform,
+            **kwargs,
+        )
+
+    def get_recording_hook(self, data: Data):
+        data.config = self.READOUT_CONFIG
+        super().get_recording_hook(data)

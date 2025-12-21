@@ -22,7 +22,7 @@ from torch_brain.utils.stitcher import (
     DecodingStitchEvaluator,
     DataForDecodingStitchEvaluator,
 )
-from torch_brain.data import Dataset, collate
+from torch_brain.data import collate
 from torch_brain.data.sampler import (
     DistributedStitchingFixedWindowSampler,
     RandomFixedWindowSampler,
@@ -148,39 +148,42 @@ class DataModule(L.LightningDataModule):
         self.cfg = cfg
         self.log = logging.getLogger(__name__)
 
-        self.train_dataset, self.readout_spec = hydra.utils.instantiate(
-            self.cfg.dataset,
-            root=self.cfg.data_root,
-        )
-
         train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
-        self.train_dataset.transform = Compose(
-            [self.train_dataset.transform, *train_transforms]
-        )
-
-        self.eval_dataset, _ = hydra.utils.instantiate(
+        train_ds = hydra.utils.instantiate(
             self.cfg.dataset,
             root=self.cfg.data_root,
+            transform=Compose([*train_transforms]),
         )
 
         eval_transforms = hydra.utils.instantiate(self.cfg.eval_transforms)
-        self.eval_dataset.transform = Compose(
-            [self.eval_dataset.transform, *eval_transforms]
+        eval_ds = hydra.utils.instantiate(
+            self.cfg.dataset,
+            root=self.cfg.data_root,
+            transform=Compose([*eval_transforms]),
         )
+
+        example_recording = train_ds.get_recording(train_ds.recording_ids[0])
+        readout_id = example_recording.config["readout"]["readout_id"]
+        for recording_id in train_ds.recording_ids:
+            recording = train_ds.get_recording(recording_id)
+            if readout_id != recording.config["readout"]["readout_id"]:
+                raise ValueError(
+                    f"Readout ID mismatch: expected '{readout_id}' but got "
+                    f"'{recording.config['readout']['readout_id']}' for recording '{recording_id}'."
+                    f"POYO only supports a single readout"
+                )
+        self.readout_spec = MODALITY_REGISTRY[readout_id]
+
+        self.train_dataset = train_ds
+        self.eval_dataset = eval_ds
 
     def link_model(self, model: POYO):
         r"""Setup Dataset objects, and update a given model's embedding vocabs (session
         and unit_emb)
         """
         self.sequence_length = model.sequence_length
-
-        self.train_dataset.transform = Compose(
-            [self.train_dataset.transform, model.tokenize]
-        )
-        self.eval_dataset.transform = Compose(
-            [self.eval_dataset.transform, model.tokenize]
-        )
-
+        self.train_dataset.transform.transforms.append(model.tokenize)
+        self.eval_dataset.transform.transforms.append(model.tokenize)
         self._init_model_vocab(model)
 
     def _init_model_vocab(self, model: POYO):
