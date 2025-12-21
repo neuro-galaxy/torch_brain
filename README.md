@@ -4,7 +4,7 @@
 
 [Documentation](https://torch-brain.readthedocs.io/en/latest/) | [Join our Discord community](https://discord.gg/kQNKA6B8ZC)
 
-[![PyPI version](https://badge.fury.io/py/pytorch_brain.svg)](https://badge.fury.io/py/pytorch_brain)
+[![PyPI version](https://badge.fury.io/py/torch_brain.svg)](https://badge.fury.io/py/torch_brain)
 [![Documentation Status](https://readthedocs.org/projects/torch-brain/badge/?version=latest)](https://torch-brain.readthedocs.io/en/latest/?badge=latest)
 [![Tests](https://github.com/neuro-galaxy/torch_brain/actions/workflows/testing.yml/badge.svg)](https://github.com/neuro-galaxy/torch_brain/actions/workflows/testing.yml)
 [![Linting](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml/badge.svg)](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml)
@@ -37,7 +37,7 @@ To create and activate a new virtual environment with `venv`, run:
 ```bash
 python3 -m venv venv
 source venv/bin/activate  # On Windows, use: .venv\Scripts\activate
-pip install pytorch_brain
+pip install torch_brain
 ```
 
 ## Contributing
