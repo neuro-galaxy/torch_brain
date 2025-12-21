@@ -7,6 +7,9 @@ from .dataset import Dataset, DatasetIndex, _ensure_index_has_namespace
 from .mixins import SpikingDatasetMixin
 
 
+_SEPARATOR = "/"
+
+
 class NestedDataset(Dataset):
     """Dataset that composes multiple :class:`Dataset` instances under a single interface.
 
@@ -85,13 +88,10 @@ class NestedDataset(Dataset):
         Raises:
             ValueError: If the `recording_id` does not contain a dataset prefix.
         """
-        if "/" not in recording_id:
-            raise ValueError(
-                f"recording_id '{recording_id}' missing dataset prefix. "
-                f"Expected format: 'dataset_name/recording_id'."
-            )
+        _validate_recording_id_has_separator(recording_id)
+
         dataset_name, recording_id = recording_id.split("/", 1)
-        _namespace = _namespace_join(_namespace, dataset_name)
+        _namespace = _join_with_separator(_namespace, dataset_name)
         data = self.datasets[dataset_name].get_recording(recording_id, _namespace)
         self.get_recording_hook(data)
         return data
@@ -114,19 +114,15 @@ class NestedDataset(Dataset):
         Raises:
             ValueError: If `index.recording_id` does not contain a dataset prefix.
         """
+        _validate_recording_id_has_separator(index.recording_id)
         index = _ensure_index_has_namespace(index)
 
-        if "/" not in index.recording_id:
-            raise ValueError(
-                f"recording_id '{index.recording_id}' missing dataset prefix. "
-                f"Expected format: 'dataset_name/recording_id'."
-            )
         dataset_name, recording_id = index.recording_id.split("/", 1)
         new_index = DatasetIndex(
             recording_id=recording_id,
             start=index.start,
             end=index.end,
-            _namespace=_namespace_join(index._namespace, dataset_name),
+            _namespace=_join_with_separator(index._namespace, dataset_name),
         )
         sample = self.datasets[dataset_name][new_index]
         if self.transform is not None:
@@ -148,7 +144,7 @@ class NestedDataset(Dataset):
         for dataset_name, dataset in self.datasets.items():
             samp_intervals = dataset.get_sampling_intervals(*args, **kwargs)
             for rid, interval in samp_intervals.items():
-                ans[dataset_name + "/" + rid] = interval
+                ans[_join_with_separator(dataset_name, rid)] = interval
         return ans
 
 
@@ -162,6 +158,13 @@ class NestedSpikingDataset(SpikingDatasetMixin, NestedDataset):
     spiking_dataset_mixin_uniquify_unit_ids = False
 
 
-def _namespace_join(a: str, b: str) -> str:
-    """Join two namespace components with a slash, skipping empty prefixes."""
-    return a + "/" + b if a else b
+def _join_with_separator(a: str, b: str) -> str:
+    return a + _SEPARATOR + b if a else b
+
+
+def _validate_recording_id_has_separator(recording_id: str):
+    if _SEPARATOR not in recording_id:
+        raise ValueError(
+            f"recording_id '{recording_id}' missing dataset prefix. "
+            f"Expected format: 'dataset_name/recording_id'."
+        )
