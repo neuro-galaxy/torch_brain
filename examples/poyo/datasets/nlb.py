@@ -1,10 +1,10 @@
 from typing import Literal
 import torchmetrics
-import brainsets.datasets as datasets
+from brainsets.datasets import PeiPandarinathNLB2021
 from temporaldata import Data
 
 
-class POYONLBDataset(datasets.PeiPandarinathNLB2021):
+class PoyoNLBDataset(PeiPandarinathNLB2021):
     READOUT_CONFIG = {
         "readout": {
             "readout_id": "cursor_velocity_2d",

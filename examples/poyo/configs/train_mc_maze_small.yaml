@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 dataset: 
-  _target_: datasets.nlb.nlb_dataset
+  _target_: datasets.nlb.PoyoNLBDataset
 
 train_transforms:
   - _target_: torch_brain.transforms.UnitDropout
