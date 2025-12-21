@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from temporaldata import Data
 
 from torch_brain.utils import np_string_prefix
@@ -30,6 +31,34 @@ class SpikingDatasetMixin:
         """Return a sorted list of all unit IDs across all recordings in the dataset."""
         ans = [self.get_recording(rid).units.id for rid in self.recording_ids]
         return np.sort(np.concatenate(ans)).tolist()
+
+    def compute_average_firing_rates(self) -> pd.DataFrame:
+        """
+        Compute and return the average firing rates for all units in the dataset.
+
+        Returns:
+            pd.DataFrame: DataFrame indexed by unit ID, containing a column 'firing_rate' (Hz)
+                          with the average firing rate for each unit in the dataset.
+        """
+        unit_ids = []
+        firing_rates = []
+        for rid in self.recording_ids:
+            data = self.get_recording(rid)
+
+            total_time = (data.spikes.domain.end - data.spikes.domain.start).sum()
+            idx, counts = np.unique(data.spikes.unit_index, return_counts=True)
+            fr = np.zeros(len(data.units))
+            fr[idx] = counts / total_time
+
+            unit_ids.append(data.units.id)
+            firing_rates.append(fr)
+
+        unit_ids = np.concatenate(unit_ids)
+        firing_rates = np.concatenate(firing_rates)
+
+        df = pd.DataFrame({"firing_rate": firing_rates}, index=unit_ids)
+        df.index.name = "unit_id"
+        return df
 
 
 class CalciumImagingDatasetMixin:
