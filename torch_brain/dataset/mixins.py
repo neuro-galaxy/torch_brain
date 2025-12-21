@@ -15,10 +15,10 @@ class SpikingDatasetMixin:
           This helps avoid collisions when combining data from multiple sessions. (default: ``False``)
     """
 
-    uniquify_unit_ids: bool = False
+    spiking_dataset_mixin_uniquify_unit_ids: bool = False
 
     def get_recording_hook(self, data: Data):
-        if self.uniquify_unit_ids:
+        if self.spiking_dataset_mixin_uniquify_unit_ids:
             data.units.id = np_string_prefix(
                 f"{data.session.id}/",
                 data.units.id.astype(str),
