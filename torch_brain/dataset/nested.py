@@ -159,7 +159,7 @@ class NestedSpikingDataset(SpikingDatasetMixin, NestedDataset):
     spike-specific utilities provided by :class:`SpikingDatasetMixin`.
     """
 
-    ...
+    spiking_dataset_mixin_uniquify_unit_ids = False
 
 
 def _namespace_join(a: str, b: str) -> str:

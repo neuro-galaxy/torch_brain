@@ -10,9 +10,10 @@ class SpikingDatasetMixin:
 
     Provides:
         - ``get_unit_ids()`` for retreiving IDs of all included units.
-        - If the class attribute ``uniquify_unit_ids`` is set to ``True``, unit IDs will be made unique
-          across recordings by prefixing each unit ID with the corresponding session ID (``session.id``).
-          This helps avoid collisions when combining data from multiple sessions. (default: ``False``)
+        - If the class attribute ``spiking_dataset_mixin_uniquify_unit_ids`` is set to ``True``,
+          unit IDs will be made unique across recordings by prefixing each unit ID with the
+          corresponding ``session.id``. This helps avoid collisions when combining data from
+          multiple sessions. (default: ``False``)
     """
 
     spiking_dataset_mixin_uniquify_unit_ids: bool = False
