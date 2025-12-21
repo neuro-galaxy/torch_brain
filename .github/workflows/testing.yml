@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.9
+    - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
-        python-version: "3.9"
+        python-version: "3.10"
     - name: Setup virtual environment
       run: |
         python -m venv venv
@@ -27,9 +27,8 @@ jobs:
       run: |
         source venv/bin/activate
         uv pip install --upgrade pip 
-        uv pip install torch==2.2.0
         uv pip install -e ".[dev]"
-        uv pip install lightning==2.3.3
+        uv pip install lightning
     - name: Install plugin
       run: |
         source venv/bin/activate
@@ -42,7 +41,11 @@ jobs:
       run: |
         source venv/bin/activate
         export WANDB_MODE=dryrun
-        pytest tests/
+        pytest --cov=torch_brain --cov-report=xml --cov-report=term-missing -v
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
     - name: Test documentation
       run: |
         source venv/bin/activate

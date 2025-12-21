@@ -29,10 +29,14 @@
 
 
 ## Installation
-torch_brain is available for Python 3.9 to Python 3.11
+torch_brain is available for Python >= 3.10 and can be installed via pip.
 
-To install the package, run the following command:
+We recommend using a virtual environment to manage dependencies, and Python 3.10.
+
+To create and activate a new virtual environment with `venv`, run:
 ```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows, use: .venv\Scripts\activate
 pip install torch_brain
 ```
 

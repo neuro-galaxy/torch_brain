@@ -222,23 +222,24 @@ def test_vocab_ordering():
     assert list(subset_emb.vocab.keys()) == ["NA", "word2", "word5", "word1"]
 
 
-# TODO: fix InfiniteVocabEmbedding.load_state_dict()
-# The below test is currently failing.
-# def test_state_dict_loading():
-#     # Test state dict loading preserves embeddings while allowing different order
-#     emb1 = InfiniteVocabEmbedding(embedding_dim=128)
-#     emb1.initialize_vocab(["word1", "word2", "word3"])
-#     original_weights = emb1.weight.clone()
+def test_state_dict_loading():
+    # Test state dict loading preserves embeddings while allowing different order
+    emb1 = InfiniteVocabEmbedding(embedding_dim=128)
+    emb1.initialize_vocab(["word1", "word2", "word3"])
+    original_weights = emb1.weight.clone()
 
-#     emb2 = InfiniteVocabEmbedding(embedding_dim=128)
-#     emb2.initialize_vocab(["word3", "word1", "word2"])
+    emb2 = InfiniteVocabEmbedding(embedding_dim=128)
+    emb2.initialize_vocab(["word3", "word1", "word2"])
 
-#     # Load state dict and verify embeddings are correctly remapped
-#     emb2.load_state_dict(emb1.state_dict())
-#     # Need to use tokenizer() since vocab dict order may be different
-#     assert torch.allclose(emb2.weight[emb2.tokenizer("word1")],
-#                          original_weights[emb1.tokenizer("word1")])
-#     assert torch.allclose(emb2.weight[emb2.tokenizer("word2")],
-#                          original_weights[emb1.tokenizer("word2")])
-#     assert torch.allclose(emb2.weight[emb2.tokenizer("word3")],
-#                          original_weights[emb1.tokenizer("word3")])
+    # Load state dict and verify embeddings are correctly remapped
+    emb2.load_state_dict(emb1.state_dict())
+    # Need to use tokenizer() since vocab dict order may be different
+    assert torch.allclose(
+        emb2.weight[emb2.tokenizer("word1")], original_weights[emb1.tokenizer("word1")]
+    )
+    assert torch.allclose(
+        emb2.weight[emb2.tokenizer("word2")], original_weights[emb1.tokenizer("word2")]
+    )
+    assert torch.allclose(
+        emb2.weight[emb2.tokenizer("word3")], original_weights[emb1.tokenizer("word3")]
+    )
