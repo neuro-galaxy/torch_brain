@@ -148,40 +148,40 @@ class DataModule(L.LightningDataModule):
         self.cfg = cfg
         self.log = logging.getLogger(__name__)
 
-    def setup_dataset_and_link_model(self, model: POYO):
+        self.train_dataset, self.readout_spec = hydra.utils.instantiate(
+            self.cfg.dataset,
+            root=self.cfg.data_root,
+        )
+
+        train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
+        self.train_dataset.transform = Compose(
+            [self.train_dataset.transform, *train_transforms]
+        )
+
+        self.eval_dataset, _ = hydra.utils.instantiate(
+            self.cfg.dataset,
+            root=self.cfg.data_root,
+        )
+
+        eval_transforms = hydra.utils.instantiate(self.cfg.eval_transforms)
+        self.eval_dataset.transform = Compose(
+            [self.eval_dataset.transform, *eval_transforms]
+        )
+
+    def link_model(self, model: POYO):
         r"""Setup Dataset objects, and update a given model's embedding vocabs (session
         and unit_emb)
         """
         self.sequence_length = model.sequence_length
 
-        train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
-        self.train_dataset = Dataset(
-            root=self.cfg.data_root,
-            config=self.cfg.dataset,
-            split="train",
-            transform=Compose([*train_transforms, model.tokenize]),
+        self.train_dataset.transform = Compose(
+            [self.train_dataset.transform, model.tokenize]
         )
-        self.train_dataset.disable_data_leakage_check()
+        self.eval_dataset.transform = Compose(
+            [self.eval_dataset.transform, model.tokenize]
+        )
 
         self._init_model_vocab(model)
-
-        eval_transforms = hydra.utils.instantiate(self.cfg.eval_transforms)
-
-        self.val_dataset = Dataset(
-            root=self.cfg.data_root,
-            config=self.cfg.dataset,
-            split="valid",
-            transform=Compose([*eval_transforms, model.tokenize]),
-        )
-        self.val_dataset.disable_data_leakage_check()
-
-        self.test_dataset = Dataset(
-            root=self.cfg.data_root,
-            config=self.cfg.dataset,
-            split="test",
-            transform=Compose([*eval_transforms, model.tokenize]),
-        )
-        self.test_dataset.disable_data_leakage_check()
 
     def _init_model_vocab(self, model: POYO):
         # TODO: Add code for finetuning situation (when model already has a vocab)
@@ -189,7 +189,7 @@ class DataModule(L.LightningDataModule):
         model.session_emb.initialize_vocab(self.get_session_ids())
 
     def get_session_ids(self):
-        return self.train_dataset.get_session_ids()
+        return self.train_dataset.recording_ids
 
     def get_unit_ids(self):
         return self.train_dataset.get_unit_ids()
@@ -199,7 +199,7 @@ class DataModule(L.LightningDataModule):
 
     def train_dataloader(self):
         train_sampler = RandomFixedWindowSampler(
-            sampling_intervals=self.train_dataset.get_sampling_intervals(),
+            sampling_intervals=self.train_dataset.get_sampling_intervals("train"),
             window_length=self.sequence_length,
             generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
@@ -226,7 +226,7 @@ class DataModule(L.LightningDataModule):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
         val_sampler = DistributedStitchingFixedWindowSampler(
-            sampling_intervals=self.val_dataset.get_sampling_intervals(),
+            sampling_intervals=self.eval_dataset.get_sampling_intervals("valid"),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
             batch_size=batch_size,
@@ -235,7 +235,7 @@ class DataModule(L.LightningDataModule):
         )
 
         val_loader = DataLoader(
-            self.val_dataset,
+            self.eval_dataset,
             sampler=val_sampler,
             shuffle=False,
             batch_size=batch_size,
@@ -252,7 +252,7 @@ class DataModule(L.LightningDataModule):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
         test_sampler = DistributedStitchingFixedWindowSampler(
-            sampling_intervals=self.test_dataset.get_sampling_intervals(),
+            sampling_intervals=self.eval_dataset.get_sampling_intervals("test"),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
             batch_size=batch_size,
@@ -261,7 +261,7 @@ class DataModule(L.LightningDataModule):
         )
 
         test_loader = DataLoader(
-            self.test_dataset,
+            self.eval_dataset,
             sampler=test_sampler,
             shuffle=False,
             batch_size=batch_size,
@@ -292,15 +292,12 @@ def main(cfg: DictConfig):
             log_model=cfg.wandb.log_model,
         )
 
-    # get modality details
-    # TODO: add test to verify that all recordings have the same readout
-    readout_id = cfg.dataset[0].config.readout.readout_id
-    readout_spec = MODALITY_REGISTRY[readout_id]
-
     # make model and data module
-    model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)
     data_module = DataModule(cfg=cfg)
-    data_module.setup_dataset_and_link_model(model)
+    readout_spec = data_module.readout_spec
+
+    model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)
+    data_module.link_model(model)
 
     # Lightning train wrapper
     wrapper = TrainWrapper(

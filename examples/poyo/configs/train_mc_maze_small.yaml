@@ -1,8 +1,10 @@
 defaults:
   - defaults.yaml
   - model: poyo_1.3M.yaml
-  - dataset: pei_pandarinath_nlb_2021.yaml
   - _self_
+
+dataset: 
+  _target_: datasets.nlb.nlb_dataset
 
 train_transforms:
   - _target_: torch_brain.transforms.UnitDropout
