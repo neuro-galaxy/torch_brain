@@ -65,7 +65,7 @@ class NestedDataset(Dataset):
         rec_ids = []
         for name, dataset in self._datasets.items():
             rec_ids.extend(np_string_prefix(name + "/", dataset.recording_ids))
-        self._recording_ids = np.sort(rec_ids)
+        self._recording_ids = sorted(rec_ids)
 
         self.transform = transform
 

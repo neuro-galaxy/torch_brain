@@ -85,24 +85,23 @@ class Dataset(torch.utils.data.Dataset):
 
     def __init__(
         self,
-        dataset_dir: str,
+        dataset_dir: str | Path,
         recording_ids: Optional[list[str]] = None,
         transform: Optional[Callable] = None,
         keep_files_open: bool = True,
         namespace_attributes: list[str] = ["session.id", "subject.id"],
     ):
 
-        if not isinstance(dataset_dir, Path):
-            dataset_dir = Path(dataset_dir)
+        dataset_dir = Path(dataset_dir)
 
         if recording_ids is None:
             recording_ids = [x.stem for x in dataset_dir.glob("*.h5")]
             if len(recording_ids) == 0:
-                raise ValueError(f"No recordings found at {str(dataset_dir)}")
-        self._recording_ids = np.sort(np.array(recording_ids))
+                raise ValueError(f"No recordings found at {dataset_dir}")
+        self._recording_ids = sorted(recording_ids)
 
-        self._filepaths = {r: dataset_dir / f"{r}.h5" for r in self._recording_ids}
-        missing_files = [str(p) for p in self._filepaths.values() if not p.exists()]
+        fpaths = {r: dataset_dir / f"{r}.h5" for r in self.recording_ids}
+        missing_files = [str(p) for p in fpaths.values() if not p.exists()]
         if missing_files:
             raise FileNotFoundError(
                 f"The following recording files do not exist: {missing_files}"
@@ -110,21 +109,18 @@ class Dataset(torch.utils.data.Dataset):
 
         if keep_files_open:
             self._data_objects = {
-                r: Data.from_hdf5(h5py.File(self._filepaths[r]))
-                for r in self._recording_ids
+                r: Data.from_hdf5(h5py.File(fpaths[r])) for r in self.recording_ids
             }
+        else:
+            self._filepaths = fpaths
 
         self.transform = transform
         self.namespace_attributes = namespace_attributes
 
     @property
     def recording_ids(self) -> list[str]:
-        """List of recording IDs in the dataset.
-
-        Returns:
-            Sorted list of recording ID strings.
-        """
-        return self._recording_ids.tolist()
+        """Sorted list of recording IDs in the dataset."""
+        return self._recording_ids
 
     def get_recording(self, recording_id: str, _namespace: str = "") -> Data:
         """Get lazy-loaded :class:`temporaldata.Data` object for a recording.
@@ -142,8 +138,8 @@ class Dataset(torch.utils.data.Dataset):
         if hasattr(self, "_data_objects"):
             data = copy.deepcopy(self._data_objects[recording_id])
         else:
-            file = h5py.File(self._filepaths[recording_id], "r")
-            data = Data.from_hdf5(file, lazy=True)
+            fpath = self._filepaths[recording_id]
+            data = Data.from_hdf5(h5py.File(fpath))
 
         self.get_recording_hook(data)
         if _namespace:
@@ -184,7 +180,7 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             Dictionary mapping recording IDs to their time domain intervals.
         """
-        return {rid: self.get_recording(rid).domain for rid in self._recording_ids}
+        return {rid: self.get_recording(rid).domain for rid in self.recording_ids}
 
     def apply_namespace(self, data: Data, namespace: str) -> Data:
         """Apply a namespace prefix to specified nested attributes in the data.
@@ -229,7 +225,7 @@ class Dataset(torch.utils.data.Dataset):
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        n_rec = len(self._recording_ids)
+        n_rec = len(self.recording_ids)
         attrs = []
         if self.transform is not None:
             attrs.append(f"transform={self.transform}")
