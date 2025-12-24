@@ -1,6 +1,7 @@
 import copy
 import logging
 import os
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -92,6 +93,14 @@ class Dataset(torch.utils.data.Dataset):
         subject_id_prefix_fn: Callable[[Data], str] = default_subject_id_prefix_fn,
         keep_files_open: bool = True,
     ):
+
+        warnings.warn(
+            "torch_brain.data.dataset.Dataset is deprecated and will be removed in a future release. "
+            "Please switch to torch_brain.dataset.Dataset.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         super().__init__()
         self.root = root
         self.config = config
@@ -463,7 +472,7 @@ class Dataset(torch.utils.data.Dataset):
             current split and other splits (eg. the test split).
         """
         self._check_for_data_leakage_flag = False
-        logging.warn(
+        logging.warning(
             f"Data leakage check is disabled. Please be absolutely sure that there is "
             f"no leakage between {self.split} and other splits."
         )
