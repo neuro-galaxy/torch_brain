@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=60.2.0"]
+requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "brainsets"
-version = "0.1.3"
+dynamic = ["version"]
 description = "A package for processing neural datasets"
 readme = "README.md"
 authors = [{ name = "Mehdi Azabou", email = "mehdiazabou@gmail.com" }]
@@ -32,7 +32,8 @@ dependencies = [
     "prompt_toolkit",
     "numpy>=1.14.0",
     "pulp<2.8",
-    "ray>=2.30.0",
+    "ray>=2.30.0,<2.52.0; python_version < \"3.10\"",  # ray 2.52.0+ dropped support for Py3.9
+    "ray>=2.30.0; python_version >= \"3.10\"",
     "tomli; python_version < \"3.11\"", # tomllib was not part of stddlib before 3.11
 ]
 

@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+
+### Removed
+
+### Changed
+
+## [0.2.0] - 2025-12-24
+### Added
+- New brainset pipeline: `allen_visual_coding_ophys_2016` ([#16](https://github.com/neuro-galaxy/brainsets/pull/16)).
+- Added `STEREO_EEG` to `RecordingTech` enum ([#36](https://github.com/neuro-galaxy/brainsets/pull/36)).
+- Added `BrainsetPipeline` definition with a `brainset.runner` module to run `BrainsetPipeline` in parallel ([#37](https://github.com/neuro-galaxy/brainsets/pull/37)).
+- Added support for PEP723-style inline metadata blocks to specify Python version and dependencies in a `pipeline.py` file ([#62](https://github.com/neuro-galaxy/brainsets/pull/62)).
+- New brainset pipeline: `kemp_sleep_edf_2013` ([#54](https://github.com/neuro-galaxy/brainsets/pull/54)).
+
+### Changed
+- Fixed issue with "test" session being overwritten in the `perich_miller_population_2018` pipeline ([#25](https://github.com/neuro-galaxy/brainsets/pull/25)).
+- Updated all existing pipelines with `BrainsetPipeline` and dependencies in metadata block ([#37](https://github.com/neuro-galaxy/brainsets/pull/37) and [#62](https://github.com/neuro-galaxy/brainsets/pull/62)).
+
+
 ## [0.1.3] - 2025-10-27
 ### Added
 - Added support for python 3.12 and 3.13 ([#14](https://github.com/neuro-galaxy/brainsets/pull/30)).
