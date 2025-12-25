@@ -30,6 +30,8 @@ pip install brainsets
 | odoherty_sabes_nonhuman_2017 | [Link](https://brainsets.readthedocs.io/en/latest/glossary/brainsets.html#odoherty-sabes-nonhuman-2017) | 22 GB | 26 GB |
 | pei_pandarinath_nlb_2021  | [Link](https://brainsets.readthedocs.io/en/latest/glossary/brainsets.html#pei-pandarinath-nlb-2021) | 688 KB | 22 MB |
 | perich_miller_population_2018 | [Link](https://brainsets.readthedocs.io/en/latest/glossary/brainsets.html#perich-miller-population-2018) | 13 GB | 2.9 GB |
+| kemp_sleep_edf_2013 | TBA | 8.2 GB | 60 GB |
+| allen_visual_coding_ophys_2016 | TBA | 356 GB | 58 GB |
 
 
 ## Acknowledgements
