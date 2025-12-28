@@ -1,9 +1,12 @@
 import logging
+from typing import Dict
+from collections import defaultdict
 
 import hydra
 import lightning as L
+import pandas as pd
+from rich import print as rprint
 import torch
-import torch.nn as nn
 from torch.utils.data import DataLoader
 from lightning.pytorch.callbacks import (
     LearningRateMonitor,
@@ -11,20 +14,17 @@ from lightning.pytorch.callbacks import (
     ModelSummary,
 )
 from omegaconf import DictConfig, OmegaConf
-from temporaldata import Data
+import wandb
 
-from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
+from torch_brain.registry import MODALITY_REGISTRY
 from torch_brain.optim import SparseLamb
 from torch_brain.models.poyo import POYO
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
-from torch_brain.utils.stitcher import (
-    DecodingStitchEvaluator,
-    DataForDecodingStitchEvaluator,
-)
+from torch_brain.metrics import MetricGroupWithStitcher
 from torch_brain.data import Dataset, collate
 from torch_brain.data.sampler import (
-    DistributedStitchingFixedWindowSampler,
+    SequentialFixedWindowSampler,
     RandomFixedWindowSampler,
 )
 from torch_brain.transforms import Compose
@@ -40,15 +40,20 @@ class TrainWrapper(L.LightningModule):
     def __init__(
         self,
         cfg: DictConfig,
-        model: nn.Module,
-        modality_spec: ModalitySpec,
+        model: POYO,
+        validation_metric_group: MetricGroupWithStitcher,
+        test_metric_group: MetricGroupWithStitcher,
     ):
         super().__init__()
 
         self.cfg = cfg
         self.model = model
-        self.modality_spec = modality_spec
+        self.modality_spec = model.readout_spec
+
         self.save_hyperparameters(OmegaConf.to_container(cfg))
+
+        self.validation_metric_group = validation_metric_group
+        self.test_metric_group = test_metric_group
 
     def configure_optimizers(self):
         max_lr = self.cfg.optim.base_lr * self.cfg.batch_size  # linear scaling rule
@@ -121,25 +126,63 @@ class TrainWrapper(L.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
+        self._evaluation_step(batch, self.validation_metric_group)
 
+    def on_validation_epoch_end(self):
+        metric_dict = self.validation_metric_group.compute(device=self.device)
+        self.validation_metric_group.reset()
+        self._log_metric_dict(metric_dict, prefix="val")
+
+    def test_step(self, batch, batch_idx):
+        self._evaluation_step(batch, self.test_metric_group)
+
+    def on_test_epoch_end(self):
+        metric_dict = self.test_metric_group.compute(device=self.device)
+        self.test_metric_group.reset()
+        self._log_metric_dict(metric_dict, prefix="test")
+
+    def _evaluation_step(self, batch: Dict, metric_group: MetricGroupWithStitcher):
         # forward pass
         output_values = self.model(**batch["model_inputs"])
 
-        # prepare data for evaluator
-        # (goes to DecodingStitchEvaluator.on_validation_batch_end)
-        data_for_eval = DataForDecodingStitchEvaluator(
-            timestamps=batch["model_inputs"]["output_timestamps"],
-            preds=output_values,
-            targets=batch["target_values"],
-            eval_masks=batch["eval_mask"],
-            session_ids=batch["session_id"],
-            absolute_starts=batch["absolute_start"],
+        batch_size = len(batch["session_id"])
+        for sample_idx in range(batch_size):
+            mask = batch["eval_mask"][sample_idx]
+            preds = output_values[sample_idx, mask]
+            targets = batch["target_values"][sample_idx, mask]
+            timestamps = (
+                batch["model_inputs"]["output_timestamps"][sample_idx, mask]
+                + batch["absolute_start"][sample_idx]
+            )
+
+            metric_group.update(
+                timestamps=timestamps.detach().cpu(),
+                preds=preds.detach().cpu(),
+                targets=targets.detach().cpu(),
+                recording_id=batch["session_id"][sample_idx],
+            )
+
+    def _log_metric_dict(self, metric_dict: Dict[str, float], prefix: str):
+        metric_dict["average_metric"] = sum(metric_dict.values()) / len(metric_dict)
+        metric_dict_with_prefix = {f"{prefix}/{k}": v for k, v in metric_dict.items()}
+        self.log_dict(metric_dict_with_prefix)
+
+        metric_df = pd.DataFrame(
+            {
+                "metric": metric_dict_with_prefix.keys(),
+                "value": metric_dict_with_prefix.values(),
+            }
         )
 
-        return data_for_eval
+        if self.trainer.is_global_zero:
+            logging.info(f"Logged {len(metric_dict_with_prefix)} {prefix} metrics.")
+            rprint(metric_df)
 
-    def test_step(self, batch, batch_idx):
-        return self.validation_step(batch, batch_idx)
+            for logger in self.trainer.loggers:
+                if isinstance(logger, L.pytorch.loggers.WandbLogger):
+                    logger.experiment.log(
+                        {f"{prefix}_metrics": wandb.Table(dataframe=metric_df)}
+                    )
 
 
 class DataModule(L.LightningDataModule):
@@ -183,6 +226,9 @@ class DataModule(L.LightningDataModule):
         )
         self.test_dataset.disable_data_leakage_check()
 
+        self.val_metric_group = self.build_metric_group()
+        self.test_metric_group = self.build_metric_group()
+
     def _init_model_vocab(self, model: POYO):
         # TODO: Add code for finetuning situation (when model already has a vocab)
         model.unit_emb.initialize_vocab(self.get_unit_ids())
@@ -196,6 +242,18 @@ class DataModule(L.LightningDataModule):
 
     def get_recording_config_dict(self):
         return self.train_dataset.get_recording_config_dict()
+
+    def build_metric_group(self):
+        dataset_config_dict = self.get_recording_config_dict()
+        metrics = defaultdict(list)
+        # setup the metrics
+        for recording_id, recording_config in dataset_config_dict.items():
+            metrics[recording_id] = []
+            for metric_config in recording_config["readout"]["metrics"]:
+                metric = hydra.utils.instantiate(metric_config["metric"])
+                metrics[recording_id].append(metric)
+
+        return MetricGroupWithStitcher(metrics=metrics)
 
     def train_dataloader(self):
         train_sampler = RandomFixedWindowSampler(
@@ -225,11 +283,14 @@ class DataModule(L.LightningDataModule):
     def val_dataloader(self):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
-        val_sampler = DistributedStitchingFixedWindowSampler(
+        val_sampler = SequentialFixedWindowSampler(
             sampling_intervals=self.val_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
-            batch_size=batch_size,
+        )
+
+        val_sampler = self.val_metric_group.convert_to_stitcher_sampler(
+            val_sampler,
             num_replicas=self.trainer.world_size,
             rank=self.trainer.global_rank,
         )
@@ -251,11 +312,14 @@ class DataModule(L.LightningDataModule):
     def test_dataloader(self):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
 
-        test_sampler = DistributedStitchingFixedWindowSampler(
+        test_sampler = SequentialFixedWindowSampler(
             sampling_intervals=self.test_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
-            batch_size=batch_size,
+        )
+
+        test_sampler = self.test_metric_group.convert_to_stitcher_sampler(
+            test_sampler,
             num_replicas=self.trainer.world_size,
             rank=self.trainer.global_rank,
         )
@@ -306,16 +370,11 @@ def main(cfg: DictConfig):
     wrapper = TrainWrapper(
         cfg=cfg,
         model=model,
-        modality_spec=readout_spec,
-    )
-
-    stitch_evaluator = DecodingStitchEvaluator(
-        session_ids=data_module.get_session_ids(),
-        modality_spec=readout_spec,
+        validation_metric_group=data_module.val_metric_group,
+        test_metric_group=data_module.test_metric_group,
     )
 
     callbacks = [
-        stitch_evaluator,
         ModelSummary(max_depth=2),  # Displays the number of parameters in the model.
         ModelCheckpoint(
             save_last=True,
