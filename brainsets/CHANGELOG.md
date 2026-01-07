@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Removed
 
 ### Changed
+- Suppress INFO logs from ray when calling `brainsets prepare` ([#70](https://github.com/neuro-galaxy/brainsets/pull/70))
 
 ## [0.2.0] - 2025-12-24
 ### Added
