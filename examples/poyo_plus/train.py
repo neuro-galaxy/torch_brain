@@ -302,7 +302,7 @@ class DataModule(L.LightningDataModule):
             shuffle=False,
             batch_size=batch_size,
             collate_fn=collate,
-            num_workers=0,
+            num_workers=self.cfg.num_workers,
             drop_last=False,
         )
 
@@ -409,7 +409,7 @@ def main(cfg: DictConfig):
     )
 
     # Train
-    trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path)
+    trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path, weights_only=False)
 
     # Test
     trainer.test(wrapper, data_module, ckpt_path="best", weights_only=False)

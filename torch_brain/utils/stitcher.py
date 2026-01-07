@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import logging
 from collections import defaultdict
 from typing import Callable, Dict, Iterable, List, Optional
+from torch_brain.registry import MODALITY_REGISTRY
 
 import pandas as pd
 from rich import print as rprint
@@ -395,6 +396,18 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
         for recording_id in self.metrics.keys():
             for task_name in self.metrics[recording_id].keys():
                 for metric_name in self.metrics[recording_id][task_name].keys():
+                    # if not self.metrics[recording_id][task_name][metric_name].update_called:
+                    #     dim = torch_brain.get_modality_by_id(task_name).dim
+                    #     if torch_brain.get_modality_by_id(task_name).type == DataType.CONTINUOUS:
+                    #         self.metrics[recording_id][task_name][metric_name].to(pl_module.device).update(
+                    #             torch.empty(0, dim, device=pl_module.device),
+                    #             torch.empty(0, dim, device=pl_module.device),
+                    #         )
+                    #     else:  # Classifier
+                    #         self.metrics[recording_id][task_name][metric_name].to(pl_module.device).update(
+                    #             torch.empty(1, dim, 0, device=pl_module.device),
+                    #             torch.empty(1, 0, device=pl_module.device),
+                    #         )
                     metrics[f"{recording_id}/{task_name}/{metric_name}/{prefix}"] = (
                         self.metrics[recording_id][task_name][metric_name]
                         .to(pl_module.device)

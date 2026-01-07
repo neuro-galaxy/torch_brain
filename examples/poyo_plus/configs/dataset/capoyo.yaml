@@ -955,7 +955,7 @@
           - metric:
               _target_: torchmetrics.Accuracy
               task: multiclass
-              num_classes: 8
+              num_classes: 6
       - readout_id: static_gratings_spatial_frequency
         timestamp_key: static_gratings.timestamps
         value_key: static_gratings.spatial_frequency_id

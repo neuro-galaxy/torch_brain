@@ -149,6 +149,7 @@ notebooks/artifacts/*
 
 tests/logs
 logs/lightning_logs
+logs/
 
 slurm*.txt
 smux*
