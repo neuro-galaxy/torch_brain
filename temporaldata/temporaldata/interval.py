@@ -493,17 +493,24 @@ class Interval(ArrayDict):
 
         return splits
 
-    def segment(
+    def subdivide(
         self,
-        duration: float,
-        remove_short: bool = False,
+        step: float,
+        drop_short: bool = False,
     ) -> Interval:
-        r"""Subdivides each interval into fixed-duration segmentswhile preserving metadata.
+        r"""Subdivides each interval into fixed-duration segments while preserving
+        attributes.
+
+        If the last segment of an interval is shorter than :obj:`step`, it will be
+        included by default. Set :obj:`drop_short` to :obj:`True` to exclude these
+        partial segments. If an interval is shorter than :obj:`step`, it will be
+        treated as a partial segment (kept if :obj:`drop_short` is :obj:`False`,
+        dropped otherwise).
 
         Args:
-            duration: The duration of each chunk.
-            remove_short: If :obj:`True`, removes segments shorter than the specified
-                duration. Defaults to :obj:`False`.
+            step: The duration of each segment.
+            drop_short: If :obj:`True`, excludes segments shorter than :obj:`step`.
+                Defaults to :obj:`False`.
 
         Returns:
             A new :obj:`Interval` object with the subdivided segments.
@@ -518,33 +525,33 @@ class Interval(ArrayDict):
             ...     end=np.array([10.0, 30.0]),
             ...     trial_id=np.array([1, 2])
             ... )
-            >>> segmented = interval.segment(2.5)
-            >>> segmented
+            >>> subdivided = interval.subdivide(2.5)
+            >>> subdivided
             Interval(
               start=[8],
               end=[8],
               trial_id=[8]
             )
-            >>> segmented.trial_id
+            >>> subdivided.trial_id
             array([1, 1, 1, 1, 2, 2, 2, 2])
         """
         if len(self) == 0:
-            return Interval(
-                start=np.array([]), end=np.array([]), timekeys=self.timekeys()
-            )
+            return copy.deepcopy(self)
 
-        segmented_intervals_starts = []
-        segmented_intervals_ends = []
+        subdivided_intervals_starts = []
+        subdivided_intervals_ends = []
         original_indices = []
 
         for i, (start, end) in enumerate(zip(self.start, self.end)):
-            segmented = Interval.arange(start, end, step=duration, include_end=True)
-            segmented_intervals_starts.append(segmented.start)
-            segmented_intervals_ends.append(segmented.end)
-            original_indices.extend([i] * len(segmented))
+            subdivided = Interval.arange(
+                start, end, step=step, include_end=not drop_short
+            )
+            subdivided_intervals_starts.append(subdivided.start)
+            subdivided_intervals_ends.append(subdivided.end)
+            original_indices.extend([i] * len(subdivided))
 
-        all_starts = np.concatenate(segmented_intervals_starts)
-        all_ends = np.concatenate(segmented_intervals_ends)
+        all_starts = np.concatenate(subdivided_intervals_starts)
+        all_ends = np.concatenate(subdivided_intervals_ends)
 
         kwargs = {}
         for key in self.keys():
@@ -553,15 +560,9 @@ class Interval(ArrayDict):
             val = getattr(self, key)
             kwargs[key] = val[original_indices]
 
-        result = Interval(
+        return Interval(
             start=all_starts, end=all_ends, timekeys=self.timekeys(), **kwargs
         )
-
-        if remove_short:
-            mask = (result.end - result.start) >= duration
-            result = result.select_by_mask(mask)
-
-        return result
 
     def add_split_mask(
         self,
