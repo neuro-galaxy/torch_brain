@@ -6,6 +6,7 @@ import time
 from collections import defaultdict
 from typing import Dict, Any, List
 from pathlib import Path
+import logging
 import ray
 from ray.util.actor_pool import ActorPool
 
@@ -159,7 +160,13 @@ def run():
 
         # 1. Start ray
         os.environ["RAY_ACCEL_ENV_VAR_OVERRIDE_ON_ZERO"] = "0"  # to avoid a warning
-        ray.init("local", num_cpus=args.cores, log_to_driver=False)
+        ray.init(
+            "local",
+            num_cpus=args.cores,
+            log_to_driver=False,
+            configure_logging=True,
+            logging_level=logging.WARNING,
+        )
 
         # 2. Start tracker and actors
         tracker = StatusTracker.remote()
