@@ -389,7 +389,25 @@ class Data(object):
         return obj
 
     @classmethod
-    def load(cls, path: Union[Path, str], lazy=True) -> Data:
+    def load(cls, path: Union[Path, str], lazy: bool = True) -> Data:
+        r"""Loads the :class:`Data` object from an HDF5 file given its file path.
+
+        Args:
+            path: The file path to the HDF5 file containing the :class:`Data` object.
+            lazy: If True (default), load contained objects in lazy mode
+                (using LazyArrayDict, LazyRegularTimeSeries, etc.); if False,
+                read all data immediately into memory.
+
+        Returns:
+            Data: The loaded :class:`Data` object from the HDF5 file.
+
+        .. code-block:: python
+
+            from temporaldata import Data
+
+            data_lazy = Data.load("data.h5")
+            data_materialized = Data.load("data.h5", lazy=False)
+        """
         file = h5py.File(path)
         return cls.from_hdf5(file, lazy=lazy)
 
