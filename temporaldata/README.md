@@ -15,9 +15,7 @@ advanced data structures and methods to work with multi-modal, multi-resolution
 time series data.
 
 ## Installation
-temporaldata is available for Python 3.8 to Python 3.11
-
-temporaldata has minimal dependencies, it only requires `numpy`, `pandas`, and `h5py`.
+temporaldata is available for Python 3.9+ and has minimal dependencies (only `numpy`, `pandas`, and `h5py`).
 
 To install the package, run the following command:
 ```bash
