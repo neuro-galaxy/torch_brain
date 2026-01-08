@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from temporaldata import IrregularTimeSeries
 
@@ -6,6 +8,7 @@ def bin_spikes(
     spikes: IrregularTimeSeries,
     num_units: int,
     bin_size: float,
+    max_spikes: Optional[int] = None,
     right: bool = True,
     eps: float = 1e-3,
     dtype: np.dtype = np.float32,
@@ -60,5 +63,7 @@ def bin_spikes(
     ts = spikes.timestamps - spikes.domain.start[0]
     bin_index = np.floor(ts * rate).astype(int)
     np.add.at(binned_spikes, (spikes.unit_index, bin_index), 1)
+    if max_spikes is not None:
+        np.clip(binned_spikes, None, max_spikes, out=binned_spikes)
 
     return binned_spikes
