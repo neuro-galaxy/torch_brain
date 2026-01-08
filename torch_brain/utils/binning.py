@@ -30,6 +30,8 @@ def bin_spikes(
         spikes: IrregularTimeSeries object containing the spikes.
         num_units: Number of units in the population.
         bin_size: Size of the time bins in seconds.
+        max_spikes: If provided, the maximum number of spikes per bin. Any bins
+            exceeding this count will be clipped.
         right: If True, any excess spikes are truncated from the left end of the time
             series. Otherwise, they are truncated from the right end.
         eps : float, default=1e-3
