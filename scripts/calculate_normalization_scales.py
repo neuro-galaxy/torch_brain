@@ -16,7 +16,7 @@ from rich import print
 from torch_brain.data import Dataset
 import numpy as np
 from omegaconf import OmegaConf
-from brainsets_utils.taxonomy.multitask_readout import OutputType, decoder_registry
+from torch_brain.registry import DataType, get_modality_by_name
 from tqdm import tqdm
 
 
@@ -50,15 +50,14 @@ def calculate_zscales(dataset: Dataset) -> Dict[str, Tuple[float, float]]:
 
     chunk_metrics = {}
     print("[blue] calculating normalization scales")
-    for session_id in tqdm(dataset.session_ids):
-        task_readouts = dataset.session_dict[session_id]["config"]["multitask_readout"]
+    for session_id in tqdm(dataset.get_session_ids()):
+        task_readouts = dataset.get_recording_config_dict()[session_id]["multitask_readout"]
         # get a data object that is sliced according to the training sample intervals
-        this_session_data = dataset.get_session_data(session_id)
         for task_readout in task_readouts:
-            task_id = task_readout["decoder_id"]
-            decoder = decoder_registry[task_id]
-            if decoder.type == OutputType.CONTINUOUS:
-                values = this_session_data.get_nested_attribute(decoder.value_key)
+            task_id = task_readout["readout_id"]
+            modality = get_modality_by_name(task_id)
+            if modality.type == DataType.CONTINUOUS:
+                values = dataset.get_recording_data(session_id).get_nested_attribute(modality.value_key)
                 mean = values.mean(axis=0)
                 std = values.std(axis=0)
                 n = len(values)
@@ -92,8 +91,8 @@ def main(args):
     # needed to calculate the zscales
     train_dataset = Dataset(
         args.data_root,
-        "train",
-        include=dataset_config,
+        split="train",
+        config=dataset_config,
         transform=None,
     )
 

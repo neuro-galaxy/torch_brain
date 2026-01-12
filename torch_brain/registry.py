@@ -94,6 +94,19 @@ def get_modality_by_id(modality_id: int) -> ModalitySpec:
     return _ID_TO_MODALITY[modality_id]
 
 
+def get_modality_by_name(modality_name: str) -> ModalitySpec:
+    """Get a modality specification by its name.
+
+    Args:
+        modality_name: The name of the modality to retrieve
+
+    Returns:
+        ModalitySpec: The modality specification
+    """
+    if modality_name not in MODALITY_REGISTRY:
+        raise KeyError(f"No modality found with name {modality_name}")
+    return MODALITY_REGISTRY[modality_name]
+
 register_modality(
     "cursor_velocity_2d",
     dim=2,
