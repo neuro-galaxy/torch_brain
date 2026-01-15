@@ -84,7 +84,7 @@ def test_bin_data():
         spikes = IrregularTimeSeries(
             timestamps=ts,
             unit_index=np.zeros(10, dtype=int),
-            domain=Interval(0, 10),
+            domain=Interval(0, 1),
         )
 
         binned_data = bin_spikes(
