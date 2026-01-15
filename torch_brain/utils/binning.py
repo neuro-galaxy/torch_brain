@@ -53,8 +53,6 @@ def bin_spikes(
 
     num_bins = round((end - start) / bin_size)
 
-    print(spikes.timestamps)
-
     rate = 1 / bin_size  # avoid precision issues
     binned_spikes = np.zeros((num_units, num_bins), dtype=dtype)
     bin_index = np.floor(spikes.timestamps * rate).astype(int)

@@ -85,12 +85,7 @@ def test_bin_data():
             timestamps=ts, unit_index=np.zeros(10, dtype=int), domain="auto"
         )
 
-        binned_data = bin_spikes(
-            spikes,
-            num_units=1,
-            bin_size=0.1,
-            right=False,
-        )
+        binned_data = bin_spikes(spikes, num_units=1, bin_size=0.1)
 
         expected = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
 
