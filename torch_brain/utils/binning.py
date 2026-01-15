@@ -7,6 +7,7 @@ def bin_spikes(
     num_units: int,
     bin_size: float,
     right: bool = True,
+    eps: float = 1e-3,
     dtype: np.dtype = np.float32,
 ) -> np.ndarray:
     r"""Bins spikes into time bins of size `bin_size`. If the total time spanned by
@@ -14,8 +15,13 @@ def bin_spikes(
     multiple of `bin_size`. If `right` is True, the spikes are truncated from the left
     end of the time series, otherwise they are truncated from the right end.
 
-    Note that we cannot infer the number of units from a chunk of spikes, hence why it
-    must be provided as an argument.
+    Notes:
+    - The number of units cannot be inferred from a subset of spikes,
+      so `num_units` must be provided explicitly.
+    - Floating-point roundoff can cause `(end - start) / bin_size` to be
+      very close to an integer without being exact (e.g. 9.99999999).
+      The `eps` parameter is added before flooring to make the bin-count
+      computation numerically robust.
 
     Args:
         spikes: IrregularTimeSeries object containing the spikes.
@@ -23,12 +29,18 @@ def bin_spikes(
         bin_size: Size of the time bins in seconds.
         right: If True, any excess spikes are truncated from the left end of the time
             series. Otherwise, they are truncated from the right end.
+        eps : float, default=1e-3
+            Small numerical tolerance added when computing the number of bins
+            to avoid floating-point precision issues.
         dtype: Data type of the returned array.
     """
     start = spikes.domain.start[0]
     end = spikes.domain.end[-1]
 
-    discard = (end - start) - np.floor((end - start) / bin_size) * bin_size
+    # Compute how much time must be discarded so that the duration
+    # is an exact multiple of `bin_size`. The epsilon stabilizes
+    # the floor operation under floating-point roundoff.
+    discard = (end - start) - np.floor(((end - start) / bin_size) + eps) * bin_size
     if discard != 0:
         if right:
             start += discard
