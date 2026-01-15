@@ -41,7 +41,9 @@ def bin_spikes(
     # is an exact multiple of `bin_size`. The epsilon stabilizes
     # the floor operation under floating-point roundoff.
     discard = (end - start) - np.floor(((end - start) / bin_size) + eps) * bin_size
-    if discard != 0:
+    # Note the discard should in theory always be positive except the numerical instability mention above can make it negative
+    # in this case we dont want to reslice it to potentialy loose the last point
+    if discard > 0:
         if right:
             start += discard
         else:
