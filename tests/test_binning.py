@@ -79,12 +79,10 @@ def test_bin_data():
     # floating-point error.
     for base in [0.0, 1e3, 1e6]:
         ts = base + np.array(
-            [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.89999999, 0.95]
+            [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.99999999]
         )
         spikes = IrregularTimeSeries(
-            timestamps=ts,
-            unit_index=np.zeros(10, dtype=int),
-            domain=Interval(0, 1),
+            timestamps=ts, unit_index=np.zeros(10, dtype=int), domain="auto"
         )
 
         binned_data = bin_spikes(
