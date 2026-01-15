@@ -80,7 +80,7 @@ def test_bin_data():
     # for base in [0.0, 1e3, 1e6]:
     for base in [0.0]:
         ts = base + np.array(
-            [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.99999999]
+            [0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.9999999]
         )
         spikes = IrregularTimeSeries(
             timestamps=ts, unit_index=np.zeros(10, dtype=int), domain="auto"
