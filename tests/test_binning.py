@@ -73,3 +73,21 @@ def test_bin_data():
     print(binned_data)
     assert binned_data.shape == expected.shape
     assert np.allclose(binned_data, expected)
+
+    # fix numerical instability
+    # Duration is intended to be exactly 1.0, but represented with
+    # floating-point error.
+    for base in [0.0, 1e3, 1e6]:
+        ts = base + np.array(
+            [0.0, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.9999999]
+        )
+        spikes = IrregularTimeSeries(
+            timestamps=ts, unit_index=np.zeros(10, dtype=int), domain="auto"
+        )
+
+        binned_data = bin_spikes(spikes, num_units=1, bin_size=0.1)
+
+        expected = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
+
+        assert binned_data.shape == expected.shape
+        assert np.allclose(binned_data, expected)
