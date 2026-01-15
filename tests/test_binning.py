@@ -89,7 +89,7 @@ def test_bin_data():
             spikes,
             num_units=1,
             bin_size=0.1,
-            right=True,
+            right=False,
         )
 
         expected = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
