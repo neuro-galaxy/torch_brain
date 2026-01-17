@@ -70,9 +70,27 @@ def test_bin_data():
             [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
         ]
     )
-    print(binned_data)
     assert binned_data.shape == expected.shape
     assert np.allclose(binned_data, expected)
+
+    # test max_spikes
+    spikes = IrregularTimeSeries(
+        timestamps=np.array(
+            [0, 0, 1, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 2, 3, 4, 4.5, 6, 7, 8, 9]
+        ),
+        unit_index=np.array([0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]),
+        domain=Interval(0, 10),
+    )
+    binned_data = bin_spikes(
+        spikes, num_units=2, bin_size=1.0, right=True, max_spikes=3
+    )
+
+    expected = np.array(
+        [[1, 1, 1, 1, 2, 0, 1, 1, 1, 1], [1, 3, 0, 0, 0, 0, 0, 0, 0, 0]]
+    )
+    assert binned_data.shape == expected.shape
+    assert np.allclose(binned_data, expected)
+    assert binned_data.dtype == np.float32
 
     # fix numerical instability
     # Duration is intended to be exactly 1.0, but represented with
