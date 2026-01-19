@@ -114,7 +114,10 @@ Padded2dObject = namedtuple("Padded2dObject", ["obj"])
 
 
 def pad2d(obj):
-    """
+    r"""Wrap an object to specify that it (or any of its members) should be padded
+    to the maximum size in both dimensions. This is useful for 2D tensors where both
+    dimensions may vary across samples in a batch.
+
     Args:
         obj: Can be tensors, numpy arrays, lists, tuples, or dictionaries.
     """
