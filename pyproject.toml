@@ -40,6 +40,9 @@ dev = [
     "tqdm",
     "pytest-cov",
 ]
+lightning = [
+    "lightning>=2.5.6",
+]
 
 [project.urls]
 Homepage = "https://github.com/neuro-galaxy/torch_brain"
