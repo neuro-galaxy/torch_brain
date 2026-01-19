@@ -1,9 +1,7 @@
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 import logging
 
-from pathlib import Path
 import numpy as np
-import torch
 import torch.nn as nn
 from torchtyping import TensorType
 from temporaldata import Data
@@ -27,9 +25,10 @@ from torch_brain.utils import (
 )
 
 
-class POYO(nn.Module):
+class POYOAdapContextPad(nn.Module):
     """POYO model from `Azabou et al. 2023, A Unified, Scalable Framework for Neural Population Decoding
-    <https://arxiv.org/abs/2310.16046>`_.
+    <https://arxiv.org/abs/2310.16046>`_. But with adaptable latent context length.
+    This is done by padding the latent tokens with a learnable embedding to the desired length during tokenization.
 
     POYO is a transformer-based model for neural decoding from electrophysiological
     recordings.
@@ -98,8 +97,11 @@ class POYO(nn.Module):
         self.session_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.token_type_emb = Embedding(4, dim, init_scale=emb_init_scale)
         self.latent_emb = Embedding(
-            num_latents_per_step, dim, init_scale=emb_init_scale
-        )
+            num_latents_per_step + 1, dim, init_scale=emb_init_scale
+        ) # the +1 is for padding embedding
+        # self.latent_pad_emb = Embedding(
+        #     1, dim, init_scale=emb_init_scale
+        # ) # padding embedding for adaptable context length
         self.rotary_emb = RotaryTimeEmbedding(
             head_dim=dim_head,
             rotate_dim=dim_head // 2,
@@ -157,7 +159,7 @@ class POYO(nn.Module):
 
         self.dim = dim
 
-    def forward(
+    def forward( # variable length latent tokens 
         self,
         *,
         # input sequence
@@ -168,6 +170,8 @@ class POYO(nn.Module):
         # latent sequence
         latent_index: TensorType["batch", "n_latent", int],
         latent_timestamps: TensorType["batch", "n_latent", float],
+        # pad_latent_index: TensorType["batch", "n_pad_latent", int],
+        # pad_latent_timestamps: TensorType["batch", "n_pad_latent", float],
         # output sequence
         output_session_index: TensorType["batch", "n_out", int],
         output_timestamps: TensorType["batch", "n_out", float],
@@ -189,6 +193,8 @@ class POYO(nn.Module):
             input_mask: Mask for input sequence
             latent_index: Indices for latent tokens
             latent_timestamps: Timestamps for latent tokens
+            pad_latent_index: Indices for padded latent tokens
+            pad_latent_timestamps: Timestamps for padded latent tokens
             output_session_index: Index of the recording session
             output_timestamps: Timestamps for output predictions
             output_mask: A mask of the same size as output_timestamps. True implies
@@ -224,7 +230,15 @@ class POYO(nn.Module):
 
         # latents
         latents = self.latent_emb(latent_index)
-        latent_timestamp_emb = self.rotary_emb(latent_timestamps)
+        latent_timestamp_emb = self.rotary_emb(latent_timestamps) 
+        # pad latents for adaptable context length
+        # pad_latents = self.latent_pad_emb(pad_latent_index)
+        # pad_latent_timestamp_emb = self.rotary_emb(pad_latent_timestamps)
+        # concatenate latents and pad latents
+        # check if pad_latents is not empty
+        # if pad_latents.size(1) > 0:
+        #     latents = torch.cat([pad_latents, latents], dim=1)
+        #     latent_timestamp_emb = torch.cat([pad_latent_timestamp_emb, latent_timestamp_emb], dim=1)
 
         # outputs
         output_queries = self.session_emb(output_session_index)
@@ -338,6 +352,91 @@ class POYO(nn.Module):
 
         return data_dict
 
+    def tokenize_varlen(self, data: Data) -> Dict:
+        r""" Tokenizer used to tokenize Data with variable length for the POYO model.
+
+        Similar to `tokenize`, but does not assume same lengths for latent index and latent timestamps.
+
+        This tokenizer can be called as a transform. If you are applying multiple
+        transforms, make sure to apply this one last.
+
+        This code runs on CPU. Do not access GPU tensors inside this function.
+
+        The collate function must be able to handle variable length sequences.
+        """
+        # context window depends on data length in second(s), assumes spikes. 
+        start, end = data.spikes.domain.start.__float__(), data.spikes.domain.end.__float__()
+
+        ### prepare input
+        unit_ids = data.units.id
+        spike_unit_index = data.spikes.unit_index
+        spike_timestamps = data.spikes.timestamps
+
+        # create start and end tokens for each unit
+        (
+            se_token_type_index,
+            se_unit_index,
+            se_timestamps,
+        ) = create_start_end_unit_tokens(unit_ids, start, end)
+
+        # append start and end tokens to the spike sequence
+        spike_token_type_index = np.concatenate(
+            [se_token_type_index, np.zeros_like(spike_unit_index)]
+        )
+        spike_unit_index = np.concatenate([se_unit_index, spike_unit_index])
+        spike_timestamps = np.concatenate([se_timestamps, spike_timestamps])
+
+        # unit_index is relative to the recording, so we want it to map it to
+        # the global unit index
+        local_to_global_map = np.array(self.unit_emb.tokenizer(unit_ids))
+        spike_unit_index = local_to_global_map[spike_unit_index]
+
+        ### prepare latents
+        ### latent_pad_emb has index = -1
+        latent_index, latent_timestamps = create_linspace_latent_tokens_adap_pad(
+            start,
+            end,
+            step=self.latent_step,
+            num_latents_per_step=self.num_latents_per_step,
+            max_length=int(self.sequence_length / self.latent_step),
+        )
+
+        output_timestamps, output_values, output_weights, eval_mask = (
+            prepare_for_readout(data, self.readout_spec)
+        )
+
+        # create session index for output
+        output_session_index = self.session_emb.tokenizer(data.session.id)
+        output_session_index = np.repeat(output_session_index, len(output_timestamps))
+
+        data_dict = {
+            "model_inputs": {
+                # input sequence (keys/values for the encoder)
+                "input_unit_index": pad8(spike_unit_index),
+                "input_timestamps": pad8(spike_timestamps),
+                "input_token_type": pad8(spike_token_type_index),
+                "input_mask": track_mask8(spike_unit_index),
+                # latent sequence
+                "latent_index": latent_index,
+                "latent_timestamps": latent_timestamps,
+                # "pad_latent_index": pad_latent_index,
+                # "pad_latent_timestamps": pad_latent_timestamps,
+                # output query sequence (queries for the decoder)
+                "output_session_index": pad8(output_session_index),
+                "output_timestamps": pad8(output_timestamps),
+                "output_mask": track_mask8(output_session_index),
+            },
+            # ground truth targets
+            "target_values": pad8(output_values),
+            "target_weights": pad8(output_weights),
+            # extra data needed for evaluation
+            "session_id": data.session.id,
+            "absolute_start": data.absolute_start,
+            "eval_mask": pad8(eval_mask),
+        }
+
+        return data_dict
+
     def _validate_params(self, sequence_length, latent_step):
         r"""Ensure: sequence_length, and latent_step are floating point numbers greater
         than zero. And sequence_length is a multiple of latent_step.
@@ -361,81 +460,3 @@ class POYO(nn.Module):
                 f"sequence_length ({sequence_length}) is not a multiple of latent_step "
                 f"({latent_step}). This is a simple warning, and this behavior is allowed."
             )
-
-    @classmethod
-    def load_pretrained(
-        cls,
-        checkpoint_path: str | Path,
-        readout_spec: ModalitySpec,
-        skip_readout: bool = False,
-    ) -> "POYO":
-        """
-        Load a pretrained POYO model from a checkpoint file.
-
-        Args:
-            checkpoint_path (str or Path): Path to the checkpoint file containing model weights and hyperparameters.
-            readout_spec (ModalitySpec): Specification for the readout modality, used to initialize the model.
-            skip_readout (bool, optional): If True, the readout layer weights from the checkpoint are ignored and a new readout layer is initialized. Default is False.
-
-        Returns:
-            POYO: An instance of the POYO model with weights loaded from the checkpoint.
-
-        Usage:
-            model = POYO.load_pretrained("path/to/checkpoint.ckpt", readout_spec)
-
-        Notes:
-            - The checkpoint is expected to contain both model hyperparameters and weights.
-            - If `skip_readout` is True, the readout layer weights are not loaded from the checkpoint.
-        """
-        # Instantiate model object from checkpoint hyperparameters
-        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-        model_kwargs = checkpoint["hyper_parameters"]["model"]
-        model_kwargs.pop("_target_", None)
-        model = cls(**model_kwargs, readout_spec=readout_spec)
-
-        # Load model weights
-        # POYO is pretrained using lightning, so model weights are prefixed with "model."
-        state_dict = {
-            k.replace("model.", ""): v for k, v in checkpoint["state_dict"].items()
-        }
-
-        # Remove readout layer from checkpoint if we're using a new one
-        if skip_readout:
-            state_dict = {
-                k: v for k, v in state_dict.items() if not k.startswith("readout.")
-            }
-
-        missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-        if len(missing_keys) > 0:
-            logging.warning(
-                f"Missing keys when loading pretrained POYO: {missing_keys}"
-            )
-        if len(unexpected_keys) > 0:
-            logging.warning(
-                f"Unexpected keys when loading pretrained POYO: {unexpected_keys}"
-            )
-
-        return model
-
-
-def poyo_mp(readout_spec: ModalitySpec, ckpt_path=None):
-    if ckpt_path is not None:
-        raise NotImplementedError("Loading from checkpoint is not supported yet.")
-
-    return POYO(
-        sequence_length=1.0,
-        latent_step=1.0 / 8,
-        dim=64,
-        readout_spec=readout_spec,
-        dim_head=64,
-        num_latents_per_step=16,
-        depth=6,
-        cross_heads=2,
-        self_heads=8,
-        ffn_dropout=0.2,
-        lin_dropout=0.4,
-        atn_dropout=0.2,
-        emb_init_scale=0.02,
-        t_min=1e-4,
-        t_max=4.0,
-    )

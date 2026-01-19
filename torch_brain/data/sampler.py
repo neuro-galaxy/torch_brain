@@ -138,6 +138,399 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
             yield indices[idx]
 
 
+class RandomBoundedWindowSampler(torch.utils.data.Sampler):
+    r"""Samples variable-length windows randomly, given intervals defined in
+    :obj:`sampling_intervals` and a range of window lengths.
+
+    The window length for each sample is drawn uniformly from
+    ``[min_window_length, max_window_length]``.
+
+    :obj:`sampling_intervals` is a dictionary where the keys are session ids
+    and the values are Interval objects with `.start` and `.end` arrays that
+    define the temporal intervals from which to sample.
+
+    In one epoch, the number of samples that is generated from a given
+    sampling interval of length :math:`L` is approximated as:
+
+    .. math::
+        N \approx \left\lfloor\frac{L}{\mathbb{E}[W]}\right\rfloor
+
+    where :math:`\mathbb{E}[W] = \frac{\text{min_window_length} +
+    \text{max_window_length}}{2}` is the mean window length. We use the same
+    deterministic rule in ``__len__`` and ``__iter__``, so that
+    ``len(sampler)`` equals the actual number of sampled windows.
+
+    Args:
+        sampling_intervals (Dict[str, Interval]): Sampling intervals for each
+            session in the dataset.
+        min_window_length (float): Minimum window length.
+        max_window_length (float): Maximum window length.
+        generator (Optional[torch.Generator], optional): Generator for shuffling
+            and random window lengths. Defaults to None.
+        drop_short (bool, optional): Whether to drop intervals shorter than
+            ``min_window_length``. Defaults to True.
+    """
+
+    def __init__(
+        self,
+        *,
+        sampling_intervals: Dict[str, "Interval"],
+        min_window_length: float,
+        max_window_length: float,
+        generator: Optional[torch.Generator] = None,
+        drop_short: bool = True,
+    ):
+        if not isinstance(min_window_length, float):
+            raise ValueError("min_window_length must be a float")
+        if not isinstance(max_window_length, float):
+            raise ValueError("max_window_length must be a float")
+        if min_window_length <= 0.0:
+            raise ValueError("min_window_length must be greater than 0")
+        if max_window_length < min_window_length:
+            raise ValueError(
+                "max_window_length must be greater than or equal to "
+                "min_window_length"
+            )
+
+        self.sampling_intervals = sampling_intervals
+        self.min_window_length = min_window_length
+        self.max_window_length = max_window_length
+        self.generator = generator
+        self.drop_short = drop_short
+
+        # mean window length for deterministic sample count
+        self._mean_window_length = 0.5 * (min_window_length + max_window_length)
+
+    def _num_samples_for_interval(self, interval_length: float) -> int:
+        r"""Compute number of samples for a single interval, using the same
+        rule in both __len__ and __iter__ so they remain consistent."""
+        if interval_length < self.min_window_length:
+            return 0
+
+        # If the interval is shorter than the mean window length but long
+        # enough for the minimum window length, we still take exactly 1 sample.
+        if interval_length < self._mean_window_length:
+            return 1
+
+        return math.floor(interval_length / self._mean_window_length)
+
+    @cached_property
+    def _estimated_len(self) -> int:
+        num_samples = 0
+        total_short_dropped = 0.0
+
+        for session_name, sampling_intervals in self.sampling_intervals.items():
+            for start, end in zip(sampling_intervals.start, sampling_intervals.end):
+                interval_length = end - start
+                if interval_length < self.min_window_length:
+                    if self.drop_short:
+                        total_short_dropped += interval_length
+                        continue
+                    else:
+                        raise ValueError(
+                            f"Interval {(start, end)} is too short to sample from. "
+                            f"Minimum length is {self.min_window_length}."
+                        )
+
+                num_samples += self._num_samples_for_interval(interval_length)
+
+        if self.drop_short and total_short_dropped > 0.0:
+            logging.warning(
+                f"Skipping {total_short_dropped} seconds of data due to short "
+                f"intervals. Remaining: "
+                f"{num_samples * self._mean_window_length} seconds (approx.)."
+            )
+            if num_samples == 0:
+                raise ValueError("All intervals are too short to sample from.")
+        return num_samples
+
+    def __len__(self) -> int:
+        return self._estimated_len
+
+    def _sample_window_length(self) -> float:
+        r"""Sample a window length uniformly from [min_window_length, max_window_length]."""
+        if self.min_window_length == self.max_window_length:
+            return self.min_window_length
+        r = torch.rand(1, generator=self.generator).item()
+        return self.min_window_length + r * (self.max_window_length - self.min_window_length)
+
+    def __iter__(self):
+        if len(self) == 0:
+            raise ValueError("All intervals are too short to sample from.")
+
+        indices = []
+
+        for session_name, sampling_intervals in self.sampling_intervals.items():
+            for start, end in zip(sampling_intervals.start, sampling_intervals.end):
+                interval_length = end - start
+                if interval_length < self.min_window_length:
+                    if self.drop_short:
+                        continue
+                    else:
+                        raise ValueError(
+                            f"Interval {(start, end)} is too short to sample from. "
+                            f"Minimum length is {self.min_window_length}."
+                        )
+
+                # determine how many windows to sample from this interval
+                num_samples = self._num_samples_for_interval(interval_length)
+
+                for _ in range(num_samples):
+                    # sample a window length (cannot exceed interval_length)
+                    window_length = self._sample_window_length()
+                    if window_length > interval_length:
+                        # clamp to interval_length; this is still >= min_window_length
+                        window_length = float(interval_length)
+
+                    # sample a random left boundary so that the window fits
+                    max_left = interval_length - window_length
+                    if max_left <= 0.0:
+                        left_offset = 0.0
+                    else:
+                        r = torch.rand(1, generator=self.generator).item()
+                        left_offset = r * max_left
+
+                    window_start = start + left_offset
+                    window_end = window_start + window_length
+
+                    indices.append(
+                        DatasetIndex(
+                            session_name,
+                            float(window_start),
+                            float(window_end),
+                        )
+                    )
+
+        # shuffle all indices
+        for idx in torch.randperm(len(indices), generator=self.generator):
+            yield indices[idx]
+
+
+class RandomVarWindowSampler(torch.utils.data.Sampler):
+    r"""Samples variable length windows randomly for different datasets, given intervals defined in the
+    :obj:`sampling_intervals` parameter. :obj:`sampling_intervals` is a dictionary where the keys
+    are the session ids and the values are lists of tuples representing the
+    start and end of the intervals from which to sample. The samples are shuffled, and
+    random temporal jitter is applied.
+
+
+    In one epoch, the number of samples that is generated from a given sampling interval
+    is given by:
+
+    .. math::
+        N = \left\lfloor\frac{\text{interval_length}}{\text{window_length}}\right\rfloor
+
+    Args:
+        sampling_intervals (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
+            session in the dataset.
+        window_length (dict): Length of the window to sample for each session ids.
+        generator (Optional[torch.Generator], optional): Generator for shuffling.
+            Defaults to None.
+        drop_short (bool, optional): Whether to drop short intervals. Defaults to True.
+    """
+
+    def __init__(
+        self,
+        *,
+        sampling_intervals: Dict[str, Interval],
+        window_length: Dict[str, float],
+        generator: Optional[torch.Generator] = None,
+        drop_short: bool = True,
+    ):
+        self.sampling_intervals = sampling_intervals
+        self.window_length = window_length
+        self.generator = generator
+        self.drop_short = drop_short
+
+    @cached_property
+    def _estimated_len(self):
+        num_samples = 0
+        total_short_dropped = 0.0
+        total_remained = 0.0
+
+        for session_name, sampling_intervals in self.sampling_intervals.items():
+            ses_window_length = self.window_length[session_name]
+            for start, end in zip(sampling_intervals.start, sampling_intervals.end):
+                interval_length = end - start
+                if interval_length < ses_window_length:
+                    if self.drop_short:
+                        total_short_dropped += interval_length
+                        continue
+                    else:
+                        raise ValueError(
+                            f"Interval {(start, end)} is too short to sample from. "
+                            f"Minimum length is {ses_window_length}."
+                        )
+
+                num_samples += math.floor(interval_length / ses_window_length)
+                total_remained += float(math.floor(interval_length))
+
+        if self.drop_short and total_short_dropped > 0:
+            logging.warning(
+                f"Skipping {total_short_dropped} seconds of data due to short "
+                f"intervals. Remaining: {total_remained} seconds."
+            )
+            if num_samples == 0:
+                raise ValueError("All intervals are too short to sample from.")
+        return num_samples
+
+    def __len__(self):
+        return self._estimated_len
+
+    def __iter__(self):
+        if len(self) == 0.0:
+            raise ValueError("All intervals are too short to sample from.")
+
+        indices = []
+        for session_name, sampling_intervals in self.sampling_intervals.items():
+            ses_window_length = self.window_length[session_name]
+            for start, end in zip(sampling_intervals.start, sampling_intervals.end):
+                interval_length = end - start
+                if interval_length < ses_window_length:
+                    if self.drop_short:
+                        continue
+                    else:
+                        raise ValueError(
+                            f"Interval {(start, end)} is too short to sample from. "
+                            f"Minimum length is {ses_window_length}."
+                        )
+
+                # sample a random offset
+                left_offset = (
+                    torch.rand(1, generator=self.generator).item() * ses_window_length
+                )
+
+                indices_ = [
+                    DatasetIndex(
+                        session_name, t.item(), (t + ses_window_length).item()
+                    )
+                    for t in torch.arange(
+                        start + left_offset,
+                        end,
+                        ses_window_length,
+                        dtype=torch.float64,
+                    )
+                    if t + ses_window_length <= end
+                ]
+
+                if len(indices_) > 0:
+                    indices.extend(indices_)
+                    right_offset = end - indices[-1].end
+                else:
+                    right_offset = end - start - left_offset
+
+                # if there is one sample worth of data, add it
+                # this ensures that the number of samples is always consistent
+                if right_offset + left_offset >= ses_window_length:
+                    if right_offset > left_offset:
+                        indices.append(
+                            DatasetIndex(session_name, end - ses_window_length, end)
+                        )
+                    else:
+                        indices.append(
+                            DatasetIndex(
+                                session_name, start, start + ses_window_length
+                            )
+                        )
+
+        # shuffle
+        for idx in torch.randperm(len(indices), generator=self.generator):
+            yield indices[idx]
+
+class SequentialVarWindowSampler(torch.utils.data.Sampler):
+    r"""Samples variable length windows sequentially for different datasets, always in the same order. 
+    The sampling intervals are defined in the :obj:`sampling_intervals` parameter.
+    :obj:`sampling_intervals` is a dictionary where the keys are the session ids and the
+    values are lists of tuples representing the start and end of the intervals
+    from which to sample.
+
+    If the length of a sequence is not evenly divisible by the step, the last
+    window will be added with an overlap with the previous window. This is to ensure
+    that the entire sequence is covered.
+
+    Args:
+        sampling_intervals (Dict[str, List[Tuple[float, float]]]): Sampling intervals for each
+            session in the dataset.
+        window_length (dict): Length of the window to sample for each session ids.
+        step (dict, optional): Step size between windows. If None, it
+            defaults to ``window_length``.
+        drop_short (bool, optional): Whether to drop windows smaller than ``window_length``.
+            Defaults to False.
+    """
+
+    def __init__(
+        self,
+        *,
+        sampling_intervals: Dict[str, List[Tuple[float, float]]],
+        window_length: Dict[str, float],
+        step: Optional[Dict[str, float]] = None,
+        drop_short=False,
+        
+    ):
+        self.sampling_intervals = sampling_intervals
+        self.window_length = window_length
+        self.step = step or window_length
+        self.drop_short = drop_short
+        
+        for k, v in step.items():
+            assert self.step[k] > 0, "Step must be greater than 0."
+
+    # we cache the indices since they are deterministic
+    @cached_property
+    def _indices(self) -> List[DatasetIndex]:
+        indices = []
+        total_short_dropped = 0.0
+        total_remained = 0.0
+        
+        for session_name, sampling_intervals in self.sampling_intervals.items():
+            ses_window_length = self.window_length[session_name]
+            ses_step = self.step[session_name]
+            for start, end in zip(sampling_intervals.start, sampling_intervals.end):
+                interval_length = end - start
+                if interval_length < ses_window_length:
+                    if self.drop_short:
+                        total_short_dropped += interval_length
+                        continue
+                    else:
+                        raise ValueError(
+                            f"Interval {(start, end)} is too short to sample from. "
+                            f"Minimum length is {ses_window_length}."
+                        )
+
+                indices_ = [
+                    DatasetIndex(
+                        session_name, t.item(), (t + ses_window_length).item()
+                    )
+                    for t in torch.arange(start, end, ses_step, dtype=torch.float64)
+                    if t + ses_window_length <= end
+                ]
+                total_remained += len(indices_) * ses_window_length
+
+                indices.extend(indices_)
+
+                # we need to make sure that the entire interval is covered
+                if indices_[-1].end < end:
+                    indices.append(
+                        DatasetIndex(session_name, end - ses_window_length, end)
+                    )
+                    total_remained += ses_window_length
+
+        if self.drop_short and total_short_dropped > 0:
+            logging.warning(
+                f"Skipping {total_short_dropped} seconds of data due to short "
+                f"intervals. Remaining: {total_remained} seconds."
+            )
+            if len(indices) == 0:
+                raise ValueError("All intervals are too short to sample from.")
+
+        return indices
+
+    def __len__(self):
+        return len(self._indices)
+
+    def __iter__(self):
+        yield from self._indices
+
 class SequentialFixedWindowSampler(torch.utils.data.Sampler):
     r"""Samples fixed-length windows sequentially, always in the same order. The
     sampling intervals are defined in the :obj:`sampling_intervals` parameter.
