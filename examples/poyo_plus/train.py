@@ -377,6 +377,11 @@ def main(cfg: DictConfig):
             save_on_train_epoch_end=True,
             every_n_epochs=cfg.eval_epochs,
         ),
+        ModelCheckpoint(
+            every_n_epochs=cfg.eval_epochs,
+            save_top_k=-1,
+            filename="epoch_{epoch:02d}",
+        ),
         LearningRateMonitor(
             logging_interval="step"
         ),  # Create a callback to log the learning rate.
