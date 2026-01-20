@@ -357,7 +357,7 @@
       sampling_intervals = sampling_intervals & data.static_gratings.coalesce(0.3)
     multitask_readout:
       - readout_id: running_speed
-        weight: 1.5
+        weights: 1.5
         normalize_mean: 6.80354332
         normalize_std: 13.87822103
         timestamp_key: running.timestamps
@@ -366,7 +366,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: static_gratings_phase
-        weight: 1.0
+        weights: 1.0
         timestamp_key: static_gratings.timestamps
         value_key: static_gratings.phase_id
         metrics:
@@ -375,7 +375,7 @@
               task: multiclass
               num_classes: 5
       - readout_id: static_gratings_spatial_frequency
-        weight: 1.0
+        weights: 1.0
         timestamp_key: static_gratings.timestamps
         value_key: static_gratings.spatial_frequency_id
         metrics:
@@ -384,7 +384,7 @@
               task: multiclass
               num_classes: 5
       - readout_id: static_gratings_orientation
-        weight: 1.0
+        weights: 1.0
         timestamp_key: static_gratings.timestamps
         value_key: static_gratings.orientation_id
         metrics:
@@ -393,7 +393,7 @@
               task: multiclass
               num_classes: 6
       - readout_id: natural_scenes
-        weight: 0.3
+        weights: 0.3
         timestamp_key: natural_scenes.timestamps
         value_key: natural_scenes.frame
         metrics:
@@ -402,7 +402,7 @@
               task: multiclass
               num_classes: 119
       - readout_id: natural_movie_one_frame
-        weight: 0.25
+        weights: 0.25
         timestamp_key: natural_movie_one.timestamps
         value_key: natural_movie_one.frame
         metrics:
@@ -755,7 +755,7 @@
   config:
     multitask_readout:
       - readout_id: running_speed
-        weight: 1.5
+        weights: 1.5
         normalize_mean: 6.80354332
         normalize_std: 13.87822103
         timestamp_key: running.timestamps
@@ -764,7 +764,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: natural_movie_one_frame
-        weight: 0.25
+        weights: 0.25
         timestamp_key: natural_movie_one.timestamps
         value_key: natural_movie_one.frame
         metrics:
@@ -773,7 +773,7 @@
               task: multiclass
               num_classes: 900
       - readout_id: natural_movie_two_frame
-        weight: 0.2
+        weights: 0.2
         timestamp_key: natural_movie_two.timestamps
         value_key: natural_movie_two.frame
         metrics:
@@ -782,7 +782,7 @@
               task: multiclass
               num_classes: 900
       - readout_id: locally_sparse_noise_frame
-        weight: 1.0
+        weights: 1.0
         timestamp_key: locally_sparse_noise.timestamps
         value_key: locally_sparse_noise.frame
         metrics:
@@ -1115,7 +1115,7 @@
       sampling_intervals = sampling_intervals & data.drifting_gratings.coalesce(0.3)
     multitask_readout:
       - readout_id: running_speed
-        weight: 1.5
+        weights: 1.5
         normalize_mean: 6.80354332
         normalize_std: 13.87822103
         timestamp_key: running.timestamps
@@ -1124,7 +1124,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: drifting_gratings_orientation
-        weight: 1.0
+        weights: 1.0
         timestamp_key: drifting_gratings.timestamps
         value_key: drifting_gratings.orientation_id
         metrics:
@@ -1133,7 +1133,7 @@
               task: multiclass
               num_classes: 8
       - readout_id: drifting_gratings_temporal_frequency
-        weight: 1.0
+        weights: 1.0
         timestamp_key: drifting_gratings.timestamps
         value_key: drifting_gratings.temporal_frequency_id
         metrics:
@@ -1142,7 +1142,7 @@
               task: multiclass
               num_classes: 5
       - readout_id: natural_movie_one_frame
-        weight: 0.25
+        weights: 0.25
         timestamp_key: natural_movie_one.timestamps
         value_key: natural_movie_one.frame
         metrics:
@@ -1151,7 +1151,7 @@
               task: multiclass
               num_classes: 900
       - readout_id: natural_movie_three_frame
-        weight: 0.2
+        weights: 0.2
         timestamp_key: natural_movie_three.timestamps
         value_key: natural_movie_three.frame
         metrics:
@@ -1276,7 +1276,7 @@
   config:
     multitask_readout:
       - readout_id: pupil_location.x
-        weight: 8.0
+        weights: 8.0
         normalize_mean: 11.02599208
         normalize_std: 15.94543917
         timestamp_key: pupil.timestamps
@@ -1285,7 +1285,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: pupil_location.y
-        weight: 8.0
+        weights: 8.0
         normalize_mean: 16.91118513
         normalize_std: 6.8334403
         timestamp_key: pupil.timestamps
@@ -1294,7 +1294,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: running_speed
-        weight: 1.5
+        weights: 1.5
         normalize_mean: 6.80354332
         normalize_std: 13.87822103
         timestamp_key: running.timestamps
@@ -1303,7 +1303,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: natural_movie_one_frame
-        weight: 0.25
+        weights: 0.25
         timestamp_key: natural_movie_one.timestamps
         value_key: natural_movie_one.frame
         metrics:
@@ -1312,7 +1312,7 @@
               task: multiclass
               num_classes: 900
       - readout_id: natural_movie_two_frame
-        weight: 0.2
+        weights: 0.2
         timestamp_key: natural_movie_two.timestamps
         value_key: natural_movie_two.frame
         metrics:
@@ -1321,7 +1321,7 @@
               task: multiclass
               num_classes: 900
       - readout_id: locally_sparse_noise_frame
-        weight: 1.0
+        weights: 1.0
         timestamp_key: locally_sparse_noise.timestamps
         value_key: locally_sparse_noise.frame
         metrics:
@@ -1443,7 +1443,7 @@
       sampling_intervals = sampling_intervals & data.static_gratings.coalesce(0.3)
     multitask_readout:
       - readout_id: pupil_location.x
-        weight: 8.0
+        weights: 8.0
         normalize_mean: 11.02599208
         normalize_std: 15.94543917
         timestamp_key: pupil.timestamps
@@ -1452,7 +1452,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: pupil_location.y
-        weight: 8.0
+        weights: 8.0
         normalize_mean: 16.91118513
         normalize_std: 6.8334403
         timestamp_key: pupil.timestamps
@@ -1461,7 +1461,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: running_speed
-        weight: 1.5
+        weights: 1.5
         normalize_mean: 6.80354332
         normalize_std: 13.87822103
         timestamp_key: running.timestamps
@@ -1470,7 +1470,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: static_gratings_phase
-        weight: 1.0
+        weights: 1.0
         timestamp_key: static_gratings.timestamps
         value_key: static_gratings.phase_id
         metrics:
@@ -1479,7 +1479,7 @@
               task: multiclass
               num_classes: 5
       - readout_id: static_gratings_spatial_frequency
-        weight: 1.0
+        weights: 1.0
         timestamp_key: static_gratings.timestamps
         value_key: static_gratings.spatial_frequency_id
         metrics:
@@ -1488,7 +1488,7 @@
               task: multiclass
               num_classes: 5
       - readout_id: static_gratings_orientation
-        weight: 1.0
+        weights: 1.0
         timestamp_key: static_gratings.timestamps
         value_key: static_gratings.orientation_id
         metrics:
@@ -1497,7 +1497,7 @@
               task: multiclass
               num_classes: 6
       - readout_id: natural_scenes
-        weight: 0.3
+        weights: 0.3
         timestamp_key: natural_scenes.timestamps
         value_key: natural_scenes.frame
         metrics:
@@ -1506,7 +1506,7 @@
               task: multiclass
               num_classes: 119
       - readout_id: natural_movie_one_frame
-        weight: 0.25
+        weights: 0.25
         timestamp_key: natural_movie_one.timestamps
         value_key: natural_movie_one.frame
         metrics:
@@ -1614,7 +1614,7 @@
       sampling_intervals = sampling_intervals & data.drifting_gratings.coalesce(0.3)
     multitask_readout:
       - readout_id: pupil_location.x
-        weight: 8.0
+        weights: 8.0
         normalize_mean: 11.02599208
         normalize_std: 15.94543917
         timestamp_key: pupil.timestamps
@@ -1623,7 +1623,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: pupil_location.y
-        weight: 8.0
+        weights: 8.0
         normalize_mean: 16.91118513
         normalize_std: 6.8334403
         timestamp_key: pupil.timestamps
@@ -1632,7 +1632,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: running_speed
-        weight: 1.5
+        weights: 1.5
         normalize_mean: 6.80354332
         normalize_std: 13.87822103
         timestamp_key: running.timestamps
@@ -1641,7 +1641,7 @@
           - metric:
               _target_: torchmetrics.MeanSquaredError
       - readout_id: drifting_gratings_orientation
-        weight: 1.0
+        weights: 1.0
         timestamp_key: drifting_gratings.timestamps
         value_key: drifting_gratings.orientation_id
         metrics:
@@ -1650,7 +1650,7 @@
               task: multiclass
               num_classes: 8
       - readout_id: drifting_gratings_temporal_frequency
-        weight: 1.0
+        weights: 1.0
         timestamp_key: drifting_gratings.timestamps
         value_key: drifting_gratings.temporal_frequency_id
         metrics:
@@ -1659,7 +1659,7 @@
               task: multiclass
               num_classes: 5
       - readout_id: natural_movie_one_frame
-        weight: 0.25
+        weights: 0.25
         timestamp_key: natural_movie_one.timestamps
         value_key: natural_movie_one.frame
         metrics:
@@ -1668,7 +1668,7 @@
               task: multiclass
               num_classes: 900
       - readout_id: natural_movie_three_frame
-        weight: 0.2
+        weights: 0.2
         timestamp_key: natural_movie_three.timestamps
         value_key: natural_movie_three.frame
         metrics:

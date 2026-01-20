@@ -164,7 +164,7 @@ def create_readout_config(tasks: Dict[str, bool]) -> List[Dict]:
                 
                 # Add weight for pupil_location (applies to both x and y)
                 if modality_name in TASK_WEIGHTS:
-                    readout['weight'] = TASK_WEIGHTS[modality_name]
+                    readout['weights'] = TASK_WEIGHTS[modality_name]
                 
                 readouts.append(readout)
         else:
@@ -178,7 +178,7 @@ def create_readout_config(tasks: Dict[str, bool]) -> List[Dict]:
             
             # Add weight if available
             if modality_name in TASK_WEIGHTS:
-                readout['weight'] = TASK_WEIGHTS[modality_name]
+                readout['weights'] = TASK_WEIGHTS[modality_name]
             
             # Add normalization for continuous variables (like running_speed)
             if modality_spec.type == DataType.CONTINUOUS:
@@ -360,8 +360,8 @@ def main():
                 output_lines.append('    multitask_readout:')
                 for readout in config['multitask_readout']:
                     output_lines.append('      - readout_id: ' + readout['readout_id'])
-                    if 'weight' in readout:
-                        output_lines.append(f"        weight: {readout['weight']}")
+                    if 'weights' in readout:
+                        output_lines.append(f"        weights: {readout['weights']}")
                     if 'normalize_mean' in readout:
                         output_lines.append(f"        normalize_mean: {readout['normalize_mean']}")
                     if 'normalize_std' in readout:
