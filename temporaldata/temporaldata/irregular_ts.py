@@ -256,29 +256,6 @@ class IrregularTimeSeries(ArrayDict):
         out._domain = out._domain & interval
         return out
 
-    def add_split_mask(self, name: str, interval: Interval):
-        """Adds a boolean mask as an array attribute, which is defined for each
-        timestamp, and is set to :obj:`True` for all timestamps that are within
-        :obj:`interval`. The mask attribute will be called :obj:`<name>_mask`.
-
-        This is used to mark points in the time series, as part of train, validation,
-        or test sets, and is useful to ensure that there is no data leakage.
-
-        Args:
-            name: name of the split, e.g. "train", "valid", "test".
-            interval: a set of intervals defining the split domain.
-        """
-        assert not hasattr(self, f"{name}_mask"), (
-            f"Attribute {name}_mask already exists. Use another mask name, or rename "
-            f"the existing attribute."
-        )
-
-        mask_array = np.zeros(len(self), dtype=bool)
-        for start, end in zip(interval.start, interval.end):
-            mask_array |= (self.timestamps >= start) & (self.timestamps < end)
-
-        setattr(self, f"{name}_mask", mask_array)
-
     @classmethod
     def from_dataframe(
         cls,
