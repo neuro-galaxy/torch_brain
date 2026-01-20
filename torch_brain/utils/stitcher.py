@@ -393,8 +393,10 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                 )
 
         metrics = {}
+        tasks = set()
         for recording_id in self.metrics.keys():
             for task_name in self.metrics[recording_id].keys():
+                tasks.add(task_name)
                 for metric_name in self.metrics[recording_id][task_name].keys():
                     # if not self.metrics[recording_id][task_name][metric_name].update_called:
                     #     dim = torch_brain.get_modality_by_id(task_name).dim
@@ -420,6 +422,11 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
         metrics[f"average_{prefix}_metric"] = torch.tensor(
             list(metrics.values())
         ).mean()
+
+        for task_name in tasks:
+            metrics[f"{prefix}/average_{task_name}_metric"] = torch.tensor(
+                [metrics[f"{recording_id}/{task_name}/{metric_name}/{prefix}"] for recording_id in self.metrics.keys()]
+            ).mean()
 
         # log the metrics
         self.log_dict(metrics)
