@@ -4,6 +4,7 @@ import copy
 from collections.abc import Mapping, Sequence
 from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Type
 from pathlib import Path
+import warnings
 
 import h5py
 import numpy as np
@@ -412,58 +413,47 @@ class Data(object):
         return cls.from_hdf5(file, lazy=lazy)
 
     def set_train_domain(self, interval: Interval):
-        """Set the train domain for all attributes."""
+        """Deprecated no-op retained for backward compatibility."""
+        warnings.warn(
+            "set_train_domain() is being deprecated and will be removed in a future version. "
+            "Please directly set the train_domain attribute of this Data object.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.train_domain = interval
-        self.add_split_mask("train", interval)
 
     def set_valid_domain(self, interval: Interval):
-        """Set the valid domain for all attributes."""
+        """Deprecated no-op retained for backward compatibility."""
+        warnings.warn(
+            "set_valid_domain() is being deprecated and will be removed in a future version. "
+            "Please directly set the valid_domain attribute of this Data object.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.valid_domain = interval
-        self.add_split_mask("valid", interval)
 
     def set_test_domain(self, interval: Interval):
-        """Set the test domain for all attributes."""
+        """Deprecated no-op retained for backward compatibility."""
+        warnings.warn(
+            "set_test_domain() is being deprecated and will be removed in a future version. "
+            "Please directly set the test_domain attribute of this Data object.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self.test_domain = interval
-        self.add_split_mask("test", interval)
 
-    def add_split_mask(
-        self,
-        name: str,
-        interval: Interval,
-    ):
-        """Create split masks for all Data, Interval & IrregularTimeSeries objects
-        contained within this Data object.
+    def _check_for_data_leakage(self, *args, **kwargs):
+        """Deprecated no-op retained for backward compatibility.
+
+        The ``_check_for_data_leakage`` method no longer performs any validation.
+        Actual data leakage checks should be performed by the sampler.
         """
-        for key in self.keys():
-            if key.endswith("_domain"):
-                # domains are not split
-                assert isinstance(getattr(self, key), Interval)
-                continue
-            obj = getattr(self, key)
-            if isinstance(
-                obj, (Data, RegularTimeSeries, IrregularTimeSeries, Interval)
-            ):
-                obj.add_split_mask(name, interval)
-
-    def _check_for_data_leakage(self, name):
-        """Ensure that split masks are all True"""
-        for key in self.keys():
-            if key.endswith("_domain"):
-                continue
-            obj = getattr(self, key)
-            if isinstance(obj, (IrregularTimeSeries, Interval)):
-                assert hasattr(obj, f"{name}_mask"), (
-                    f"Split mask for '{name}' not found in Data object. "
-                    f"Please register this split in prepare_data.py using "
-                    f"the session.register_split(...) method. In Data object: \n"
-                    f"{self}"
-                )
-                assert getattr(obj, f"{name}_mask").all(), (
-                    f"Data leakage detected split mask for '{name}' is not all True "
-                    f"in self.{key}."
-                )
-            if isinstance(obj, Data):
-                obj._check_for_data_leakage(name)
+        warnings.warn(
+            "_check_for_data_leakage() is being deprecated and will be removed in a future version. ",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return True
 
     def keys(self) -> List[str]:
         r"""Returns a list of all attribute names."""

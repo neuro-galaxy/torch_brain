@@ -2,7 +2,7 @@
 Splitting data into train/val/test
 ==================================
 
-For machine learning applications, you can create split masks to separate a Data object into training/validation/test sets using the set_train_domain(), set_valid_domain() and set_test_domain() methods:
+For machine learning applications, you can set train/validation/test domains using the set_train_domain(), set_valid_domain() and set_test_domain() methods:
 
 .. code-block:: python
 
@@ -11,12 +11,10 @@ For machine learning applications, you can create split masks to separate a Data
     valid_interval = Interval(5.0, 7.0) 
     test_interval = Interval(7.0, 10.0)
 
-    # Set the domains and create split masks
+    # Set the domains
     data.set_train_domain(train_interval)
     data.set_valid_domain(valid_interval) 
     data.set_test_domain(test_interval)
 
 
-Under the hood, when setting train/valid/test domains, each data point and interval is 
-labeled with its corresponding split ("train", "valid", or "test"). The _check_for_data_leakage() 
-method uses these labels to verify that no data points or intervals are assigned to multiple splits, which would constitute data leakage.
+The _check_for_data_leakage() method is deprecated. Data leakage should be handled by the sampler instead of using this method.

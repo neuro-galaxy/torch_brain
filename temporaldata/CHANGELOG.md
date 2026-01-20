@@ -12,6 +12,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Fixed a bug where `RegularTimeSeries.slice` does not update the `domain` attribute and leads to incorrect resolution of `timestamps` after slicing. ([#39](https://github.com/neuro-galaxy/temporaldata/pull/39))
 - Fixed a bug where `data.materialize` would not actually load the domain information from the file which would cause issues when accessing it after file was closed. ([#43] (https://github.com/neuro-galaxy/temporaldata/pull/43))
 
+### Deprecated
+- Deprecated `set_train_domain`, `set_valid_domain`, and `set_test_domain` methods in `Data`. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
+- Deprecated `_check_for_data_leakage` method in `Data`. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))    
+
+### Removed
+- Removed `add_split_mask` method from `Data`, `Interval`, `IrregularTimeSeries`, and `RegularTimeSeries` classes. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
+- Removed `allow_split_mask_overlap` method from `Interval`. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
+
 ## [0.1.3] - 2025-03-21
 ### Added
 - Added `__iter__` method to `Interval` to iterate over the intervals. ([#36](https://github.com/neuro-galaxy/temporaldata/pull/36))

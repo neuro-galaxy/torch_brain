@@ -76,7 +76,6 @@ class Interval(ArrayDict):
 
     _sorted = None
     _timekeys = None
-    _allow_split_mask_overlap = False
 
     def __init__(
         self,
@@ -564,49 +563,6 @@ class Interval(ArrayDict):
             start=all_starts, end=all_ends, timekeys=self.timekeys(), **kwargs
         )
 
-    def add_split_mask(
-        self,
-        name: str,
-        interval: Interval,
-    ):
-        """Adds a boolean mask as an array attribute, which is defined for each
-        interval in the object, and is set to :obj:`True` if the interval intersects
-        with the provided :obj:`Interval` object. The mask attribute will be called
-        :obj:`<name>_mask`.
-
-        This is used to mark intervals as part of train, validation,
-        or test sets, and is useful to ensure that there is no data leakage.
-
-        If an interval belongs to multiple splits, an error will be raised, unless this
-        is expected, in which case the method :meth:`allow_split_mask_overlap` should be
-        called.
-
-        Args:
-            name: name of the split, e.g. "train", "valid", "test".
-            interval: a set of intervals defining the split domain.
-        """
-        assert f"{name}_mask" not in self.keys(), (
-            f"Attribute {name}_mask already exists. Use another mask name, or rename "
-            f"the existing attribute."
-        )
-
-        mask_array = np.zeros_like(self.start, dtype=bool)
-        for start, end in zip(interval.start, interval.end):
-            mask_array |= (self.start < end) & (self.end > start)
-
-        setattr(self, f"{name}_mask", mask_array)
-
-    def allow_split_mask_overlap(self):
-        r"""Disables the check for split mask overlap. This means there could be an
-        overlap between the intervals across different splits. This is useful when
-        an interval is allowed to belong to multiple splits."""
-        logging.warning(
-            f"You are disabling the check for split mask overlap. "
-            f"This means there could be an overlap between the intervals "
-            f"across different splits. "
-        )
-        self._allow_split_mask_overlap = True
-
     @classmethod
     def linspace(cls, start: float, end: float, steps: int):
         r"""Create a regular interval with a given number of samples.
@@ -748,7 +704,6 @@ class Interval(ArrayDict):
 
         file.attrs["_unicode_keys"] = np.array(_unicode_keys, dtype="S")
         file.attrs["timekeys"] = np.array(self._timekeys, dtype="S")
-        file.attrs["allow_split_mask_overlap"] = self._allow_split_mask_overlap
         file.attrs["object"] = self.__class__.__name__
 
     @classmethod
@@ -780,9 +735,6 @@ class Interval(ArrayDict):
                 data[key] = data[key].astype("U")
         timekeys = file.attrs["timekeys"].astype(str).tolist()
         obj = cls(**data, timekeys=timekeys)
-
-        if file.attrs["allow_split_mask_overlap"]:
-            obj.allow_split_mask_overlap()
 
         return obj
 
