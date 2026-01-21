@@ -1,0 +1,57 @@
+# defaults used for LoRA finetuning of POYO
+# this file needs to be combined with a model config and a dataset config
+
+# Paths
+data_root: /network/projects/neuro-galaxy/data/processed/ # ./data/processed/  ### 
+log_dir: ./logs
+
+# Transforms
+train_transforms: []
+eval_transforms: []
+
+# Training
+epochs: 100
+batch_size: 128
+eval_epochs: 1  # frequency for doing validation
+eval_batch_size: null  # if null, will use batch_size
+seed: 42  # use to set random seed
+sanity_check_validation: false  # if true, will start the run with validation 
+
+optim:
+  base_lr: 3.125e-5  # scaled linearly by batch size
+  weight_decay: 1e-4
+  lr_decay_start: 0.5  # fraction of epochs before starting LR decay
+
+# LoRA configuration
+lora:
+  rank: 16  # LoRA rank (r)
+  alpha: 16.0  # LoRA scaling factor (α)
+  dropout: 0.0  # Dropout rate for LoRA layers
+  init_scale: 0.01  # Initialization scale for LoRA matrix A
+  target_modules:  # Module name patterns to apply LoRA to
+    - "to_q"
+    - "to_kv"
+    - "to_qkv"
+    - "to_out"
+  target_projections:  # Projections within attention layers to adapt
+    - "q"
+    - "k"
+    - "v"
+    - "out"
+
+# Logging
+wandb:
+  enable: true
+  entity: null
+  project: poyo_lora
+  run_name: null
+  log_model: false
+
+# GPU and CPU
+precision: 32
+nodes: 1
+gpus: 1
+num_workers: 4
+
+# Checkpointing
+ckpt_path: null  # path to pretrained model checkpoint (required for finetuning)
