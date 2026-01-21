@@ -121,7 +121,7 @@ TASK_WEIGHTS = {
 
 # Mapping from modality names to their domain interval keys
 MODALITY_TO_DOMAIN = {
-    'pupil_location': 'pupil',
+    'pupil_location': 'pupil.domain',
     'running_speed': 'running.domain', # the interal for running speed is in the domain
     'drifting_gratings_orientation': 'drifting_gratings',
     'drifting_gratings_temporal_frequency': 'drifting_gratings',
