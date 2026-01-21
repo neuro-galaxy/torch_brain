@@ -2,7 +2,7 @@
 # this file needs to be combined with a model config and a dataset config
 
 # Paths
-data_root: /network/projects/neuro-galaxy/data/processed/ # ./data/processed/  ### 
+data_root: ./data/processed/ 
 log_dir: ./logs
 
 # Transforms
@@ -18,7 +18,11 @@ seed: 42  # use to set random seed
 sanity_check_validation: false  # if true, will start the run with validation 
 
 optim:
-  base_lr: 3.125e-5  # scaled linearly by batch size
+  optimizer: adamw
+  warmup_steps: 0
+  hold_steps: 30000
+  decay_steps: 10000
+  scaling_rule: sqrt
   weight_decay: 1e-4
   lr_decay_start: 0.5  # fraction of epochs before starting LR decay
 

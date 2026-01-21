@@ -14,8 +14,8 @@ train_transforms:
 wandb:
   run_name: poyo_lora_finetune
 
-epochs: 100
-ckpt_path: null  # Must specify path to pretrained model checkpoint
+epochs: 1
+ckpt_path: null  # Must specify path to pretrained model checkpoint. Or set to null to use randomly initialized weights.
 
 # LoRA configuration for finetuning
 lora:
@@ -33,3 +33,10 @@ lora:
     - "k"
     - "v"
     - "out"
+    - "net" # for linear layers in feedforward networks
+
+# Optimizer configuration
+optim:
+  base_lr: 3.125e-5  # scaled linearly by batch size
+  embedding_lr_multiplier: 2.0  # embeddings get 2x the base lr
+  lora_lr_multiplier: 1.0  
