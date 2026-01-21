@@ -116,7 +116,23 @@ TASK_WEIGHTS = {
     'static_gratings_phase': 1.0,
     'natural_scenes': 0.3,
     'running_speed': 1.5,
-    'pupil_location': 8.0,  # Applied to both x and y
+    'pupil_location': 8.0,
+}
+
+# Mapping from modality names to their domain interval keys
+MODALITY_TO_DOMAIN = {
+    'pupil_location': 'pupil',
+    'running_speed': 'running.domain', # the interal for running speed is in the domain
+    'drifting_gratings_orientation': 'drifting_gratings',
+    'drifting_gratings_temporal_frequency': 'drifting_gratings',
+    'static_gratings_orientation': 'static_gratings',
+    'static_gratings_spatial_frequency': 'static_gratings',
+    'static_gratings_phase': 'static_gratings',
+    'natural_scenes': 'natural_scenes',
+    'natural_movie_one_frame': 'natural_movie_one',
+    'natural_movie_two_frame': 'natural_movie_two',
+    'natural_movie_three_frame': 'natural_movie_three',
+    'locally_sparse_noise_frame': 'locally_sparse_noise',
 }
 
 def create_readout_config(tasks: Dict[str, bool]) -> List[Dict]:
@@ -138,48 +154,46 @@ def create_readout_config(tasks: Dict[str, bool]) -> List[Dict]:
         
         modality_spec = MODALITY_REGISTRY[modality_name]
         
-        # Special handling for pupil_location - split into x and y
+        # Create readout config
+        readout = {
+            'readout_id': modality_name,
+            'timestamp_key': modality_spec.timestamp_key,
+            'value_key': modality_spec.value_key,
+            'metrics': []
+        }
+        
+        # Add weight if available - format as dictionary with domain interval key
+        if modality_name in TASK_WEIGHTS:
+            weight_value = TASK_WEIGHTS[modality_name]
+            if modality_name in MODALITY_TO_DOMAIN:
+                domain_key = MODALITY_TO_DOMAIN[modality_name]
+                readout['weights'] = {domain_key: weight_value}
+            else:
+                # Fallback to simple value if domain mapping not found
+                readout['weights'] = weight_value
+        
+        # Special handling for pupil_location - use list normalization values for x and y
         if modality_name == 'pupil_location' and modality_spec.type == DataType.CONTINUOUS and modality_spec.dim == 2:
-            # Create two separate readouts for x and y
-            for coord in ['x', 'y']:
-                readout_id = f'{modality_name}.{coord}'
-                readout = {
-                    'readout_id': readout_id,
-                    'timestamp_key': modality_spec.timestamp_key,
-                    'value_key': modality_spec.value_key,
-                    'metrics': [{
-                        'metric': {
-                            '_target_': 'torchmetrics.MeanSquaredError'
-                        }
-                    }]
+            # Use list normalization values for x and y
+            if 'pupil_location.x' in NORMALIZATION_VALUES and 'pupil_location.y' in NORMALIZATION_VALUES:
+                readout['normalize_mean'] = [
+                    NORMALIZATION_VALUES['pupil_location.x']['mean'],
+                    NORMALIZATION_VALUES['pupil_location.y']['mean']
+                ]
+                readout['normalize_std'] = [
+                    NORMALIZATION_VALUES['pupil_location.x']['std'],
+                    NORMALIZATION_VALUES['pupil_location.y']['std']
+                ]
+            else:
+                readout['normalize_mean'] = [0.0, 0.0]
+                readout['normalize_std'] = [1.0, 1.0]
+            
+            readout['metrics'].append({
+                'metric': {
+                    '_target_': 'torchmetrics.MeanSquaredError'
                 }
-                
-                # Add normalization values if available
-                if readout_id in NORMALIZATION_VALUES:
-                    readout['normalize_mean'] = NORMALIZATION_VALUES[readout_id]['mean']
-                    readout['normalize_std'] = NORMALIZATION_VALUES[readout_id]['std']
-                else:
-                    readout['normalize_mean'] = 0.0
-                    readout['normalize_std'] = 1.0
-                
-                # Add weight for pupil_location (applies to both x and y)
-                if modality_name in TASK_WEIGHTS:
-                    readout['weights'] = TASK_WEIGHTS[modality_name]
-                
-                readouts.append(readout)
+            })
         else:
-            # Create readout config for other modalities
-            readout = {
-                'readout_id': modality_name,
-                'timestamp_key': modality_spec.timestamp_key,
-                'value_key': modality_spec.value_key,
-                'metrics': []
-            }
-            
-            # Add weight if available
-            if modality_name in TASK_WEIGHTS:
-                readout['weights'] = TASK_WEIGHTS[modality_name]
-            
             # Add normalization for continuous variables (like running_speed)
             if modality_spec.type == DataType.CONTINUOUS:
                 # Use normalization values if available
@@ -210,8 +224,8 @@ def create_readout_config(tasks: Dict[str, bool]) -> List[Dict]:
                         '_target_': 'torchmetrics.MeanSquaredError'
                     }
                 })
-            
-            readouts.append(readout)
+        
+        readouts.append(readout)
     
     return readouts
 
@@ -361,7 +375,15 @@ def main():
                 for readout in config['multitask_readout']:
                     output_lines.append('      - readout_id: ' + readout['readout_id'])
                     if 'weights' in readout:
-                        output_lines.append(f"        weights: {readout['weights']}")
+                        weights = readout['weights']
+                        if isinstance(weights, dict):
+                            # Format as dictionary with domain keys
+                            output_lines.append('        weights:')
+                            for key, value in weights.items():
+                                output_lines.append(f'          {key}: {value}')
+                        else:
+                            # Single value (fallback)
+                            output_lines.append(f"        weights: {weights}")
                     if 'normalize_mean' in readout:
                         output_lines.append(f"        normalize_mean: {readout['normalize_mean']}")
                     if 'normalize_std' in readout:
