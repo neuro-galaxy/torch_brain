@@ -59,8 +59,8 @@ class LoRATrainWrapper(L.LightningModule):
         max_lr = self.cfg.optim.base_lr * self.cfg.batch_size  # linear scaling rule
 
         # Get learning rate multipliers from config (default to 1.0 if not specified)
-        embedding_lr_mult = getattr(self.cfg.optim, 'embedding_lr_multiplier', 1.0)
-        lora_lr_mult = getattr(self.cfg.optim, 'lora_lr_multiplier', 1.0)
+        embedding_lr_mult = getattr(self.cfg.optim, "embedding_lr_multiplier", 1.0)
+        lora_lr_mult = getattr(self.cfg.optim, "lora_lr_multiplier", 1.0)
 
         # Separate parameters into groups for different learning rates
         embedding_params = []
@@ -72,10 +72,10 @@ class LoRATrainWrapper(L.LightningModule):
                 continue
 
             # Check if it's an embedding parameter
-            if any(emb_name in name for emb_name in ['unit_emb', 'session_emb']):
+            if any(emb_name in name for emb_name in ["unit_emb", "session_emb"]):
                 embedding_params.append(param)
             # Check if it's a LoRA parameter (typically named lora_A, lora_B, or similar)
-            elif 'lora' in name.lower():
+            elif "lora" in name.lower():
                 lora_params.append(param)
             else:
                 other_params.append(param)
@@ -84,27 +84,27 @@ class LoRATrainWrapper(L.LightningModule):
         param_groups = []
 
         if embedding_params:
-            param_groups.append({
-                'params': embedding_params,
-                'lr': max_lr * embedding_lr_mult,
-                'name': 'embeddings'
-            })
-            logger.info(f"Embedding params: {len(embedding_params)} tensors, lr_mult={embedding_lr_mult}")
+            param_groups.append(
+                {
+                    "params": embedding_params,
+                    "lr": max_lr * embedding_lr_mult,
+                    "name": "embeddings",
+                }
+            )
+            logger.info(
+                f"Embedding params: {len(embedding_params)} tensors, lr_mult={embedding_lr_mult}"
+            )
 
         if lora_params:
-            param_groups.append({
-                'params': lora_params,
-                'lr': max_lr * lora_lr_mult,
-                'name': 'lora'
-            })
-            logger.info(f"LoRA params: {len(lora_params)} tensors, lr_mult={lora_lr_mult}")
+            param_groups.append(
+                {"params": lora_params, "lr": max_lr * lora_lr_mult, "name": "lora"}
+            )
+            logger.info(
+                f"LoRA params: {len(lora_params)} tensors, lr_mult={lora_lr_mult}"
+            )
 
         if other_params:
-            param_groups.append({
-                'params': other_params,
-                'lr': max_lr,
-                'name': 'other'
-            })
+            param_groups.append({"params": other_params, "lr": max_lr, "name": "other"})
             logger.info(f"Other params: {len(other_params)} tensors, lr_mult=1.0")
 
         optimizer = torch.optim.AdamW(
@@ -116,16 +116,18 @@ class LoRATrainWrapper(L.LightningModule):
         # Build lr_lambdas list matching the param_groups order
         lr_lambdas = []
         if embedding_params:
-            lr_lambdas.append(lambda step, mult=embedding_lr_mult: self.lr_lambda(step) * mult)
+            lr_lambdas.append(
+                lambda step, mult=embedding_lr_mult: self.lr_lambda(step) * mult
+            )
         if lora_params:
-            lr_lambdas.append(lambda step, mult=lora_lr_mult: self.lr_lambda(step) * mult)
+            lr_lambdas.append(
+                lambda step, mult=lora_lr_mult: self.lr_lambda(step) * mult
+            )
         if other_params:
             lr_lambdas.append(lambda step: self.lr_lambda(step))
 
         # Use per-group lr_lambdas to maintain the multipliers through the schedule
-        scheduler = torch.optim.lr_scheduler.LambdaLR(
-            optimizer, lr_lambda=lr_lambdas
-        )
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambdas)
 
         return {
             "optimizer": optimizer,
@@ -369,7 +371,7 @@ class DataModule(L.LightningDataModule):
 
 def load_model_from_ckpt(model: nn.Module, ckpt_path: str) -> bool:
     """Load model weights from a checkpoint file.
-    
+
     Returns:
         True if weights were loaded, False if no checkpoint was provided.
     """
@@ -493,7 +495,7 @@ def main(cfg: DictConfig):
     # trainer.fit(wrapper, data_module)
 
     # Test
-    trainer.test(wrapper, data_module) #, ckpt_path="best")
+    trainer.test(wrapper, data_module)  # , ckpt_path="best")
 
 
 if __name__ == "__main__":
