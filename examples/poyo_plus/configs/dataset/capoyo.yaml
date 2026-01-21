@@ -353,8 +353,6 @@
     - "716646781"
     - "717214654"
   config:
-    sampling_intervals_modifier: |
-      sampling_intervals = sampling_intervals & data.static_gratings.coalesce(0.3)
     multitask_readout:
       - readout_id: running_speed
         weights:
@@ -1121,8 +1119,6 @@
     - "715923832"
     - "716956096"
   config:
-    sampling_intervals_modifier: |
-      sampling_intervals = sampling_intervals & data.drifting_gratings.coalesce(0.3)
     multitask_readout:
       - readout_id: running_speed
         weights:
@@ -1450,8 +1446,6 @@
     - "581676766"
     - "583149151"
   config:
-    sampling_intervals_modifier: |
-      sampling_intervals = sampling_intervals & data.static_gratings.coalesce(0.3)
     multitask_readout:
       - readout_id: pupil_location
         weights:
@@ -1619,8 +1613,6 @@
     - "582867147"
     - "583136567"
   config:
-    sampling_intervals_modifier: |
-      sampling_intervals = sampling_intervals & data.drifting_gratings.coalesce(0.3)
     multitask_readout:
       - readout_id: pupil_location
         weights:

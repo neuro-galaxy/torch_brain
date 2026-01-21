@@ -229,18 +229,6 @@ def create_readout_config(tasks: Dict[str, bool]) -> List[Dict]:
     
     return readouts
 
-def get_sampling_intervals_modifier(tasks: Dict[str, bool]) -> str:
-    """Determine sampling_intervals_modifier based on tasks."""
-    has_drifting = tasks['drifting_gratings.orientation'] or tasks['drifting_gratings.temporal_frequency']
-    has_static = tasks['static_gratings.orientation'] or tasks['static_gratings.spatial_frequency'] or tasks['static_gratings.phase']
-    
-    if has_drifting:
-        return "sampling_intervals = sampling_intervals & data.drifting_gratings.coalesce(0.3)"
-    elif has_static:
-        return "sampling_intervals = sampling_intervals & data.static_gratings.coalesce(0.3)"
-    else:
-        return None
-
 def generate_yaml_config(groups: Dict[Tuple, List[str]], sessions: Dict[str, Dict[str, bool]]) -> List[Dict]:
     """Generate YAML config structure from grouped sessions."""
     config_groups = []
@@ -261,11 +249,6 @@ def generate_yaml_config(groups: Dict[Tuple, List[str]], sessions: Dict[str, Dic
             }],
             'config': {}
         }
-        
-        # Add sampling_intervals_modifier if needed
-        modifier = get_sampling_intervals_modifier(tasks_dict)
-        if modifier:
-            group_config['config']['sampling_intervals_modifier'] = modifier
         
         # Add multitask_readout
         readouts = create_readout_config(tasks_dict)
@@ -361,13 +344,6 @@ def main():
         config = group['config']
         if config:
             output_lines.append('  config:')
-            
-            # Add sampling_intervals_modifier if present
-            if 'sampling_intervals_modifier' in config:
-                output_lines.append('    sampling_intervals_modifier: |')
-                modifier = config['sampling_intervals_modifier']
-                for line in modifier.split('\n'):
-                    output_lines.append(f'      {line}')
             
             # Add multitask_readout
             if 'multitask_readout' in config:

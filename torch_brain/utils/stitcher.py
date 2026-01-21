@@ -424,9 +424,8 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
         ).mean()
 
         for task_name in tasks:
-            metrics[f"{prefix}/average_{task_name}_metric"] = torch.tensor(
-                [metrics[f"{recording_id}/{task_name}/{metric_name}/{prefix}"] for recording_id in self.metrics.keys()]
-            ).mean()
+            metrics_for_task = [metrics[k] for k in metrics.keys() if task_name in k]
+            metrics[f"{prefix}/average_{task_name}_metric"] = torch.tensor(metrics_for_task).mean()
 
         # log the metrics
         self.log_dict(metrics)
