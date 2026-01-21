@@ -1,7 +1,9 @@
 import logging
+import math
 
 import hydra
 import lightning as L
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -12,9 +14,10 @@ from lightning.pytorch.callbacks import (
 )
 from omegaconf import DictConfig, OmegaConf
 
+# Allow numpy scalar types in torch.load (required for PyTorch 2.6+)
+torch.serialization.add_safe_globals([np.core.multiarray.scalar])
+
 from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
-from torch_brain.optim import SparseLamb
-from torch_brain.models.poyo import POYO
 from torch_brain.nn import apply_lora_to_model, LoRAModelWrapper
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
@@ -55,38 +58,73 @@ class LoRATrainWrapper(L.LightningModule):
     def configure_optimizers(self):
         max_lr = self.cfg.optim.base_lr * self.cfg.batch_size  # linear scaling rule
 
-        # Get trainable parameters (LoRA + embeddings + readout)
-        trainable_params = self.model.get_trainable_parameters()
+        # Get learning rate multipliers from config (default to 1.0 if not specified)
+        embedding_lr_mult = getattr(self.cfg.optim, 'embedding_lr_multiplier', 1.0)
+        lora_lr_mult = getattr(self.cfg.optim, 'lora_lr_multiplier', 1.0)
 
-        # Separate sparse embedding params from other trainable params
-        sparse_param_names = ["unit_emb", "session_emb"]
-        sparse_params = []
+        # Separate parameters into groups for different learning rates
+        embedding_params = []
+        lora_params = []
         other_params = []
 
         for name, param in self.model.named_parameters():
             if not param.requires_grad:
                 continue
-            if any(sp_name in name for sp_name in sparse_param_names):
-                sparse_params.append(param)
+
+            # Check if it's an embedding parameter
+            if any(emb_name in name for emb_name in ['unit_emb', 'session_emb']):
+                embedding_params.append(param)
+            # Check if it's a LoRA parameter (typically named lora_A, lora_B, or similar)
+            elif 'lora' in name.lower():
+                lora_params.append(param)
             else:
                 other_params.append(param)
 
-        optimizer = SparseLamb(
-            [
-                {"params": sparse_params, "sparse": True},
-                {"params": other_params},
-            ],
-            lr=max_lr,
+        # Create parameter groups with different learning rates
+        param_groups = []
+
+        if embedding_params:
+            param_groups.append({
+                'params': embedding_params,
+                'lr': max_lr * embedding_lr_mult,
+                'name': 'embeddings'
+            })
+            logger.info(f"Embedding params: {len(embedding_params)} tensors, lr_mult={embedding_lr_mult}")
+
+        if lora_params:
+            param_groups.append({
+                'params': lora_params,
+                'lr': max_lr * lora_lr_mult,
+                'name': 'lora'
+            })
+            logger.info(f"LoRA params: {len(lora_params)} tensors, lr_mult={lora_lr_mult}")
+
+        if other_params:
+            param_groups.append({
+                'params': other_params,
+                'lr': max_lr,
+                'name': 'other'
+            })
+            logger.info(f"Other params: {len(other_params)} tensors, lr_mult=1.0")
+
+        optimizer = torch.optim.AdamW(
+            param_groups,
+            lr=max_lr,  # default lr (used if param group doesn't specify one)
             weight_decay=self.cfg.optim.weight_decay,
         )
 
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(
-            optimizer,
-            max_lr=max_lr,
-            total_steps=self.trainer.estimated_stepping_batches,
-            pct_start=self.cfg.optim.lr_decay_start,
-            anneal_strategy="cos",
-            div_factor=1,
+        # Build lr_lambdas list matching the param_groups order
+        lr_lambdas = []
+        if embedding_params:
+            lr_lambdas.append(lambda step, mult=embedding_lr_mult: self.lr_lambda(step) * mult)
+        if lora_params:
+            lr_lambdas.append(lambda step, mult=lora_lr_mult: self.lr_lambda(step) * mult)
+        if other_params:
+            lr_lambdas.append(lambda step: self.lr_lambda(step))
+
+        # Use per-group lr_lambdas to maintain the multipliers through the schedule
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer, lr_lambda=lr_lambdas
         )
 
         return {
@@ -96,6 +134,48 @@ class LoRATrainWrapper(L.LightningModule):
                 "interval": "step",
             },
         }
+
+    def lr_lambda(self, current_step):
+        """
+        Computes a multiplicative factor for the learning rate based on the current training step.
+
+        The learning rate schedule is divided into three phases:
+
+        - warmup_steps: Number of steps to linearly increase the learning rate from 0 to max_lr.
+        - hold_steps: Number of steps to keep the learning rate constant at max_lr after warmup.
+        - decay_steps: Number of steps to decay the learning rate from max_lr to a minimum value
+          (min_lr_factor * max_lr) using a cosine schedule.
+
+        After these phases, the learning rate remains at the minimum value.
+
+        Args:
+            current_step (int): The current training step.
+
+        Returns:
+            float: The learning rate multiplier (to be multiplied with max_lr).
+        """
+        warmup_steps = self.cfg.optim.warmup_steps
+        hold_steps = self.cfg.optim.hold_steps
+        decay_steps = self.cfg.optim.decay_steps
+        min_lr_factor = 0.1  # Decay to 10% of max_lr
+
+        if current_step < warmup_steps:
+            # Warmup phase
+            return float(current_step) / float(max(1, warmup_steps))
+        elif current_step < warmup_steps + hold_steps or decay_steps == 0:
+            # Hold phase. If decay_steps is 0, we don't decay.
+            return 1.0
+        elif current_step < warmup_steps + hold_steps + decay_steps:
+            # Cosine decay phase
+            progress = float(current_step - warmup_steps - hold_steps) / float(
+                decay_steps
+            )
+            cosine_decay = 0.5 * (1.0 + math.cos(math.pi * progress))
+            # Decay from 1.0 down to min_lr_factor
+            return min_lr_factor + (1.0 - min_lr_factor) * cosine_decay
+        else:
+            # After decay, hold at minimum
+            return min_lr_factor
 
     def training_step(self, batch, batch_idx):
         # forward pass
@@ -410,10 +490,10 @@ def main(cfg: DictConfig):
     )
 
     # Train
-    trainer.fit(wrapper, data_module)
+    # trainer.fit(wrapper, data_module)
 
     # Test
-    trainer.test(wrapper, data_module, ckpt_path="best")
+    trainer.test(wrapper, data_module) #, ckpt_path="best")
 
 
 if __name__ == "__main__":
