@@ -31,6 +31,7 @@ from torch_brain.utils.stitcher import (
     MultiTaskDecodingStitchEvaluator,
     DataForMultiTaskDecodingStitchEvaluator,
 )
+import numpy as np
 
 
 # higher speed on machines with tensor cores
@@ -148,7 +149,11 @@ class TrainWrapper(L.LightningModule):
     def validation_step(self, batch, batch_idx):
 
         # forward pass
-        output_values = self.model(**batch["model_inputs"], unpack_output=True)
+        output_values, saved_latents = self.model(**batch["model_inputs"], unpack_output=True, save_latents=True)
+
+        # save the latents and the session id list to a file for this batch_idx
+        session_ids = batch["session_id"]
+        np.savez_compressed(f"saved_latents/latents_{batch_idx}.npz", latents=saved_latents, session_ids=session_ids)
 
         # prepare data for evaluator
         # (goes to MultiTaskDecodingStitchEvaluator.on_validation_batch_end)
@@ -329,7 +334,7 @@ class DataModule(L.LightningDataModule):
             shuffle=False,
             batch_size=batch_size,
             collate_fn=collate,
-            num_workers=0,
+            num_workers=self.cfg.num_workers,
         )
 
         self.log.info(f"Testing on {len(test_sampler)} samples")
@@ -414,10 +419,10 @@ def main(cfg: DictConfig):
     )
 
     # Train
-    trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path, weights_only=False)
+    # trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path, weights_only=False)
 
     # Test
-    trainer.test(wrapper, data_module, ckpt_path="best", weights_only=False)
+    trainer.test(wrapper, data_module, ckpt_path="epoch=364-step=1779375.ckpt", weights_only=False)
 
 
 if __name__ == "__main__":

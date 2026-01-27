@@ -165,3 +165,5 @@ data/raw
 checkpoint.pth
 
 uv.lock
+epoch=364-step=1779375.ckpt
+saved_latents

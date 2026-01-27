@@ -154,6 +154,7 @@ class CaPOYO(nn.Module):
         output_timestamps: TensorType["batch", "n_out", float],
         output_decoder_index: TensorType["batch", "n_out", int],
         unpack_output: bool = False,
+        save_latents: bool = False,
     ) -> Tuple[List[Dict[str, TensorType["*nqueries", "*nchannelsout"]]]]:
         """Forward pass of the POYO+ model.
 
@@ -233,6 +234,11 @@ class CaPOYO(nn.Module):
             output_timestamp_emb,
             latent_timestamp_emb,
         )
+
+        if save_latents:
+            saved_latents = latents.clone().detach().cpu().numpy()
+
+        # Save output latents to a file
         output_latents = output_queries + self.dec_ffn(output_queries)
 
         # multitask readout layer, each task has a seperate linear readout layer
@@ -241,6 +247,9 @@ class CaPOYO(nn.Module):
             output_readout_index=output_decoder_index,
             unpack_output=unpack_output,
         )
+
+        if save_latents:
+            return output, saved_latents
 
         return output
 
