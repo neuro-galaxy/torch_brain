@@ -242,7 +242,7 @@ def _ensure_index_has_namespace(index: DatasetIndex) -> DatasetIndex:
 
 
 def _set_nested_attribute(data: Data, path: str, value: Any) -> Data:
-    f"""Set a nested attribute in a :class:`temporaldata.Data` object using a dot-separated path.
+    r"""Set a nested attribute in a :class:`temporaldata.Data` object using a dot-separated path.
 
     Args:
         data: The :class:`temporaldata.Data` object to modify.
@@ -263,7 +263,7 @@ def _set_nested_attribute(data: Data, path: str, value: Any) -> Data:
             obj = getattr(obj, c)
         except AttributeError:
             raise AttributeError(
-                f"Could not resolve {path} in data (specifically, at level {c}))"
+                f"Could not resolve {path} in data (specifically, at level {c})"
             )
 
     setattr(obj, components[-1], value)
