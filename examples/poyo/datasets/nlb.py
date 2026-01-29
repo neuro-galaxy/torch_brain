@@ -1,4 +1,3 @@
-from typing import Literal
 import torchmetrics
 from brainsets.datasets import PeiPandarinathNLB2021
 from temporaldata import Data
