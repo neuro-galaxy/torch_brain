@@ -131,9 +131,6 @@ class Dataset(torch.utils.data.Dataset):
 
         Returns:
             Lazy :class:`temporaldata.Data` object containing the full recording.
-
-        Raises:
-            ValueError: If the ``recording_id`` is not found in the dataset.
         """
         if hasattr(self, "_data_objects"):
             data = copy.deepcopy(self._data_objects[recording_id])
