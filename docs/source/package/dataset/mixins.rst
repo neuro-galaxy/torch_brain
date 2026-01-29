@@ -7,3 +7,8 @@ Mixins
     :members:
     :show-inheritance:
     :undoc-members:
+
+.. autoclass:: CalciumImagingDatasetMixin
+    :members:
+    :show-inheritance:
+    :undoc-members:
