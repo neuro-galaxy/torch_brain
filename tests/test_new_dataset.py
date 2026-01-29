@@ -157,11 +157,11 @@ class TestDataset:
             assert (actual.end == expect.end).all()
 
     def test_default_apply_namespace(self, dummy_spiking_brainset):
-        # Test default
+        # Test deafult namespacing
         ds = Dataset(dummy_spiking_brainset)
         sample = ds[DatasetIndex("session1", 0.2, 0.4, _namespace="test_space")]
-        assert sample.session.id == "test_space/session1"
-        assert sample.subject.id == "test_space/alice"
+        assert sample.session.id == "session1"
+        assert sample.subject.id == "alice"
 
         # Test selectivity of namespace attributes
         ds = Dataset(dummy_spiking_brainset, namespace_attributes=["session.id"])

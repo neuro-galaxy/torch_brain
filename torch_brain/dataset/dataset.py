@@ -56,11 +56,10 @@ class Dataset(torch.utils.data.Dataset):
             access. If ``False``, files are opened on-demand. Default is ``True``.
         namespace_attributes: List of nested attribute paths (e.g., "session.id")
             that should be namespaced when loading recordings in a :class:`NestedDataset`
-            situation. Defaults to ``["session.id", "subject.id"]``.
-            See Namespacing_.
+            situation. See Namespacing_. No namespacing performed if set to ``None``.
 
     Subclassing:
-        Users are encouraged to subclass :class:`Dataset` and override:
+        Users are encouraged to subclass :class:`Dataset` and optionally override:
 
         - :meth:`get_recording_hook` to run light-weight custom post-processing on recordings
           just before :meth:`get_recording` returns.
@@ -75,7 +74,7 @@ class Dataset(torch.utils.data.Dataset):
         with the dataset name to avoid naming collisions when combining multiple datasets.
         The list of attributes that are to be namespaced can be set with ``namespace_attributes``.
 
-        Example: With the default value of ``namespace_attributes``, say you create a nested dataset
+        Example: With the ``namespace_attributes=["session.id", "subject.id"]``, say you create a nested dataset
         with two datasets named ``ds1`` and ``ds2``. Now, when you load a recording from
         ``ds1``, the recording's ``session.id`` and ``subject.id`` attributes will be
         prefixed with ``ds1/``.
@@ -89,7 +88,7 @@ class Dataset(torch.utils.data.Dataset):
         recording_ids: Optional[list[str]] = None,
         transform: Optional[Callable] = None,
         keep_files_open: bool = True,
-        namespace_attributes: list[str] = ["session.id", "subject.id"],
+        namespace_attributes: Optional[list[str]] = None,
     ):
 
         dataset_dir = Path(dataset_dir)
@@ -194,6 +193,9 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             The modified :class:`temporaldata.Data` object (same instance, modified in-place).
         """
+        if not self.namespace_attributes:
+            return data
+
         for attrib in self.namespace_attributes:
             value = data.get_nested_attribute(attrib)
             if isinstance(value, str):
