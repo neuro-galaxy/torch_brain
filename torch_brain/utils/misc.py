@@ -1,3 +1,4 @@
+from packaging import version
 import numpy as np
 
 
@@ -12,7 +13,7 @@ def np_string_prefix(prefix: str, array: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: New array with the prefix added to each element.
     """
-    if np.__version__ >= "2.0":
+    if version.parse(np.__version__) >= version.parse("2.0"):
         return np.strings.add(prefix, array)
     else:
         return np.core.defchararray.add(prefix, array)
