@@ -42,6 +42,7 @@ class PoyoMPDataset(PerichMillerPopulation2018):
             root,
             recording_ids=TRAIN_RECORDING_IDS,
             transform=transform,
+            **kwargs,
         )
 
     def get_recording_hook(self, data: Data):
