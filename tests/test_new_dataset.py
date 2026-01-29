@@ -82,26 +82,22 @@ class TestDataset:
         # When recording ids are not specified, root is a string
         ds = Dataset(str(dummy_spiking_brainset))
         expected_rec_ids = ["session1", "session2", "session3", "session4"]
-        for actual_id, expected_id in zip(ds.recording_ids, expected_rec_ids):
-            assert actual_id == expected_id
+        assert ds.recording_ids == expected_rec_ids
 
         # When recording ids are not specified
         ds = Dataset(dummy_spiking_brainset)
         expected_rec_ids = ["session1", "session2", "session3", "session4"]
-        for actual_id, expected_id in zip(ds.recording_ids, expected_rec_ids):
-            assert actual_id == expected_id
+        assert ds.recording_ids == expected_rec_ids
 
         # When recording ids are specified
         ds = Dataset(dummy_spiking_brainset, recording_ids=["session1", "session3"])
         expected_rec_ids = ["session1", "session3"]
-        for actual_id, expected_id in zip(ds.recording_ids, expected_rec_ids):
-            assert actual_id == expected_id
+        assert ds.recording_ids == expected_rec_ids
 
         # Test that recording ids are sorted
         ds = Dataset(dummy_spiking_brainset, recording_ids=["session3", "session1"])
         expected_rec_ids = ["session1", "session3"]
-        for actual_id, expected_id in zip(ds.recording_ids, expected_rec_ids):
-            assert actual_id == expected_id
+        assert ds.recording_ids == expected_rec_ids
 
     def test_incorrect_paths(self, dummy_spiking_brainset):
         with pytest.raises(ValueError, match="No recordings found at"):
