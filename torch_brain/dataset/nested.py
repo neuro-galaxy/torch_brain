@@ -1,5 +1,4 @@
 from typing import Optional, Iterable, Mapping, Callable
-import numpy as np
 from torch_brain.utils import np_string_prefix
 from temporaldata import Data, Interval
 
