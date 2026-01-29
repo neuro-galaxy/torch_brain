@@ -7,7 +7,7 @@ from torch_brain.utils import np_string_prefix
 
 class SpikingDatasetMixin:
     """
-    Mixin class for :class:``torch_brain.dataset.Dataset` subclasses containing spiking data.
+    Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing spiking data.
 
     Provides:
         - ``get_unit_ids()`` for retreiving IDs of all included units.
