@@ -484,6 +484,36 @@ class Data(object):
                 )
         return out
 
+    def set_nested_attribute(self, path: str, value: Any) -> Data:
+        r"""Set a nested attribute specified by its path. The path can be nested
+        using dots. For example, if the path is "session.id", this method will
+        set the value of the ``id`` attribute of the ``session`` object.
+        The attribute is modified in an in-place manner.
+
+        Args:
+            path: Nested attribute path (can be dot-separated, e.g. "session.id").
+            value: The value to set for the attribute.
+
+        Returns:
+            Data: self with the updated nested attribute.
+
+        Raises:
+            AttributeError: If any component of the path cannot be resolved.
+        """
+        # Split key by dots, resolve using getattr
+        components = path.split(".")
+        obj = self
+        for c in components[:-1]:
+            try:
+                obj = getattr(obj, c)
+            except AttributeError:
+                raise AttributeError(
+                    f"Could not resolve {path} in data (specifically, at level {c})"
+                )
+
+        setattr(obj, components[-1], value)
+        return self
+
     def has_nested_attribute(self, path: str) -> bool:
         """Check if the attribute specified by the path exists in the Data object."""
         if not path:
