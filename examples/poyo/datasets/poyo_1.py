@@ -10,7 +10,7 @@ from torch_brain.dataset import NestedSpikingDataset
 from datasets.poyo_mp import PoyoMPDataset
 
 
-def Poyo1Dataset(root, transform=None, **kwargs):
+def Poyo1Dataset(root, transform=None):
     ds_mp = PoyoMPDataset(root)
     ds_flint = PoyoFlintDataset(root)
     ds_odoherty = PoyoOdohertyDataset(root)
@@ -24,7 +24,6 @@ def Poyo1Dataset(root, transform=None, **kwargs):
             "churchland": ds_churchland,
         },
         transform=transform,
-        **kwargs,
     )
     return ds
 
