@@ -14,11 +14,10 @@ from temporaldata import (
 from brainsets import serialize_fn_map
 from brainsets.descriptions import (
     BrainsetDescription,
-    DeviceDescription,
     SessionDescription,
     SubjectDescription,
 )
-from brainsets.taxonomy import RecordingTech, Species, Task
+from brainsets.taxonomy import Species
 
 from torch_brain.dataset import Dataset, DatasetIndex, NestedDataset
 from torch_brain.dataset.mixins import SpikingDatasetMixin
