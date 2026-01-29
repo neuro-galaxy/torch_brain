@@ -10,7 +10,7 @@ class SpikingDatasetMixin:
     Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing spiking data.
 
     Provides:
-        - ``get_unit_ids()`` for retreiving IDs of all included units.
+        - ``get_unit_ids()`` for retrieving IDs of all included units.
         - If the class attribute ``spiking_dataset_mixin_uniquify_unit_ids`` is set to ``True``,
           unit IDs will be made unique across recordings by prefixing each unit ID with the
           corresponding ``session.id``. This helps avoid collisions when combining data from

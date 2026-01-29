@@ -276,7 +276,7 @@ class TestSpikingDatasetMixin:
 def test_ensure_index_has_namespace():
     from torch_brain.dataset.dataset import _ensure_index_has_namespace
 
-    # Ensure it doesn't curropt existing namespace
+    # Ensure it doesn't corrupt existing namespace
     idx = DatasetIndex("test", 0.0, 1.1, "real_namespace")
     idx = _ensure_index_has_namespace(idx)
     assert idx._namespace == "real_namespace"
