@@ -385,6 +385,68 @@ def test_nested_attributes():
     assert data.has_nested_attribute("session_id")
 
 
+class TestSetNestedAttribute:
+    @pytest.fixture
+    def data(self):
+        return Data(
+            not_nested="not_nested_attrib",
+            session=Data(id="session_0"),
+            domain=Interval.from_list([(0, 3)]),
+            spikes=IrregularTimeSeries(
+                timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
+                waveforms=np.zeros((6, 48)),
+                domain="auto",
+            ),
+            units=ArrayDict(
+                id=np.array(["unit_0", "unit_1", "unit_2"]),
+                brain_region=np.array(["M1", "M1", "PMd"]),
+            ),
+        )
+
+    def test_changes_happen_inplace(self, data):
+        data.set_nested_attribute("session.id", "new_session_id")
+        assert data.session.id == "new_session_id"
+        data.set_nested_attribute("not_nested", "new_not_nested_attrib")
+        assert data.not_nested == "new_not_nested_attrib"
+
+    def test_return_value(self, data):
+        data_ret = data.set_nested_attribute("session.id", "new_session_id")
+        assert id(data_ret) == id(data)
+
+    def test_error_on_nonexistent_attrib(self, data):
+        with pytest.raises(AttributeError):
+            data.set_nested_attribute("non.existent", None)
+
+    def test_create_new_attribute(self, data):
+        # Set a string attribute that does not exist
+        data.set_nested_attribute("session.new_attrib", "a_new_attribute")
+        assert data.session.new_attrib == "a_new_attribute"
+
+        # Set an array attribute that does not exist
+        unit_index = np.random.randint(0, 3, len(data.spikes))
+        data.set_nested_attribute("spikes.unit_index", unit_index)
+        assert (data.spikes.unit_index == unit_index).all()
+
+        new_attrib = np.array([1, 2, 3])
+        data.set_nested_attribute("units.new_attrib", new_attrib)
+        assert (data.units.new_attrib == new_attrib).all()
+
+        # Validation should happen on object creation
+        with pytest.raises(ValueError):
+            data.set_nested_attribute(
+                "spikes.unit_index2", np.arange(len(data.spikes) + 4)
+            )
+        with pytest.raises(ValueError):
+            data.set_nested_attribute(
+                "units.new_attrib2", np.arange(len(data.units) - 1)
+            )
+
+    def test_overwrite_type(self, data):
+        # Test that we should be able to overwrite type of object being set
+        data.set_nested_attribute("spikes", 0)
+        assert data.spikes == 0
+
+
 def test_data_has_nested_attribute_lazy(test_filepath):
     """Tests the Data.has_nested_attribute method with lazily loaded objects."""
     data_to_save = Data(
