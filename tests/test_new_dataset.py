@@ -156,7 +156,7 @@ class TestDataset:
             assert (actual.end == expect.end).all()
 
     def test_default_apply_namespace(self, dummy_spiking_brainset):
-        # Test deafult namespacing
+        # Test default namespacing
         ds = Dataset(dummy_spiking_brainset)
         sample = ds[DatasetIndex("session1", 0.2, 0.4, _namespace="test_space")]
         assert sample.session.id == "session1"
