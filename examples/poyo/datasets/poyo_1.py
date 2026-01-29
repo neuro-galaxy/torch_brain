@@ -1,3 +1,4 @@
+from copy import deepcopy
 import torchmetrics
 from temporaldata import Data
 
@@ -45,7 +46,7 @@ class PoyoChurchlandDataset(ChurchlandShenoyNeural2012):
     }
 
     def get_recording_hook(self, data: Data):
-        data.config = self.READOUT_CONFIG
+        data.config = deepcopy(self.READOUT_CONFIG)
         return super().get_recording_hook(data)
 
 
@@ -60,7 +61,7 @@ class PoyoOdohertyDataset(OdohertySabesNonhuman2017):
     }
 
     def get_recording_hook(self, data: Data):
-        data.config = self.READOUT_CONFIG
+        data.config = deepcopy(self.READOUT_CONFIG)
         return super().get_recording_hook(data)
 
 
@@ -78,5 +79,5 @@ class PoyoFlintDataset(FlintSlutzkyAccurate2012):
     }
 
     def get_recording_hook(self, data: Data):
-        data.config = self.READOUT_CONFIG
+        data.config = deepcopy(self.READOUT_CONFIG)
         return super().get_recording_hook(data)

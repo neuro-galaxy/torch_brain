@@ -1,3 +1,4 @@
+from copy import deepcopy
 import torchmetrics
 from brainsets.datasets import PeiPandarinathNLB2021
 from temporaldata import Data
@@ -25,5 +26,5 @@ class PoyoNLBDataset(PeiPandarinathNLB2021):
         )
 
     def get_recording_hook(self, data: Data):
-        data.config = self.READOUT_CONFIG
+        data.config = deepcopy(self.READOUT_CONFIG)
         super().get_recording_hook(data)

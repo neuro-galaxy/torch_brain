@@ -1,3 +1,4 @@
+from copy import deepcopy
 import torchmetrics
 from brainsets.datasets import PerichMillerPopulation2018
 from temporaldata import Data
@@ -47,9 +48,9 @@ class PoyoMPDataset(PerichMillerPopulation2018):
 
     def get_recording_hook(self, data: Data):
         if data.session.id.endswith("center_out_reaching"):
-            data.config = self.CO_READOUT_CONFIG
+            data.config = deepcopy(self.CO_READOUT_CONFIG)
         elif data.session.id.endswith("random_target_reaching"):
-            data.config = self.RT_READOUT_CONFIG
+            data.config = deepcopy(self.RT_READOUT_CONFIG)
         super().get_recording_hook(data)
 
 
