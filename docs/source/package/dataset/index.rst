@@ -31,7 +31,7 @@ To achieve arbitrary time-slice based access, our Dataset class is indexed by th
 2. Start time of the slice, and
 3. End time of the slice
 
-These pieces of information are put into a :class:`DatasetIndex` object, which is then used to index the :class:`Dataset`.
+These are put into a :class:`DatasetIndex` object, which is then used to index the :class:`Dataset`.
 Since different machine learning applications require different ways of sampling, we provide a collection of
 :doc:`samplers <../data/sampler>` which are responsible for creating these :class:`DatasetIndex` objects.
 
