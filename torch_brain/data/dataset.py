@@ -28,7 +28,12 @@ default_subject_id_prefix_fn = lambda data: f"{data.brainset.id}/"
 
 
 class Dataset(torch.utils.data.Dataset):
-    r"""This class abstracts a collection of lazily-loaded Data objects. Each data object
+    r"""
+    .. warning::
+        :class:`torch_brain.data.dataset.Dataset` is **deprecated** in favor of the newer
+        :class:`torch_brain.dataset.Dataset`, and it will be removed in a future release.
+
+    This class abstracts a collection of lazily-loaded Data objects. Each data object
     corresponds to a full recording. It is never fully loaded into memory, but rather
     lazy-loaded on-the-fly from disk.
 
