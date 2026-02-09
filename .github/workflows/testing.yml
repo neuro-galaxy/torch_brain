@@ -36,7 +36,7 @@ jobs:
     - name: Install brainsets
       run: |
         source venv/bin/activate
-        uv pip install git+https://github.com/neuro-galaxy/brainsets.git@refs/pull/67/head
+        uv pip install git+https://github.com/neuro-galaxy/brainsets
     - name: Test with pytest
       run: |
         source venv/bin/activate
