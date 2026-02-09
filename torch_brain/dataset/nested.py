@@ -26,8 +26,8 @@ class NestedDataset(Dataset):
     See :ref:`Namespacing` for how Data attributes are namespaced.
 
     Args:
-        datasets: Either a mapping from dataset name to `Dataset` instance, or
-            a list/tuple of `Dataset` instances.
+        datasets: Either a mapping from dataset name to :class:`Dataset` instance, or
+            a list/tuple of :class:`Dataset` instances.
             When a list/tuple is given, dataset names are inferred from the
             class names of the datasets. In this case, duplicate class names
             are not allowed.
