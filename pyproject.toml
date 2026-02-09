@@ -39,6 +39,7 @@ dev = [
     "boto3",
     "tqdm",
     "pytest-cov",
+    "brainsets",
 ]
 
 [project.urls]
@@ -50,6 +51,7 @@ Documentation = "https://torch-brain.readthedocs.io/en/latest/"
 packages = [
     "torch_brain",
     "torch_brain.data",
+    "torch_brain.dataset",
     "torch_brain.nn",
     "torch_brain.models",
     "torch_brain.utils",

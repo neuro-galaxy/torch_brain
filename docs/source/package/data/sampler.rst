@@ -1,4 +1,6 @@
 
+.. _sampler-api:
+
 Samplers
 --------
 .. currentmodule:: torch_brain.data.sampler

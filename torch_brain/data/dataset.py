@@ -1,6 +1,7 @@
 import copy
 import logging
 import os
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -27,7 +28,12 @@ default_subject_id_prefix_fn = lambda data: f"{data.brainset.id}/"
 
 
 class Dataset(torch.utils.data.Dataset):
-    r"""This class abstracts a collection of lazily-loaded Data objects. Each data object
+    r"""
+    .. warning::
+        :class:`torch_brain.data.dataset.Dataset` is **deprecated** in favor of the newer
+        :class:`torch_brain.dataset.Dataset`, and it will be removed in a future release.
+
+    This class abstracts a collection of lazily-loaded Data objects. Each data object
     corresponds to a full recording. It is never fully loaded into memory, but rather
     lazy-loaded on-the-fly from disk.
 
@@ -92,6 +98,14 @@ class Dataset(torch.utils.data.Dataset):
         subject_id_prefix_fn: Callable[[Data], str] = default_subject_id_prefix_fn,
         keep_files_open: bool = True,
     ):
+
+        warnings.warn(
+            "torch_brain.data.dataset.Dataset is deprecated and will be removed in a future release. "
+            "Please switch to torch_brain.dataset.Dataset.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
         super().__init__()
         self.root = root
         self.config = config
@@ -463,7 +477,7 @@ class Dataset(torch.utils.data.Dataset):
             current split and other splits (eg. the test split).
         """
         self._check_for_data_leakage_flag = False
-        logging.warn(
+        logging.warning(
             f"Data leakage check is disabled. Please be absolutely sure that there is "
             f"no leakage between {self.split} and other splits."
         )

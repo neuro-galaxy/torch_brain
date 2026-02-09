@@ -1,8 +1,10 @@
 defaults:
   - defaults.yaml
   - model: poyo_11.8M.yaml
-  - dataset: perich_miller_population_2018.yaml
   - _self_  # ensures current config overrides defaults
+
+dataset: 
+  _target_: datasets.poyo_mp.PoyoMPDataset
 
 train_transforms:
   - _target_: torch_brain.transforms.UnitDropout
