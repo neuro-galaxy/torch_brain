@@ -147,7 +147,7 @@ class NestedSpikingDataset(SpikingDatasetMixin, NestedDataset):
 
     This class combines the nesting behavior of `NestedDataset` with the
     spike-specific utilities provided by :class:`SpikingDatasetMixin`.
-    See :class:`SpikingDatasetMixin` for class signature and methods.
+    See :class:`NestedDataset` for class signature and methods.
     """
 
     spiking_dataset_mixin_uniquify_unit_ids = False
