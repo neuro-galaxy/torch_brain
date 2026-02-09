@@ -211,7 +211,7 @@ class Pipeline(BrainsetPipeline):
         )
 
         self.update_status("Extracting Signals")
-        signals, units = extract_signals(raw_psg)
+        signals, channels = extract_signals(raw_psg)
 
         self.update_status("Extracting Sleep Stages")
         stages = extract_sleep_stages(str(hypnogram_path))
@@ -225,7 +225,7 @@ class Pipeline(BrainsetPipeline):
             session=session_description,
             device=device_description,
             eeg=signals,
-            units=units,
+            channels=channels,
             stages=stages,
             splits=splits,
             domain=signals.domain,
@@ -270,7 +270,7 @@ def extract_signals(raw_psg: mne.io.Raw) -> Tuple[RegularTimeSeries, ArrayDict]:
     ch_names = raw_psg.ch_names
 
     signal_list = []
-    unit_meta = []
+    channel_meta = []
 
     for idx, ch_name in enumerate(ch_names):
         ch_name_lower = ch_name.lower()
@@ -296,7 +296,7 @@ def extract_signals(raw_psg: mne.io.Raw) -> Tuple[RegularTimeSeries, ArrayDict]:
 
         signal_list.append(signal_data)
 
-        unit_meta.append(
+        channel_meta.append(
             {
                 "id": str(ch_name),
                 "modality": modality,
@@ -314,10 +314,10 @@ def extract_signals(raw_psg: mne.io.Raw) -> Tuple[RegularTimeSeries, ArrayDict]:
         domain=Interval(start=times[0], end=times[-1]),
     )
 
-    units_df = pd.DataFrame(unit_meta)
-    units = ArrayDict.from_dataframe(units_df)
+    channel_df = pd.DataFrame(channel_meta)
+    channels = ArrayDict.from_dataframe(channel_df)
 
-    return signals, units
+    return signals, channels
 
 
 def extract_sleep_stages(hypnogram_file: str) -> Interval:

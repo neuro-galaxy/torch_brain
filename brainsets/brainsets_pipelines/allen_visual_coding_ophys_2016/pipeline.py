@@ -1,6 +1,7 @@
 # /// brainset-pipeline
 # python-version = "3.11"
 # dependencies = [
+#   "setuptools==80.9.0",
 #   "allensdk==2.16.2",
 #   "psycopg2-binary==2.9.10",
 # ]
@@ -164,7 +165,7 @@ class Pipeline(BrainsetPipeline):
         # extract calcium traces
         self.update_status("Extracting Calcium Traces")
         calcium_traces = extract_calcium_traces(nwb_dataset)
-        units = extract_units(nwb_dataset)
+        rois = extract_rois(nwb_dataset)
 
         epoch_dict = extract_stimulus_epochs(nwb_dataset)
         if epoch_dict is None:
@@ -192,7 +193,7 @@ class Pipeline(BrainsetPipeline):
             device=device_description,
             # neural activity
             calcium_traces=calcium_traces,
-            units=units,
+            rois=rois,
             # stimuli and behavior
             **stimuli_and_behavior_dict,
             # domain
@@ -278,34 +279,34 @@ def extract_calcium_traces(nwbfile):
     return calcium_traces
 
 
-def extract_units(nwbfile):
+def extract_rois(nwbfile):
     roi_ids = nwbfile.get_roi_ids()
     roi_masks = nwbfile.get_roi_mask()
     num_rois = len(roi_ids)
 
     # compute center of the mask, and bounding box
-    unit_position = np.zeros((num_rois, 2))
-    unit_area = np.zeros(num_rois)
-    unit_height = np.zeros(num_rois)
-    unit_width = np.zeros(num_rois)
+    roi_position = np.zeros((num_rois, 2))
+    roi_area = np.zeros(num_rois)
+    roi_height = np.zeros(num_rois)
+    roi_width = np.zeros(num_rois)
 
     for i, roi_mask in enumerate(roi_masks):
         roi_mask_numpy = roi_mask.get_mask_plane()
         rows, cols = np.nonzero(roi_mask_numpy)
-        unit_position[i] = [np.mean(rows), np.mean(cols)]
-        unit_height[i] = np.max(rows) - np.min(rows) + 1
-        unit_width[i] = np.max(cols) - np.min(cols) + 1
-        unit_area[i] = len(rows)
+        roi_position[i] = [np.mean(rows), np.mean(cols)]
+        roi_height[i] = np.max(rows) - np.min(rows) + 1
+        roi_width[i] = np.max(cols) - np.min(cols) + 1
+        roi_area[i] = len(rows)
 
-    units = ArrayDict(
+    rois = ArrayDict(
         id=roi_ids.astype(str),
-        imaging_plane_xy=unit_position,
-        imaging_plane_area=unit_area,
-        imaging_plane_width=unit_width,
-        imaging_plane_height=unit_height,
+        imaging_plane_xy=roi_position,
+        imaging_plane_area=roi_area,
+        imaging_plane_width=roi_width,
+        imaging_plane_height=roi_height,
     )
 
-    return units
+    return rois
 
 
 def extract_drifting_gratings(nwbfile):
