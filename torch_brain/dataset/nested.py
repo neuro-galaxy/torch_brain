@@ -24,6 +24,14 @@ class NestedDataset(Dataset):
     datasets while preserving the same prefix-based naming convention.
 
     See :ref:`Namespacing` for how Data attributes are namespaced.
+
+    Args:
+        datasets: Either a mapping from dataset name to :class:`Dataset` instance, or
+            a list/tuple of :class:`Dataset` instances.
+            When a list/tuple is given, dataset names are inferred from the
+            class names of the datasets. In this case, duplicate class names
+            are not allowed.
+        transform: Optional transform that is applied to samples in :meth:`__getitem__`.
     """
 
     def __init__(
@@ -31,19 +39,6 @@ class NestedDataset(Dataset):
         datasets: Iterable[Dataset] | Mapping[str, Dataset],
         transform: Optional[Callable] = None,
     ):
-        """Create a `NestedDataset`.
-
-        Args:
-            datasets: Either
-                - a mapping from dataset name to `Dataset` instance, or
-                - a list/tuple of `Dataset` instances.
-
-                When a list/tuple is given, dataset names are inferred from the
-                class names of the datasets. In this case, duplicate class names
-                are not allowed.
-            transform: Optional transform that is applied to samples in :meth:`__getitem__`.
-
-        """
         if isinstance(datasets, Mapping):
             dataset_dict = datasets
         elif isinstance(datasets, Iterable):
@@ -152,6 +147,8 @@ class NestedSpikingDataset(SpikingDatasetMixin, NestedDataset):
 
     This class combines the nesting behavior of `NestedDataset` with the
     spike-specific utilities provided by :class:`SpikingDatasetMixin`.
+
+    This class inherits its constructor from :class:`NestedDataset`.
     """
 
     spiking_dataset_mixin_uniquify_unit_ids = False
