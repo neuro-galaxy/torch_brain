@@ -1,0 +1,6 @@
+# Logistic Regression model (sklearn)
+name: logistic
+max_iter: 10000
+tol: 1e-3
+random_state: 42
+
