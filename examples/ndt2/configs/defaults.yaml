@@ -1,0 +1,39 @@
+log_dir: /vast/projects/dyer1/lab/user/alex/logs/
+data_root: /vast/projects/dyer1/lab/shared/neural_data/processed/ibl_brain_wide_map_2023/10_26_2025/
+wandb:
+  enable: false
+  entity: aandre8-gatech
+  project: NDT2.5
+
+seed: 0
+epochs: 500
+pad_val: 64
+
+precision: bf16-mixed
+batch_size: 256
+eval_epochs: 1
+num_workers:  16
+keep_M1_units: false
+unsorted: false
+
+
+log_every_n_steps: 1
+superv_batch_size: null
+num_sanity_val_steps: 0
+custom_ndt2_data_spliter: false
+
+callbacks: 
+  patience: 100
+  checkpoint: true
+  early_stop: true
+  checkpoint_path: /vast/projects/dyer1/lab/user/alex/torch_brain/examples/ndt2/ckpt
+
+optimizer:
+  lr: 0.0005
+  lr_min: 0.000001
+  scheduler: true
+  decay_steps: 2500
+  start_factor: 0.1
+  warmup_steps: 100
+  weight_decay: 0.01
+
