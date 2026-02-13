@@ -4,9 +4,10 @@ from brainsets.processing.signal import (
     extract_bands,
     cube_to_long,
 )
+from brainsets.utils.mne_utils import MNE_AVAILABLE
 
 
-@pytest.mark.skipif(pytest.importorskip("mne") is None, reason="mne not installed")
+@pytest.mark.skipif(not MNE_AVAILABLE, reason="mne not installed")
 def test_extract_bands():
     bands, ts, band_names = extract_bands(
         np.random.randn(1000, 10), np.arange(1000), Fs=1000, notch=60
@@ -16,7 +17,7 @@ def test_extract_bands():
     assert bands.shape[2] == len(band_names)
 
 
-@pytest.mark.skipif(pytest.importorskip("mne") is None, reason="mne not installed")
+@pytest.mark.skipif(not MNE_AVAILABLE, reason="mne not installed")
 def test_cube_to_long():
     ts = np.arange(10).astype(float)
     cube = np.zeros((1, 10, 2), dtype=int)
