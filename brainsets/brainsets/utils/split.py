@@ -1,11 +1,48 @@
-import logging
+import warnings
 import numpy as np
-from typing import List
+from typing import Dict, List, Optional, Tuple
 from temporaldata import Interval, Data
 
 
-def split_one_epoch(epoch, grid, split_ratios=[0.6, 0.1, 0.3]):
-    assert len(epoch) == 1
+def split_one_epoch(
+    epoch: Interval,
+    grid: Interval,
+    split_ratios: Optional[List[float]] = None,
+) -> Tuple[Interval, Interval, Interval]:
+    """Split a single epoch into train, validation, and test intervals.
+
+    Args:
+        epoch: The full time interval to split (must contain a single interval)
+        grid: Grid intervals used to align split boundaries
+        split_ratios: List of three ratios [train_ratio, valid_ratio, test_ratio]
+            that sum to 1.0. Defaults to [0.6, 0.1, 0.3].
+
+    Returns:
+        Tuple of (train_interval, valid_interval, test_interval)
+
+    Raises:
+        ValueError:
+            if split_ratios is not a sequence of exactly three numbers,
+            if any ratio is negative,
+            if split_ratios do not sum to 1, or
+            if the epoch does not contain a single interval
+    """
+    if split_ratios is None:
+        split_ratios = [0.6, 0.1, 0.3]
+
+    if not hasattr(split_ratios, "__len__") or len(split_ratios) != 3:
+        raise ValueError(
+            "split_ratios must be a sequence of three numbers (train, valid, test)"
+        )
+
+    if any(r < 0 for r in split_ratios):
+        raise ValueError("split_ratios elements must be non-negative")
+
+    if not np.isclose(sum(split_ratios), 1.0):
+        raise ValueError("Split ratios must sum to 1")
+
+    if len(epoch) != 1:
+        raise ValueError("Epoch must contain a single interval")
     epoch_start = epoch.start[0]
     epoch_end = epoch.end[0]
 
@@ -38,14 +75,21 @@ def split_one_epoch(epoch, grid, split_ratios=[0.6, 0.1, 0.3]):
         else:
             val_test_split_time = grid_match.start[0]
 
-    train_interval = Interval(start=epoch_start, end=train_val_split_time)
-    val_interval = Interval(start=train_interval.end[0], end=val_test_split_time)
-    test_interval = Interval(start=val_interval.end[0], end=epoch_end)
+    train_interval = Interval(
+        start=np.array([epoch_start]), end=np.array([train_val_split_time])
+    )
+    val_interval = Interval(
+        start=train_interval.end[0:1], end=np.array([val_test_split_time])
+    )
+    test_interval = Interval(start=val_interval.end[0:1], end=np.array([epoch_end]))
 
     return train_interval, val_interval, test_interval
 
 
-def split_two_epochs(epoch, grid):
+def split_two_epochs(
+    epoch: Interval,
+    grid: Interval,
+) -> Tuple[Interval, Interval, Interval]:
     assert len(epoch) == 2
     first_epoch_start = epoch.start[0]
     first_epoch_end = epoch.end[0]
@@ -59,16 +103,20 @@ def split_two_epochs(epoch, grid):
             split_time = grid_match.start[0]
 
     train_interval = Interval(
-        start=first_epoch_start,
-        end=split_time,
+        start=np.array([first_epoch_start]),
+        end=np.array([split_time]),
     )
-    val_interval = Interval(start=train_interval.end[0], end=first_epoch_end)
+    val_interval = Interval(
+        start=train_interval.end[0:1], end=np.array([first_epoch_end])
+    )
     test_interval = epoch.select_by_mask(np.array([False, True]))
 
     return train_interval, val_interval, test_interval
 
 
-def split_three_epochs(epoch, grid):
+def split_three_epochs(
+    epoch: Interval, grid: Interval
+) -> Tuple[Interval, Interval, Interval]:
     assert len(epoch) == 3
 
     test_interval = epoch.select_by_mask(np.array([False, False, True]))
@@ -85,12 +133,14 @@ def split_three_epochs(epoch, grid):
             split_time = grid_match.start[0]
 
     train_interval.end[1] = split_time
-    val_interval = Interval(start=train_interval.end[1], end=epoch.end[1])
+    val_interval = Interval(start=train_interval.end[1:2], end=epoch.end[1:2])
 
     return train_interval, val_interval, test_interval
 
 
-def split_four_epochs(epoch, grid):
+def split_four_epochs(
+    epoch: Interval, grid: Interval
+) -> Tuple[Interval, Interval, Interval]:
     assert len(epoch) == 4
 
     test_interval = epoch.select_by_mask(np.array([False, False, False, True]))
@@ -106,12 +156,14 @@ def split_four_epochs(epoch, grid):
             split_time = grid_match.start[0]
 
     train_interval.end[2] = split_time
-    val_interval = Interval(start=train_interval.end[2], end=epoch.end[2])
+    val_interval = Interval(start=train_interval.end[2:3], end=epoch.end[2:3])
 
     return train_interval, val_interval, test_interval
 
 
-def split_five_epochs(epoch, grid):
+def split_five_epochs(
+    epoch: Interval, grid: Interval
+) -> Tuple[Interval, Interval, Interval]:
     assert len(epoch) == 5
 
     train_interval = epoch.select_by_mask(np.array([True, True, True, False, False]))
@@ -128,12 +180,14 @@ def split_five_epochs(epoch, grid):
             split_time = grid_match.start[0]
 
     train_interval.end[2] = split_time
-    val_interval = Interval(start=train_interval.end[2], end=epoch.end[2])
+    val_interval = Interval(start=train_interval.end[2:3], end=epoch.end[2:3])
 
     return train_interval, val_interval, test_interval
 
 
-def split_more_than_five_epochs(epoch):
+def split_more_than_five_epochs(
+    epoch: Interval,
+) -> Tuple[Interval, Interval, Interval]:
     assert len(epoch) > 5
 
     train_interval, val_interval, test_interval = epoch.split(
@@ -142,14 +196,19 @@ def split_more_than_five_epochs(epoch):
     return train_interval, val_interval, test_interval
 
 
-def generate_train_valid_test_splits(epoch_dict, grid):
+def generate_train_valid_test_splits(
+    epoch_dict: Dict[str, Interval], grid: Interval
+) -> Tuple[Interval, Interval, Interval]:
     train_intervals = Interval(np.array([]), np.array([]))
     valid_intervals = Interval(np.array([]), np.array([]))
     test_intervals = Interval(np.array([]), np.array([]))
 
     for name, epoch in epoch_dict.items():
         if name == "invalid_presentation_epochs":
-            logging.warn(f"Found invalid presentation epochs, which will be excluded.")
+            warnings.warn(
+                "Found invalid presentation epochs, which will be excluded.",
+                stacklevel=2,
+            )
             continue
         if len(epoch) == 1:
             train, valid, test = split_one_epoch(epoch, grid)
@@ -200,7 +259,7 @@ def chop_intervals(
 
     for i, (start, end) in enumerate(zip(intervals.start, intervals.end)):
         if end - start <= duration:
-            chopped = Interval(start=start, end=end)
+            chopped = Interval(start=np.array([start]), end=np.array([end]))
         else:
             chopped = Interval.arange(start, end, step=duration, include_end=True)
 
@@ -325,3 +384,58 @@ def generate_stratified_folds(
             folds.append(fold_data)
 
     return folds
+
+
+def generate_train_valid_splits_one_epoch(
+    epoch: Interval, split_ratios: Optional[List[float]] = None
+) -> Tuple[Interval, Interval]:
+    """Split a single time interval into training and validation intervals.
+
+    Args:
+        epoch: The full time interval to split (must contain a single interval)
+        split_ratios: List of two ratios [train_ratio, valid_ratio] that sum to 1.0.
+            Defaults to [0.9, 0.1].
+
+    Returns:
+        Tuple of (train_intervals, valid_intervals)
+
+    Raises:
+        ValueError:
+            if split_ratios is not a sequence of exactly two numbers,
+            if any ratio is negative,
+            if split_ratios do not sum to 1, or
+            if the epoch does not contain a single interval
+    """
+    if split_ratios is None:
+        split_ratios = [0.9, 0.1]
+
+    if not hasattr(split_ratios, "__len__") or len(split_ratios) != 2:
+        raise ValueError(
+            "split_ratios must be a sequence of two numbers (train, valid)"
+        )
+
+    if any(r < 0 for r in split_ratios):
+        raise ValueError("split_ratios elements must be non-negative")
+
+    if not np.isclose(sum(split_ratios), 1.0):
+        raise ValueError("Split ratios must sum to 1")
+
+    if len(epoch) != 1:
+        raise ValueError("Epoch must contain a single interval")
+
+    epoch_start = epoch.start[0]
+    epoch_end = epoch.end[0]
+
+    train_split_time = epoch_start + split_ratios[0] * (epoch_end - epoch_start)
+    val_split_time = train_split_time + split_ratios[1] * (epoch_end - epoch_start)
+
+    train_intervals = Interval(
+        start=epoch_start,
+        end=train_split_time,
+    )
+    valid_intervals = Interval(
+        start=train_intervals.end[0],
+        end=val_split_time,
+    )
+
+    return train_intervals, valid_intervals
