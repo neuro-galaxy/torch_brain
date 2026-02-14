@@ -14,8 +14,8 @@ Samplers
      - A Random sampler, that samples a fixed-length window from data.
    * - :py:class:`TrialSampler`
      - A sampler that randomly samples a single trial interval from given intervals.
-   * - :py:class:`DistributedSamplerWrapper`
-     - A wrapper sampler for distributed training that assigns samples to processes.
+   * - :py:class:`DistributedEvaluationSamplerWrapper`
+     - A wrapper sampler for distributed evaluation that assigns samples to processes without dropping any.
    * - :py:class:`DistributedStitchingFixedWindowSampler`
      - A distributed sampler for evaluation that enables sliding window inference with prediction stitching.
 
@@ -35,7 +35,7 @@ Samplers
   :show-inheritance:
   :undoc-members:
 
-.. autoclass:: DistributedSamplerWrapper
+.. autoclass:: DistributedEvaluationSamplerWrapper
   :members:
   :show-inheritance:
   :undoc-members:
