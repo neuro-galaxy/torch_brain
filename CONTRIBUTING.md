@@ -63,6 +63,9 @@ pre-commit install
 Never work directly on the `main` branch. Always create a "feature branch" for your specific task. This keeps your workspace clean and makes merging easier.
 
 ```bash
+# Add upstream remote if you haven't already
+git remote add upstream https://github.com/neuro-galaxy/torch_brain.git
+
 # Sync with upstream first to get the latest updates
 git checkout main
 git pull upstream main
