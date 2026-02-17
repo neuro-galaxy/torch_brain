@@ -1,6 +1,6 @@
 # Welcome to Neuro Galaxy contributing guide
 
-Thank you for investing your time in contributing to our project\! All contributions to the repositories under Neuro Galaxy are made through [Pull Requests](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) on Github. We recommend first discussing the change you'd like to make by opening a [Github Issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue). Starting with an issue helps us align on design choices, avoid duplicate work, and ensure your contribution fits the project's roadmap.
+Thank you for investing your time in contributing to our project\! All contributions to the repositories under Neuro Galaxy are made through [Pull Requests](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) on GitHub. We recommend first discussing the change you'd like to make by opening a [GitHub Issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue). Starting with an issue helps us align on design choices, avoid duplicate work, and ensure your contribution fits the project's roadmap.
 
 ## Environment Setup and Development Workflow
 
@@ -101,7 +101,7 @@ pytest tests/test_binning.py
 - When you are ready, **push** your branch and [open a **Pull Request**](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request) (PR).
 - Our **Continuous Integration (CI)** Pipeline will automatically trigger. This is a series of automated checks that run on a remote server to verify your code.
 - Write a **PR description** that documents clearly what has changed and links to any relevant issues that your changes address.
-- **Notify reviewers** either directly on Github or post in the `#ask-for-reviewers` channel of [our Discord](https://discord.gg/kQNKA6B8ZC).
+- **Notify reviewers** either directly on GitHub or post in the `#ask-for-reviewers` channel of [our Discord](https://discord.gg/kQNKA6B8ZC).
 
 ## Code style guidelines
 
