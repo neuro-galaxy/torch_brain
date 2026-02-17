@@ -146,7 +146,7 @@ pre-commit install
 
 ### Naming Conventions
 
-We follow standard Python (PEP 8\) naming conventions. Please ensure your identifiers follow this pattern:
+We follow standard Python (PEP 8) naming conventions. Please ensure your identifiers follow this pattern:
 
 - **Functions & Variables:** `snake_case`
 - **Classes:** `PascalCase`
