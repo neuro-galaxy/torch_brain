@@ -1,6 +1,6 @@
 # Welcome to Neuro Galaxy contributing guide
 
-Thank you for investing your time in contributing to our project\! All contributions to the repositories under Neuro Galaxy are made through [Pull Requests](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) on GitHub. We recommend first discussing the change you'd like to make by opening a [GitHub Issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue). Starting with an issue helps us align on design choices, avoid duplicate work, and ensure your contribution fits the project's roadmap.
+Thank you for investing your time in contributing to our project! All contributions to the repositories under Neuro Galaxy are made through [Pull Requests](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) on GitHub. We recommend first discussing the change you'd like to make by opening a [GitHub Issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/using-issues/creating-an-issue). Starting with an issue helps us align on design choices, avoid duplicate work, and ensure your contribution fits the project's roadmap.
 
 ## Environment Setup and Development Workflow
 
