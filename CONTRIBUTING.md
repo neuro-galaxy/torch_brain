@@ -107,6 +107,8 @@ pytest tests/test_binning.py
 
 ## Code style guidelines
 
+We want you to feel welcome to experiment, ask questions, and enjoy building with us. The guidelines below are here to help us stay consistent as a team, not to slow you down. Don't hesitate to open a PR even if you're unsure about every detail; that's what code review is for!
+
 To ensure **Neuro-Galaxy** remains maintainable and accessible, we adhere to the following standards.
 
 ### Code Quality
