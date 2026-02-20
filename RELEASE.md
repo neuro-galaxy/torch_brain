@@ -28,5 +28,5 @@ vX.Y.ZrcN  # Release candidate
 vX.Y.Z     # Final release
 ```
 - For post-release tags, we also follow the [PEP440](https://peps.python.org/pep-0440/) syntax:
-  - `vX.Y.Z.postN`, `vX.Y.Z.aN.postM`, ...
+  - `vX.Y.Z.postN`, `vX.Y.ZaN.postM`, ...
   - Post releases are only meant for metadata/distribution related corrections, and not code edits
