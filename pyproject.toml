@@ -1,15 +1,15 @@
 [build-system]
-requires = ["setuptools>=60.2.0"]
+requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "torch_brain"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A package for deep learning models for neuroscience"
 readme = "README.md"
 authors = [
     { name = "Mehdi Azabou", email = "mehdiazabou@gmail.com" },
-    { name = "Vinam Arora", email = "vinam@gatech.edu" },
+    { name = "Vinam Arora", email = "vinam@seas.upenn.edu" },
 ]
 license = { text = "Apache-2.0" }
 classifiers = [
