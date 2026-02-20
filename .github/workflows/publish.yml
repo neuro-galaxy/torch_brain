@@ -1,0 +1,90 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  validate-tag:
+    name: Validate tag follows RELEASE.md
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Validate tag format
+        run: |
+          TAG="${{ github.ref_name }}"
+
+          python << EOF
+          import re
+
+          tag = '$TAG'
+
+          # Check for valid patterns: vX.Y.Z, vX.Y.ZrcN, vX.Y.ZaN, vX.Y.ZbN
+          # With optional .postN suffix: vX.Y.Z.postN, vX.Y.ZrcN.postN, etc.
+          # Where X, Y, Z, N are numbers
+          pattern = r'^v\d+\.\d+\.\d+(rc\d+|a\d+|b\d+)?(\.post\d+)?$'
+
+          if not re.match(pattern, tag):
+              print(f'✗ Tag {tag} does not match required format (per RELEASE.md)')
+              print('  Valid formats: vX.Y.Z, vX.Y.ZrcN, vX.Y.ZaN, vX.Y.ZbN')
+              print('  With optional .postN: vX.Y.Z.postN, vX.Y.ZrcN.postN, etc.')
+              print('  Where X, Y, Z, N are numbers')
+              exit(1)
+
+          print(f'✓ Tag {tag} is valid')
+          EOF
+
+  build:
+    name: Build distribution 📦
+    needs: validate-tag
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # IMPORTANT: Required for setuptools-scm to see tags!
+        persist-credentials: false
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "0.6.11"
+
+    - name: Build a binary wheel and a source tarball
+      run: uv build
+
+    - name: Store the distribution packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-package-distributions
+        path: dist/
+
+  publish-to-pypi:
+    name: Publish Python 🐍 distribution 📦 to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/brainsets
+    permissions:
+      id-token: write # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
