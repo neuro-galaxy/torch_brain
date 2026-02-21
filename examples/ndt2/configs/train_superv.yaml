@@ -1,0 +1,13 @@
+defaults:
+  - defaults.yaml
+  - dataset: ibl.yaml
+  - model: ndt2_superv.yaml
+  - _self_  # ensures current config overrides defaults
+
+is_ssl: false
+wandb:
+  run_name: superv
+
+load_from_checkpoint: true
+new_decoder: true
+checkpoint_path: /vast/projects/dyer1/lab/user/alex/torch_brain/examples/ndt2/ckpt/pretrain.ckpt
