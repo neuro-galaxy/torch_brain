@@ -3,7 +3,7 @@ defaults:
   - _self_  # ensures current config overrides defaults
 
 _target_: torch_brain.models.NDT2
-mask_ratio:  0.5
+mask_ratio: 0.5
 dec_depth: 2
 dec_heads: 4
 dec_ffn_mult: 1

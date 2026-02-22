@@ -29,8 +29,8 @@ callbacks:
   checkpoint_path: /vast/projects/dyer1/lab/user/alex/torch_brain/examples/ndt2/ckpt
 
 optimizer:
-  lr: 0.0005
-  lr_min: 0.000001
+  lr: 5e-4
+  lr_min: 1e-6
   scheduler: true
   decay_steps: 2500
   start_factor: 0.1

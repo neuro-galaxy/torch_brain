@@ -1,12 +1,13 @@
 import logging
 from collections import deque
-from typing import Optional, Union
+from typing import Optional
 
 import hydra
 import lightning as L
 import torch
 import torch.nn as nn
 import wandb
+from einops import rearrange
 from lightning.pytorch.callbacks import (
     EarlyStopping,
     LearningRateMonitor,
@@ -23,7 +24,7 @@ from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )
-from torch_brain.models import NDT2, NDT2_Supervised
+from torch_brain.models import NDT2
 from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
 from torch_brain.transforms import Compose
 from torch_brain.utils import seed_everything
@@ -33,7 +34,7 @@ class NDT2TrainWrapper(L.LightningModule):
     def __init__(
         self,
         cfg,
-        model: Union[NDT2, NDT2_Supervised],
+        model: NDT2,
         modality_spec: Optional[ModalitySpec] = None,
     ):
         super().__init__()
@@ -87,13 +88,13 @@ class NDT2TrainWrapper(L.LightningModule):
         model_out = self.model(**model_inputs)
 
         if self.cfg.is_ssl:
-            rates = model_out["rates"]
+            rates = model_out["output"]
             target = batch["target"]
             extra_units_mask = batch["extra_units_mask"]
             loss = self.loss_fn(rates, target)[extra_units_mask].mean()
         else:
-            output = model_out["output"].flatten(1, -1)
-            target = batch["target"].flatten(1, -1)
+            output = rearrange(model_out["output"], "b t bhvr_dim -> b (t bhvr_dim)")
+            target = rearrange(batch["target"], "b t bhvr_dim -> b (t bhvr_dim)")
 
             loss = self.loss_fn(output, target)
 
@@ -112,14 +113,13 @@ class NDT2TrainWrapper(L.LightningModule):
         model_out = self.model(**model_inputs)
 
         if self.cfg.is_ssl:
-            rates = model_out["rates"]
+            rates = model_out["output"]
             target = batch["target"]
             extra_units_mask = batch["extra_units_mask"]
             loss = self.loss_fn(rates, target)[extra_units_mask].mean()
         else:
-            # output = batch["extra_units_mask"]
-            output = model_out["output"].flatten(1, -1)
-            target = batch["target"].flatten(1, -1)
+            output = rearrange(model_out["output"], "b t bhvr_dim -> b (t bhvr_dim)")
+            target = rearrange(batch["target"], "b t bhvr_dim -> b (t bhvr_dim)")
 
             loss = self.loss_fn(output, target)
 
@@ -188,52 +188,43 @@ class DataModule(L.LightningDataModule):
         )
 
         # TODO change this design here the call to a train/eval datset is made just to create the datasplit
-        if not cfg.get("custom_ndt2_data_spliter", True):
-            train_transforms = []
-            if cfg.get("train_transforms"):
-                train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
+        train_transforms = []
+        if cfg.get("train_transforms"):
+            train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
 
-            self.train_dataset = Dataset(
-                root=cfg.data_root,
-                config=cfg.dataset,
-                split="train",
-                transform=Compose([*train_transforms, model.tokenize]),
-            )
+        self.train_dataset = Dataset(
+            root=cfg.data_root,
+            config=cfg.dataset,
+            split="train",
+            transform=Compose([*train_transforms, model.tokenize]),
+        )
 
-            self.train_intervals = self.train_dataset.get_sampling_intervals()
+        self.train_intervals = self.train_dataset.get_sampling_intervals()
 
-            if cfg.get("load_from_checkpoint", False):
-                self._extend_model_vocab(model)
-            else:
-                self._init_model_vocab(model)
+        if cfg.get("load_from_checkpoint", False):
+            self._extend_model_vocab(model)
+        else:
+            self._init_model_vocab(model)
 
-            eval_transforms = []
-            if cfg.get("eval_transforms"):
-                eval_transforms = hydra.utils.instantiate(self.cfg.eval_transforms)
+        eval_transforms = []
+        if cfg.get("eval_transforms"):
+            eval_transforms = hydra.utils.instantiate(self.cfg.eval_transforms)
 
-            self.val_dataset = Dataset(
-                root=cfg.data_root,
-                config=cfg.dataset,
-                split="valid",
-                transform=Compose([*eval_transforms, model.tokenize]),
-            )
-            self.val_intervals = self.val_dataset.get_sampling_intervals()
+        self.val_dataset = Dataset(
+            root=cfg.data_root,
+            config=cfg.dataset,
+            split="valid",
+            transform=Compose([*eval_transforms, model.tokenize]),
+        )
+        self.val_intervals = self.val_dataset.get_sampling_intervals()
 
-            self.test_dataset = Dataset(
-                root=cfg.data_root,
-                config=cfg.dataset,
-                split="test",
-                transform=Compose([*eval_transforms, model.tokenize]),
-            )
-            self.eval_intervals = self.test_dataset.get_sampling_intervals()
-
-        # else:
-        #     self.dataset.disable_data_leakage_check()
-        #     self.train_intervals: Dict[str, List[Tuple[float, float]]]
-        #     self.val_intervals: Dict[str, List[Tuple[float, float]]]
-        #     self.eval_intervals: Optional[Dict[str, List[Tuple[float, float]]]]
-        #     intervals = self.ndt2_custom_sampling_intervals()
-        #     self.train_intervals, self.val_intervals, self.eval_intervals = intervals
+        self.test_dataset = Dataset(
+            root=cfg.data_root,
+            config=cfg.dataset,
+            split="test",
+            transform=Compose([*eval_transforms, model.tokenize]),
+        )
+        self.eval_intervals = self.test_dataset.get_sampling_intervals()
 
     def _init_model_vocab(self, model: NDT2):
         if model.tokenize_session:
@@ -304,8 +295,10 @@ class DataModule(L.LightningDataModule):
             dataset=self.dataset,
             batch_size=bs,
             sampler=train_sampler,
-            collate_fn=collate,
             num_workers=cfg.num_workers,
+            persistent_workers=True if self.cfg.num_workers > 0 else False,
+            pin_memory=True,
+            collate_fn=collate,
         )
 
         return train_loader
@@ -324,9 +317,12 @@ class DataModule(L.LightningDataModule):
             dataset=self.dataset,
             batch_size=bs,
             sampler=val_sampler,
-            collate_fn=collate,
             num_workers=cfg.num_workers,
+            persistent_workers=True if self.cfg.num_workers > 0 else False,
+            pin_memory=True,
+            collate_fn=collate,
         )
+
         if self.eval_intervals is None:
             return val_loader
 
@@ -339,8 +335,10 @@ class DataModule(L.LightningDataModule):
             dataset=self.dataset,
             batch_size=bs,
             sampler=eval_sampler,
-            collate_fn=collate,
             num_workers=cfg.num_workers,
+            persistent_workers=True if self.cfg.num_workers > 0 else False,
+            pin_memory=True,
+            collate_fn=collate,
         )
 
         return [val_loader, eval_loader]
@@ -349,9 +347,9 @@ class DataModule(L.LightningDataModule):
         return None
 
 
-def get_ckpt(cfg):
-    ckpt = torch.load(cfg.checkpoint_path)
-    return ckpt
+# def get_ckpt(cfg):
+#     ckpt = torch.load(cfg.checkpoint_path)
+#     return ckpt
 
 
 def run_training(cfg):
@@ -397,12 +395,14 @@ def run_training(cfg):
 
     readout_spec = None
     if cfg.is_ssl:
-        model = hydra.utils.instantiate(cfg.model)
+        model = hydra.utils.instantiate(cfg.model, is_ssl=cfg.is_ssl)
     else:
         readout_cfg = cfg.dataset[0].config.readout
         readout_id = readout_cfg.readout_id
         readout_spec = MODALITY_REGISTRY[readout_id]
-        model = hydra.utils.instantiate(cfg.model, readout_spec=readout_spec)
+        model = hydra.utils.instantiate(
+            cfg.model, is_ssl=cfg.is_ssl, readout_spec=readout_spec
+        )
 
     # Load from checkpoint
     if cfg.get("load_from_checkpoint", False):
@@ -487,6 +487,11 @@ def run_training(cfg):
             )
         )
 
+    strategy = (
+        "ddp_find_unused_parameters_true"
+        if cfg.optimizer.get("freeze_encoder", False)
+        else "auto"
+    )
     # Set up trainer
     trainer = L.Trainer(
         logger=wandb_logger,
@@ -498,7 +503,7 @@ def run_training(cfg):
         accelerator="gpu",
         precision=cfg.precision,
         num_sanity_val_steps=cfg.num_sanity_val_steps,
-        strategy="ddp_find_unused_parameters_true",
+        strategy=strategy,
     )
 
     if wandb_logger:

@@ -2,8 +2,7 @@ defaults:
   - ndt2.yaml
   - _self_  # ensures current config overrides defaults
 
-_target_: torch_brain.models.NDT2_Supervised
+_target_: torch_brain.models.NDT2
 dec_depth: 2
 dec_heads: 4
 dec_ffn_mult: 1
-dec_time_pool: mean
