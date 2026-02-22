@@ -57,7 +57,7 @@ class NDT2(nn.Module):
         dim: int,
         units_per_patch: int,
         max_bincount: int,
-        max_space_patches: int,
+        max_num_units: int,
         bin_time: float,
         ctx_time: float,
         tokenize_session: bool,
@@ -137,7 +137,7 @@ class NDT2(nn.Module):
 
         ### Encoder
         self.enc_time_emb = Embedding(self.bin_size, dim)
-        self.enc_space_emb = Embedding(max_space_patches, dim)
+        self.enc_space_emb = Embedding(max_num_units // units_per_patch, dim)
 
         self.enc_dropout_in = nn.Dropout(dropout)
         self.enc_dropout_out = nn.Dropout(dropout)
@@ -167,7 +167,7 @@ class NDT2(nn.Module):
         self.dec_time_emb = Embedding(self.bin_size, dim)
         if self.is_ssl:
             # SSL decoder keeps spatial tokens; supervised path spatially pools latents first.
-            self.dec_space_emb = Embedding(max_space_patches, dim)
+            self.dec_space_emb = Embedding(max_num_units // units_per_patch, dim)
 
         self.dec_dropout_in = nn.Dropout(dropout)
         self.dec_dropout_out = nn.Dropout(dropout)
