@@ -1,6 +1,5 @@
 dim: 128
 max_bincount:  100
-max_time_patches: 256
 max_space_patches: 256
 units_per_patch: 64
 bin_time: 0.02

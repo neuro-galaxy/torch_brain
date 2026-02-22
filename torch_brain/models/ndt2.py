@@ -57,7 +57,6 @@ class NDT2(nn.Module):
         dim: int,
         units_per_patch: int,
         max_bincount: int,
-        max_time_patches: int,
         max_space_patches: int,
         bin_time: float,
         ctx_time: float,
@@ -80,6 +79,12 @@ class NDT2(nn.Module):
         readout_spec: Optional[ModalitySpec] = None,
     ):
         super().__init__()
+
+        if is_ssl and mask_ratio is None:
+            raise ValueError("mask_ratio must be provided when is_ssl=True")
+        if not is_ssl and readout_spec is None:
+            raise ValueError("readout_spec must be provided when is_ssl=False")
+
         self.is_ssl = is_ssl
         self.is_causal = is_causal
 
@@ -95,8 +100,6 @@ class NDT2(nn.Module):
         self.bin_size = int(np.round(ctx_time / bin_time))
         self.max_bincount = max_bincount
         self.units_per_patch = units_per_patch
-        self.max_time_patches = max_time_patches
-        self.max_space_patches = max_space_patches
 
         if self.is_ssl:
             self.mask_ratio = mask_ratio
@@ -133,7 +136,7 @@ class NDT2(nn.Module):
             self.n_ctx_tokens += 1
 
         ### Encoder
-        self.enc_time_emb = Embedding(max_time_patches, dim)
+        self.enc_time_emb = Embedding(self.bin_size, dim)
         self.enc_space_emb = Embedding(max_space_patches, dim)
 
         self.enc_dropout_in = nn.Dropout(dropout)
@@ -161,7 +164,7 @@ class NDT2(nn.Module):
             self.bhvr_emb = nn.Parameter(torch.randn(dim))
 
         ### Decoder
-        self.dec_time_emb = Embedding(max_time_patches, dim)
+        self.dec_time_emb = Embedding(self.bin_size, dim)
         if self.is_ssl:
             # SSL decoder keeps spatial tokens; supervised path spatially pools latents first.
             self.dec_space_emb = Embedding(max_space_patches, dim)
