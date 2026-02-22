@@ -166,7 +166,7 @@ class NDT2TrainWrapper(L.LightningModule):
 
 
 class DataModule(L.LightningDataModule):
-    def __init__(self, cfg, is_ssl: bool = True, unsorted: bool = True):
+    def __init__(self, cfg, is_ssl: bool = True):
         super().__init__()
 
         self.cfg = cfg
@@ -436,7 +436,7 @@ def run_training(cfg):
                 filtered_state_dict, strict=False
             )
 
-            log.info(f"Loaded pretrained model (excluding decoder).")
+            log.info("Loaded pretrained model (excluding decoder).")
             log.info(f"Missing keys: {len(missing)}")
             log.info(f"Unexpected keys: {len(unexpected)}")
             if missing:

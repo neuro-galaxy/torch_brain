@@ -86,7 +86,7 @@ class NDT2(nn.Module):
         self.ctx_time = ctx_time
         self.bin_time = bin_time
         if not np.isclose(
-            ctx_time - bin_time * np.round(ctx_time / bin_time), 0, atol=1e6
+            ctx_time - bin_time * np.round(ctx_time / bin_time), 0, atol=-1e6
         ):
             raise ValueError(
                 f"ctx_time should be a multiple of bin_time (ctx_time:{ctx_time}, bin_time:{bin_time})"
