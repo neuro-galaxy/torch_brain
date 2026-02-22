@@ -73,6 +73,7 @@ class NDT2(nn.Module):
         dropout: float,
         activation: str = "gelu",
         pre_norm: bool = False,
+        is_causal: bool = False,
         # SSL params
         mask_ratio: Optional[float] = None,
         # Supervised params
@@ -80,6 +81,7 @@ class NDT2(nn.Module):
     ):
         super().__init__()
         self.is_ssl = is_ssl
+        self.is_causal = is_causal
 
         self.ctx_time = ctx_time
         self.bin_time = bin_time
@@ -376,19 +378,32 @@ class NDT2(nn.Module):
 
         ### Encoder attention mask (True = block attention)
         # Context tokens cannot attend to non-context tokens.
-        # Non-context tokens use causal masking over non-context tokens.
-        b, n_tokens = inputs.size(0), inputs.size(1)
-        enc_attn_mask = torch.zeros(
-            (b, n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
-        )
-        enc_causal_mask = enc_time_idx[:, :, None] < enc_time_idx[:, None, :]
-        enc_attn_mask[:, self.n_ctx_tokens :, self.n_ctx_tokens :] = enc_causal_mask
 
-        enc_attn_mask = repeat(
-            enc_attn_mask,
-            "b n_1 n_2 -> (b enc_heads) n_1 n_2",
-            enc_heads=self.enc_heads,
-        )
+        if self.is_causal:
+            # Mask is complex (i.e. not same across the batch) and won't triger Flash attention
+            # Non-context tokens use causal masking over non-context tokens.
+            b, n_tokens = inputs.size(0), inputs.size(1)
+            enc_attn_mask = torch.zeros(
+                (b, n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
+            )
+            enc_attn_mask[:, : self.n_ctx_tokens, self.n_ctx_tokens :] = True
+            enc_causal_mask = enc_time_idx[:, :, None] < enc_time_idx[:, None, :]
+            enc_attn_mask[:, self.n_ctx_tokens :, self.n_ctx_tokens :] = enc_causal_mask
+
+            enc_attn_mask = repeat(
+                enc_attn_mask,
+                "b n_1 n_2 -> (b enc_heads) n_1 n_2",
+                enc_heads=self.enc_heads,
+            )
+
+        else:
+            # Mask is easy no need to define same across all samples
+            # Should triger Flash attention
+            b, n_tokens = inputs.size(0), inputs.size(1)
+            enc_attn_mask = torch.zeros(
+                (n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
+            )
+            enc_attn_mask[: self.n_ctx_tokens, self.n_ctx_tokens :] = True
 
         ### Encoder padding mask (True = pad token)
         enc_padding_mask = ~enc_unpadding_mask
@@ -468,20 +483,23 @@ class NDT2(nn.Module):
 
         ### Decoder attention mask
         # Context tokens cannot attend to non-context tokens.
-        # Non-context tokens use causal masking over non-context tokens.
-        b, n_tokens = latents.size(0), latents.size(1)
-        dec_attn_mask = torch.zeros(
-            (b, n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
-        )
-        dec_attn_mask[:, : self.n_ctx_tokens, self.n_ctx_tokens :] = True
-        dec_causal_mask = dec_time_idx[:, :, None] < dec_time_idx[:, None, :]
-        dec_attn_mask[:, self.n_ctx_tokens :, self.n_ctx_tokens :] = dec_causal_mask
 
-        dec_attn_mask = repeat(
-            dec_attn_mask,
-            "b n_1 n_2 -> (b dec_heads) n_1 n_2",
-            dec_heads=self.dec_heads,
-        )
+        if self.is_causal:
+            # Non-context tokens use causal masking over non-context tokens.
+            b, n_tokens = latents.size(0), latents.size(1)
+            dec_attn_mask = torch.zeros(
+                (b, n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
+            )
+            dec_attn_mask[:, : self.n_ctx_tokens, self.n_ctx_tokens :] = True
+            dec_causal_mask = dec_time_idx[:, :, None] < dec_time_idx[:, None, :]
+            dec_attn_mask[:, self.n_ctx_tokens :, self.n_ctx_tokens :] = dec_causal_mask
+
+        else:
+            n_tokens = latents.size(1)
+            dec_attn_mask = torch.zeros(
+                (n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
+            )
+            dec_attn_mask[: self.n_ctx_tokens, self.n_ctx_tokens :] = True
 
         # Decoder forward pass.
         dec_output = self.decoder(
