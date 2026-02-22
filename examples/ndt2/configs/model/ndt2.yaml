@@ -12,3 +12,4 @@ enc_depth: 3
 enc_heads: 4
 enc_ffn_mult: 2
 dropout: 0.1
+is_causal: false

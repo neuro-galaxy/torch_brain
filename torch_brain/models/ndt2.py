@@ -380,7 +380,7 @@ class NDT2(nn.Module):
         # Context tokens cannot attend to non-context tokens.
 
         if self.is_causal:
-            # Mask is complex (i.e. not same across the batch) and won't triger Flash attention
+            # Per-sample mask (varies across the batch), which typically disables Flash attention.
             # Non-context tokens use causal masking over non-context tokens.
             b, n_tokens = inputs.size(0), inputs.size(1)
             enc_attn_mask = torch.zeros(
@@ -397,8 +397,7 @@ class NDT2(nn.Module):
             )
 
         else:
-            # Mask is easy no need to define same across all samples
-            # Should triger Flash attention
+            # Shared mask (same for all samples), which is compatible with Flash attention.
             b, n_tokens = inputs.size(0), inputs.size(1)
             enc_attn_mask = torch.zeros(
                 (n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
@@ -485,6 +484,7 @@ class NDT2(nn.Module):
         # Context tokens cannot attend to non-context tokens.
 
         if self.is_causal:
+            # Per-sample mask (varies across the batch), which typically disables Flash attention.
             # Non-context tokens use causal masking over non-context tokens.
             b, n_tokens = latents.size(0), latents.size(1)
             dec_attn_mask = torch.zeros(
@@ -495,6 +495,7 @@ class NDT2(nn.Module):
             dec_attn_mask[:, self.n_ctx_tokens :, self.n_ctx_tokens :] = dec_causal_mask
 
         else:
+            # Shared mask (same for all samples), which is compatible with Flash attention.
             n_tokens = latents.size(1)
             dec_attn_mask = torch.zeros(
                 (n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
