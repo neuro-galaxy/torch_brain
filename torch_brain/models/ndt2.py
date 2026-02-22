@@ -241,7 +241,10 @@ class NDT2(nn.Module):
             extra_units_mask = np.ones(
                 (n_bins, n_units_patches, self.units_per_patch), dtype=np.bool_
             )
-            extra_units_mask[:, -1, -extra_units:] = False
+
+            if extra_units > 0:
+                extra_units_mask[:, -1, -extra_units:] = False
+
             extra_units_mask = rearrange(
                 extra_units_mask,
                 "t n p -> (t n) p",
@@ -291,6 +294,8 @@ class NDT2(nn.Module):
 
             ### Target tokens
             bhvr = prepare_for_readout(data, self.readout_spec)[1]
+            # TODO Hack to test while still hacing a problem with data
+            # Will be removed soon
             if len(bhvr) != n_bins:
                 bhvr = np.zeros((50, 2), dtype=bhvr.dtype)
 
@@ -315,7 +320,7 @@ class NDT2(nn.Module):
         }
 
         if self.is_ssl:
-            data_dict["dec_space_idx"] = pad(dec_space_idx)
+            data_dict["model_inputs"]["dec_space_idx"] = pad(dec_space_idx)
             data_dict["extra_units_mask"] = pad(extra_units_mask)
 
         return data_dict
@@ -435,11 +440,9 @@ class NDT2(nn.Module):
         else:
             # Average-pool latents across spatial patches for each time bin.
             b, _, h = latents.size()
-            pooled_latents_size = (
-                b,
-                self.bin_size + 1,
-                h,
-            )  # +1 handles padding bucket.
+
+            # +1 handles padding bucket.
+            pooled_latents_size = (b, self.bin_size + 1, h)
             pooled_latents = torch.zeros(
                 pooled_latents_size, device=latents.device, dtype=latents.dtype
             )
@@ -493,6 +496,12 @@ class NDT2(nn.Module):
             dec_attn_mask[:, : self.n_ctx_tokens, self.n_ctx_tokens :] = True
             dec_causal_mask = dec_time_idx[:, :, None] < dec_time_idx[:, None, :]
             dec_attn_mask[:, self.n_ctx_tokens :, self.n_ctx_tokens :] = dec_causal_mask
+
+            dec_attn_mask = repeat(
+                dec_attn_mask,
+                "b n_1 n_2 -> (b dec_heads) n_1 n_2",
+                dec_heads=self.dec_heads,
+            )
 
         else:
             # Shared mask (same for all samples), which is compatible with Flash attention.

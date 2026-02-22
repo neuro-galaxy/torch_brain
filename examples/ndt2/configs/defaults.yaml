@@ -20,7 +20,6 @@ unsorted: false
 log_every_n_steps: 1
 superv_batch_size: null
 num_sanity_val_steps: 0
-custom_ndt2_data_spliter: false
 
 callbacks: 
   patience: 100
