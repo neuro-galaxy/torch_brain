@@ -331,15 +331,14 @@ class NDT2(nn.Module):
         """
         # Build optional context tokens.
 
-        B, L = units_patched.size(0), units_patched.size(1)
-        D = self.dim
+        B, L, D = units_patched.size(0), units_patched.size(1), self.dim
         device = units_patched.device
         n_ctx_tokens = self.n_ctx_tokens
 
         # Convert unit patches to encoder input tokens.
-        inputs = self.enc_dropout_in(units_patched)
         inputs = self.patch_emb(units_patched)
         inputs = rearrange(inputs, "b l p p_dim -> b l (p p_dim)")
+        inputs = self.enc_dropout_in(inputs)
 
         ctx_tokens = []
         if n_ctx_tokens > 0:
@@ -350,9 +349,7 @@ class NDT2(nn.Module):
             if self.tokenize_task:
                 ctx_tokens.append(self.task_emb(task_idx) + self.task_bias)
 
-            # Prepend context tokens to the sequnce tokens.
             ctx_emb = torch.stack(ctx_tokens, dim=1)
-            inputs = torch.cat([ctx_emb, inputs], dim=1)
 
             ctx_pad_mask = torch.zeros(
                 (B, n_ctx_tokens), dtype=torch.bool, device=device
@@ -414,6 +411,8 @@ class NDT2(nn.Module):
             pooled_time_idx = torch.arange(
                 self.bin_size, dtype=time_idx.dtype, device=device
             )
+            pooled_time_idx = repeat(pooled_time_idx, "l -> b l", b=B)
+
             if self.task == "classification":
                 bhvr_time_idx = torch.tensor(
                     [self.bin_size - 1], dtype=time_idx.dtype, device=device
@@ -421,21 +420,31 @@ class NDT2(nn.Module):
             else:
                 bhvr_time_idx = pooled_time_idx.clone()
 
-            bhvr_time_idx = repeat(bhvr_time_idx, "l -> b l")
             dec_time_idx = torch.cat([pooled_time_idx, bhvr_time_idx], dim=1)
 
             n_bhvr_tokens = bhvr_time_idx.size(1)
-            bhvr_tokens = repeat(self.bhvr_emb, "h -> b l d", b=B, l=n_bhvr_tokens)
+            bhvr_tokens = repeat(self.bhvr_emb, "d -> b l d", b=B, l=n_bhvr_tokens)
 
-            bhvr_pad_mask = torch.zeros_like(bhvr_time_idx)
+            # Padding pooling Reshape unpadding_mask to separate Time and Space
+            reshaped_mask = rearrange(
+                unpadding_mask, "b (t n) -> b t n", t=self.bin_size
+            )
+
+            dec_padding_mask = ~reshaped_mask.any(dim=-1)
+
+            bhvr_pad_mask = torch.zeros_like(bhvr_time_idx, dtype=torch.bool)
             dec_padding_mask = torch.cat(
-                [ctx_pad_mask, ~unpadding_mask, bhvr_pad_mask], dim=1
+                [ctx_pad_mask, dec_padding_mask, bhvr_pad_mask], dim=1
             )
 
         # Add temporal and spatial position embeddings.
         inputs = (
             inputs + self.enc_time_emb(enc_time_idx) + self.enc_space_emb(enc_space_idx)
         )
+
+        # Prepend context tokens to the sequnce tokens.
+        if n_ctx_tokens > 0:
+            inputs = torch.cat([ctx_emb, inputs], dim=1)
 
         ### Encoder attention mask (True = block attention)
         # Context tokens cannot attend to non-context tokens.
