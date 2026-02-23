@@ -398,11 +398,10 @@ class NDT2(nn.Module):
             enc_causal_mask = enc_time_idx[:, :, None] < enc_time_idx[:, None, :]
             enc_attn_mask[:, self.n_ctx_tokens :, self.n_ctx_tokens :] = enc_causal_mask
 
-            enc_attn_mask = repeat(
-                enc_attn_mask,
-                "b n_1 n_2 -> (b enc_heads) n_1 n_2",
-                enc_heads=self.enc_heads,
-            )
+            # b n_tokens n_tokens -> (b enc_heads) n_tokens n_tokens
+            enc_attn_mask = enc_attn_mask.unsqueeze(1)
+            enc_attn_mask = enc_attn_mask.expand(-1, self.enc_heads, -1, -1)
+            enc_attn_mask = enc_attn_mask.reshape(-1, n_tokens, n_tokens)
 
         else:
             # Shared mask (same for all samples), which is compatible with Flash attention.
@@ -500,11 +499,10 @@ class NDT2(nn.Module):
             dec_causal_mask = dec_time_idx[:, :, None] < dec_time_idx[:, None, :]
             dec_attn_mask[:, self.n_ctx_tokens :, self.n_ctx_tokens :] = dec_causal_mask
 
-            dec_attn_mask = repeat(
-                dec_attn_mask,
-                "b n_1 n_2 -> (b dec_heads) n_1 n_2",
-                dec_heads=self.dec_heads,
-            )
+            # b n_tokens n_tokens -> (b dec_heads) n_tokens n_tokens
+            dec_attn_mask = dec_attn_mask.unsqueeze(1)
+            dec_attn_mask = dec_attn_mask.expand(-1, self.dec_heads, -1, -1)
+            dec_attn_mask = dec_attn_mask.reshape(-1, n_tokens, n_tokens)
 
         else:
             # Shared mask (same for all samples), which is compatible with Flash attention.
