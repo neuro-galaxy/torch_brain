@@ -1,4 +1,4 @@
-name: dandi Testing
+name: Pipeline Testing
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  dandi-testing:
+  pipeline-testing:
     runs-on: ubuntu-latest
 
     steps:
