@@ -19,33 +19,40 @@ from torch_brain.utils.binning import bin_spikes
 # Context-token masking against the main token stream happens in attention masks.
 
 
-def get_masking_indices(input_tensor, mask_ratio):
+def get_batch_masking_indices(padding_mask, mask_ratio):
     """
-    Generates random indices for sample-level masking based on input shape.
-
     Args:
-        input_tensor (Tensor): The input data, where dimension 0 is the sequence length.
-        mask_ratio (float): The fraction of tokens to mask (e.g., 0.75).
-
-    Returns:
-        idx_keep (Tensor): 1D tensor of indices fed to the encoder.
-        idx_mask (Tensor): 1D tensor of indices held out for the decoder.
+        padding_mask (Tensor): (B, L) boolean, True for VALID tokens, False for PAD.
+        mask_ratio (float): Ratio of tokens to MASK.
     """
-    # Number of tokens available for masking.
-    total_bins = input_tensor.shape[0]
+    device = padding_mask.device
+    B, L = padding_mask.shape
 
-    # Number of visible tokens kept for the encoder.
-    encoder_frac = int((1 - mask_ratio) * total_bins)
+    # Generate random noise
+    noise = torch.rand(B, L, device=device)
 
-    # Random permutation used to split keep vs. mask tokens.
-    # TODO be careful with seed set up
-    shuffle = np.random.permutation(total_bins)
+    # Force padding tokens to the end of the sort order by making their noise negative
+    # Tokens with high noise will be masked.
+    noise = torch.where(padding_mask, noise, torch.tensor(-1.0, device=device))
 
-    # Partition into encoder-visible and decoder-reconstructed indices.
-    idx_keep = shuffle[:encoder_frac]
-    idx_mask = shuffle[encoder_frac:]
+    # Sort noise to get indices
+    ids_shuffle = torch.argsort(noise, dim=1, descending=True)
+    ids_restore = torch.argsort(ids_shuffle, dim=1)
 
-    return idx_keep, idx_mask
+    # Determine how many valid tokens to mask per sample
+    num_valid = padding_mask.sum(dim=1)
+    num_mask = (num_valid * mask_ratio).int()
+
+    # Create the mask: 1 is MASK, 0 is KEEP
+    # We create a mask of the top N indices where N is num_mask
+    mask = torch.zeros((B, L), device=device)
+    for i in range(B):
+        mask[i, : num_mask[i]] = 1
+
+    # Unshuffle the mask to align with original sequence order
+    mask = torch.gather(mask, dim=1, index=ids_restore)
+
+    return mask.bool(), ids_restore
 
 
 class NDT2(nn.Module):
@@ -196,19 +203,11 @@ class NDT2(nn.Module):
             self.output_to_bhvr = nn.Linear(dim, readout_spec.dim)
 
     def tokenize(self, data: Data) -> Dict:
-        ### Context tokens
-        session_idx, subject_idx, task_idx = [], [], []
-        if self.tokenize_session:
-            session_idx = self.session_emb.tokenizer(data.session.id)
-        if self.tokenize_subject:
-            subject_idx = self.subject_emb.tokenizer(data.subject.id)
-        if self.tokenize_task:
-            task_idx = self.task_emb.tokenizer(data.brainset.id)
-
-        ### Prepare encoder_tokens
+        ### Prepare sequnce tokens
         n_units = len(data.units.id)
 
         # `self.max_bincount` acts as the padding index.
+        # TODO update with the new version of bin_spikes
         units_bincount = bin_spikes(
             data.spikes, n_units, self.bin_time, right=True, dtype=np.int32
         )
@@ -219,7 +218,7 @@ class NDT2(nn.Module):
 
         if extra_units > 0:
             # Pad the final patch when unit count is not divisible by patch size.
-            # Example: 3 units with patch size 2 requires 1 padded unit.
+            # Example: 5 units with patch size 2 requires 1 padded unit.
             bottom_pad = ((0, extra_units), (0, 0))
             units_bincount = np.pad(
                 units_bincount,
@@ -262,40 +261,11 @@ class NDT2(nn.Module):
         space_idx = np.arange(n_units_patches, dtype=np.int32)
         space_idx = repeat(space_idx, "n -> (t n)", t=n_bins)
 
+        ### Target tokens
         if self.is_ssl:
-
-            # ViT-style split: visible tokens to encoder, masked tokens to decoder.
-            idx_keep, idx_mask = get_masking_indices(units_patched, self.mask_ratio)
-
-            ### Encoder tokens
-            enc_units_patched = units_patched[idx_keep]
-            enc_time_idx = time_idx[idx_keep]
-            enc_space_idx = space_idx[idx_keep]
-
-            ### Decoder tokens
-            dec_time_idx = time_idx[idx_mask]
-            dec_space_idx = space_idx[idx_mask]
-
-            ### Target tokens
-            target = pad(units_patched[idx_mask])
-            extra_units_mask = extra_units_mask[idx_mask]
+            target = pad(units_patched)
 
         else:
-            ### Encoder tokens
-            enc_time_idx = time_idx
-            enc_space_idx = space_idx
-            enc_units_patched = units_patched
-
-            ### Decoder tokens
-            pooled_time_idx = np.arange(n_bins, dtype=np.int32)
-            if self.task == "classification":
-                bhvr_time_idx = np.array([n_bins - 1], dtype=np.int32)
-            else:
-                bhvr_time_idx = np.arange(n_bins, dtype=np.int32)
-
-            dec_time_idx = np.concatenate([pooled_time_idx, bhvr_time_idx], axis=0)
-
-            ### Target tokens
             bhvr = prepare_for_readout(data, self.readout_spec)[1]
             # TODO Hack to test while still hacing a problem with data
             # Will be removed soon
@@ -304,120 +274,190 @@ class NDT2(nn.Module):
 
             target = bhvr
 
+        ### Context tokens
+        session_idx, subject_idx, task_idx = [], [], []
+        if self.tokenize_session:
+            session_idx = self.session_emb.tokenizer(data.session.id)
+        if self.tokenize_subject:
+            subject_idx = self.subject_emb.tokenizer(data.subject.id)
+        if self.tokenize_task:
+            task_idx = self.task_emb.tokenizer(data.brainset.id)
+
         data_dict = {
             "model_inputs": {
-                # context
+                # Sequence
+                "units_patched": pad(units_patched),
+                "time_idx": pad(time_idx),
+                "space_idx": pad(space_idx),
+                "unpadding_mask": track_mask(time_idx),
+                # Context
                 "session_idx": session_idx,
                 "subject_idx": subject_idx,
                 "task_idx": task_idx,
-                # encoder
-                "enc_units_patched": pad(enc_units_patched),
-                "enc_time_idx": pad(enc_time_idx),
-                "enc_space_idx": pad(enc_space_idx),
-                "enc_unpadding_mask": track_mask(enc_time_idx),
-                # decoder
-                "dec_time_idx": pad(dec_time_idx),
-                "dec_unpadding_mask": track_mask(dec_time_idx),
             },
             "target": target,
         }
 
         if self.is_ssl:
-            data_dict["model_inputs"]["dec_space_idx"] = pad(dec_space_idx)
             data_dict["extra_units_mask"] = pad(extra_units_mask)
 
         return data_dict
 
     def forward(
         self,
-        enc_units_patched: torch.Tensor,
-        enc_time_idx: torch.Tensor,
-        enc_space_idx: torch.Tensor,
-        enc_unpadding_mask: torch.Tensor,
-        dec_time_idx: torch.Tensor,
-        dec_unpadding_mask: torch.Tensor,
+        units_patched: torch.Tensor,
+        time_idx: torch.Tensor,
+        space_idx: torch.Tensor,
+        unpadding_mask: torch.Tensor,
         session_idx: Optional[torch.Tensor] = None,
         subject_idx: Optional[torch.Tensor] = None,
         task_idx: Optional[torch.Tensor] = None,
-        dec_space_idx: Optional[torch.Tensor] = None,  # Only for SSL
     ) -> Dict:
         # TODO update
         """
         Args:
-            enc_units_patched: (b, max_enc_l, units_per_patch) tokenized unit-count patches.
-            enc_time_idx: (b, max_enc_l) encoder token time indices.
-            enc_space_idx: (b, max_enc_l) encoder token space indices.
-            enc_unpadding_mask: (b, max_enc_l) True for valid (non-padding) encoder tokens.
-            dec_time_idx: (b, max_dec_l) decoder token time indices.
-            dec_unpadding_mask: (b, max_dec_l) True for valid (non-padding) decoder tokens.
+            units_patched: (b, len_seq, patch, units_per_patch) tokenized unit-count patches.
+            time_idx: (b, len_seq) token time indices.
+            space_idx: (b, len_seq) token space indices.
+            unpadding_mask: (b, len_seq) True for valid (non-padding) encoder tokens.
             session_idx: (b,) optional session token indices.
             subject_idx: (b,) optional subject token indices.
             task_idx: (b,) optional task token indices.
-            dec_space_idx: (b, max_dec_l) decoder space indices (SSL only).
 
         Returns:
             Dict[str, Tensor]: Output dictionary containing model predictions.
         """
-        # Build optional context tokens.
-        ctx_tokens = []
-        if self.tokenize_session:
-            ctx_tokens.append(self.session_emb(session_idx) + self.session_bias)
-        if self.tokenize_subject:
-            ctx_tokens.append(self.subject_emb(subject_idx) + self.subject_bias)
-        if self.tokenize_task:
-            ctx_tokens.append(self.task_emb(task_idx) + self.task_bias)
+        B = units_patched.size(0)
+        n_ctx_tokens = self.n_ctx_tokens
 
-        if self.n_ctx_tokens > 0:
-            ctx_emb = torch.stack(ctx_tokens, dim=1)
+        if n_ctx_tokens > 0:
+            ctx_pad_mask = torch.zeros(
+                (B, n_ctx_tokens), dtype=torch.bool, device=inputs.device
+            )
+        else:
+            ctx_pad_mask = torch.empty(dtype=torch.bool, device=inputs.device)
 
         # Convert unit patches to encoder input tokens.
-        inputs = self.patch_emb(enc_units_patched)
-        inputs = rearrange(inputs, "... p p_dim -> ... (p p_dim)")
+        inputs = self.patch_emb(units_patched)
+        inputs = rearrange(inputs, "b l p p_dim -> b l (p p_dim)")
         inputs = self.enc_dropout_in(inputs)
+
+        if self.is_ssl:
+            _, L, D = inputs.size()
+            # Generate mask (True = MASKED, False = KEEP)
+            mask, ids_restore = get_batch_masking_indices(
+                unpadding_mask, self.mask_ratio
+            )
+
+            # Extract "Keep" tokens for Encoder
+            # We use a trick: gather tokens based on sorted noise
+            ids_keep = torch.argsort(
+                torch.where(mask, -1.0, torch.rand_like(mask.float())),
+                dim=1,
+                descending=True,
+            )
+
+            # Handle variable length specifically
+            num_keep = L - mask.sum(dim=1).max()
+
+            # Filter inputs for encoder
+            index = ids_keep[:, :num_keep]
+            inputs = torch.gather(
+                inputs, dim=1, index=repeat(index, "b l -> b l d", d=D)
+            )
+
+            ### Encoder spacio-temporal index
+            enc_time_idx = torch.gather(time_idx, dim=1, index=index)
+            enc_space_idx = torch.gather(space_idx, dim=1, index=index)
+
+            ### Encoder padding mask (True = pad token)
+            enc_padding_mask = torch.gather(~unpadding_mask, dim=1, index=index)
+            enc_padding_mask = torch.cat([ctx_pad_mask, enc_padding_mask], dim=1)
+
+            ### Decoder spacio-temporal index
+            dec_time_idx = time_idx
+            dec_space_idx = space_idx
+
+            ### Decoder padding mask
+            dec_padding_mask = torch.cat([ctx_pad_mask, ~unpadding_mask], dim=1)
+
+            # Append learned masked tokens for decoder-side reconstruction.
+            mask_tokens = repeat(self.masked_emb, "d -> b l d", b=B, l=L - num_keep)
+
+        else:
+            ### Encoder spacio-temporal index
+            enc_time_idx = time_idx
+            enc_space_idx = space_idx
+
+            ### Encoder padding mask (True = pad token)
+            enc_padding_mask = torch.cat([ctx_pad_mask, ~unpadding_mask], dim=1)
+
+            ### Decoder temporal index (no spatial as temporal is pooled)
+            pooled_time_idx = torch.arange(
+                self.bin_size, dtype=time_idx.dtype, device=time_idx.device
+            )
+            if self.task == "classification":
+                bhvr_time_idx = torch.tensor(
+                    [self.bin_size - 1], dtype=time_idx.dtype, device=time_idx.device
+                )
+            else:
+                # TODO check
+                bhvr_time_idx = pooled_time_idx.clone()
+
+            bhvr_time_idx = repeat(bhvr_time_idx, "l -> b l")
+            dec_time_idx = torch.cat([pooled_time_idx, bhvr_time_idx], dim=1)
+
+            n_bhvr_tokens = bhvr_time_idx.size(1)
+            bhvr_tokens = repeat(self.bhvr_emb, "h -> b l d", b=B, l=n_bhvr_tokens)
+
+            bhvr_pad_mask = torch.zeros_like(bhvr_time_idx)
+            dec_padding_mask = torch.cat(
+                [ctx_pad_mask, ~unpadding_mask, bhvr_pad_mask], dim=1
+            )
 
         # Add temporal and spatial position embeddings.
         inputs = (
             inputs + self.enc_time_emb(enc_time_idx) + self.enc_space_emb(enc_space_idx)
         )
 
-        # Prepend context tokens.
-        if self.n_ctx_tokens > 0:
+        # Build optional context tokens.
+        ctx_tokens = []
+        if n_ctx_tokens > 0:
+            if self.tokenize_session:
+                ctx_tokens.append(self.session_emb(session_idx) + self.session_bias)
+            if self.tokenize_subject:
+                ctx_tokens.append(self.subject_emb(subject_idx) + self.subject_bias)
+            if self.tokenize_task:
+                ctx_tokens.append(self.task_emb(task_idx) + self.task_bias)
+
+            # Prepend context tokens to the sequnce tokens.
+            ctx_emb = torch.stack(ctx_tokens, dim=1)
             inputs = torch.cat([ctx_emb, inputs], dim=1)
 
         ### Encoder attention mask (True = block attention)
         # Context tokens cannot attend to non-context tokens.
 
+        L = inputs.size(1)
         if self.is_causal:
             # Per-sample mask (varies across the batch), which typically disables Flash attention.
             # Non-context tokens use causal masking over non-context tokens.
-            b, n_tokens = inputs.size(0), inputs.size(1)
             enc_attn_mask = torch.zeros(
-                (b, n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
+                (B, L, L), dtype=torch.bool, device=inputs.device
             )
-            enc_attn_mask[:, : self.n_ctx_tokens, self.n_ctx_tokens :] = True
+            enc_attn_mask[:, :n_ctx_tokens, n_ctx_tokens:] = True
             enc_causal_mask = enc_time_idx[:, :, None] < enc_time_idx[:, None, :]
-            enc_attn_mask[:, self.n_ctx_tokens :, self.n_ctx_tokens :] = enc_causal_mask
+            enc_attn_mask[:, n_ctx_tokens:, n_ctx_tokens:] = enc_causal_mask
 
-            # b n_tokens n_tokens -> (b enc_heads) n_tokens n_tokens
+            # b l l -> (b enc_heads) l l
             enc_attn_mask = enc_attn_mask.unsqueeze(1)
             enc_attn_mask = enc_attn_mask.expand(-1, self.enc_heads, -1, -1)
-            enc_attn_mask = enc_attn_mask.reshape(-1, n_tokens, n_tokens)
+            enc_attn_mask = enc_attn_mask.reshape(-1, L, L)
 
         else:
             # Shared mask (same for all samples), which is compatible with Flash attention.
-            b, n_tokens = inputs.size(0), inputs.size(1)
-            enc_attn_mask = torch.zeros(
-                (n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
-            )
-            enc_attn_mask[: self.n_ctx_tokens, self.n_ctx_tokens :] = True
-
-        ### Encoder padding mask (True = pad token)
-        enc_padding_mask = ~enc_unpadding_mask
-        if self.n_ctx_tokens > 0:
-            ctx_pad_mask = torch.zeros(
-                (b, self.n_ctx_tokens), dtype=torch.bool, device=inputs.device
-            )
-            enc_padding_mask = torch.cat([ctx_pad_mask, enc_padding_mask], dim=1)
+            L = inputs.size(1)
+            enc_attn_mask = torch.zeros((L, L), dtype=torch.bool, device=inputs.device)
+            enc_attn_mask[:n_ctx_tokens, n_ctx_tokens:] = True
 
         # Encoder forward pass.
         enc_output = self.encoder(
@@ -425,49 +465,35 @@ class NDT2(nn.Module):
         )
 
         # Remove prepended context tokens.
-        latents = enc_output[:, self.n_ctx_tokens :]
+        latents = enc_output[:, n_ctx_tokens:]
         latents = self.enc_dropout_out(latents)
 
+        # Append mask tokens to encoder latents
         if self.is_ssl:
-            # Append learned masked tokens for decoder-side reconstruction.
-            b, n_masked_tokens = dec_time_idx.size(0), dec_time_idx.size(1)
-            query_tokens = repeat(self.masked_emb, "h -> b n h", b=b, n=n_masked_tokens)
+            latents = torch.cat([latents, mask_tokens], dim=1)
 
-            # Padding is applied by the collater, so concatenate encoder/decoder indices here.
-            dec_time_idx = torch.cat([enc_time_idx, dec_time_idx], dim=1)
-            dec_space_idx = torch.cat([enc_space_idx, dec_space_idx], dim=1)
-
-            dec_padding_mask = torch.cat([enc_padding_mask, ~dec_unpadding_mask], dim=1)
+            # Unshuffle to original positions
+            latents = torch.gather(
+                latents, dim=1, index=repeat(ids_restore, "b l -> b l d", d=D)
+            )
 
         else:
             # Average-pool latents across spatial patches for each time bin.
-            b, _, h = latents.size()
-
             # +1 handles padding bucket.
-            pooled_latents_size = (b, self.bin_size + 1, h)
+            pooled_latents_size = (B, self.bin_size + 1, D)
             pooled_latents = torch.zeros(
                 pooled_latents_size, device=latents.device, dtype=latents.dtype
             )
 
             # Route padded entries to the extra bucket.
-            index = torch.where(enc_unpadding_mask, enc_time_idx, self.bin_size)
-            index = repeat(index, "b enc_l -> b enc_l h", h=h)
+            index = torch.where(unpadding_mask, enc_time_idx, self.bin_size)
+            index = repeat(index, "b l -> b l d", d=D)
             pooled_latents.scatter_reduce_(
                 dim=1, index=index, src=latents, reduce="mean", include_self=False
             )
             latents = pooled_latents[:, :-1]  # Drop the padding bucket.
 
-            n_bhvr_tokens = dec_time_idx.size(1) - self.bin_size
-            query_tokens = repeat(self.bhvr_emb, "h -> b n h", b=b, n=n_bhvr_tokens)
-
-            dec_padding_mask = ~dec_unpadding_mask
-            if self.n_ctx_tokens > 0:
-                ctx_pad_mask = torch.zeros(
-                    (b, self.n_ctx_tokens), dtype=torch.bool, device=inputs.device
-                )
-                dec_padding_mask = torch.cat([ctx_pad_mask, dec_padding_mask], dim=1)
-
-        latents = torch.cat([latents, query_tokens], dim=1)
+            latents = torch.cat([latents, bhvr_tokens], dim=1)
 
         latents = self.dec_dropout_in(latents)
         # Add decoder temporal embeddings.
@@ -478,7 +504,7 @@ class NDT2(nn.Module):
             latents = latents + self.dec_space_emb(dec_space_idx)
 
         # Prepend context tokens to decoder inputs.
-        if self.n_ctx_tokens > 0:
+        if n_ctx_tokens > 0:
             if not self.is_ssl:
                 # Keep context embeddings fixed during supervised finetuning.
                 ctx_emb = ctx_emb.detach()
@@ -488,29 +514,26 @@ class NDT2(nn.Module):
         ### Decoder attention mask
         # Context tokens cannot attend to non-context tokens.
 
+        L = latents.size(1)
         if self.is_causal:
             # Per-sample mask (varies across the batch), which typically disables Flash attention.
             # Non-context tokens use causal masking over non-context tokens.
-            b, n_tokens = latents.size(0), latents.size(1)
             dec_attn_mask = torch.zeros(
-                (b, n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
+                (B, L, L), dtype=torch.bool, device=inputs.device
             )
-            dec_attn_mask[:, : self.n_ctx_tokens, self.n_ctx_tokens :] = True
+            dec_attn_mask[:, :n_ctx_tokens, n_ctx_tokens:] = True
             dec_causal_mask = dec_time_idx[:, :, None] < dec_time_idx[:, None, :]
-            dec_attn_mask[:, self.n_ctx_tokens :, self.n_ctx_tokens :] = dec_causal_mask
+            dec_attn_mask[:, n_ctx_tokens:, n_ctx_tokens:] = dec_causal_mask
 
-            # b n_tokens n_tokens -> (b dec_heads) n_tokens n_tokens
+            # b l l -> (b dec_heads) l l
             dec_attn_mask = dec_attn_mask.unsqueeze(1)
             dec_attn_mask = dec_attn_mask.expand(-1, self.dec_heads, -1, -1)
-            dec_attn_mask = dec_attn_mask.reshape(-1, n_tokens, n_tokens)
+            dec_attn_mask = dec_attn_mask.reshape(-1, L, L)
 
         else:
             # Shared mask (same for all samples), which is compatible with Flash attention.
-            n_tokens = latents.size(1)
-            dec_attn_mask = torch.zeros(
-                (n_tokens, n_tokens), dtype=torch.bool, device=inputs.device
-            )
-            dec_attn_mask[: self.n_ctx_tokens, self.n_ctx_tokens :] = True
+            dec_attn_mask = torch.zeros((L, L), dtype=torch.bool, device=inputs.device)
+            dec_attn_mask[:n_ctx_tokens, n_ctx_tokens:] = True
 
         # Decoder forward pass.
         dec_output = self.decoder(
@@ -518,12 +541,12 @@ class NDT2(nn.Module):
         )
 
         # Remove prepended context tokens.
-        output = dec_output[:, self.n_ctx_tokens :]
+        output = dec_output[:, n_ctx_tokens:]
         output = self.dec_dropout_out(output)
 
         if self.is_ssl:
             # Reconstruct per-unit rates for masked tokens.
-            output = output[:, -n_masked_tokens:]
+            output = output[mask]
             rates = self.output_to_units(output)
 
             return {"output": rates}
