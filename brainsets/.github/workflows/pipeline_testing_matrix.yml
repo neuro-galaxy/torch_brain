@@ -1,4 +1,4 @@
-name: dandi Testing Matrix
+name: Pipeline Testing Matrix
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  dandi-testing-matrix:
+  pipeline-testing-matrix:
     runs-on: ubuntu-latest
 
     strategy:
