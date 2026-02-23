@@ -95,6 +95,8 @@ class NDT2(nn.Module):
         self.is_ssl = is_ssl
         self.is_causal = is_causal
 
+        self.dim = dim
+
         self.ctx_time = ctx_time
         self.bin_time = bin_time
         if not np.isclose(
@@ -327,23 +329,39 @@ class NDT2(nn.Module):
         Returns:
             Dict[str, Tensor]: Output dictionary containing model predictions.
         """
-        B = units_patched.size(0)
+        # Build optional context tokens.
+
+        B, L = units_patched.size(0), units_patched.size(1)
+        D = self.dim
+        device = units_patched.device
         n_ctx_tokens = self.n_ctx_tokens
 
-        if n_ctx_tokens > 0:
-            ctx_pad_mask = torch.zeros(
-                (B, n_ctx_tokens), dtype=torch.bool, device=inputs.device
-            )
-        else:
-            ctx_pad_mask = torch.empty(dtype=torch.bool, device=inputs.device)
-
         # Convert unit patches to encoder input tokens.
+        inputs = self.enc_dropout_in(units_patched)
         inputs = self.patch_emb(units_patched)
         inputs = rearrange(inputs, "b l p p_dim -> b l (p p_dim)")
-        inputs = self.enc_dropout_in(inputs)
+
+        ctx_tokens = []
+        if n_ctx_tokens > 0:
+            if self.tokenize_session:
+                ctx_tokens.append(self.session_emb(session_idx) + self.session_bias)
+            if self.tokenize_subject:
+                ctx_tokens.append(self.subject_emb(subject_idx) + self.subject_bias)
+            if self.tokenize_task:
+                ctx_tokens.append(self.task_emb(task_idx) + self.task_bias)
+
+            # Prepend context tokens to the sequnce tokens.
+            ctx_emb = torch.stack(ctx_tokens, dim=1)
+            inputs = torch.cat([ctx_emb, inputs], dim=1)
+
+            ctx_pad_mask = torch.zeros(
+                (B, n_ctx_tokens), dtype=torch.bool, device=device
+            )
+
+        else:
+            ctx_pad_mask = torch.empty(dtype=torch.bool, device=device)
 
         if self.is_ssl:
-            _, L, D = inputs.size()
             # Generate mask (True = MASKED, False = KEEP)
             mask, ids_restore = get_batch_masking_indices(
                 unpadding_mask, self.mask_ratio
@@ -394,14 +412,13 @@ class NDT2(nn.Module):
 
             ### Decoder temporal index (no spatial as temporal is pooled)
             pooled_time_idx = torch.arange(
-                self.bin_size, dtype=time_idx.dtype, device=time_idx.device
+                self.bin_size, dtype=time_idx.dtype, device=device
             )
             if self.task == "classification":
                 bhvr_time_idx = torch.tensor(
-                    [self.bin_size - 1], dtype=time_idx.dtype, device=time_idx.device
+                    [self.bin_size - 1], dtype=time_idx.dtype, device=device
                 )
             else:
-                # TODO check
                 bhvr_time_idx = pooled_time_idx.clone()
 
             bhvr_time_idx = repeat(bhvr_time_idx, "l -> b l")
@@ -420,20 +437,6 @@ class NDT2(nn.Module):
             inputs + self.enc_time_emb(enc_time_idx) + self.enc_space_emb(enc_space_idx)
         )
 
-        # Build optional context tokens.
-        ctx_tokens = []
-        if n_ctx_tokens > 0:
-            if self.tokenize_session:
-                ctx_tokens.append(self.session_emb(session_idx) + self.session_bias)
-            if self.tokenize_subject:
-                ctx_tokens.append(self.subject_emb(subject_idx) + self.subject_bias)
-            if self.tokenize_task:
-                ctx_tokens.append(self.task_emb(task_idx) + self.task_bias)
-
-            # Prepend context tokens to the sequnce tokens.
-            ctx_emb = torch.stack(ctx_tokens, dim=1)
-            inputs = torch.cat([ctx_emb, inputs], dim=1)
-
         ### Encoder attention mask (True = block attention)
         # Context tokens cannot attend to non-context tokens.
 
@@ -441,9 +444,7 @@ class NDT2(nn.Module):
         if self.is_causal:
             # Per-sample mask (varies across the batch), which typically disables Flash attention.
             # Non-context tokens use causal masking over non-context tokens.
-            enc_attn_mask = torch.zeros(
-                (B, L, L), dtype=torch.bool, device=inputs.device
-            )
+            enc_attn_mask = torch.zeros((B, L, L), dtype=torch.bool, device=device)
             enc_attn_mask[:, :n_ctx_tokens, n_ctx_tokens:] = True
             enc_causal_mask = enc_time_idx[:, :, None] < enc_time_idx[:, None, :]
             enc_attn_mask[:, n_ctx_tokens:, n_ctx_tokens:] = enc_causal_mask
@@ -456,7 +457,7 @@ class NDT2(nn.Module):
         else:
             # Shared mask (same for all samples), which is compatible with Flash attention.
             L = inputs.size(1)
-            enc_attn_mask = torch.zeros((L, L), dtype=torch.bool, device=inputs.device)
+            enc_attn_mask = torch.zeros((L, L), dtype=torch.bool, device=device)
             enc_attn_mask[:n_ctx_tokens, n_ctx_tokens:] = True
 
         # Encoder forward pass.
@@ -482,7 +483,7 @@ class NDT2(nn.Module):
             # +1 handles padding bucket.
             pooled_latents_size = (B, self.bin_size + 1, D)
             pooled_latents = torch.zeros(
-                pooled_latents_size, device=latents.device, dtype=latents.dtype
+                pooled_latents_size, dtype=latents.dtype, device=device
             )
 
             # Route padded entries to the extra bucket.
@@ -518,9 +519,7 @@ class NDT2(nn.Module):
         if self.is_causal:
             # Per-sample mask (varies across the batch), which typically disables Flash attention.
             # Non-context tokens use causal masking over non-context tokens.
-            dec_attn_mask = torch.zeros(
-                (B, L, L), dtype=torch.bool, device=inputs.device
-            )
+            dec_attn_mask = torch.zeros((B, L, L), dtype=torch.bool, device=device)
             dec_attn_mask[:, :n_ctx_tokens, n_ctx_tokens:] = True
             dec_causal_mask = dec_time_idx[:, :, None] < dec_time_idx[:, None, :]
             dec_attn_mask[:, n_ctx_tokens:, n_ctx_tokens:] = dec_causal_mask
@@ -532,7 +531,7 @@ class NDT2(nn.Module):
 
         else:
             # Shared mask (same for all samples), which is compatible with Flash attention.
-            dec_attn_mask = torch.zeros((L, L), dtype=torch.bool, device=inputs.device)
+            dec_attn_mask = torch.zeros((L, L), dtype=torch.bool, device=device)
             dec_attn_mask[:n_ctx_tokens, n_ctx_tokens:] = True
 
         # Decoder forward pass.
