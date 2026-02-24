@@ -4,6 +4,7 @@
 #   "mne~=1.11.0",
 #   "boto3~=1.41.0",
 #   "scikit-learn==1.7.2",
+#   "temporaldata@git+https://github.com/neuro-galaxy/temporaldata@main",
 # ]
 # ///
 
@@ -27,8 +28,8 @@ from brainsets.descriptions import (
 from brainsets.taxonomy import RecordingTech, Species, Sex
 from brainsets.pipeline import BrainsetPipeline
 from brainsets.utils.split import (
-    chop_intervals,
     generate_stratified_folds,
+    generate_string_kfold_assignment,
 )
 from brainsets.utils.s3_utils import get_cached_s3_client
 from brainsets.utils.mne_utils import (
@@ -219,7 +220,13 @@ class Pipeline(BrainsetPipeline):
         stages = extract_sleep_stages(str(hypnogram_path))
 
         self.update_status("Creating Splits")
-        splits = create_splits(stages, n_folds=3, seed=42)
+        splits = create_splits(
+            stages,
+            subject_id=subject.id,
+            session_id=session_description.id,
+            n_folds=3,
+            seed=42,
+        )
 
         data = Data(
             brainset=brainset_description,
@@ -252,7 +259,7 @@ def parse_subject_metadata(raw: mne.io.Raw) -> Tuple[Optional[int], Sex]:
         age_str = subject_info.get("last_name")
         if age_str is not None:
             age = int(age_str.replace("yr", ""))
-    except (ValueError, AttributeError) as e:
+    except (ValueError, AttributeError):
         logging.warning(f"Could not parse age from last_name: {age_str}, setting to 0")
         age = 0
 
@@ -303,7 +310,12 @@ def extract_sleep_stages(hypnogram_file: str) -> Interval:
 
 
 def create_splits(
-    stages: Interval, epoch_duration: float = 30.0, n_folds: int = 5, seed: int = 42
+    stages: Interval,
+    subject_id: str,
+    session_id: str,
+    epoch_duration: float = 30.0,
+    n_folds: int = 3,
+    seed: int = 42,
 ) -> Data:
     """Generate train/valid/test splits from sleep stage intervals.
 
@@ -314,11 +326,24 @@ def create_splits(
     The unknown sleep stage (stage 6) is the only one removed from the splits to maintain flexibility.
     Users can still access all stages in the raw data and choose the number of sleep stages relevant
     to their research.
+
+    Generates three types of splits:
+    - Intrasession (epoch-level): stratified k-fold within each session
+    - Intersubject (session-level): subject is assigned train/valid/test per fold
+    - Intersession (session-level): subject-session is assigned train/valid/test per fold
+
+    Args:
+        stages: Sleep stage intervals to split
+        subject_id: Subject identifier for cross-subject splits
+        session_id: Session identifier for cross-session splits
+        epoch_duration: Duration of each epoch in seconds
+        n_folds: Number of folds for cross-validation
+        seed: Random seed for reproducibility
     """
     if len(stages) == 0:
         raise ValueError("No stages provided for splitting")
 
-    chopped = chop_intervals(stages, duration=epoch_duration, check_no_overlap=True)
+    chopped = stages.subdivide(step=epoch_duration, drop_short=True)
     logging.info(f"Chopped {len(stages)} stages into {len(chopped)} epochs")
 
     UNKNOWN_STAGE_ID = 6
@@ -348,5 +373,27 @@ def create_splits(
 
     folds_dict = {f"fold_{i}": fold for i, fold in enumerate(folds)}
     splits = Data(**folds_dict, domain=filtered)
+
+    subject_assignments = generate_string_kfold_assignment(
+        string_id=subject_id, n_folds=n_folds, val_ratio=0.2, seed=seed
+    )
+    session_assignments = generate_string_kfold_assignment(
+        string_id=f"{subject_id}_{session_id}",
+        n_folds=n_folds,
+        val_ratio=0.2,
+        seed=seed,
+    )
+    namespaced_assignments = {
+        f"intersubject_fold_{fold_idx}_assignment": assignment
+        for fold_idx, assignment in enumerate(subject_assignments)
+    }
+    namespaced_assignments.update(
+        {
+            f"intersession_fold_{fold_idx}_assignment": assignment
+            for fold_idx, assignment in enumerate(session_assignments)
+        }
+    )
+    for key, value in namespaced_assignments.items():
+        setattr(splits, key, value)
 
     return splits

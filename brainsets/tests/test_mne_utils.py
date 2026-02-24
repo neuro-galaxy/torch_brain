@@ -13,6 +13,7 @@ try:
         extract_channels,
         extract_psg_signal,
     )
+    from temporaldata import ArrayDict
 except ImportError:
     MNE_AVAILABLE = False
     extract_measurement_date = None
@@ -69,7 +70,6 @@ class TestExtractMeasDate:
 
 @pytest.mark.skipif(not MNE_AVAILABLE, reason="mne not installed")
 class TestExtractEEGSignal:
-
     def test_returns_regular_time_series(self):
         mock_raw = create_mock_raw(n_channels=4, n_samples=500, sfreq=256.0)
         result = extract_eeg_signal(mock_raw)
@@ -113,47 +113,52 @@ class TestExtractEEGSignal:
 
 @pytest.mark.skipif(not MNE_AVAILABLE, reason="mne not installed")
 class TestExtractChannels:
-
     def test_returns_array_dict(self):
         mock_raw = create_mock_raw()
+
         result = extract_channels(mock_raw)
-        assert hasattr(result, "ids")
-        assert hasattr(result, "types")
+
+        assert isinstance(result, ArrayDict)
+        assert hasattr(result, "id")
+        assert hasattr(result, "type")
 
     def test_channel_names_extracted_correctly(self):
-        ch_names = ["Fp1", "Fp2", "C3", "C4"]
-        mock_raw = create_mock_raw(ch_names=ch_names, n_channels=len(ch_names))
+        expected_names = ["EEG Fpz-Cz", "EOG horizontal", "EMG submental"]
+        mock_raw = create_mock_raw(
+            ch_names=expected_names, n_channels=len(expected_names)
+        )
 
         result = extract_channels(mock_raw)
 
-        np.testing.assert_array_equal(result.ids, np.array(ch_names, dtype="U"))
+        np.testing.assert_array_equal(result.id, np.array(expected_names, dtype="U"))
 
     def test_channel_types_extracted_correctly(self):
-        ch_types = ["eeg", "eeg", "eog", "emg"]
-        mock_raw = create_mock_raw(ch_types=ch_types, n_channels=len(ch_types))
+        expected_types = ["eeg", "eog", "emg"]
+        mock_raw = create_mock_raw(
+            ch_types=expected_types, n_channels=len(expected_types)
+        )
 
         result = extract_channels(mock_raw)
 
-        np.testing.assert_array_equal(result.types, np.array(ch_types, dtype="U"))
+        np.testing.assert_array_equal(result.type, np.array(expected_types, dtype="U"))
 
     def test_id_dtype_is_unicode(self):
         mock_raw = create_mock_raw()
 
         result = extract_channels(mock_raw)
 
-        assert result.ids.dtype.kind == "U"
+        assert result.id.dtype.kind == "U"
 
     def test_types_dtype_is_unicode(self):
         mock_raw = create_mock_raw()
 
         result = extract_channels(mock_raw)
 
-        assert result.types.dtype.kind == "U"
+        assert result.type.dtype.kind == "U"
 
 
 @pytest.mark.skipif(not MNE_AVAILABLE, reason="mne not installed")
 class TestExtractPSGSignal:
-
     def create_mock_psg_raw(self, ch_names, n_samples=1000, sfreq=256.0):
         mock_raw = MagicMock()
         n_channels = len(ch_names)
@@ -171,50 +176,50 @@ class TestExtractPSGSignal:
         ch_names = ["EEG Fpz-Cz", "EEG Pz-Oz", "Other"]
         mock_raw = self.create_mock_psg_raw(ch_names)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        _, channels = extract_psg_signal(mock_raw)
 
-        assert "EEG" in channels.ch_type
-        assert np.sum(channels.ch_type == "EEG") == 2
+        assert "EEG" in channels.type
+        assert np.sum(channels.type == "EEG") == 2
 
     def test_extracts_eog_channels(self):
         ch_names = ["EOG horizontal", "EEG Fpz-Cz"]
         mock_raw = self.create_mock_psg_raw(ch_names)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        _, channels = extract_psg_signal(mock_raw)
 
-        assert "EOG" in channels.ch_type
+        assert "EOG" in channels.type
 
     def test_extracts_emg_channels(self):
         ch_names = ["EMG submental", "EEG Fpz-Cz"]
         mock_raw = self.create_mock_psg_raw(ch_names)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        _, channels = extract_psg_signal(mock_raw)
 
-        assert "EMG" in channels.ch_type
+        assert "EMG" in channels.type
 
     def test_extracts_resp_channels(self):
         ch_names = ["Resp oro-nasal", "EEG Fpz-Cz"]
         mock_raw = self.create_mock_psg_raw(ch_names)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        _, channels = extract_psg_signal(mock_raw)
 
-        assert "RESP" in channels.ch_type
+        assert "RESP" in channels.type
 
     def test_extracts_temp_channels(self):
         ch_names = ["Temp rectal", "EEG Fpz-Cz"]
         mock_raw = self.create_mock_psg_raw(ch_names)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        _, channels = extract_psg_signal(mock_raw)
 
-        assert "TEMP" in channels.ch_type
+        assert "TEMP" in channels.type
 
     def test_skips_unknown_channels(self):
         ch_names = ["Unknown1", "Unknown2", "EEG Fpz-Cz"]
         mock_raw = self.create_mock_psg_raw(ch_names)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        _, channels = extract_psg_signal(mock_raw)
 
-        assert len(channels.ch_id) == 1  # only EEG
+        assert len(channels.id) == 1  # only EEG
 
     def test_returns_regular_time_series(self):
         ch_names = ["EEG Fpz-Cz", "EOG horizontal"]
@@ -231,16 +236,16 @@ class TestExtractPSGSignal:
         n_samples = 500
         mock_raw = self.create_mock_psg_raw(ch_names, n_samples=n_samples)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        signals, _ = extract_psg_signal(mock_raw)
 
         assert signals.signal.shape == (n_samples, 3)
 
     def test_sampling_rate_correct(self):
-        ch_names = ["EEG Fpz-Cz"]
+        ch_names = ["EEG Fpz-Cz", "EOG horizontal"]
         sfreq = 128.0
         mock_raw = self.create_mock_psg_raw(ch_names, sfreq=sfreq)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        signals, _ = extract_psg_signal(mock_raw)
 
         assert signals.sampling_rate == sfreq
 
@@ -248,10 +253,10 @@ class TestExtractPSGSignal:
         ch_names = ["EEG Fpz-Cz", "EOG horizontal"]
         mock_raw = self.create_mock_psg_raw(ch_names)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        _, channels = extract_psg_signal(mock_raw)
 
-        assert hasattr(channels, "ch_id")
-        assert hasattr(channels, "ch_type")
+        assert hasattr(channels, "id")
+        assert hasattr(channels, "type")
 
     def test_raises_error_when_no_signals_extracted(self):
         ch_names = ["Unknown1", "Unknown2"]
@@ -264,35 +269,35 @@ class TestExtractPSGSignal:
         ch_names = ["EEG Fpz-Cz", "EOG horizontal"]
         mock_raw = self.create_mock_psg_raw(ch_names)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        _, channels = extract_psg_signal(mock_raw)
 
-        assert "EEG Fpz-Cz" in channels.ch_id
-        assert "EOG horizontal" in channels.ch_id
+        assert "EEG Fpz-Cz" in channels.id
+        assert "EOG horizontal" in channels.id
 
     def test_extracts_fpz_cz_pattern_case_insensitive(self):
         ch_names = ["FPZ-CZ", "fpz-cz", "Fpz-Cz"]
         mock_raw = self.create_mock_psg_raw(ch_names)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        _, channels = extract_psg_signal(mock_raw)
 
-        assert np.sum(channels.ch_type == "EEG") == 3
+        assert np.sum(channels.type == "EEG") == 3
 
     def test_extracts_pz_oz_pattern_case_insensitive(self):
         ch_names = ["PZ-OZ", "pz-oz", "Pz-Oz"]
         mock_raw = self.create_mock_psg_raw(ch_names)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        _, channels = extract_psg_signal(mock_raw)
 
-        assert np.sum(channels.ch_type == "EEG") == 3
+        assert np.sum(channels.type == "EEG") == 3
 
     def test_domain_uses_first_and_last_time_values(self):
-        ch_names = ["EEG Fpz-Cz"]
+        ch_names = ["EEG Fpz-Cz", "EOG horizontal"]
         n_samples = 1000
-        sfreq = 256.0
+        sfreq = 100.0
         mock_raw = self.create_mock_psg_raw(ch_names, n_samples=n_samples, sfreq=sfreq)
         _, times = mock_raw.get_data(return_times=True)
 
-        signals, channels = extract_psg_signal(mock_raw)
+        signals, _ = extract_psg_signal(mock_raw)
 
         assert np.isclose(signals.domain.start, times[0])
         assert np.isclose(signals.domain.end, times[-1])

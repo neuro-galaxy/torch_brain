@@ -7,7 +7,6 @@ MNE Raw objects and convert them to brainsets data structures.
 import datetime
 import warnings
 import numpy as np
-import pandas as pd
 from typing import Tuple
 from temporaldata import ArrayDict, Interval, RegularTimeSeries
 
@@ -96,8 +95,8 @@ def extract_channels(
     """
     _check_mne_available("extract_channels")
     return ArrayDict(
-        ids=np.array(recording_data.ch_names, dtype="U"),
-        types=np.array(recording_data.get_channel_types(), dtype="U"),
+        id=np.array(recording_data.ch_names, dtype="U"),
+        type=np.array(recording_data.get_channel_types(), dtype="U"),
     )
 
 
@@ -111,8 +110,8 @@ def extract_psg_signal(raw_psg: "mne.io.Raw") -> Tuple[RegularTimeSeries, ArrayD
         A tuple containing:
         - RegularTimeSeries: The extracted physiological signals with
           sampling rate and time domain information
-        - ArrayDict: Channel metadata with fields 'ch_id' (channel names)
-          and 'ch_type' (channel types: EEG, EOG, EMG, RESP, or TEMP)
+        - ArrayDict: Channel metadata with fields 'id' (channel names)
+          and 'type' (channel types: EEG, EOG, EMG, RESP, or TEMP)
 
     Raises:
         ImportError: If MNE is not installed.
@@ -151,8 +150,8 @@ def extract_psg_signal(raw_psg: "mne.io.Raw") -> Tuple[RegularTimeSeries, ArrayD
 
         channel_meta.append(
             {
-                "ch_id": str(ch_name),
-                "ch_type": ch_type,
+                "id": str(ch_name),
+                "type": ch_type,
             }
         )
 
@@ -168,8 +167,8 @@ def extract_psg_signal(raw_psg: "mne.io.Raw") -> Tuple[RegularTimeSeries, ArrayD
     )
 
     channels = ArrayDict(
-        ch_id=np.array([ch["ch_id"] for ch in channel_meta], dtype="U"),
-        ch_type=np.array([ch["ch_type"] for ch in channel_meta], dtype="U"),
+        id=np.array([ch["id"] for ch in channel_meta], dtype="U"),
+        type=np.array([ch["type"] for ch in channel_meta], dtype="U"),
     )
 
     return signals, channels
