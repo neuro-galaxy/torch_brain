@@ -316,6 +316,9 @@ class NDT2(nn.Module):
         return data_dict
 
     def create_ctx_emb(self, session_idx, subject_idx, task_idx):
+        if self.n_ctx_tokens == 0:
+            return None
+
         ctx_tokens = []
         if self.tokenize_session:
             ctx_tokens.append(self.session_emb(session_idx) + self.session_bias)
@@ -374,48 +377,9 @@ class NDT2(nn.Module):
 
         return latents
 
-    def forward(
-        self,
-        in_units_patched: torch.Tensor,
-        in_time_idx: torch.Tensor,
-        in_space_idx: torch.Tensor,
-        in_mask: torch.Tensor,
-        query_idx: torch.Tensor,
-        query_time_idx: torch.Tensor,
-        query_space_idx: torch.Tensor,
-        query_mask: torch.Tensor,
-        session_idx: Optional[torch.Tensor] = None,
-        subject_idx: Optional[torch.Tensor] = None,
-        task_idx: Optional[torch.Tensor] = None,
-    ) -> Dict:
-        # TODO update
-        """
-        Args:
-            units_patched: (b, len_seq, patch, units_per_patch) tokenized unit-count patches.
-            time_idx: (b, len_seq) token time indices.
-            space_idx: (b, len_seq) token space indices.
-            unpadding_mask: (b, len_seq) True for valid (non-padding) encoder tokens.
-            session_idx: (b,) optional session token indices.
-            subject_idx: (b,) optional subject token indices.
-            task_idx: (b,) optional task token indices.
-
-        Returns:
-            Dict[str, Tensor]: Output dictionary containing model predictions.
-        """
-        # Build optional context tokens.
-        B = in_units_patched.size(0)
-        n_ctx_tokens = self.n_ctx_tokens
-
-        enc_padding_mask = ~in_mask
-        dec_padding_mask = torch.concat([enc_padding_mask, ~query_mask], dim=1)
-        if self.is_ssl:
-            dec_time_idx = torch.concat([in_time_idx, query_time_idx], dim=1)
-            dec_space_idx = torch.concat([in_space_idx, query_space_idx], dim=1)
-
-        else:
-            pooled_time_idx = torch.arange(self.bin_size, device=query_time_idx.device)
-            pooled_time_idx = repeat(pooled_time_idx, "t -> b t", b=B)
-            dec_time_idx = torch.concat([pooled_time_idx, query_time_idx], dim=1)
+    def prepare_encoder_inputs(
+        self, in_units_patched, in_time_idx, in_space_idx, in_mask, ctx_emb
+    ):
 
         # Convert unit patches to encoder input tokens.
         inputs = self.patch_emb(in_units_patched)
@@ -428,24 +392,53 @@ class NDT2(nn.Module):
         )
 
         # Prepend context tokens to the sequnce tokens.
-        if n_ctx_tokens > 0:
-            ctx_emb = self.create_ctx_emb(session_idx, subject_idx, task_idx)
+        if self.n_ctx_tokens > 0:
             inputs = torch.cat([ctx_emb, inputs], dim=1)
+
+        enc_padding_mask = ~in_mask
 
         ### Encoder attention mask
         enc_attn_mask = self.create_attn_mask(in_time_idx, self.enc_heads)
 
+        return inputs, enc_padding_mask, enc_attn_mask
+
+    def encoder_forward(self, inputs, enc_padding_mask, enc_attn_mask):
         # Encoder forward pass.
         enc_output = self.encoder(
             inputs, src_key_padding_mask=enc_padding_mask, mask=enc_attn_mask
         )
 
         # Remove prepended context tokens.
-        latents = enc_output[:, n_ctx_tokens:]
+        latents = enc_output[:, self.n_ctx_tokens :]
         latents = self.enc_dropout_out(latents)
 
+        return latents
+
+    def prepare_decoder_inputs(
+        self,
+        latents,
+        in_time_idx,
+        in_space_idx,
+        in_mask,
+        query_idx,
+        query_time_idx,
+        query_space_idx,
+        query_mask,
+        ctx_emb,
+    ):
+        B = latents.size(0)
+        dec_padding_mask = torch.concat([~in_mask, ~query_mask], dim=1)
+        if self.is_ssl:
+            dec_time_idx = torch.concat([in_time_idx, query_time_idx], dim=1)
+            dec_space_idx = torch.concat([in_space_idx, query_space_idx], dim=1)
+
+        else:
+            pooled_time_idx = torch.arange(self.bin_size, device=query_time_idx.device)
+            pooled_time_idx = repeat(pooled_time_idx, "t -> b t", b=B)
+            dec_time_idx = torch.concat([pooled_time_idx, query_time_idx], dim=1)
+
         if not self.is_ssl:
-            latents = self.pool(latents, in_mask[:, n_ctx_tokens:], in_time_idx)
+            latents = self.pool(latents, in_mask[:, self.n_ctx_tokens :], in_time_idx)
 
         query_tokens = self.query_emb(query_idx)
 
@@ -462,13 +455,16 @@ class NDT2(nn.Module):
             latents = latents + self.dec_space_emb(dec_space_idx)
 
         # Prepend context tokens to decoder inputs.
-        if n_ctx_tokens > 0:
+        if self.n_ctx_tokens > 0:
             if not self.is_ssl:
                 # Keep context embeddings fixed during supervised finetuning.
                 ctx_emb = ctx_emb.detach()
 
             latents = torch.cat([ctx_emb, latents], dim=1)
 
+        return latents, dec_time_idx, dec_padding_mask
+
+    def decoder_forward(self, latents, dec_time_idx, dec_padding_mask):
         ### Decoder attention mask
         dec_attn_mask = self.create_attn_mask(dec_time_idx, self.dec_heads)
 
@@ -478,8 +474,59 @@ class NDT2(nn.Module):
         )
 
         # Remove prepended context tokens.
-        output = dec_output[:, n_ctx_tokens:]
+        output = dec_output[:, self.n_ctx_tokens :]
         output = self.dec_dropout_out(output)
+        return output
+
+    def forward(
+        self,
+        in_units_patched: torch.Tensor,
+        in_time_idx: torch.Tensor,
+        in_space_idx: torch.Tensor,
+        in_mask: torch.Tensor,
+        query_idx: torch.Tensor,
+        query_time_idx: torch.Tensor,
+        query_space_idx: torch.Tensor,
+        query_mask: torch.Tensor,
+        session_idx: Optional[torch.Tensor] = None,
+        subject_idx: Optional[torch.Tensor] = None,
+        task_idx: Optional[torch.Tensor] = None,
+    ):
+        # TODO update
+        """
+        Args:
+            units_patched: (b, len_seq, patch, units_per_patch) tokenized unit-count patches.
+            time_idx: (b, len_seq) token time indices.
+            space_idx: (b, len_seq) token space indices.
+            unpadding_mask: (b, len_seq) True for valid (non-padding) encoder tokens.
+            session_idx: (b,) optional session token indices.
+            subject_idx: (b,) optional subject token indices.
+            task_idx: (b,) optional task token indices.
+
+        Returns:
+            Dict[str, Tensor]: Output dictionary containing model predictions.
+        """
+        ctx_emb = self.create_ctx_emb(session_idx, subject_idx, task_idx)
+
+        inputs, enc_padding_mask, enc_attn_mask = self.prepare_encoder_inputs(
+            in_units_patched, in_time_idx, in_space_idx, in_mask, ctx_emb
+        )
+
+        latents = self.encoder_forward(inputs, enc_padding_mask, enc_attn_mask)
+
+        latents, dec_time_idx, dec_padding_mask = self.prepare_decoder_inputs(
+            latents,
+            in_time_idx,
+            in_space_idx,
+            in_mask,
+            query_idx,
+            query_time_idx,
+            query_space_idx,
+            query_mask,
+            ctx_emb,
+        )
+
+        out = self.decoder_forward(latents, dec_time_idx, dec_padding_mask)
 
         if self.is_ssl:
             # Reconstruct per-unit rates for masked tokens.
@@ -490,7 +537,7 @@ class NDT2(nn.Module):
 
         else:
             # Predict behavior outputs.
-            n_bhvr_tokens = query_tokens.size(1)
+            n_bhvr_tokens = query_idx.size(1)
             output = output[:, -n_bhvr_tokens:]
             bhvr = self.output_to_bhvr(output)
 
