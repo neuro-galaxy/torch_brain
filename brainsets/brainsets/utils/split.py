@@ -1,4 +1,5 @@
-import warnings
+import hashlib
+import logging
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 from temporaldata import Interval, Data
@@ -205,9 +206,8 @@ def generate_train_valid_test_splits(
 
     for name, epoch in epoch_dict.items():
         if name == "invalid_presentation_epochs":
-            warnings.warn(
-                "Found invalid presentation epochs, which will be excluded.",
-                stacklevel=2,
+            logging.warning(
+                "Found invalid presentation epochs, which will be excluded."
             )
             continue
         if len(epoch) == 1:
@@ -228,63 +228,6 @@ def generate_train_valid_test_splits(
         test_intervals = test_intervals | test
 
     return train_intervals, valid_intervals, test_intervals
-
-
-def chop_intervals(
-    intervals: Interval, duration: float, check_no_overlap: bool = False
-) -> Interval:
-    """
-    Subdivides intervals into fixed-length epochs using Interval.arange().
-
-    If some intervals are shorter than the duration, keep them as they are.
-    If an interval is not a perfect multiple of the duration, the last chunk will be shorter.
-
-    Args:
-        intervals: The original intervals to chop.
-        duration: The duration of each chopped interval in seconds.
-        check_no_overlap: If True, verify the resulting intervals don't overlap.
-
-    Returns:
-        Interval: A new Interval object containing the chopped segments.
-                  Metadata from the original intervals is preserved and repeated for each segment.
-
-    Raises:
-        ValueError: If check_no_overlap is True and intervals overlap.
-    """
-    if len(intervals) == 0:
-        return Interval(start=np.array([]), end=np.array([]))
-
-    chopped_intervals = []
-    original_indices = []
-
-    for i, (start, end) in enumerate(zip(intervals.start, intervals.end)):
-        if end - start <= duration:
-            chopped = Interval(start=np.array([start]), end=np.array([end]))
-        else:
-            chopped = Interval.arange(start, end, step=duration, include_end=True)
-
-        chopped_intervals.append(chopped)
-        original_indices.extend([i] * len(chopped))
-
-    all_starts = np.concatenate([c.start for c in chopped_intervals])
-    all_ends = np.concatenate([c.end for c in chopped_intervals])
-
-    kwargs = {}
-    if hasattr(intervals, "keys"):
-        for key in intervals.keys():
-            if key in ["start", "end"]:
-                continue
-            val = getattr(intervals, key)
-            if isinstance(val, np.ndarray) and len(val) == len(intervals):
-                kwargs[key] = val[original_indices]
-
-    result = Interval(start=all_starts, end=all_ends, **kwargs)
-
-    if check_no_overlap:
-        if not result.is_disjoint():
-            raise ValueError("Intervals overlap after chopping")
-
-    return result
 
 
 def _create_interval_split(intervals: Interval, indices: np.ndarray) -> Interval:
@@ -386,56 +329,80 @@ def generate_stratified_folds(
     return folds
 
 
-def generate_train_valid_splits_one_epoch(
-    epoch: Interval, split_ratios: Optional[List[float]] = None
-) -> Tuple[Interval, Interval]:
-    """Split a single time interval into training and validation intervals.
+def generate_string_kfold_assignment(
+    string_id: str,
+    n_folds: int = 3,
+    val_ratio: float = 0.2,
+    seed: int = 42,
+) -> List[str]:
+    """Generate deterministic per-fold train/valid/test assignments for one ID.
 
-    Args:
-        epoch: The full time interval to split (must contain a single interval)
-        split_ratios: List of two ratios [train_ratio, valid_ratio] that sum to 1.0.
-            Defaults to [0.9, 0.1].
+    The assignment is independent for each fold index ``k``, but follows a
+    deterministic two-step rule:
 
-    Returns:
-        Tuple of (train_intervals, valid_intervals)
+    1. Compute a global bucket from ``md5(f"{string_id}_{seed}") % n_folds``.
+       The fold whose index equals this bucket is labeled ``"test"``.
+    2. For every other fold, compute a fold-specific hash
+       ``md5(f"{string_id}_{seed}_{k}")`` and map it to ``[0, 1)``.
+       If that value is below ``val_ratio``, the fold is ``"valid"``,
+       otherwise it is ``"train"``.
 
-    Raises:
-        ValueError:
-            if split_ratios is not a sequence of exactly two numbers,
-            if any ratio is negative,
-            if split_ratios do not sum to 1, or
-            if the epoch does not contain a single interval
+    As a result, each ``string_id`` appears in the test split for exactly one
+    fold and is never in test for the remaining folds. This makes the output
+    reproducible across runs and safe for parallel processing.
+
+    Args
+    ----
+    string_id : str
+        String identifier (e.g., "S001", "sub-01", or "sub-01_ses-01").
+    n_folds : int
+        Number of folds for cross-validation. Default is 3.
+    val_ratio : float
+        Ratio of validation set relative to train+valid combined. Default is 0.2.
+    seed : int
+        Random seed for reproducibility. Default is 42.
+
+    Returns
+    -------
+    List[str]
+        List of fold assignments where index ``k`` corresponds to fold ``k`` and
+        each value is one of ``"train"``, ``"valid"``, or ``"test"``.
+        Exactly one entry is ``"test"``.
+
+    Examples
+    --------
+    >>> assignments = generate_string_kfold_assignment("sub-01", n_folds=3)
+    >>> assignments
+    ['train', 'test', 'train']
+
+    >>> generate_string_kfold_assignment("sub-01_ses-01", n_folds=3)
+    ['valid', 'train', 'test']
     """
-    if split_ratios is None:
-        split_ratios = [0.9, 0.1]
+    if not isinstance(string_id, str) or not string_id:
+        raise ValueError("string_id must be a non-empty string")
+    if n_folds < 1:
+        raise ValueError(f"n_folds must be at least 1, got {n_folds}")
+    if not (0.0 <= val_ratio <= 1.0):
+        raise ValueError(f"val_ratio must be between 0 and 1, got {val_ratio}")
 
-    if not hasattr(split_ratios, "__len__") or len(split_ratios) != 2:
-        raise ValueError(
-            "split_ratios must be a sequence of two numbers (train, valid)"
-        )
+    base_str = f"{string_id}_{seed}"
+    base_bytes = base_str.encode("utf-8")
+    hash_obj = hashlib.md5(base_bytes)
+    hash_int = int(hash_obj.hexdigest(), 16)
+    bucket = hash_int % n_folds
 
-    if any(r < 0 for r in split_ratios):
-        raise ValueError("split_ratios elements must be non-negative")
-
-    if not np.isclose(sum(split_ratios), 1.0):
-        raise ValueError("Split ratios must sum to 1")
-
-    if len(epoch) != 1:
-        raise ValueError("Epoch must contain a single interval")
-
-    epoch_start = epoch.start[0]
-    epoch_end = epoch.end[0]
-
-    train_split_time = epoch_start + split_ratios[0] * (epoch_end - epoch_start)
-    val_split_time = train_split_time + split_ratios[1] * (epoch_end - epoch_start)
-
-    train_intervals = Interval(
-        start=epoch_start,
-        end=train_split_time,
-    )
-    valid_intervals = Interval(
-        start=train_intervals.end[0],
-        end=val_split_time,
-    )
-
-    return train_intervals, valid_intervals
+    assignments: List[str] = []
+    for k in range(n_folds):
+        if bucket == k:
+            assignments.append("test")
+        else:
+            fold_str = f"{base_str}_{k}"
+            fold_bytes = fold_str.encode("utf-8")
+            fold_hash_obj = hashlib.md5(fold_bytes)
+            fold_hash_int = int(fold_hash_obj.hexdigest(), 16)
+            normalized_hash = (fold_hash_int % 10000) / 10000.0
+            if normalized_hash < val_ratio:
+                assignments.append("valid")
+            else:
+                assignments.append("train")
+    return assignments

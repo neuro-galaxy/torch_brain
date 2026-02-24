@@ -8,11 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added normalization schemes for sex, age, and species in `SubjectDescription` ([#78](https://github.com/neuro-galaxy/brainsets/pull/78)).
 - Added generic data extraction helpers in `mne_utils` to handle MNE Raw objects ([#78](https://github.com/neuro-galaxy/brainsets/pull/78)).
 - Enriched `s3_utils` with additional functionalities to get data from public buckets ([#78](https://github.com/neuro-galaxy/brainsets/pull/78)).
+- Added new utility functions to split data into train/valid/test splits intersession, intrassession, and intersubject ([#83](https://github.com/neuro-galaxy/brainsets/pull/83)).
 
 ### Removed
 
 ### Changed
 - Suppress INFO logs from ray when calling `brainsets prepare` ([#70](https://github.com/neuro-galaxy/brainsets/pull/70))
+- Modified 'Kemp Sleep-EDF 2013' pipeline to use new splitting utilities ([#83](https://github.com/neuro-galaxy/brainsets/pull/83)).
 
 ## [0.2.0] - 2025-12-24
 ### Added
