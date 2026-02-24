@@ -118,13 +118,12 @@ class NDT2(nn.Module):
         self.units_per_patch = units_per_patch
         self.max_bincount = max_bincount
 
-        # 1. Embedders
         self.ctx_embedder = ContextEmbedder(
             dim, tokenize_session, tokenize_subject, tokenize_task
         )
         n_ctx_tokens = self.ctx_embedder.n_ctx_tokens
+        self.n_ctx_tokens = n_ctx_tokens
 
-        # 2. Transformers
         self.encoder = NDT2Encoder(
             is_ssl,
             n_ctx_tokens,
@@ -158,8 +157,9 @@ class NDT2(nn.Module):
             is_causal,
         )
 
-        # 3. Head
-        self.head = NDT2TaskHead(is_ssl, dim, units_per_patch, readout_spec.dim)
+        readout_dim = readout_spec.dim if readout_spec is not None else None
+        self.readout_spec = readout_spec
+        self.head = NDT2TaskHead(is_ssl, dim, units_per_patch, readout_dim)
 
     def _patch_units(self, data: Data):
         ### Prepare sequnce tokens
@@ -197,6 +197,7 @@ class NDT2(nn.Module):
             p=self.units_per_patch,
         )
 
+        extra_units_mask = None
         if self.is_ssl:
             # Track padded units so SSL reconstruction ignores synthetic entries.
             extra_units_mask = np.ones(
@@ -258,6 +259,7 @@ class NDT2(nn.Module):
             in_space_idx = space_idx
             in_mask = np.zeros(n_ctx_tokens + time_idx.shape[0], dtype=np.bool_)
 
+            self.task = "regression"
             if self.task == "classification":
                 query_time_idx = np.array([self.bin_size - 1])
 
@@ -542,11 +544,12 @@ class NDT2Decoder(nn.Module):
 
         ### Decoder
         self.is_causal = is_causal
+        self.heads = heads
 
         self.dec_dropout_in = nn.Dropout(dropout)
         self.dec_dropout_out = nn.Dropout(dropout)
 
-        self.decoder_layer = nn.TransformerEncoderLayer(
+        self.layer = nn.TransformerEncoderLayer(
             d_model=dim,
             nhead=heads,
             dim_feedforward=int(dim * ffn_mult),
@@ -555,7 +558,7 @@ class NDT2Decoder(nn.Module):
             batch_first=True,
             norm_first=pre_norm,
         )
-        self.decoder = nn.TransformerEncoder(self.decoder_layer, depth)
+        self.decoder = nn.TransformerEncoder(self.layer, depth)
 
     def _pool(self, latents, in_mask, in_time_idx):
         # Average-pool latents across spatial patches for each time bin.
@@ -586,7 +589,6 @@ class NDT2Decoder(nn.Module):
         query_time_idx,
         query_space_idx,
         query_mask,
-        n_ctx_tokens,
     ):
 
         B = latents.size(0)
@@ -602,7 +604,7 @@ class NDT2Decoder(nn.Module):
             dec_space_idx = None
 
         if not self.is_ssl:
-            latents = self._pool(latents, in_mask[:, n_ctx_tokens:], in_time_idx)
+            latents = self._pool(latents, in_mask[:, self.n_ctx_tokens :], in_time_idx)
 
         query_tokens = self.query_emb(query_idx)
 

@@ -227,30 +227,33 @@ class DataModule(L.LightningDataModule):
         self.eval_intervals = self.test_dataset.get_sampling_intervals()
 
     def _init_model_vocab(self, model: NDT2):
-        if model.tokenize_session:
-            model.session_emb.initialize_vocab(self.get_session_ids())
-        if model.tokenize_subject:
-            model.subject_emb.initialize_vocab(self.get_subject_ids())
-        if model.tokenize_task:
-            model.task_emb.initialize_vocab(self.get_task_ids())
+        ctx_embedder = model.ctx_embedder
+        if ctx_embedder.tokenize_session:
+            ctx_embedder.session_emb.initialize_vocab(self.get_session_ids())
+        if ctx_embedder.tokenize_subject:
+            ctx_embedder.subject_emb.initialize_vocab(self.get_subject_ids())
+        if ctx_embedder.tokenize_task:
+            ctx_embedder.task_emb.initialize_vocab(self.get_task_ids())
 
     def _extend_model_vocab(self, model: NDT2):
         log = logging.getLogger(__name__)
 
-        if model.tokenize_session:
-            session_emb = model.session_emb
+        ctx_embedder = model.ctx_embedder
+
+        if ctx_embedder.tokenize_session:
+            session_emb = ctx_embedder.session_emb
             existing = list(session_emb.vocab.keys()) if session_emb.vocab else []
             new_sessions = [s for s in self.get_session_ids() if s not in existing]
             if len(new_sessions) > 0:
                 log.info(
                     f"Extending session vocab with {len(new_sessions)} new IDs: {new_sessions}"
                 )
-                model.session_emb.extend_vocab(new_sessions, exist_ok=True)
+                ctx_embedder.session_emb.extend_vocab(new_sessions, exist_ok=True)
             else:
                 log.info("Session vocab already includes all session IDs.")
 
-        if model.tokenize_subject:
-            subject_emb = model.subject_emb
+        if ctx_embedder.tokenize_subject:
+            subject_emb = ctx_embedder.subject_emb
             existing = list(subject_emb.vocab.keys()) if subject_emb.vocab else []
             new_subjects = [s for s in self.get_subject_ids() if s not in existing]
             if len(new_subjects) > 0:
@@ -261,8 +264,8 @@ class DataModule(L.LightningDataModule):
             else:
                 log.info("Subject vocab already includes all subject IDs.")
 
-        if model.tokenize_task:
-            task_emb = model.task_emb
+        if ctx_embedder.tokenize_task:
+            task_emb = ctx_embedder.task_emb
             existing = list(task_emb.vocab.keys()) if task_emb.vocab else []
             new_tasks = [t for t in self.get_task_ids() if t not in existing]
             if len(new_tasks) > 0:
