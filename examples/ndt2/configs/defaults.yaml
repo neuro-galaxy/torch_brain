@@ -33,5 +33,5 @@ optimizer:
   decay_steps: 2500
   start_factor: 0.1
   warmup_steps: 100
-  weight_decay: 0.01
+  weight_decay: 1e-2
 
