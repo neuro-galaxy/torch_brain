@@ -570,3 +570,36 @@ def test_data_auto_domain():
 
     assert np.allclose(data.domain.start, np.array([0, 5]))
     assert np.allclose(data.domain.end, np.array([3.996, 6]))
+
+
+def test_data_save(tmp_path):
+    data_to_save = Data(
+        session_id="session_lazy_hsna_test",
+        some_numpy_array=np.array([10, 20, 30]),
+        spikes=IrregularTimeSeries(
+            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
+            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            domain="auto",
+        ),
+        units=ArrayDict(
+            id=np.array(["u0_hsna", "u1_hsna"]),
+            type=np.array(["typeA_hsna", "typeB_hsna"]),
+        ),
+        domain=Interval(0.0, 3.0),
+    )
+
+    data_to_save.save(tmp_path / "data.h5")
+
+    saved_data = Data.load(tmp_path / "data.h5")
+    assert saved_data.session_id == data_to_save.session_id
+    assert np.all(saved_data.some_numpy_array == data_to_save.some_numpy_array)
+    assert np.all(saved_data.spikes.timestamps == data_to_save.spikes.timestamps)
+    assert np.all(saved_data.spikes.unit_index == data_to_save.spikes.unit_index)
+    assert np.all(saved_data.spikes.domain.start == data_to_save.spikes.domain.start)
+    assert np.all(saved_data.spikes.domain.end == data_to_save.spikes.domain.end)
+
+    assert np.all(saved_data.units.id == data_to_save.units.id)
+    assert np.all(saved_data.units.type == data_to_save.units.type)
+
+    assert np.all(saved_data.domain.start == data_to_save.domain.start)
+    assert np.all(saved_data.domain.end == data_to_save.domain.end)
