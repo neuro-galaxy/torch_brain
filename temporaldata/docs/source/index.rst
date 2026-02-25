@@ -59,7 +59,6 @@ If you encounter any bugs or have feature requests, please submit them to our
    
    concepts/lazy_loading
    concepts/advanced_interval_operations
-   concepts/split
 
 .. toctree::
    :maxdepth: 2
