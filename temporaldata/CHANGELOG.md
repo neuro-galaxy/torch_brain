@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 - Added `has_nested_attribute` method to `Data` to check if an attribute exists in the Data object along with some tests for that method. ([#42](https://github.com/neuro-galaxy/temporaldata/pull/42))
 - Added `set_nested_attribute` method to `Data`. ([#86](https://github.com/neuro-galaxy/temporaldata/pull/67))
+- Added `Data.save` method. ([#88](https://github.com/neuro-galaxy/temporaldata/pull/88))
 
 ### Fixed
 - Fixed a bug where `RegularTimeSeries.slice` does not update the `domain` attribute and leads to incorrect resolution of `timestamps` after slicing. ([#39](https://github.com/neuro-galaxy/temporaldata/pull/39))

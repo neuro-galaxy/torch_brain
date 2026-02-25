@@ -416,6 +416,22 @@ class Data(object):
         file = h5py.File(path)
         return cls.from_hdf5(file, lazy=lazy)
 
+    def save(self, path: Union[Path, str]):
+        r"""Saves the data object to an HDF5 file at the given path.
+
+        Args:
+            path: Destination file path
+
+        .. code-block:: python
+
+                from temporaldata import Data
+
+                data = Data(...)
+                data.save("data.h5")
+        """
+        with h5py.File(path, "w") as f:
+            self.to_hdf5(f)
+
     def set_train_domain(self, interval: Interval):
         """Deprecated no-op retained for backward compatibility."""
         warnings.warn(
