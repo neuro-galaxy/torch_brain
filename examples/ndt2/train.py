@@ -47,6 +47,8 @@ FREEZE_MAP_PREFIXES = {
     "freeze_all": ["model.encoder", "model.decoder", "model.head"],
 }
 
+NEW_DECODER_PREFIXES = ["decoder", "head"]
+
 
 class NDT2TrainWrapper(L.LightningModule):
     def __init__(
@@ -81,10 +83,7 @@ class NDT2TrainWrapper(L.LightningModule):
             params = self._split_params()
 
         freeze_strategy = cfg.get("freeze_strategy", None)
-
-        freeze_strategy = "freeze_ctx_embedder"
         if freeze_strategy is not None:
-            print
             self._freeze_components(freeze_strategy)
 
         optimizer = torch.optim.AdamW(params, lr=cfg.lr, weight_decay=cfg.weight_decay)
@@ -276,8 +275,6 @@ class DataModule(L.LightningDataModule):
             ctx_embedder.task_emb.initialize_vocab(self.get_task_ids())
 
     def _extend_model_vocab(self, model: NDT2):
-        logger = logging.getLogger(__name__)
-
         ctx_embedder = model.ctx_embedder
 
         if ctx_embedder.tokenize_session:
@@ -392,6 +389,39 @@ class DataModule(L.LightningDataModule):
         return test_loader
 
 
+def _load_from_checkpoint(cfg, model):
+    logger.info(f"Loading checkpoint from {cfg.checkpoint_path}")
+
+    ckpt = torch.load(cfg.checkpoint_path, map_location="cpu")
+    state_dict = ckpt.get("state_dict", ckpt)
+
+    clean_state_dict = {k.replace("model.", ""): v for k, v in state_dict.items()}
+
+    if cfg.get("new_decoder", False):
+        logger.info("Loading pretrained weights (everything except decoder)")
+
+        filtered_state_dict = {
+            k: v
+            for k, v in clean_state_dict.items()
+            if not k.startswith(NEW_DECODER_PREFIXES)
+        }
+
+        missing, unexpected = model.load_state_dict(filtered_state_dict, strict=False)
+
+        logger.info(f"Loaded pretrained model (excluding decoder).")
+        logger.info(
+            f"Filtered out {len(clean_state_dict) - len(filtered_state_dict)} tensors."
+        )
+        logger.info(f"Missing keys (should be decoder/head): {len(missing)}")
+
+        for m in missing:
+            logger.debug(f"Missing expected key: {m}")
+
+    else:
+        logger.info("Loading full model weights")
+        model.load_state_dict(clean_state_dict, strict=False)
+
+
 @hydra.main(version_base="1.3", config_path="./configs", config_name="defaults")
 def main(cfg):
     logger.info("NDT2!")
@@ -436,50 +466,7 @@ def main(cfg):
 
     # Load from checkpoint
     if cfg.get("load_from_checkpoint", False):
-        logger.info(f"Loading checkpoint from {cfg.checkpoint_path}")
-        ckpt = torch.load(cfg.checkpoint_path, map_location="cpu")
-
-        # Lightning checkpoints store everything under "state_dict"
-        state_dict = ckpt.get("state_dict", ckpt)
-        if cfg.get("new_decoder", False):
-            logger.info("Loading pretrained weights (everything except decoder)")
-
-            # Filter out decoder-related keys
-            exclude_prefixes = [
-                "model.decoder",  # Transformer decoder
-                "model.dec_time_emb",  # decoder time embedding
-                "model.dec_dropout_in",  # decoder dropout layers
-                "model.dec_dropout_out",
-                "model.output_to_bhvr",  # readout head
-                "model.bhvr_emb",  # decoder query embedding
-            ]
-
-            # Keep everything except the excluded prefixes
-            filtered_state_dict = {
-                k.replace("model.", ""): v
-                for k, v in state_dict.items()
-                if not any(k.startswith(excl) for excl in exclude_prefixes)
-            }
-
-            # Load remaining weights (encoder, embeddings, etc.)
-            missing, unexpected = model.load_state_dict(
-                filtered_state_dict, strict=False
-            )
-
-            logger.info("Loaded pretrained model (excluding decoder).")
-            logger.info(f"Missing keys: {len(missing)}")
-            logger.info(f"Unexpected keys: {len(unexpected)}")
-            if missing:
-                logger.debug(f"Missing: {missing}")
-            if unexpected:
-                logger.debug(f"Unexpected: {unexpected}")
-
-        else:
-            logger.info("Loading full model weights")
-            model.load_state_dict(
-                {k.replace("model.", ""): v for k, v in state_dict.items()},
-                strict=False,
-            )
+        _load_from_checkpoint(cfg, model)
 
     data_module.setup_dataset_and_link_model(model)
 
