@@ -438,20 +438,16 @@ class NDT2(nn.Module):
         )
 
         # Decode
-        latents, dec_time_idx, dec_space_idx, dec_padding_mask = (
-            self.decoder.prepare_decoder(
-                latents,
-                in_time_idx,
-                in_space_idx,
-                in_mask,
-                query_idx,
-                query_time_idx,
-                query_space_idx,
-                query_mask,
-            )
-        )
         dec_out = self.decoder(
-            latents, dec_time_idx, dec_space_idx, dec_padding_mask, ctx_emb
+            latents,
+            in_time_idx,
+            in_space_idx,
+            in_mask,
+            query_idx,
+            query_time_idx,
+            query_space_idx,
+            query_mask,
+            ctx_emb,
         )
 
         # Project to Task Output
@@ -683,7 +679,7 @@ class NDT2Decoder(nn.Module):
 
         return latents, in_mask
 
-    def prepare_decoder(
+    def forward(
         self,
         latents: torch.Tensor,
         in_time_idx: torch.Tensor,
@@ -693,15 +689,10 @@ class NDT2Decoder(nn.Module):
         query_time_idx: torch.Tensor,
         query_space_idx: torch.Tensor,
         query_mask: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor, Optional[torch.Tensor], torch.Tensor]:
-        """Create decoder inputs.
+        ctx_emb: Optional[torch.Tensor],
+    ) -> torch.Tensor:
+        """Decode latents into output features with shape ``(B, L_dec, D)``."""
 
-        Returns:
-            latents: ``(B, L_dec, D)`` where ``L_dec = L_enc + L_q``.
-            dec_time_idx: ``(B, L_dec)``.
-            dec_space_idx: ``(B, L_dec)`` in SSL mode, else ``None``.
-            dec_padding_mask: ``(B, C + L_dec)``.
-        """
         if not self.is_ssl:
             latents, in_mask = self._pool(latents, in_mask, in_time_idx)
 
@@ -721,18 +712,6 @@ class NDT2Decoder(nn.Module):
 
         # Append query tokens after encoder latents.
         latents = torch.cat([latents, query_tokens], dim=1)
-
-        return latents, dec_time_idx, dec_space_idx, dec_padding_mask
-
-    def forward(
-        self,
-        latents: torch.Tensor,
-        dec_time_idx: torch.Tensor,
-        dec_space_idx: Optional[torch.Tensor],
-        dec_padding_mask: torch.Tensor,
-        ctx_emb: Optional[torch.Tensor],
-    ) -> torch.Tensor:
-        """Decode latents into output features with shape ``(B, L_dec, D)``."""
         latents = self.dec_dropout_in(latents)
 
         # Add decoder temporal embeddings.
