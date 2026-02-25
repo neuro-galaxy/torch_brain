@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping, Sequence
-from typing import Any, Dict, List, Tuple, Union, Callable, Optional, Type
+from typing import Any, Dict, List, Literal, Tuple, Union, Callable, Optional, Type
 from pathlib import Path
 import warnings
 
@@ -17,14 +17,18 @@ from .utils import _size_repr
 
 
 class Data(object):
-    r"""A data object is a container for other data objects such as :obj:`ArrayDict`,
-     :obj:`RegularTimeSeries`, :obj:`IrregularTimeSeries`, and :obj:`Interval` objects.
-     But also regular objects like sclars, strings and numpy arrays.
+    r"""A flexible container for other data objects such as
+    :obj:`ArrayDict`, :obj:`RegularTimeSeries`, :obj:`IrregularTimeSeries`,
+    and :obj:`Interval` objects, as well as nested :obj:`Data` objects and
+    regular Python objects like scalars, strings, and numpy arrays.
 
     Args:
-        start: Start time.
-        end: End time.
-        **kwargs: Arbitrary attributes.
+        **kwargs: Arbitrary attributes to attach to the data object (e.g.
+            spikes, lfp, units, trials, metadata).
+        domain: An :obj:`Interval` specifying time domain of the data object.
+            If ``"auto"``, the domain is computed as the union of the domains
+            of any time-based attributes.
+            Defaults to :obj:`None`.
 
     Example ::
 
@@ -120,8 +124,8 @@ class Data(object):
     def __init__(
         self,
         *,
-        domain=None,
-        **kwargs: Dict[str, Union[str, float, int, np.ndarray, ArrayDict]],
+        domain: Union[Interval, Literal["auto"], None] = None,
+        **kwargs,
     ):
         if domain == "auto":
             # the domain is the union of the domains of the attributes
