@@ -1,3 +1,5 @@
+_target_: torch_brain.models.NDT2
+
 dim: 128
 max_bincount:  100
 max_num_units: 2000
