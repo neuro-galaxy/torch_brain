@@ -13,8 +13,7 @@ from lightning.pytorch.callbacks import (
     ModelCheckpoint,
     ModelSummary,
 )
-from lightning.pytorch.loggers import WandbLogger
-from omegaconf import OmegaConf, open_dict
+from omegaconf import open_dict
 from torch import optim
 from torch.utils.data import DataLoader
 
@@ -29,6 +28,24 @@ from torch_brain.transforms import Compose
 from torch_brain.utils import seed_everything
 
 logger = logging.getLogger(__name__)
+
+ACCEL_PREFIXES = (
+    "model.decoder.",
+    "model.head.",
+    "model.ctx_embedder.task_emb.weight",
+    "model.ctx_embedder.session_emb.weight",
+    "model.ctx_embedder.subject_emb.weight",
+)
+
+FREEZE_MAP_PREFIXES = {
+    "freeze_ctx_embedder": ["model.ctx_embedder"],
+    "freeze_encoder": [
+        "model.encoder.encoder",
+        "model.encoder.time_emb.weight",
+        "model.encoder.space_emb.weight",
+    ],
+    "freeze_all": ["model.encoder", "model.decoder", "model.head"],
+}
 
 
 class NDT2TrainWrapper(L.LightningModule):
@@ -59,13 +76,16 @@ class NDT2TrainWrapper(L.LightningModule):
 
         params = self.parameters()
 
+        # TODO discuss the finetuning technique (in the paper end-to-end)
         if cfg.get("accelerate_factor", 1) > 1:
-            params = self.split_params(self.named_parameters())
-        if cfg.get("freeze_encoder", False):
-            for _, param in self.model.encoder.named_parameters():
-                param.requires_grad = False
-            for _, param in self.model.spikes_patchifier.named_parameters():
-                param.requires_grad = False
+            params = self._split_params()
+
+        freeze_strategy = cfg.get("freeze_strategy", None)
+
+        freeze_strategy = "freeze_ctx_embedder"
+        if freeze_strategy is not None:
+            print
+            self._freeze_components(freeze_strategy)
 
         optimizer = torch.optim.AdamW(params, lr=cfg.lr, weight_decay=cfg.weight_decay)
 
@@ -133,31 +153,56 @@ class NDT2TrainWrapper(L.LightningModule):
     def test_step(self, batch, batch_idx):
         return self.validation_step(batch, batch_idx, prefix="test_")
 
-    # TODO to update
-    def split_params(self, params):
+    def _freeze_components(self, freeze_strategy):
+        if freeze_strategy not in FREEZE_MAP_PREFIXES:
+            logger.info(
+                f"Dreeze_strategy {freeze_strategy} was not recognized, curetly supporting {FREEZE_MAP_PREFIXES.keys()}"
+            )
+            return
+
+        freeze_prefixes = FREEZE_MAP_PREFIXES[freeze_strategy]
+
+        frozen_count = 0
+        for name, param in self.named_parameters():
+            if any(prefix in name for prefix in freeze_prefixes):
+                param.requires_grad = False
+                frozen_count += 1
+
+        logger.info(f"Froze {frozen_count} from prefixes: {freeze_prefixes}")
+
+    def _split_params(self):
         cfg = self.cfg.optimizer
-        accel_flag = lambda n: "decoder" in n or "ctx_manager" in n and "_emb" in n
+        accel_factor = cfg.get("accelerate_factor", 1.0)
 
-        accelerate_params = [p for n, p in params if accel_flag(n)]
-        regular_params = [p for n, p in params if not accel_flag(n)]
+        accelerate_params, regular_params = [], []
+
+        # Iterate through named_parameters of the Wrapper
+        for name, param in self.named_parameters():
+            if not param.requires_grad:
+                continue
+
+            # Check if the parameter name contains any of our target prefixes
+            if any(prefix in name for prefix in ACCEL_PREFIXES):
+                accelerate_params.append(param)
+            else:
+                regular_params.append(param)
+
+        logger.info(
+            f"Param split: {len(accelerate_params)} accelerated, {len(regular_params)} regular"
+        )
+
+        # Safety check: ensure we didn't lose any parameters
+        total_split = len(accelerate_params) + len(regular_params)
+        total_trainable = len([p for p in self.parameters() if p.requires_grad])
+
+        assert (
+            total_split == total_trainable
+        ), f"Parameter mismatch! Split: {total_split}, Total Trainable: {total_trainable}"
+
         return [
-            {
-                "params": accelerate_params,
-                "lr": cfg.lr * cfg.accelerate_factor,
-            },
-            {
-                "params": regular_params,
-                "lr": cfg.lr,
-            },
+            {"params": accelerate_params, "lr": cfg.lr * accel_factor},
+            {"params": regular_params, "lr": cfg.lr},
         ]
-
-    # TODO move somewhere else
-    def moving_average(self, x):
-        """
-        Computes a simple moving average over the last 'window_size' losses.
-        """
-        self.loss_queue.append(x.item())
-        return sum(self.loss_queue) / len(self.loss_queue)
 
 
 class DataModule(L.LightningDataModule):
