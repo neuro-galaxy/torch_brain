@@ -38,16 +38,16 @@ ACCEL_PREFIXES = (
 )
 
 FREEZE_MAP_PREFIXES = {
-    "freeze_ctx_embedder": ["model.ctx_embedder"],
-    "freeze_encoder": [
+    "freeze_ctx_embedder": ("model.ctx_embedder"),
+    "freeze_encoder": (
         "model.encoder.encoder",
         "model.encoder.time_emb.weight",
         "model.encoder.space_emb.weight",
-    ],
-    "freeze_all": ["model.encoder", "model.decoder", "model.head"],
+    ),
+    "freeze_all": ("model.encoder", "model.decoder", "model.head"),
 }
 
-NEW_DECODER_PREFIXES = ["decoder", "head"]
+NEW_DECODER_PREFIXES = ("decoder", "head")
 
 
 class NDT2TrainWrapper(L.LightningModule):

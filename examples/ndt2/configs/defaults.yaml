@@ -8,8 +8,7 @@ wandb:
 
 
 seed: 0
-epochs: 10
-# epochs: 500
+epochs: 500
 
 precision: bf16-mixed
 batch_size: 256
