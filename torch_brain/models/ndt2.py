@@ -210,6 +210,13 @@ class NDT2(nn.Module):
         units_bincount = np.clip(units_bincount, 0, self.max_bincount - 1)
 
         n_units_patches = int(np.ceil(n_units / self.units_per_patch))
+
+        if n_units_patches > self.max_space_patches:
+            raise ValueError(
+                f"n_units_patches ({n_units_patches}) exceeds max_space_patches "
+                f"({self.max_space_patches}). Increase max_space_patches or reduce n_units."
+            )
+
         extra_units = n_units_patches * self.units_per_patch - n_units
 
         if extra_units > 0:
@@ -224,6 +231,10 @@ class NDT2(nn.Module):
             )
 
         n_bins = units_bincount.shape[1]
+        if n_bins > self.max_time_patches:
+            raise ValueError(
+                f"n_bins ({n_bins}) exceeds max_time_patches ({self.max_time_patches})."
+            )
 
         # Flatten in time-major patch order to match the NDT2 token layout.
         units_patched = rearrange(
