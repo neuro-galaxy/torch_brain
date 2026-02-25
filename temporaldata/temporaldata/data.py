@@ -332,7 +332,7 @@ class Data(object):
             elif value is not None:
                 # each attribute should be small (generally < 64k)
                 # there is no partial I/O; the entire attribute must be read
-                value = serialize(value, serialize_fn_map=serialize_fn_map)
+                value = _serialize(value, serialize_fn_map=serialize_fn_map)
                 file.attrs[key] = value
 
         if self._domain is not None:
@@ -593,7 +593,7 @@ class Data(object):
         return self
 
 
-def serialize(
+def _serialize(
     elem,
     serialize_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
 ):
@@ -623,7 +623,7 @@ def serialize(
 
     if isinstance(elem, (list, tuple)):
         return elem_type(
-            [serialize(e, serialize_fn_map=serialize_fn_map) for e in elem]
+            [_serialize(e, serialize_fn_map=serialize_fn_map) for e in elem]
         )
 
     # element does not need to be seralized, or type not supported
