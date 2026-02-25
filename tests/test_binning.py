@@ -1,8 +1,9 @@
 import numpy as np
 import pytest
-from temporaldata import Interval, IrregularTimeSeries
+from temporaldata import ArrayDict, Data, Interval, IrregularTimeSeries
 
-from torch_brain.utils.binning import bin_spikes
+from torch_brain.transforms import BinningTransform
+from torch_brain.utils import bin_spikes
 
 
 def test_bin_data():
@@ -109,3 +110,55 @@ def test_bin_data():
 
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
+
+
+@pytest.fixture
+def simple_spikes_data():
+    """Creates a simple 2-unit dataset for binning verification."""
+    timestamps = np.array([0.5, 1.5, 2.5, 0.5, 0.6])
+    unit_index = np.array([0, 0, 0, 1, 1])
+
+    data = Data(
+        spikes=IrregularTimeSeries(
+            timestamps=timestamps,
+            unit_index=unit_index,
+            domain=Interval(0, 3),
+        ),
+        units=ArrayDict(
+            id=np.array(["unit_a", "unit_b"]),
+        ),
+        domain=Interval(0, 3),
+    )
+    return data
+
+
+def test_binning_transform_basic(simple_spikes_data):
+    bin_size = 1.0
+    transform = BinningTransform(
+        spikes_attr="spikes", units_attr="units", bin_size=bin_size, dtype=np.float32
+    )
+
+    data_t = transform(simple_spikes_data)
+
+    # Check if the new attribute was created
+    assert hasattr(data_t, "spikes_binned")
+
+    # Verify the spikes_binned created
+    expected_binned = np.array([[1.0, 1.0, 1.0], [2.0, 0.0, 0.0]], dtype=np.float32)
+
+    assert np.array_equal(data_t.spikes_binned, expected_binned)
+
+
+def test_binning_transform_custom_attr_names(simple_spikes_data):
+    # Test that it respects different attribute names
+    # (e.g., if spikes are under 'lfp_spikes' instead of 'spikes')
+    simple_spikes_data.lfp_spikes = simple_spikes_data.spikes
+
+    transform = BinningTransform(
+        spikes_attr="lfp_spikes", units_attr="units", bin_size=1.0
+    )
+
+    data_t = transform(simple_spikes_data)
+
+    assert hasattr(data_t, "lfp_spikes_binned")
+    assert data_t.lfp_spikes_binned.shape == (2, 3)
