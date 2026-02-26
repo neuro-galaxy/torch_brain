@@ -2,9 +2,9 @@ import logging
 
 import numpy as np
 import pytest
-
 from temporaldata import ArrayDict, Data, IrregularTimeSeries
-from torch_brain.transforms.unit_filter import UnitFilter, UnitFilterById
+
+from torch_brain.transforms.unit_filter import UnitFilter, UnitFilterByAttr
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def mock_data():
 
 
 def test_unit_filter_w_keyword(mock_data):
-    transform = UnitFilterById(
+    transform = UnitFilterByAttr(
         "unsorted", field="spikes", reset_index=True, keep_matches=True
     )
     data_t = transform(mock_data)
@@ -58,7 +58,7 @@ def test_unit_filter_w_keyword(mock_data):
 
 
 def test_unit_filter_w_regex(mock_data):
-    transform = UnitFilterById(
+    transform = UnitFilterByAttr(
         r"^sorted_.*", field="spikes", reset_index=True, keep_matches=True
     )
     data_t = transform(mock_data)
