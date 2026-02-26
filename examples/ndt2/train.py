@@ -61,12 +61,6 @@ class NDT2TrainWrapper(L.LightningModule):
         self.model = model
         self.cfg = cfg
         self.is_ssl = cfg.is_ssl
-        self.val_loss_smoothing = False
-
-        if cfg.callbacks.get("monitor_avg", False):
-            self.val_loss_smoothing = True
-            self.window_size = 10
-            self.loss_queue = deque(maxlen=self.window_size)
 
         if cfg.is_ssl:
             self.loss_fn = nn.PoissonNLLLoss(reduction="none", log_input=True)
@@ -211,59 +205,43 @@ class DataModule(L.LightningDataModule):
         self.cfg = cfg
         self.is_ssl = is_ssl
 
-    def setup_dataset_and_link_model(self, model: NDT2):
-        cfg = self.cfg
-
-        #  Do not use split for dataset because is handle at sampler level
-        transforms = []
-        if cfg.get("transforms"):
-            transforms = hydra.utils.instantiate(self.cfg.transforms)
-
-        self.dataset = Dataset(
-            root=cfg.data_root,
-            split=None,
-            config=cfg.dataset,
-            transform=Compose([*transforms, model.tokenize]),
+        train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
+        train_ds = hydra.utils.instantiate(
+            self.cfg.dataset,
+            root=self.cfg.data_root,
+            transform=Compose([*train_transforms]),
         )
 
-        # TODO change this design here the call to a train/eval datset is made just to create the datasplit
-        train_transforms = []
-        if cfg.get("train_transforms"):
-            train_transforms = hydra.utils.instantiate(self.cfg.train_transforms)
-
-        self.train_dataset = Dataset(
-            root=cfg.data_root,
-            config=cfg.dataset,
-            split="train",
-            transform=Compose([*train_transforms, model.tokenize]),
+        eval_transforms = hydra.utils.instantiate(self.cfg.eval_transforms)
+        eval_ds = hydra.utils.instantiate(
+            self.cfg.dataset,
+            root=self.cfg.data_root,
+            transform=Compose([*eval_transforms]),
         )
 
-        self.train_intervals = self.train_dataset.get_sampling_intervals()
+        example_recording = train_ds.get_recording(train_ds.recording_ids[0])
+        readout_id = example_recording.config["readout"]["readout_id"]
+        for recording_id in train_ds.recording_ids:
+            recording = train_ds.get_recording(recording_id)
+            if readout_id != recording.config["readout"]["readout_id"]:
+                raise ValueError(
+                    f"Readout ID mismatch: expected '{readout_id}' but got "
+                    f"'{recording.config['readout']['readout_id']}' for recording '{recording_id}'."
+                    f"POYO only supports a single readout"
+                )
+        self.readout_spec = MODALITY_REGISTRY[readout_id]
 
-        if cfg.get("load_from_checkpoint", False):
+        self.train_dataset = train_ds
+        self.eval_dataset = eval_ds
+
+    def link_model(self, model: NDT2):
+        self.train_dataset.transform.transforms.append(model.tokenize)
+        self.eval_dataset.transform.transforms.append(model.tokenize)
+
+        if self.cfg.get("load_from_checkpoint", False):
             self._extend_model_vocab(model)
         else:
             self._init_model_vocab(model)
-
-        eval_transforms = []
-        if cfg.get("eval_transforms"):
-            eval_transforms = hydra.utils.instantiate(self.cfg.eval_transforms)
-
-        self.val_dataset = Dataset(
-            root=cfg.data_root,
-            config=cfg.dataset,
-            split="valid",
-            transform=Compose([*eval_transforms, model.tokenize]),
-        )
-        self.val_intervals = self.val_dataset.get_sampling_intervals()
-
-        self.test_dataset = Dataset(
-            root=cfg.data_root,
-            config=cfg.dataset,
-            split="test",
-            transform=Compose([*eval_transforms, model.tokenize]),
-        )
-        self.test_intervals = self.test_dataset.get_sampling_intervals()
 
     def _init_model_vocab(self, model: NDT2):
         ctx_embedder = model.ctx_embedder
@@ -313,8 +291,9 @@ class DataModule(L.LightningDataModule):
             else:
                 logger.info("Task vocab already includes all task IDs.")
 
+    # TODO update
     def get_session_ids(self):
-        return self.train_dataset.get_session_ids()
+        return self.train_dataset.recording_ids
 
     def get_subject_ids(self):
         return self.train_dataset.get_subject_ids()
@@ -324,22 +303,28 @@ class DataModule(L.LightningDataModule):
 
     def train_dataloader(self):
         cfg = self.cfg
+
         train_sampler = RandomFixedWindowSampler(
-            sampling_intervals=self.train_intervals,
+            sampling_intervals=self.train_dataset.get_sampling_intervals("train"),
             window_length=cfg.model.ctx_time,
-            generator=torch.Generator(),
+            generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
 
         bs = cfg.batch_size_per_gpu if self.is_ssl else cfg.superv_batch_size_per_gpu
         train_loader = DataLoader(
-            dataset=self.dataset,
-            batch_size=bs,
+            self.train_dataset,
             sampler=train_sampler,
-            num_workers=cfg.num_workers,
-            persistent_workers=True if self.cfg.num_workers > 0 else False,
-            pin_memory=True,
             collate_fn=collate,
+            batch_size=bs,
+            num_workers=cfg.num_workers,
+            drop_last=True,
+            pin_memory=True,
+            persistent_workers=True if self.cfg.num_workers > 0 else False,
         )
+
+        logger.info(f"Training on {len(train_sampler)} samples")
+        logger.info(f"Training on {len(self.train_dataset.get_unit_ids())} units")
+        logger.info(f"Training on {len(self.get_session_ids())} sessions")
 
         return train_loader
 
@@ -347,45 +332,51 @@ class DataModule(L.LightningDataModule):
         cfg = self.cfg
 
         val_sampler = SequentialFixedWindowSampler(
-            sampling_intervals=self.val_intervals,
+            sampling_intervals=self.eval_dataset.get_sampling_intervals("valid"),
             window_length=cfg.model.ctx_time,
             drop_short=True,
         )
 
         bs = cfg.batch_size_per_gpu if self.is_ssl else cfg.superv_batch_size_per_gpu
         val_loader = DataLoader(
-            dataset=self.dataset,
-            batch_size=bs,
+            self.eval_dataset,
             sampler=val_sampler,
-            num_workers=cfg.num_workers,
-            persistent_workers=True if self.cfg.num_workers > 0 else False,
-            pin_memory=True,
+            shuffle=False,
             collate_fn=collate,
+            batch_size=bs,
+            num_workers=cfg.num_workers,
+            drop_last=False,
+            pin_memory=True,
+            persistent_workers=True if self.cfg.num_workers > 0 else False,
         )
+
+        logger.info(f"Expecting {len(val_sampler)} validation steps")
 
         return val_loader
 
     def test_dataloader(self):
-        if self.test_intervals is None:
-            return None
-
         cfg = self.cfg
         bs = cfg.batch_size_per_gpu if self.is_ssl else cfg.superv_batch_size_per_gpu
 
         test_sampler = SequentialFixedWindowSampler(
-            sampling_intervals=self.test_intervals,
+            sampling_intervals=self.eval_dataset.get_sampling_intervals("test"),
             window_length=cfg.model.ctx_time,
             drop_short=True,
         )
         test_loader = DataLoader(
-            dataset=self.dataset,
-            batch_size=bs,
+            self.eval_dataset,
             sampler=test_sampler,
-            num_workers=cfg.num_workers,
-            persistent_workers=True if self.cfg.num_workers > 0 else False,
-            pin_memory=True,
+            shuffle=False,
             collate_fn=collate,
+            batch_size=bs,
+            num_workers=cfg.num_workers,
+            drop_last=False,
+            pin_memory=True,
+            persistent_workers=True if self.cfg.num_workers > 0 else False,
         )
+
+        logger.info(f"Testing on {len(test_sampler)} samples")
+
         return test_loader
 
 
@@ -451,15 +442,13 @@ def main(cfg):
         logger.info(f"Batch size per GPU: {cfg.batch_size_per_gpu}")
         logger.info(f"Superv batch size per GPU: {cfg.superv_batch_size_per_gpu}")
 
-    data_module = DataModule(cfg, cfg.is_ssl)
-
     # make model amd data module
-    readout_spec = None
+    data_module = DataModule(cfg, cfg.is_ssl)
+    readout_spec = data_module.readout_spec
+
     if cfg.is_ssl:
         model = hydra.utils.instantiate(cfg.model, is_ssl=cfg.is_ssl)
     else:
-        readout_id = cfg.dataset[0].config.readout.readout_id
-        readout_spec = MODALITY_REGISTRY[readout_id]
         model = hydra.utils.instantiate(
             cfg.model, is_ssl=cfg.is_ssl, readout_spec=readout_spec
         )
@@ -468,7 +457,7 @@ def main(cfg):
     if cfg.get("load_from_checkpoint", False):
         _load_from_checkpoint(cfg, model)
 
-    data_module.setup_dataset_and_link_model(model)
+    data_module.link_model(model)
 
     # Train wrapper
     wrapper = NDT2TrainWrapper(cfg=cfg, model=model, modality_spec=readout_spec)
@@ -480,9 +469,6 @@ def main(cfg):
     ]
     monitor = "val_loss"
     if cfg.callbacks.checkpoint:
-        if cfg.callbacks.get("monitor_avg", False):
-            monitor = "val_loss_avg"
-
         checkpoint_callback = ModelCheckpoint(
             dirpath=cfg.callbacks.checkpoint_path,
             filename=f"{cfg.wandb.run_name}",

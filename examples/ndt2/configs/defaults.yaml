@@ -1,11 +1,14 @@
-log_dir: /vast/projects/dyer1/lab/user/alex/logs/
-data_root: /vast/projects/dyer1/lab/shared/neural_data/processed/ibl_brain_wide_map_2023/10_26_2025/
+log_dir: ./logs/
+data_root: ./processed
 wandb:
-  enable: true
+  enable: false
   entity: aandre8-gatech
   project: testing_NDT2
   log_model: false
 
+
+train_transforms: []
+eval_transforms: []
 
 seed: 0
 epochs: 500
@@ -24,7 +27,7 @@ callbacks:
   patience: 100
   checkpoint: true
   early_stop: true
-  checkpoint_path: /vast/projects/dyer1/lab/user/alex/torch_brain/examples/ndt2/ckpt
+  checkpoint_path: ./ckpt
 
 optimizer:
   lr: 5e-4

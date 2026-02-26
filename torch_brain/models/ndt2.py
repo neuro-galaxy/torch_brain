@@ -140,6 +140,7 @@ class NDT2(nn.Module):
         self.bin_time = bin_time
         bin_size = int(np.round(ctx_time / bin_time))
         self.bin_size = bin_size
+        self.max_num_units = max_num_units
 
         self.is_ssl = is_ssl
         self.mask_ratio = mask_ratio
@@ -202,6 +203,12 @@ class NDT2(nn.Module):
         """
         n_units = len(data.units.id)
 
+        if n_units > self.max_num_units:
+            raise ValueError(
+                f"n_units ({n_units}) exceeds max_space_patches "
+                f"({self.max_num_units}). Increase max_space_patches or reduce n_units."
+            )
+
         # `self.max_bincount` acts as the padding index.
         # TODO update with the new version of bin_spikes
         units_bincount = bin_spikes(
@@ -210,12 +217,6 @@ class NDT2(nn.Module):
         units_bincount = np.clip(units_bincount, 0, self.max_bincount - 1)
 
         n_units_patches = int(np.ceil(n_units / self.units_per_patch))
-
-        if n_units_patches > self.max_space_patches:
-            raise ValueError(
-                f"n_units_patches ({n_units_patches}) exceeds max_space_patches "
-                f"({self.max_space_patches}). Increase max_space_patches or reduce n_units."
-            )
 
         extra_units = n_units_patches * self.units_per_patch - n_units
 
@@ -231,9 +232,9 @@ class NDT2(nn.Module):
             )
 
         n_bins = units_bincount.shape[1]
-        if n_bins > self.max_time_patches:
+        if n_bins > self.bin_size:
             raise ValueError(
-                f"n_bins ({n_bins}) exceeds max_time_patches ({self.max_time_patches})."
+                f"n_bins ({n_bins}) exceeds max_time_patches ({self.bin_size})."
             )
 
         # Flatten in time-major patch order to match the NDT2 token layout.

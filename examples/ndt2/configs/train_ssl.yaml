@@ -1,6 +1,5 @@
 defaults:
   - defaults.yaml
-  - dataset: ibl.yaml
   - model: ndt2_ssl.yaml
   - _self_  # ensures current config overrides defaults
 
@@ -10,3 +9,6 @@ wandb:
 
 load_from_checkpoint: false
 new_decoder: false
+
+dataset:
+  _target_: datasets.mp.PoyoMPDataset
