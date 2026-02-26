@@ -7,6 +7,23 @@ from torch_brain.utils.binning import bin_spikes
 
 
 class BinningTransform:
+    r"""Bin spike events into fixed-width time bins.
+
+    The transform reads spikes and units from nested attributes, applies
+    :func:`torch_brain.utils.binning.bin_spikes`, and stores the result in a new
+    nested attribute named ``{spikes_attr}_binned``.
+
+    Args:
+        spikes_attr (str): Nested attribute path to the spikes object.
+        units_attr (str): Nested attribute path to the units object.
+        bin_size (float): Bin width in seconds.
+        max_spikes (int, optional): Maximum number of spikes to include per unit per
+            bin. If ``None``, no clipping is applied.
+        right (bool, optional): If ``True``, bins include the right edge.
+        eps (float, optional): Small numerical margin used during bin assignment.
+        dtype (np.dtype, optional): Data type of the output binned array.
+    """
+
     def __init__(
         self,
         spikes_attr: str,
