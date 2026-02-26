@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from temporaldata import ArrayDict, Data, Interval, IrregularTimeSeries
 
-from torch_brain.transforms import BinningTransform
-from torch_brain.utils import bin_spikes
+from torch_brain.transforms.binning import BinningTransform
+from torch_brain.utils.binning import bin_spikes
 
 
 def test_bin_data():
