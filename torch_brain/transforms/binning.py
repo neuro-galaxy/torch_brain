@@ -49,7 +49,7 @@ class BinningTransform:
         spikes = data.get_nested_attribute(self.spikes_attr)
         units = data.get_nested_attribute(self.units_attr)
 
-        binned_spikes = bin_spikes(spikes, n_units=len(units), **self.params)
+        binned_spikes = bin_spikes(spikes, num_units=len(units), **self.params)
 
         data.set_nested_attribute(f"{self.spikes_attr}_binned", binned_spikes)
         return data
