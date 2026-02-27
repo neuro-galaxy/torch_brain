@@ -19,7 +19,8 @@ class BinningTransform:
         bin_size (float): Bin width in seconds.
         max_spikes (int, optional): Maximum number of spikes to include per unit per
             bin. If ``None``, no clipping is applied.
-        right (bool, optional): If ``True``, bins include the right edge.
+        right (bool, optional): Decide which side gets truncated when duration is not
+        a multiple of ``bin_size``. If ``True``, excess spikes are truncated from the left edge.
         eps (float, optional): Small numerical margin used during bin assignment.
         dtype (np.dtype, optional): Data type of the output binned array.
     """
