@@ -10,9 +10,14 @@ log = logging.getLogger(__name__)
 
 
 def seed_everything(seed: int) -> None:
-    """Sets random seed for reproducibility.
+    r"""Set random seeds across all libraries for reproducibility.
+
+    Seeds PyTorch, CUDA, NumPy, and Python's random module. Also sets
+    ``PYTHONHASHSEED`` environment variable and configures cuDNN for
+    deterministic behavior.
+
     Args:
-        seed (int): Random seed.
+        seed: The random seed to use. If None, no seeding is performed.
     """
     if seed is not None:
         log.info("Global seed set to {}.".format(seed))

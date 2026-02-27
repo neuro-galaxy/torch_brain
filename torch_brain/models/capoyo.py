@@ -28,12 +28,39 @@ from torch_brain.utils import (
 
 
 class CaPOYO(nn.Module):
-    """
-    CaPOYO (Calcium POYO+) model from `Azabou et al. 2025, Multi-session, multi-task neural decoding
+    """CaPOYO (Calcium POYO+) model from `Azabou et al. 2025, Multi-session, multi-task neural decoding
     from distinct cell-types and brain regions <https://openreview.net/forum?id=IuU0wcO0mo>`_.
 
     CaPOYO is a transformer-based model for neural decoding from calcium imaging recordings.
-    It extends the POYO+ architecture with a calcium value map.
+    It extends the POYO+ architecture with a linear mapping for calcium signal values,
+    allowing the model to process continuous-valued calcium traces rather than discrete spikes.
+
+    The model processes calcium imaging data through the following steps:
+
+    1. Input tokens are constructed by combining unit embeddings with a learned linear
+       mapping of calcium values, creating a joint representation.
+    2. The input sequence is compressed using cross-attention to latent tokens.
+    3. The latent representations are refined through self-attention layers.
+    4. Query tokens (task + session embeddings) attend to latents via cross-attention.
+    5. Task-specific linear layers produce the final predictions.
+
+    Args:
+        sequence_length: Maximum duration of the input sequence (in seconds)
+        readout_specs: Specifications for each prediction task. Dictionary mapping
+            task names to :class:`~torch_brain.registry.ModalitySpec` objects.
+        latent_step: Timestep of the latent grid (in seconds)
+        num_latents_per_step: Number of unique latent tokens repeated at each step
+        dim: Hidden dimension of the model
+        depth: Number of self-attention processing layers
+        dim_head: Dimension of each attention head
+        cross_heads: Number of attention heads in cross-attention layers
+        self_heads: Number of attention heads in self-attention layers
+        ffn_dropout: Dropout rate for feed-forward networks
+        lin_dropout: Dropout rate for linear layers
+        atn_dropout: Dropout rate for attention
+        emb_init_scale: Scale for embedding initialization
+        t_min: Minimum timestamp resolution for rotary embeddings
+        t_max: Maximum timestamp resolution for rotary embeddings
     """
 
     def __init__(

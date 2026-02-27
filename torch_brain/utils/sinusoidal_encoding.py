@@ -2,6 +2,21 @@ import numpy as np
 
 
 def get_sinusoidal_encoding(x, y, dim):
+    r"""Generate 2D sinusoidal position encodings.
+
+    Creates position encodings for 2D coordinates using sinusoidal functions
+    with exponentially decaying frequencies, similar to the positional encoding
+    in the original Transformer paper.
+
+    Args:
+        x: Array of x-coordinates.
+        y: Array of y-coordinates (must have same length as x).
+        dim: Dimension of encoding per coordinate (must be even).
+            The total encoding dimension will be ``2 * dim``.
+
+    Returns:
+        np.ndarray: Position encodings of shape ``(len(x), 2 * dim)``.
+    """
     assert dim % 2 == 0, "Number of dimensions should be even"
     assert len(x) == len(y), "x and y arrays must be of the same length"
 

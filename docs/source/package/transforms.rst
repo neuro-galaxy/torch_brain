@@ -14,10 +14,18 @@ torch_brain.transforms
      - Conditionally apply a single transformation based on whether a condition is met.
    * - :py:class:`UnitDropout`
      - Randomly drop units from the `data.units` and `data.spikes`.
+   * - :py:class:`TriangleDistribution`
+     - Triangular distribution used for sampling the number of units to keep.
    * - :py:class:`RandomTimeScaling`
      - Randomly scales the time axis.
    * - :py:class:`RandomOutputSampler`
      - Randomly drops output samples.
+   * - :py:class:`RandomCrop`
+     - Randomly crop a fixed-length window from the data.
+   * - :py:class:`UnitFilter`
+     - Drop units based on a custom mask function.
+   * - :py:class:`UnitFilterById`
+     - Keep or drop units based on regex pattern matching on unit IDs.
 
 
 .. autoclass:: Compose
@@ -52,6 +60,21 @@ torch_brain.transforms
     :undoc-members:
 
 .. autoclass:: RandomOutputSampler
+    :members:
+    :show-inheritance:
+    :undoc-members:
+
+.. autoclass:: RandomCrop
+    :members:
+    :show-inheritance:
+    :undoc-members:
+
+.. autoclass:: UnitFilter
+    :members:
+    :show-inheritance:
+    :undoc-members:
+
+.. autoclass:: UnitFilterById
     :members:
     :show-inheritance:
     :undoc-members:
