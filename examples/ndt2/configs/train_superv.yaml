@@ -1,0 +1,15 @@
+defaults:
+  - defaults.yaml
+  - model: ndt2_superv.yaml
+  - _self_  # ensures current config overrides defaults
+
+is_ssl: false
+wandb:
+  run_name: superv
+
+load_from_checkpoint: true
+new_decoder: true
+checkpoint_path: ./ckpt/pretrain.ckpt
+
+dataset:
+  _target_: datasets.mp.PoyoMPDataset
