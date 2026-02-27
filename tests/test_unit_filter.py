@@ -41,7 +41,7 @@ def mock_data():
 
 def test_unit_filter_w_keyword(mock_data):
     transform = UnitFilterByAttr(
-        "unsorted", field="spikes", reset_index=True, keep_matches=True
+        target_attr="spikes", pattern="unsorted", reset_index=True, keep_matches=True
     )
     data_t = transform(mock_data)
 
@@ -59,7 +59,7 @@ def test_unit_filter_w_keyword(mock_data):
 
 def test_unit_filter_w_regex(mock_data):
     transform = UnitFilterByAttr(
-        r"^sorted_.*", field="spikes", reset_index=True, keep_matches=True
+        target_attr="spikes", pattern=r"^sorted_.*", reset_index=True, keep_matches=True
     )
     data_t = transform(mock_data)
 
