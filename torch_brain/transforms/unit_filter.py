@@ -11,7 +11,7 @@ class UnitFilter:
     Drop units based on the `mask_fn` given in the constructor.
 
     Args:
-        mask_fn (Callable[[ArrayDict], np.ndarray]): A function that takes the unit ids and returns a mask to keep the units.
+        mask_fn (Callable[[Data], np.ndarray]): A function that takes the data object and returns a mask to keep the units.
         target_attr (str): The attribute to apply the filter.
         reset_index (bool, optional): If True, it will reset_index the unit index of the time series.
     """
@@ -60,7 +60,7 @@ class UnitFilter:
 class UnitFilterByAttr(UnitFilter):
     r"""
     Keep/drop units based on the keyword/regex given in the constructor.
-    Filtering is done based on one the unit attribute (id by default).
+    Filtering is done based on one of the unit attribute (id by default).
     Whether to keep or drop is based on the keep_matches argument.
 
 
