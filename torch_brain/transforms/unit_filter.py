@@ -8,12 +8,12 @@ from temporaldata import ArrayDict, Data, IrregularTimeSeries, RegularTimeSeries
 
 class UnitFilter:
     r"""
-    Drop units based on the `mask_fn` given in the constructor.
+    Keep/drop units based on the `mask_fn` given in the constructor.
 
     Args:
         mask_fn (Callable[[Data], np.ndarray]): A function that takes the data object and returns a mask to keep the units.
         target_attr (str): The attribute to apply the filter.
-        reset_index (bool, optional): If True, it will reset_index the unit index of the time series.
+        reset_index (bool, optional): If True, it will reset the unit index of the time series.
     """
 
     def __init__(
@@ -68,7 +68,7 @@ class UnitFilterByAttr(UnitFilter):
         target_attr (str): The attr to apply the filter.
         pattern (Union[str, Pattern]): The regex pattern to match against the unit attr.
         filter_attr (str, optional): The unit attribute where the regex pattern is matched. by default id.
-        reset_index (bool, optional): If True, it will reset_index the unit index of the time series.
+        reset_index (bool, optional): If True, it will reset the unit index of the time series.
         keep_matches (bool, optional): If True, units matching the pattern will be kept.
     """
 
