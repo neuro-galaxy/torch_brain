@@ -20,7 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added `torch_brain.dataset` module. ([#154](https://github.com/neuro-galaxy/torch_brain/pull/154))
 
 ### Changed
-- Refactor `RotaryEmbedding` to `RotaryTimeEmbedding` ([##97](https://github.com/neuro-galaxy/torch_brain/pull/97))
+- Refactor `RotaryEmbedding` to `RotaryTimeEmbedding` ([#97](https://github.com/neuro-galaxy/torch_brain/pull/97))
 - Bugfix in `InfiniteVocabEmbedding.extend_vocab` ([#99](https://github.com/neuro-galaxy/torch_brain/pull/99))
 - Bugfix for `InfiniteVocabEmbedding.load_state_dict` ([#148](https://github.com/neuro-galaxy/torch_brain/pull/148))
 - Fix bug when start time is non-zero in `bin_spikes` ([#160](https://github.com/neuro-galaxy/torch_brain/pull/160))
