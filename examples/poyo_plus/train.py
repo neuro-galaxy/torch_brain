@@ -423,14 +423,14 @@ class DataModuleForDiver(DataModule):
         
         self.log.info(f"DataModuleForDiver initialized with LMDB path: {lmdb_path}")
     
-    def _create_tokenizer(self):
+    def _create_tokenizer(self): #!TODO : patch -> CNN -> backbone.
         """Create a standalone tokenizer that produces POYO-style batch format.
         
         Returns a callable that transforms temporaldata.Data -> POYO batch dict
         """
         sequence_length = self.sequence_length
         
-        def tokenize(data):
+        def tokenize(data): #* TODO : compare with orig. POYO tokenizer + DIVER tokenizer(patchfy?)
             """Transform temporaldata.Data to POYO-style dict format.
             
             Produces:
