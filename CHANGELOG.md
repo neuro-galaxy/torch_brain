@@ -6,7 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
-- Renamed `UnitFilterById` to `UnitFilterByAttr` to support filtering by any unit attribute. ([#171](https://github.com/neuro-galaxy/torch_brain/pull/171))
 - Added `eps` parameter to `bin_spikes` to improve numerical stability when computing bin boundaries. ([#160](https://github.com/neuro-galaxy/torch_brain/pull/160))
 - Added `max_spikes` parameter to `bin_spikes`. ([#158](https://github.com/neuro-galaxy/torch_brain/pull/158))
 - Added `torch_brain.dataset` module. ([#154](https://github.com/neuro-galaxy/torch_brain/pull/154))
@@ -14,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Removed
 
 ### Changed
+- Renamed `UnitFilterById` to `UnitFilterByAttr` to support filtering by any unit attribute. ([#171](https://github.com/neuro-galaxy/torch_brain/pull/171))
 - Fix bug when start time is non-zero in `bin_spikes` ([#160](https://github.com/neuro-galaxy/torch_brain/pull/160))
 
 ## [0.1.0] - 2025-03-26
