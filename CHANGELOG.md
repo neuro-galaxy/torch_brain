@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
+- Added `torch_brain.transforms.BinSpikes` to wrap binning function in a transform. ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 - Added `eps` parameter to `bin_spikes` to improve numerical stability when computing bin boundaries. ([#160](https://github.com/neuro-galaxy/torch_brain/pull/160))
 - Added `max_spikes` parameter to `bin_spikes`. ([#158](https://github.com/neuro-galaxy/torch_brain/pull/158))
 - Added `torch_brain.dataset` module. ([#154](https://github.com/neuro-galaxy/torch_brain/pull/154))
