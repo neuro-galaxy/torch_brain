@@ -1,4 +1,4 @@
-from .binning import BinningTransform
+from .binning import BinSpikes
 from .container import Compose, ConditionalChoice, RandomChoice
 from .output_sampler import RandomOutputSampler
 from .random_crop import RandomCrop

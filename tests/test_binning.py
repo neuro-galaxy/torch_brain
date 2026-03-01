@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from temporaldata import ArrayDict, Data, Interval, IrregularTimeSeries
 
-from torch_brain.transforms.binning import BinningTransform
+from torch_brain.transforms.binning import BinSpikes
 from torch_brain.utils.binning import bin_spikes
 
 
@@ -134,9 +134,7 @@ def simple_spikes_data():
 
 def test_binning_transform_basic(simple_spikes_data):
     bin_size = 1.0
-    transform = BinningTransform(
-        spikes_attr="spikes", units_attr="units", bin_size=bin_size, dtype=np.float32
-    )
+    transform = BinSpikes(bin_size=bin_size)
 
     data_t = transform(simple_spikes_data)
 
@@ -154,8 +152,8 @@ def test_binning_transform_custom_attr_names(simple_spikes_data):
     # (e.g., if spikes are under 'lfp_spikes' instead of 'spikes')
     simple_spikes_data.lfp_spikes = simple_spikes_data.spikes
 
-    transform = BinningTransform(
-        spikes_attr="lfp_spikes", units_attr="units", bin_size=1.0
+    transform = BinSpikes(
+        spikes_attribute="lfp_spikes", units_attribute="units", bin_size=1.0
     )
 
     data_t = transform(simple_spikes_data)
