@@ -18,6 +18,10 @@ torch_brain.transforms
      - Randomly scales the time axis.
    * - :py:class:`RandomOutputSampler`
      - Randomly drops output samples.
+   * - :py:class:`UnitFilter`
+     - Drop units with a user-defined unit mask function.
+   * - :py:class:`UnitFilterByAttr`
+     - Keep/drop units by matching a pattern on a unit attribute.
 
 
 .. autoclass:: Compose
@@ -52,6 +56,16 @@ torch_brain.transforms
     :undoc-members:
 
 .. autoclass:: RandomOutputSampler
+    :members:
+    :show-inheritance:
+    :undoc-members:
+
+.. autoclass:: UnitFilter
+    :members:
+    :show-inheritance:
+    :undoc-members:
+
+.. autoclass:: UnitFilterByAttr
     :members:
     :show-inheritance:
     :undoc-members:
