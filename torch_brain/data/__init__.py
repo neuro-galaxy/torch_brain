@@ -10,3 +10,4 @@ from .collate import (
     track_mask8,
 )
 from .dataset import Dataset
+from .dataset_from_lmdb import DatasetFromLmdb, LmdbConfig
