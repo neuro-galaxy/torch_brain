@@ -6,16 +6,16 @@ from temporaldata import Data
 from torch_brain.utils.binning import bin_spikes
 
 
-class BinningTransform:
+class BinSpikes:
     r"""Bin spike events into fixed-width time bins.
 
     The transform reads spikes and units from nested attributes, applies
     :func:`torch_brain.utils.binning.bin_spikes`, and stores the result in a new
-    nested attribute named ``{spikes_attr}_binned``.
+    nested attribute named ``{spikes_attribute}_binned``.
 
     Args:
-        spikes_attr (str): Nested attribute path to the spikes object.
-        units_attr (str): Nested attribute path to the units object.
+        spikes_attribute (str): Nested attribute path to the spikes object.
+        units_attribute (str): Nested attribute path to the units object.
         bin_size (float): Bin width in seconds.
         max_spikes (int, optional): Maximum number of spikes to include per unit per
             bin. If ``None``, no clipping is applied.
@@ -27,16 +27,16 @@ class BinningTransform:
 
     def __init__(
         self,
-        spikes_attr: str,
-        units_attr: str,
         bin_size: float,
+        spikes_attribute: str = "spikes",
+        units_attribute: str = "units",
         max_spikes: Optional[int] = None,
         right: bool = True,
         eps: float = 1e-3,
         dtype: np.dtype = np.float32,
     ):
-        self.spikes_attr = spikes_attr
-        self.units_attr = units_attr
+        self.spikes_attr = spikes_attribute
+        self.units_attr = units_attribute
 
         self.params = {
             "bin_size": bin_size,

@@ -18,7 +18,7 @@ torch_brain.transforms
      - Randomly scales the time axis.
    * - :py:class:`RandomOutputSampler`
      - Randomly drops output samples.
-   * - :py:class:`BinningTransform`
+   * - :py:class:`BinSpikes`
      - Bin spike events into fixed-width time bins.
 
 
@@ -58,7 +58,7 @@ torch_brain.transforms
     :show-inheritance:
     :undoc-members:
 
-.. autoclass:: BinningTransform
+.. autoclass:: BinSpikes
     :members:
     :show-inheritance:
     :undoc-members:
