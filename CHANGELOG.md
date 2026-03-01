@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+### Fixed
+
 
 ## [0.1.1] - 2026-03-01
 ### Added
@@ -21,9 +23,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 - Refactor `RotaryEmbedding` to `RotaryTimeEmbedding` ([#97](https://github.com/neuro-galaxy/torch_brain/pull/97))
-- Bugfix in `InfiniteVocabEmbedding.extend_vocab` ([#99](https://github.com/neuro-galaxy/torch_brain/pull/99))
-- Bugfix for `InfiniteVocabEmbedding.load_state_dict` ([#148](https://github.com/neuro-galaxy/torch_brain/pull/148))
-- Fix bug when start time is non-zero in `bin_spikes` ([#160](https://github.com/neuro-galaxy/torch_brain/pull/160))
+
+## Fixed
+- `InfiniteVocabEmbedding.extend_vocab`: fix incorrect device behavior ([#99](https://github.com/neuro-galaxy/torch_brain/pull/99))
+- `InfiniteVocabEmbedding.load_state_dict`: fix inplace modification for source vocab ([#148](https://github.com/neuro-galaxy/torch_brain/pull/148))
+- `bin_spikes`: fix bug when start time is non-zero ([#160](https://github.com/neuro-galaxy/torch_brain/pull/160))
 
 
 ## [0.1.0] - 2025-03-26
