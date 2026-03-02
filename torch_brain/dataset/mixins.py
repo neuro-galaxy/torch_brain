@@ -87,3 +87,15 @@ class CalciumImagingDatasetMixin:
         """Return a sorted list of all ROI IDs across all recordings in the dataset."""
         ans = [self.get_recording(rid).rois.id for rid in self.recording_ids]
         return np.sort(np.concatenate(ans)).tolist()
+
+
+class SEEGDatasetMixin:
+    """
+    Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing sEEG data.
+
+    Provides:
+        - ``get_recording_hook()`` passthrough for mixin hook chaining.
+    """
+
+    def get_recording_hook(self, data: Data):
+        super().get_recording_hook(data)
