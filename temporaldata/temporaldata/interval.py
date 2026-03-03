@@ -309,37 +309,40 @@ class Interval(ArrayDict):
         out.end[-1] = out.end[-1] + size[-1]
         return out
 
-    def coalesce(self, eps=1e-6):
+    def coalesce(self, eps: float = 1e-6):
         r"""Coalesces the intervals that are closer than :obj:`eps`. This operation
         returns a new :obj:`Interval` object, and does not resolve the existing
         attributes.
 
         Args:
             eps: The distance threshold for coalescing the intervals. Defaults to 1e-6.
+
+        Example:
+            >>> interval = Interval(
+            ...     start=np.array([0.0, 1.0, 2.0, 5.0, 5.5, 10.0]),
+            ...     end=np.array([1.0, 2.0, 3.0, 5.5, 7.0, 12.0]),
+            ... )
+            >>> coalesced = interval.coalesce()
+            >>> coalesced.start
+            array([ 0.,  5., 10.])
+            >>> coalesced.end
+            array([ 3.,  7., 12.])
         """
+        if len(self) == 0:
+            return Interval(start=np.array([]), end=np.array([]))
+
+        if eps < 0:
+            raise ValueError(f"eps must be non-negative, got eps={eps}")
+
         if not self.is_sorted():
             self.sort()
 
-        start = []
-        end = []
+        s, e = self.start, self.end
 
-        current_start = self.start[0]
-        current_end = self.end[0]
-
-        for s, e in zip(self.start[1:], self.end[1:]):
-            if s - current_end < eps:
-                # we have an overlap
-                current_end = e
-            else:
-                start.append(current_start)
-                end.append(current_end)
-                current_start = s
-                current_end = e
-
-        start.append(current_start)
-        end.append(current_end)
-
-        return Interval(start=np.array(start), end=np.array(end))
+        mask = s[1:] >= e[:-1] + eps
+        out_start = np.insert(s[1:][mask], 0, s[0], axis=0)
+        out_end = np.append(e[:-1][mask], [e[-1]], axis=0)
+        return Interval(out_start, out_end)
 
     def difference(self, other):
         r"""Returns the difference between two sets of intervals. The intervals are
