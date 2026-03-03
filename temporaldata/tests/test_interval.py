@@ -660,31 +660,102 @@ def test_is_dijoint_is_sorted():
     assert empty_interval.is_sorted() == True
 
 
-def test_interval_coalesce():
-    data = Interval(
-        start=np.array([0.0, 1.0, 2.0]),
-        end=np.array([1.0, 2.0, 3.0]),
-        go_cue_time=np.array([0.5, 1.5, 2.5]),
-        drifting_gratings_dir=np.array([0, 45, 90]),
-        timekeys=["start", "end", "go_cue_time"],
-    )
+class TestIntervalCoalesce:
+    def test_contiguous_intervals(self):
+        data = Interval(
+            start=np.array([0.0, 1.0, 2.0]),
+            end=np.array([1.0, 2.0, 3.0]),
+            go_cue_time=np.array([0.5, 1.5, 2.5]),
+            drifting_gratings_dir=np.array([0, 45, 90]),
+            timekeys=["start", "end", "go_cue_time"],
+        )
 
-    coalesced_data = data.coalesce()
-    assert len(coalesced_data) == 1
-    # only keep start and end
-    assert len(coalesced_data.keys()) == 2
-    assert np.allclose(coalesced_data.start, np.array([0.0]))
-    assert np.allclose(coalesced_data.end, np.array([3.0]))
+        coalesced_data = data.coalesce()
+        assert len(coalesced_data) == 1
+        # only keep start and end
+        assert len(coalesced_data.keys()) == 2
+        assert np.allclose(coalesced_data.start, np.array([0.0]))
+        assert np.allclose(coalesced_data.end, np.array([3.0]))
 
-    data = Interval(
-        start=np.array([0.0, 1.0, 2.0, 4.0, 4.5, 5.0, 10.0]),
-        end=np.array([0.5, 2.0, 2.5, 4.5, 5.0, 6.0, 11.0]),
-    )
+    def test_mixed_overlapping_and_separated(self):
+        data = Interval(
+            start=np.array([0.0, 1.0, 2.0, 4.0, 4.5, 5.0, 10.0]),
+            end=np.array([0.5, 2.0, 2.5, 4.5, 5.0, 6.0, 11.0]),
+        )
 
-    coalesced_data = data.coalesce()
-    assert len(coalesced_data) == 4
-    assert np.allclose(coalesced_data.start, np.array([0.0, 1.0, 4.0, 10.0]))
-    assert np.allclose(coalesced_data.end, np.array([0.5, 2.5, 6.0, 11.0]))
+        coalesced_data = data.coalesce()
+        assert len(coalesced_data) == 4
+        assert np.allclose(coalesced_data.start, np.array([0.0, 1.0, 4.0, 10.0]))
+        assert np.allclose(coalesced_data.end, np.array([0.5, 2.5, 6.0, 11.0]))
+
+    def test_already_disjoint(self):
+        data = Interval(
+            start=np.array([0.0, 5.0, 10.0]),
+            end=np.array([1.0, 6.0, 11.0]),
+        )
+
+        coalesced_data = data.coalesce()
+        assert len(coalesced_data) == 3
+        assert np.allclose(coalesced_data.start, np.array([0.0, 5.0, 10.0]))
+        assert np.allclose(coalesced_data.end, np.array([1.0, 6.0, 11.0]))
+
+    def test_empty_interval(self):
+        data = Interval(start=np.array([]), end=np.array([]))
+        coalesced_data = data.coalesce()
+        assert len(coalesced_data) == 0
+        assert np.array_equal(coalesced_data.start, np.array([]))
+        assert np.array_equal(coalesced_data.end, np.array([]))
+
+    def test_custom_eps(self):
+        data = Interval(
+            start=np.array([0.0, 1.001, 5.0]),
+            end=np.array([1.0, 2.0, 6.0]),
+        )
+
+        # default eps=1e-6: gap of 0.001 is too large, no coalescing
+        coalesced_default = data.coalesce()
+        assert len(coalesced_default) == 3
+
+        # eps=0.01: gap of 0.001 is within threshold, first two coalesce
+        coalesced_custom = data.coalesce(eps=0.01)
+        assert len(coalesced_custom) == 2
+        assert np.allclose(coalesced_custom.start, np.array([0.0, 5.0]))
+        assert np.allclose(coalesced_custom.end, np.array([2.0, 6.0]))
+
+    def test_gap_exactly_at_eps(self):
+        eps = 0.01
+        data = Interval(
+            start=np.array([0.0, 1.0 + eps]),
+            end=np.array([1.0, 2.0]),
+        )
+
+        # gap == eps is NOT less than eps, so intervals stay separate
+        coalesced_data = data.coalesce(eps=eps)
+        assert len(coalesced_data) == 2
+        assert np.allclose(coalesced_data.start, np.array([0.0, 1.0 + eps]))
+        assert np.allclose(coalesced_data.end, np.array([1.0, 2.0]))
+
+    def test_gap_just_under_eps(self):
+        eps = 0.01
+        gap = eps - 1e-10
+        data = Interval(
+            start=np.array([0.0, 1.0 + gap]),
+            end=np.array([1.0, 2.0]),
+        )
+
+        # gap < eps, so intervals coalesce
+        coalesced_data = data.coalesce(eps=eps)
+        assert len(coalesced_data) == 1
+        assert np.allclose(coalesced_data.start, np.array([0.0]))
+        assert np.allclose(coalesced_data.end, np.array([2.0]))
+
+    def test_negative_eps_raises(self):
+        data = Interval(
+            start=np.array([0.0, 2.0]),
+            end=np.array([1.0, 3.0]),
+        )
+        with pytest.raises(ValueError, match="eps must be non-negative"):
+            data.coalesce(eps=-0.1)
 
 
 def test_subdivide():
