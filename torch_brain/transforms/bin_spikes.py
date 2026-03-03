@@ -1,7 +1,7 @@
 from typing import Optional
 
 import numpy as np
-from temporaldata import Data
+from temporaldata import Data, RegularTimeSeries
 
 from torch_brain.utils.binning import bin_spikes
 
@@ -33,7 +33,7 @@ class BinSpikes:
         max_spikes: Optional[int] = None,
         right: bool = True,
         eps: float = 1e-3,
-        dtype: np.dtype = np.float32,
+        dtype: np.dtype = np.long,
     ):
         self.spikes_attr = spikes_attribute
         self.units_attr = units_attribute
@@ -50,7 +50,13 @@ class BinSpikes:
         spikes = data.get_nested_attribute(self.spikes_attr)
         units = data.get_nested_attribute(self.units_attr)
 
-        binned_spikes = bin_spikes(spikes, num_units=len(units), **self.params)
+        binned_counts = bin_spikes(spikes, num_units=len(units), **self.params)
+
+        binned_spikes = RegularTimeSeries(
+            sampling_rate=1 / self.params["bin_size"],
+            domain=spikes.domain,
+            binned_counts=binned_counts,
+        )
 
         _set_nested_attribute(data, f"{self.spikes_attr}_binned", binned_spikes)
         return data
