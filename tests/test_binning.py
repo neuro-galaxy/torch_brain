@@ -15,17 +15,17 @@ def test_bin_data():
     binned_data = bin_spikes(spikes, num_units=2, bin_size=1.0, right=True)
 
     expected = np.array(
-        [[1, 1, 1, 1, 2, 0, 1, 1, 1, 1], [1, 1, 0, 0, 0, 0, 0, 0, 0, 0]]
+        [[1, 1, 1, 1, 2, 0, 1, 1, 1, 1], [1, 1, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.long
     )
     assert binned_data.shape == expected.shape
     assert np.allclose(binned_data, expected)
-    assert binned_data.dtype == np.float32
+    assert binned_data.dtype == np.long
 
-    # test with np.int32
+    # test with np.float32
     binned_data = bin_spikes(
-        spikes, num_units=2, bin_size=1.0, right=True, dtype=np.int32
+        spikes, num_units=2, bin_size=1.0, right=True, dtype=np.float32
     )
-    assert binned_data.dtype == np.int32
+    assert binned_data.dtype == np.float32
 
     # larger bin size
     spikes = IrregularTimeSeries(
@@ -35,20 +35,20 @@ def test_bin_data():
     )
     binned_data = bin_spikes(spikes, num_units=2, bin_size=3.0, right=True)
 
-    expected = np.array([[2.0, 3.0, 3.0], [1.0, 0.0, 0.0]])
+    expected = np.array([[2, 3, 3], [1, 0, 0]], dtype=np.long)
     assert binned_data.shape == expected.shape
     assert np.allclose(binned_data, expected)
 
     # bin size 2.5
     binned_data = bin_spikes(spikes, num_units=2, bin_size=2.5, right=True)
 
-    expected = np.array([[3.0, 3.0, 2.0, 2.0], [2.0, 0.0, 0.0, 0.0]])
+    expected = np.array([[3, 3, 2, 2], [2, 0, 0, 0]], dtype=np.long)
     assert binned_data.shape == expected.shape
     assert np.allclose(binned_data, expected)
 
     # align to the left
     binned_data = bin_spikes(spikes, num_units=2, bin_size=3.0, right=False)
-    expected = np.array([[3, 3, 3], [2, 0, 0]])
+    expected = np.array([[3, 3, 3], [2, 0, 0]], dtype=np.long)
 
     assert binned_data.shape == expected.shape
     assert np.allclose(binned_data, expected)
@@ -69,7 +69,8 @@ def test_bin_data():
             [1, 0, 0, 0, 0, 1, 0, 0, 1, 0],
             [0, 1, 0, 2, 0, 0, 0, 0, 0, 1],
             [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        ]
+        ],
+        dtype=np.long,
     )
     assert binned_data.shape == expected.shape
     assert np.allclose(binned_data, expected)
@@ -87,11 +88,11 @@ def test_bin_data():
     )
 
     expected = np.array(
-        [[1, 1, 1, 1, 2, 0, 1, 1, 1, 1], [1, 3, 0, 0, 0, 0, 0, 0, 0, 0]]
+        [[1, 1, 1, 1, 2, 0, 1, 1, 1, 1], [1, 3, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.long
     )
     assert binned_data.shape == expected.shape
     assert np.allclose(binned_data, expected)
-    assert binned_data.dtype == np.float32
+    assert binned_data.dtype == np.long
 
     # fix numerical instability
     # Duration is intended to be exactly 1.0, but represented with
@@ -106,7 +107,7 @@ def test_bin_data():
 
         binned_data = bin_spikes(spikes, num_units=1, bin_size=0.1)
 
-        expected = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]])
+        expected = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]], dtype=np.long)
 
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
@@ -142,9 +143,9 @@ def test_binning_transform_basic(simple_spikes_data):
     assert hasattr(data_t, "spikes_binned")
 
     # Verify the spikes_binned created
-    expected_binned = np.array([[1.0, 1.0, 1.0], [2.0, 0.0, 0.0]], dtype=np.float32)
+    expected_binned = np.array([[1.0, 1.0, 1.0], [2.0, 0.0, 0.0]], dtype=np.long)
 
-    assert np.array_equal(data_t.spikes_binned, expected_binned)
+    assert np.array_equal(data_t.spikes_binned.binned_counts, expected_binned)
 
 
 def test_binning_transform_custom_attr_names(simple_spikes_data):
@@ -159,4 +160,4 @@ def test_binning_transform_custom_attr_names(simple_spikes_data):
     data_t = transform(simple_spikes_data)
 
     assert hasattr(data_t, "lfp_spikes_binned")
-    assert data_t.lfp_spikes_binned.shape == (2, 3)
+    assert data_t.lfp_spikes_binned.binned_counts.shape == (2, 3)
