@@ -116,9 +116,13 @@ class SEEGDatasetMixin:
     # Dataset classes should set this with all available recording-domain intervals.
     seeg_dataset_mixin_domain_intervals: dict[str, Interval] | None = None
     # Dataset classes should set this with full channel views for each recording.
-    seeg_dataset_mixin_channel_views: dict[str, "SEEGDatasetMixin.ChannelView"] | None = None
+    seeg_dataset_mixin_channel_views: (
+        dict[str, "SEEGDatasetMixin.ChannelView"] | None
+    ) = None
     # Dataset classes should set this with compact recording metadata.
-    seeg_dataset_mixin_recording_infos: dict[str, "SEEGDatasetMixin.RecordingInfo"] | None = None
+    seeg_dataset_mixin_recording_infos: (
+        dict[str, "SEEGDatasetMixin.RecordingInfo"] | None
+    ) = None
 
     @dataclass(frozen=True)
     class ChannelView:
@@ -161,7 +165,9 @@ class SEEGDatasetMixin:
                 "SEEG datasets must define 'seeg_dataset_mixin_domain_intervals'."
             )
         ids = self.recording_ids if recording_ids is None else recording_ids
-        missing = [rid for rid in ids if rid not in self.seeg_dataset_mixin_domain_intervals]
+        missing = [
+            rid for rid in ids if rid not in self.seeg_dataset_mixin_domain_intervals
+        ]
         if missing:
             raise KeyError(f"Missing domain intervals for recording_ids: {missing}")
         return {rid: self.seeg_dataset_mixin_domain_intervals[rid] for rid in ids}

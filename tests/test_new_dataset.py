@@ -65,9 +65,7 @@ def create_seeg_data(brainset_id, subject_id, session_id, length, sampling_rate=
         session=SessionDescription(session_id, datetime.now()),
         seeg_data=RegularTimeSeries(
             sampling_rate=sampling_rate,
-            value=np.random.normal(
-                0.0, 1.0, (int(length * sampling_rate), n_channels)
-            ),
+            value=np.random.normal(0.0, 1.0, (int(length * sampling_rate), n_channels)),
             domain="auto",
         ),
         channels=ArrayDict(
@@ -404,7 +402,9 @@ class TestSEEGDatasetMixin:
         class SEEGDataset(SEEGDatasetMixin, Dataset): ...
 
         ds = SEEGDataset(dummy_seeg_brainset)
-        with pytest.raises(NotImplementedError, match="seeg_dataset_mixin_sampling_rate_hz"):
+        with pytest.raises(
+            NotImplementedError, match="seeg_dataset_mixin_sampling_rate_hz"
+        ):
             ds.get_sampling_rate()
 
     def test_get_domain_intervals_uses_dataset_cache(self, dummy_seeg_brainset):
@@ -419,7 +419,9 @@ class TestSEEGDatasetMixin:
 
     def test_get_domain_intervals_requires_dataset_cache(self, dummy_seeg_brainset):
         ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        with pytest.raises(NotImplementedError, match="seeg_dataset_mixin_domain_intervals"):
+        with pytest.raises(
+            NotImplementedError, match="seeg_dataset_mixin_domain_intervals"
+        ):
             ds.get_domain_intervals()
 
     def test_get_domain_intervals_raises_on_missing_ids(self, dummy_seeg_brainset):
@@ -450,7 +452,9 @@ class TestSEEGDatasetMixin:
 
     def test_get_channel_view_requires_dataset_cache(self, dummy_seeg_brainset):
         ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        with pytest.raises(NotImplementedError, match="seeg_dataset_mixin_channel_views"):
+        with pytest.raises(
+            NotImplementedError, match="seeg_dataset_mixin_channel_views"
+        ):
             ds.get_channel_view("session1")
 
     def test_get_channel_view_raises_on_missing_recording(self, dummy_seeg_brainset):
@@ -497,7 +501,9 @@ class TestSEEGDatasetMixin:
 
     def test_get_recording_info_requires_dataset_cache(self, dummy_seeg_brainset):
         ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        with pytest.raises(NotImplementedError, match="seeg_dataset_mixin_recording_infos"):
+        with pytest.raises(
+            NotImplementedError, match="seeg_dataset_mixin_recording_infos"
+        ):
             ds.get_recording_info("session1")
 
     def test_get_recording_info_raises_on_missing_recording(self, dummy_seeg_brainset):
