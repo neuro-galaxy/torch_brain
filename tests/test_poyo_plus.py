@@ -56,7 +56,7 @@ class SimpleSessionDescription:
     id: str
 
 
-def test_poyo_plus_forward(model):
+def test_poyo_plus_forward(model, task_specs):
     batch_size = 2
     n_in = 10
     n_latent = 8
@@ -65,6 +65,18 @@ def test_poyo_plus_forward(model):
     # Initialize dummy units and sessions
     model.unit_emb.initialize_vocab(np.arange(100))
     model.session_emb.initialize_vocab(np.arange(10))
+
+    cursor_id = task_specs["cursor_velocity_2d"].id
+    gaze_id = task_specs["custom_gaze_pos_2d"].id
+
+    # Build decoder index: first half cursor_velocity_2d, second half custom_gaze_pos_2d
+    n_cursor = n_out // 2
+    n_gaze = n_out - n_cursor
+    decoder_index = (
+        torch.tensor([cursor_id] * n_cursor + [gaze_id] * n_gaze, dtype=torch.long)
+        .unsqueeze(0)
+        .expand(batch_size, -1)
+    )
 
     # Create dummy input data
     inputs = {
@@ -76,19 +88,21 @@ def test_poyo_plus_forward(model):
         "latent_timestamps": torch.linspace(0, 1, n_latent).repeat(batch_size, 1),
         "output_session_index": torch.zeros(batch_size, n_out, dtype=torch.long),
         "output_timestamps": torch.rand(batch_size, n_out),
-        "output_decoder_index": torch.ones(batch_size, n_out, dtype=torch.long),
+        "output_decoder_index": decoder_index,
     }
 
     # Forward pass
     outputs = model(**inputs)
     assert isinstance(outputs, dict)
-    assert outputs["cursor_velocity_2d"].shape == (batch_size * n_out, 2)
+    assert outputs["cursor_velocity_2d"].shape == (batch_size * n_cursor, 2)
+    assert outputs["custom_gaze_pos_2d"].shape == (batch_size * n_gaze, 2)
 
     # Try with unpack_output=True
     outputs = model(**inputs, unpack_output=True)
     assert isinstance(outputs, list)
     assert len(outputs) == batch_size
-    assert outputs[0]["cursor_velocity_2d"].shape == (n_out, 2)
+    assert outputs[0]["cursor_velocity_2d"].shape == (n_cursor, 2)
+    assert outputs[0]["custom_gaze_pos_2d"].shape == (n_gaze, 2)
 
 
 def test_poyo_plus_tokenizer(task_specs, model):
@@ -123,7 +137,16 @@ def test_poyo_plus_tokenizer(task_specs, model):
                             "task": "REACHING",
                         }
                     ],
-                }
+                },
+                {
+                    "readout_id": "custom_gaze_pos_2d",
+                    "metrics": [
+                        {
+                            "metric": "r2",
+                            "task": "GAZE",
+                        }
+                    ],
+                },
             ]
         },
     )
@@ -160,8 +183,16 @@ def test_poyo_plus_tokenizer(task_specs, model):
     }
     assert set(batch["model_inputs"].keys()) == expected_model_input_keys
 
-    # Check that output values contain the expected tasks
-    assert set(batch["target_values"].obj.keys()).issubset(set(task_specs.keys()))
+    # Check that output values contain both configured readouts
+    target_keys = set(batch["target_values"].obj.keys())
+    assert "cursor_velocity_2d" in target_keys
+    assert "custom_gaze_pos_2d" in target_keys
+
+    # Verify decoder indices include both modality IDs
+    decoder_index = batch["model_inputs"]["output_decoder_index"]
+    decoder_ids = decoder_index.obj.unique().tolist()
+    assert task_specs["cursor_velocity_2d"].id in decoder_ids
+    assert task_specs["custom_gaze_pos_2d"].id in decoder_ids
 
     # Verify latent tokens
     assert (
@@ -211,7 +242,15 @@ def test_poyo_plus_tokenizer_to_model(model):
                             "_target_": "torchmetrics.R2Score",
                         }
                     ],
-                }
+                },
+                {
+                    "readout_id": "custom_gaze_pos_2d",
+                    "metrics": [
+                        {
+                            "_target_": "torchmetrics.R2Score",
+                        }
+                    ],
+                },
             ]
         },
     )
