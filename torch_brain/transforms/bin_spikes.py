@@ -52,10 +52,12 @@ class BinSpikes:
 
         binned_counts = bin_spikes(spikes, num_units=len(units), **self.params)
 
+        # RegularTimeSeries expects time on axis 0; bin_spikes returns (units, bins).
         binned_spikes = RegularTimeSeries(
             sampling_rate=1 / self.params["bin_size"],
-            domain=spikes.domain,
-            binned_counts=binned_counts,
+            binned_counts=binned_counts.T,
+            domain="auto",
+            domain_start=spikes.domain.start[0],
         )
 
         _set_nested_attribute(data, f"{self.spikes_attr}_binned", binned_spikes)

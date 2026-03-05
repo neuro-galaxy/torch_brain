@@ -147,7 +147,7 @@ class TestBinSpikesTransform:
         assert hasattr(data_t, "spikes_binned")
 
         # Verify the spikes_binned created
-        expected_binned = np.array([[1.0, 1.0, 1.0], [2.0, 0.0, 0.0]], dtype=np.long)
+        expected_binned = np.array([[1.0, 2.0], [1.0, 0.0], [1.0, 0.0]], dtype=np.long)
 
         assert np.array_equal(data_t.spikes_binned.binned_counts, expected_binned)
 
@@ -164,4 +164,43 @@ class TestBinSpikesTransform:
         data_t = transform(simple_spikes_data)
 
         assert hasattr(data_t, "lfp_spikes_binned")
-        assert data_t.lfp_spikes_binned.binned_counts.shape == (2, 3)
+        assert data_t.lfp_spikes_binned.binned_counts.shape == (3, 2)
+
+    def test_binning_transform_disjoint_domain_keeps_absolute_timestamps(self):
+        data = Data(
+            spikes=IrregularTimeSeries(
+                timestamps=np.array([10.2, 10.6, 16.1, 18.9]),
+                unit_index=np.array([0, 1, 1, 0]),
+                domain=Interval(
+                    start=np.array([10.0, 16.0]),
+                    end=np.array([12.0, 19.0]),
+                ),
+            ),
+            units=ArrayDict(id=np.array(["unit_a", "unit_b"])),
+            domain=Interval(10.0, 19.0),
+        )
+
+        data_t = BinSpikes(bin_size=1.0)(data)
+
+        # BinSpikes currently flattens disjoint spike domains to one regular series.
+        assert len(data_t.spikes_binned.domain) == 1
+        np.testing.assert_allclose(data_t.spikes_binned.domain.start, np.array([10.0]))
+        np.testing.assert_allclose(
+            data_t.spikes_binned.timestamps, np.arange(10.0, 19.0)
+        )
+
+        expected_binned = np.array(
+            [
+                [1, 1],
+                [0, 0],
+                [0, 0],
+                [0, 0],
+                [0, 0],
+                [0, 0],
+                [0, 1],
+                [0, 0],
+                [1, 0],
+            ],
+            dtype=np.long,
+        )
+        assert np.array_equal(data_t.spikes_binned.binned_counts, expected_binned)
