@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Removed
 
 ### Changed
+- Fix `task_emb` size in CaPOYO and POYO+ to account for 1-indexed modality IDs, which caused an index error when accessing the last-registered modality. ([#174](https://github.com/neuro-galaxy/torch_brain/pull/174))
 - Fix bug when start time is non-zero in `bin_spikes` ([#160](https://github.com/neuro-galaxy/torch_brain/pull/160))
 
 ## [0.1.0] - 2025-03-26
