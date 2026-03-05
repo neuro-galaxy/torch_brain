@@ -11,7 +11,7 @@ def bin_spikes(
     max_spikes: Optional[int] = None,
     right: bool = True,
     eps: float = 1e-3,
-    dtype: np.dtype = np.float32,
+    dtype: np.dtype = np.long,
 ) -> np.ndarray:
     r"""Bins spikes into time bins of size `bin_size`. If the total time spanned by
     the spikes is not a multiple of `bin_size`, the spikes are truncated to the nearest
@@ -27,17 +27,19 @@ def bin_spikes(
       computation numerically robust.
 
     Args:
-        spikes: IrregularTimeSeries object containing the spikes.
-        num_units: Number of units in the population.
-        bin_size: Size of the time bins in seconds.
-        max_spikes: If provided, the maximum number of spikes per bin. Any bins
-            exceeding this count will be clipped.
-        right: If True, any excess spikes are truncated from the left end of the time
-            series. Otherwise, they are truncated from the right end.
-        eps : float, default=1e-3
-            Small numerical tolerance added when computing the number of bins
-            to avoid floating-point precision issues.
-        dtype: Data type of the returned array.
+        spikes (IrregularTimeSeries): IrregularTimeSeries object containing the spikes.
+        num_units (int): Number of units in the population.
+        bin_size (float): Size of the time bins in seconds.
+        max_spikes (int, optional): Maximum number of spikes to include per unit per
+            bin. If ``None``, no clipping is applied.
+        right (bool, optional): Decide which side gets truncated when duration is not
+            a multiple of ``bin_size``. If ``True``, excess spikes are truncated from the left edge.
+        eps (float, optional): Small numerical margin used during bin assignment.
+        dtype (np.dtype, optional): Data type of the output binned array.
+
+    Returns:
+        np.ndarray: Binned spike counts with shape ``(t, n)``, where ``t`` is the
+            number of time bins and ``n`` is ``num_units``.
     """
     start = spikes.domain.start[0]
     end = spikes.domain.end[-1]
@@ -60,11 +62,11 @@ def bin_spikes(
     num_bins = round((end - start) / bin_size)
 
     rate = 1 / bin_size  # avoid precision issues
-    binned_spikes = np.zeros((num_units, num_bins), dtype=dtype)
+    binned_spikes = np.zeros((num_bins, num_units), dtype=dtype)
     # Handle timestamps when the domain start is non-zero
     ts = spikes.timestamps - spikes.domain.start[0]
     bin_index = np.floor(ts * rate).astype(int)
-    np.add.at(binned_spikes, (spikes.unit_index, bin_index), 1)
+    np.add.at(binned_spikes, (bin_index, spikes.unit_index), 1)
     if max_spikes is not None:
         np.clip(binned_spikes, None, max_spikes, out=binned_spikes)
 
