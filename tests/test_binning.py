@@ -16,7 +16,18 @@ class TestBinSpikes:
         binned_data = bin_spikes(spikes, num_units=2, bin_size=1.0, right=True)
 
         expected = np.array(
-            [[1, 1, 1, 1, 2, 0, 1, 1, 1, 1], [1, 1, 0, 0, 0, 0, 0, 0, 0, 0]],
+            [
+                [1, 1],
+                [1, 1],
+                [1, 0],
+                [1, 0],
+                [2, 0],
+                [0, 0],
+                [1, 0],
+                [1, 0],
+                [1, 0],
+                [1, 0],
+            ],
             dtype=np.long,
         )
         assert binned_data.shape == expected.shape
@@ -37,20 +48,43 @@ class TestBinSpikes:
         )
         binned_data = bin_spikes(spikes, num_units=2, bin_size=3.0, right=True)
 
-        expected = np.array([[2, 3, 3], [1, 0, 0]], dtype=np.long)
+        # [unit_0, unit_1]
+        expected = np.array(
+            [
+                [2, 1],
+                [3, 0],
+                [3, 0],
+            ],
+            dtype=np.long,
+        )
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
 
         # bin size 2.5
         binned_data = bin_spikes(spikes, num_units=2, bin_size=2.5, right=True)
 
-        expected = np.array([[3, 3, 2, 2], [2, 0, 0, 0]], dtype=np.long)
+        expected = np.array(
+            [
+                [3, 2],
+                [3, 0],
+                [2, 0],
+                [2, 0],
+            ],
+            dtype=np.long,
+        )
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
 
         # align to the left
         binned_data = bin_spikes(spikes, num_units=2, bin_size=3.0, right=False)
-        expected = np.array([[3, 3, 3], [2, 0, 0]], dtype=np.long)
+        expected = np.array(
+            [
+                [3, 2],
+                [3, 0],
+                [3, 0],
+            ],
+            dtype=np.long,
+        )
 
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
@@ -67,10 +101,16 @@ class TestBinSpikes:
 
         expected = np.array(
             [
-                [1, 0, 0, 0, 0, 0, 1, 1, 0, 0],
-                [1, 0, 0, 0, 0, 1, 0, 0, 1, 0],
-                [0, 1, 0, 2, 0, 0, 0, 0, 0, 1],
-                [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+                [1, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+                [0, 0, 2, 0],
+                [0, 0, 0, 0],
+                [0, 1, 0, 0],
+                [1, 0, 0, 0],
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
             ],
             dtype=np.long,
         )
@@ -90,7 +130,18 @@ class TestBinSpikes:
         )
 
         expected = np.array(
-            [[1, 1, 1, 1, 2, 0, 1, 1, 1, 1], [1, 3, 0, 0, 0, 0, 0, 0, 0, 0]],
+            [
+                [1, 1],
+                [1, 3],
+                [1, 0],
+                [1, 0],
+                [2, 0],
+                [0, 0],
+                [1, 0],
+                [1, 0],
+                [1, 0],
+                [1, 0],
+            ],
             dtype=np.long,
         )
         assert binned_data.shape == expected.shape
@@ -110,7 +161,21 @@ class TestBinSpikes:
 
             binned_data = bin_spikes(spikes, num_units=1, bin_size=0.1)
 
-            expected = np.array([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1]], dtype=np.long)
+            expected = np.array(
+                [
+                    [1],
+                    [1],
+                    [1],
+                    [1],
+                    [1],
+                    [1],
+                    [1],
+                    [1],
+                    [1],
+                    [1],
+                ],
+                dtype=np.long,
+            )
 
             assert binned_data.shape == expected.shape
             assert np.allclose(binned_data, expected)
@@ -136,6 +201,23 @@ def simple_spikes_data():
     return data
 
 
+@pytest.fixture
+def disjoint_domain_spikes_data():
+    """Creates a 2-unit dataset with disjoint spike-domain intervals."""
+    return Data(
+        spikes=IrregularTimeSeries(
+            timestamps=np.array([10.2, 10.6, 16.1, 18.9]),
+            unit_index=np.array([0, 1, 1, 0]),
+            domain=Interval(
+                start=np.array([10.0, 16.0]),
+                end=np.array([12.0, 19.0]),
+            ),
+        ),
+        units=ArrayDict(id=np.array(["unit_a", "unit_b"])),
+        domain=Interval(10.0, 19.0),
+    )
+
+
 class TestBinSpikesTransform:
     def test_binning_transform_basic(self, simple_spikes_data):
         bin_size = 1.0
@@ -147,7 +229,7 @@ class TestBinSpikesTransform:
         assert hasattr(data_t, "spikes_binned")
 
         # Verify the spikes_binned created
-        expected_binned = np.array([[1.0, 2.0], [1.0, 0.0], [1.0, 0.0]], dtype=np.long)
+        expected_binned = np.array([[1, 2], [1, 0], [1, 0]], dtype=np.long)
 
         assert np.array_equal(data_t.spikes_binned.binned_counts, expected_binned)
 
@@ -166,21 +248,10 @@ class TestBinSpikesTransform:
         assert hasattr(data_t, "lfp_spikes_binned")
         assert data_t.lfp_spikes_binned.binned_counts.shape == (3, 2)
 
-    def test_binning_transform_disjoint_domain_keeps_absolute_timestamps(self):
-        data = Data(
-            spikes=IrregularTimeSeries(
-                timestamps=np.array([10.2, 10.6, 16.1, 18.9]),
-                unit_index=np.array([0, 1, 1, 0]),
-                domain=Interval(
-                    start=np.array([10.0, 16.0]),
-                    end=np.array([12.0, 19.0]),
-                ),
-            ),
-            units=ArrayDict(id=np.array(["unit_a", "unit_b"])),
-            domain=Interval(10.0, 19.0),
-        )
-
-        data_t = BinSpikes(bin_size=1.0)(data)
+    def test_binning_transform_disjoint_domain_keeps_absolute_timestamps(
+        self, disjoint_domain_spikes_data
+    ):
+        data_t = BinSpikes(bin_size=1.0)(disjoint_domain_spikes_data)
 
         # BinSpikes currently flattens disjoint spike domains to one regular series.
         assert len(data_t.spikes_binned.domain) == 1

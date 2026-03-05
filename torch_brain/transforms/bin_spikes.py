@@ -55,7 +55,7 @@ class BinSpikes:
         # RegularTimeSeries expects time on axis 0; bin_spikes returns (units, bins).
         binned_spikes = RegularTimeSeries(
             sampling_rate=1 / self.params["bin_size"],
-            binned_counts=binned_counts.T,
+            binned_counts=binned_counts,
             domain="auto",
             domain_start=spikes.domain.start[0],
         )
