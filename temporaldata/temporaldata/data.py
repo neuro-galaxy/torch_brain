@@ -120,6 +120,7 @@ class Data(object):
 
     _absolute_start = 0.0
     _domain = None
+    _file: Optional[h5py.File] = None
 
     def __init__(
         self,
@@ -231,10 +232,11 @@ class Data(object):
 
         for key, value in self.__dict__.items():
             # todo update domain
-            if key != "_domain" and (
-                isinstance(value, (IrregularTimeSeries, RegularTimeSeries, Interval))
-                or (isinstance(value, Data) and value.domain is not None)
-            ):
+            if key in ("_domain", "_file"):
+                pass
+            elif isinstance(
+                value, (IrregularTimeSeries, RegularTimeSeries, Interval)
+            ) or (isinstance(value, Data) and value.domain is not None):
                 out.__dict__[key] = value.slice(start, end, reset_origin)
             else:
                 out.__dict__[key] = copy.copy(value)
@@ -267,10 +269,11 @@ class Data(object):
 
         for key, value in self.__dict__.items():
             # todo update domain
-            if key != "_domain" and (
-                isinstance(value, (IrregularTimeSeries, RegularTimeSeries, Interval))
-                or (isinstance(value, Data) and value.domain is not None)
-            ):
+            if key in ("_domain", "_file"):
+                pass
+            elif isinstance(
+                value, (IrregularTimeSeries, RegularTimeSeries, Interval)
+            ) or (isinstance(value, Data) and value.domain is not None):
                 if isinstance(value, RegularTimeSeries):
                     value = value.to_irregular()
                 out.__dict__[key] = value.select_by_interval(interval)
@@ -285,9 +288,9 @@ class Data(object):
 
         info = ""
         for key, value in self.__dict__.items():
-            if key == "_domain":
-                continue
-            if isinstance(value, ArrayDict):
+            if key in ("_domain", "_file"):
+                pass
+            elif isinstance(value, ArrayDict):
                 info = info + key + "=" + repr(value) + ",\n"
             elif value is not None:
                 info = info + _size_repr(key, value) + ",\n"
@@ -296,7 +299,8 @@ class Data(object):
 
     def to_dict(self) -> Dict[str, Any]:
         r"""Returns a dictionary of stored key/value pairs."""
-        return copy.deepcopy(self.__dict__)
+        out_dict = {k: v for k, v in self.__dict__.items() if k != "_file"}
+        return copy.deepcopy(out_dict)
 
     def to_hdf5(self, file, serialize_fn_map=None):
         r"""Saves the data object to an HDF5 file. This method will also call the
@@ -343,7 +347,7 @@ class Data(object):
         file.attrs["absolute_start"] = self._absolute_start
 
     @classmethod
-    def from_hdf5(cls, file, lazy=True):
+    def from_hdf5(cls, file: h5py.File | h5py.Group, lazy: bool = True):
         r"""Loads the data object from an HDF5 file. This method will also call the
         `from_hdf5` method of all contained data objects, so that the entire data object
         is loaded from the HDF5 file, i.e. no need to call `from_hdf5` for each contained
@@ -391,11 +395,29 @@ class Data(object):
         # restore the absolute start time
         obj._absolute_start = file.attrs["absolute_start"]
 
+        if lazy and isinstance(file, h5py.File):
+            obj._file = file
+
         return obj
+
+    @property
+    def file(self) -> h5py.File | None:
+        r"""The underlying HDF5 file handle, or ``None`` if no file
+        is open. Only set when the object was created via :meth:`load` or
+        :meth:`from_hdf5` with ``lazy=True``."""
+        return self._file
 
     @classmethod
     def load(cls, path: Union[Path, str], lazy: bool = True) -> Data:
         r"""Loads the :class:`Data` object from an HDF5 file given its file path.
+
+        When ``lazy=True`` (default), the underlying HDF5 file remains open and
+        data is loaded on demand. The caller is responsible for closing the file
+        handle when done, either by calling :meth:`close` or by using the
+        context manager protocol.
+
+        When ``lazy=False``, all data is read into memory immediately and the
+        file is closed before returning.
 
         Args:
             path: The file path to the HDF5 file containing the :class:`Data` object.
@@ -410,11 +432,46 @@ class Data(object):
 
             from temporaldata import Data
 
-            data_lazy = Data.load("data.h5")
-            data_materialized = Data.load("data.h5", lazy=False)
+            # lazy with context manager (recommended)
+            with Data.load("data.h5") as data:
+                ...
+
+            # lazy with explicit close
+            data = Data.load("data.h5")
+            ...
+            data.close()
+
+            # non-lazy (no close needed)
+            data = Data.load("data.h5", lazy=False)
         """
         file = h5py.File(path)
-        return cls.from_hdf5(file, lazy=lazy)
+        try:
+            obj = cls.from_hdf5(file, lazy=lazy)
+        except Exception:
+            file.close()
+            raise
+
+        if not lazy:
+            file.close()
+
+        return obj
+
+    def close(self, strict: bool = False):
+        r"""Close the file-handle that was opened for lazy-loading.
+        Any lazy attributes that have not been materialized will become invalid.
+
+        Args:
+            strict: If ``True``, raise an error when no open file handle
+                is present. Default ``False``.
+
+        """
+        if self._file is not None:
+            self._file.close()
+            self._file = None
+            return
+
+        if strict:
+            raise RuntimeError("No file handle is open")
 
     def save(self, path: Union[Path, str]):
         r"""Saves the data object to an HDF5 file at the given path.
@@ -431,6 +488,13 @@ class Data(object):
         """
         with h5py.File(path, "w") as f:
             self.to_hdf5(f)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
 
     def set_train_domain(self, interval: Interval):
         """Deprecated no-op retained for backward compatibility."""
@@ -572,8 +636,8 @@ class Data(object):
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if isinstance(v, h5py.Dataset):
-                # h5py.File objects cannot be deepcopied
+            if isinstance(v, (h5py.Dataset, h5py.File)):
+                # open files cannot be deepcopied
                 setattr(result, k, v)
             else:
                 setattr(result, k, copy.deepcopy(v, memo))
