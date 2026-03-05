@@ -74,7 +74,9 @@ class CaPOYO(nn.Module):
         self.unit_emb = InfiniteVocabEmbedding(dim // 2, init_scale=emb_init_scale)
         self.session_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.token_type_emb = Embedding(4, dim, init_scale=emb_init_scale)
-        self.task_emb = Embedding(len(readout_specs), dim, init_scale=emb_init_scale)
+        self.task_emb = Embedding(
+            len(readout_specs) + 1, dim, init_scale=emb_init_scale
+        )
         self.latent_emb = Embedding(
             num_latents_per_step, dim, init_scale=emb_init_scale
         )
