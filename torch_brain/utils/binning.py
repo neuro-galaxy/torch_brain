@@ -36,6 +36,10 @@ def bin_spikes(
             a multiple of ``bin_size``. If ``True``, excess spikes are truncated from the left edge.
         eps (float, optional): Small numerical margin used during bin assignment.
         dtype (np.dtype, optional): Data type of the output binned array.
+
+    Returns:
+        np.ndarray: Binned spike counts with shape ``(t, n)``, where ``t`` is the
+            number of time bins and ``n`` is ``num_units``.
     """
     start = spikes.domain.start[0]
     end = spikes.domain.end[-1]
@@ -58,11 +62,11 @@ def bin_spikes(
     num_bins = round((end - start) / bin_size)
 
     rate = 1 / bin_size  # avoid precision issues
-    binned_spikes = np.zeros((num_units, num_bins), dtype=dtype)
+    binned_spikes = np.zeros((num_bins, num_units), dtype=dtype)
     # Handle timestamps when the domain start is non-zero
     ts = spikes.timestamps - spikes.domain.start[0]
     bin_index = np.floor(ts * rate).astype(int)
-    np.add.at(binned_spikes, (spikes.unit_index, bin_index), 1)
+    np.add.at(binned_spikes, (bin_index, spikes.unit_index), 1)
     if max_spikes is not None:
         np.clip(binned_spikes, None, max_spikes, out=binned_spikes)
 
