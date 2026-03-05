@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Removed
 
 ### Changed
+- Updated `torch_brain.utils.bin_spikes` output layout to `(time, num_neurons)` with time as the first dimension. ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 - Fix bug when start time is non-zero in `bin_spikes` ([#160](https://github.com/neuro-galaxy/torch_brain/pull/160))
 
 ## [0.1.0] - 2025-03-26
