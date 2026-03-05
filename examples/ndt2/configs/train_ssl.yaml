@@ -1,0 +1,14 @@
+defaults:
+  - defaults.yaml
+  - model: ndt2_ssl.yaml
+  - _self_  # ensures current config overrides defaults
+
+is_ssl: true
+wandb:
+  run_name: pretrain
+
+load_from_checkpoint: false
+new_decoder: false
+
+dataset:
+  _target_: datasets.mp.PoyoMPDataset
