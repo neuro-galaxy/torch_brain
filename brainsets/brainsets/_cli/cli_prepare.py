@@ -55,6 +55,12 @@ from .utils import (
     ),
 )
 @click.option(
+    "--download-only",
+    is_flag=True,
+    default=False,
+    help="Only download raw data, skip processing.",
+)
+@click.option(
     "-v",
     "--verbose",
     is_flag=True,
@@ -67,6 +73,7 @@ def prepare(
     brainset: str,
     cores: int,
     verbose: bool,
+    download_only: bool,
     use_active_env: bool,
     raw_dir: Optional[str],
     processed_dir: Optional[str],
@@ -79,6 +86,7 @@ def prepare(
     \b
     Examples:
     $ brainsets prepare pei_pandarinath_nlb_2021
+    $ brainsets prepare pei_pandarinath_nlb_2021 --download-only
     $ brainsets prepare pei_pandarinath_nlb_2021 --cores 8 --raw-dir ~/data/raw --processed-dir ~/data/processed
     $ brainsets prepare ./my_local_brainsets_pipeline --local
     """
@@ -125,6 +133,7 @@ def prepare(
         f"--raw-dir={raw_dir}",
         f"--processed-dir={processed_dir}",
         f"-c{cores}",
+        *(["--download-only"] if download_only else []),
         *ctx.args,  # extra arguments
     ]
 
