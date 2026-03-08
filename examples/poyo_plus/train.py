@@ -270,7 +270,7 @@ class DataModule(L.LightningDataModule):
             self.train_dataset,
             sampler=train_sampler,
             collate_fn=collate,
-            batch_size=self.cfg.batch_size,
+            batch_size=self.cfg.batch_size // self.trainer.world_size,
             num_workers=self.cfg.num_workers,
             drop_last=True,
             pin_memory=True,
@@ -286,6 +286,7 @@ class DataModule(L.LightningDataModule):
 
     def val_dataloader(self):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
+        batch_size = batch_size // self.trainer.world_size
 
         val_sampler = DistributedStitchingFixedWindowSampler(
             sampling_intervals=self.val_dataset.get_sampling_intervals(),
@@ -313,6 +314,7 @@ class DataModule(L.LightningDataModule):
 
     def test_dataloader(self):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
+        batch_size = batch_size // self.trainer.world_size
 
         test_sampler = DistributedStitchingFixedWindowSampler(
             sampling_intervals=self.test_dataset.get_sampling_intervals(),
