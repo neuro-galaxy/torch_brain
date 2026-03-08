@@ -270,7 +270,8 @@ class DataModule(L.LightningDataModule):
             self.train_dataset,
             sampler=train_sampler,
             collate_fn=collate,
-            batch_size=self.cfg.batch_size // self.trainer.world_size,
+            batch_size=self.cfg.batch_size
+            // self.trainer.world_size,  # per-GPU batch size
             num_workers=self.cfg.num_workers,
             drop_last=True,
             pin_memory=True,

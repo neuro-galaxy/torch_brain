@@ -206,7 +206,9 @@ class DataModule(L.LightningDataModule):
             window_length=self.sequence_length,
             generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
-        batch_size = self.cfg.batch_size // self.trainer.world_size
+        batch_size = (
+            self.cfg.batch_size // self.trainer.world_size
+        )  # per-GPU batch size
 
         train_loader = DataLoader(
             self.train_dataset,
