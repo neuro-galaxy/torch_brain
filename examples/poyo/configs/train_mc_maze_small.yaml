@@ -3,8 +3,6 @@ defaults:
   - model: poyo_1.3M.yaml
   - _self_
 
-batch_size: 128
-
 dataset: 
   _target_: datasets.nlb.PoyoNLBDataset
 
