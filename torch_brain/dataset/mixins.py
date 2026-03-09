@@ -123,6 +123,9 @@ class SEEGDatasetMixin:
     seeg_dataset_mixin_recording_infos: (
         dict[str, "SEEGDatasetMixin.RecordingInfo"] | None
     ) = None
+    # If enabled, channel IDs are made unique in the returned recording view
+    # using subject/session context, matching the hook-based style of the other mixins.
+    seeg_dataset_mixin_uniquify_channel_ids: bool = False
 
     @dataclass(frozen=True)
     class ChannelView:
@@ -145,6 +148,20 @@ class SEEGDatasetMixin:
         domain: Interval
         n_channels: int
         n_included_channels: int
+
+    def get_recording_hook(self, data: Data):
+        if self.seeg_dataset_mixin_uniquify_channel_ids:
+            subject_id = getattr(getattr(data, "subject", None), "id", None)
+            session_id = getattr(getattr(data, "session", None), "id", None)
+            if subject_id is not None and session_id is not None:
+                prefix = f"{subject_id}/{session_id}/"
+            elif session_id is not None:
+                prefix = f"{session_id}/"
+            else:
+                prefix = ""
+            if prefix:
+                data.channels.id = np_string_prefix(prefix, data.channels.id.astype(str))
+        super().get_recording_hook(data)
 
     def get_sampling_rate(self, recording_id: str | None = None) -> float:
         """Return recording sampling rate in Hz."""
@@ -204,13 +221,29 @@ class SEEGDatasetMixin:
         return included_view
 
     def get_channel_ids(self, *, included_only: bool = False) -> list[str]:
-        """Return sorted ``<channel_id>/<recording_id>`` IDs across recordings."""
+        """Return sorted channel IDs across recordings.
+
+        When channel-ID uniquification is enabled, this reuses ``get_recording(...)``
+        so the returned IDs exactly match the hook-mutated recording view. Otherwise
+        it falls back to ``<channel_id>/<recording_id>`` disambiguation.
+        """
         all_ids = []
         for rid in self.recording_ids:
-            ids = self.get_channel_view(rid, included_only=included_only).ids
-            ids = np.asarray(ids).astype(str)
-            # Postfix recording ID to avoid cross-recording collisions.
-            all_ids.append(np.char.add(np.char.add(ids, "/"), rid))
+            if self.seeg_dataset_mixin_uniquify_channel_ids:
+                rec = self.get_recording(rid)
+                ids = np.asarray(rec.channels.id).astype(str)
+                if included_only:
+                    included_mask = np.asarray(
+                        getattr(rec.channels, "included", np.ones(len(ids), dtype=bool)),
+                        dtype=bool,
+                    )
+                    ids = ids[included_mask]
+                all_ids.append(ids)
+            else:
+                ids = self.get_channel_view(rid, included_only=included_only).ids
+                ids = np.asarray(ids).astype(str)
+                # Postfix recording ID to avoid cross-recording collisions.
+                all_ids.append(np.char.add(np.char.add(ids, "/"), rid))
         if not all_ids:
             return []
         return np.sort(np.concatenate(all_ids).astype(str)).tolist()

@@ -135,6 +135,10 @@ class _SEEGDatasetWithConstant(SEEGDatasetMixin, Dataset):
     seeg_dataset_mixin_sampling_rate_hz = 256.0
 
 
+class _SEEGDatasetWithConstantUniquify(_SEEGDatasetWithConstant):
+    seeg_dataset_mixin_uniquify_channel_ids = True
+
+
 def configure_seeg_dataset_caches(
     ds,
     *,
@@ -485,6 +489,37 @@ class TestSEEGDatasetMixin:
             "ch0/session2",
             "ch2/session1",
             "ch2/session2",
+        ]
+
+    def test_get_channel_ids_match_hook_uniquified_recording_ids(
+        self, dummy_seeg_brainset
+    ):
+        ds = _SEEGDatasetWithConstantUniquify(dummy_seeg_brainset)
+        configure_seeg_dataset_caches(ds, channel_views=True)
+
+        recording_ids = ds.get_recording("session1").channels.id.tolist()
+        assert recording_ids == [
+            "alice/session1/ch0",
+            "alice/session1/ch1",
+            "alice/session1/ch2",
+        ]
+
+        all_ids = ds.get_channel_ids()
+        assert all_ids == [
+            "alice/session1/ch0",
+            "alice/session1/ch1",
+            "alice/session1/ch2",
+            "bob/session2/ch0",
+            "bob/session2/ch1",
+            "bob/session2/ch2",
+        ]
+
+        included_ids = ds.get_channel_ids(included_only=True)
+        assert included_ids == [
+            "alice/session1/ch0",
+            "alice/session1/ch2",
+            "bob/session2/ch0",
+            "bob/session2/ch2",
         ]
 
     def test_get_recording_info(self, dummy_seeg_brainset):
