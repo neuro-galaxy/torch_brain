@@ -160,7 +160,9 @@ class SEEGDatasetMixin:
             else:
                 prefix = ""
             if prefix:
-                data.channels.id = np_string_prefix(prefix, data.channels.id.astype(str))
+                data.channels.id = np_string_prefix(
+                    prefix, data.channels.id.astype(str)
+                )
         super().get_recording_hook(data)
 
     def get_sampling_rate(self, recording_id: str | None = None) -> float:
@@ -234,7 +236,9 @@ class SEEGDatasetMixin:
                 ids = np.asarray(rec.channels.id).astype(str)
                 if included_only:
                     included_mask = np.asarray(
-                        getattr(rec.channels, "included", np.ones(len(ids), dtype=bool)),
+                        getattr(
+                            rec.channels, "included", np.ones(len(ids), dtype=bool)
+                        ),
                         dtype=bool,
                     )
                     ids = ids[included_mask]
