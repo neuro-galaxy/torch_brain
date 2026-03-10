@@ -289,7 +289,7 @@ class DataForMultiTaskDecodingStitchEvaluator:
 
     timestamps: torch.FloatTensor  # B x T_max
     preds: List[Dict[str, torch.Tensor]]  # B-long list, Dict keys are task names
-    targets: List[Dict[str, torch.Tensor]]  #  B-long list, Dict keys are task names
+    targets: Dict[str, torch.Tensor]  # Keyed by task names, concatenated across batch
     decoder_indices: torch.LongTensor  # B x T_max
     # eval_masks: Keyed by task names, each tensor is mask that can be applied to a
     # task-concatenated tensor of predictions (look at output format of
@@ -325,8 +325,6 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
 
             token_sample_idx = torch.where(mask)[0]
 
-            curr_sample_ptr = self.sample_ptr
-
             for i in torch.unique(token_sample_idx):
                 pred = data.preds[i][readout_id]
                 target = data.targets[readout_id][token_sample_idx == i]
@@ -340,17 +338,12 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                 pred = pred[eval_mask]
                 target = target[eval_mask]
 
-                self.cache[self.sequence_index[curr_sample_ptr]]["pred"][
-                    readout_id
-                ].append(pred.detach().cpu())
-                self.cache[self.sequence_index[curr_sample_ptr]]["target"][
-                    readout_id
-                ].append(target.detach().cpu())
-                self.cache[self.sequence_index[curr_sample_ptr]]["timestamps"][
-                    readout_id
-                ].append(timestamps.detach().cpu())
-
-                curr_sample_ptr += 1
+                seq_idx = self.sequence_index[self.sample_ptr + i]
+                self.cache[seq_idx]["pred"][readout_id].append(pred.detach().cpu())
+                self.cache[seq_idx]["target"][readout_id].append(target.detach().cpu())
+                self.cache[seq_idx]["timestamps"][readout_id].append(
+                    timestamps.detach().cpu()
+                )
 
         # update counter then check if the cache should be flushed
         for i in range(len(data.preds)):
