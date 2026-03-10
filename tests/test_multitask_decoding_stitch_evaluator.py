@@ -77,12 +77,12 @@ def test_on_test_epoch_start(evaluator):
 
 
 def test_cache_assignment():
-    vel_id = MODALITY_REGISTRY["cursor_velocity_2d"].id
-    pos_id = MODALITY_REGISTRY["cursor_position_2d"].id
-    arm_id = MODALITY_REGISTRY["arm_velocity_2d"].id
     vel = "cursor_velocity_2d"
     pos = "cursor_position_2d"
     arm = "arm_velocity_2d"
+    vel_id = MODALITY_REGISTRY[vel].id
+    pos_id = MODALITY_REGISTRY[pos].id
+    arm_id = MODALITY_REGISTRY[arm].id
 
     # 6 samples, T_max=3. Padding (0) where tokens are fewer than 3.
     #   sample 0 (sess_A): vel vel vel     — 3 tokens
@@ -167,13 +167,33 @@ def test_cache_assignment():
     assert len(evaluator.cache[0]["pred"][vel]) == 2
     assert len(evaluator.cache[0]["pred"][pos]) == 1
     assert arm not in evaluator.cache[0]["pred"]
+    assert torch.equal(
+        torch.cat(evaluator.cache[0]["pred"][vel]),
+        torch.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]]),
+    )
+    assert torch.equal(
+        torch.cat(evaluator.cache[0]["pred"][pos]),
+        torch.tensor([[9.0, 10.0]]),
+    )
 
     # sess_B (seq 1): pos from samples 2,3; vel from sample 3 only
     assert len(evaluator.cache[1]["pred"][pos]) == 2
     assert len(evaluator.cache[1]["pred"][vel]) == 1
     assert arm not in evaluator.cache[1]["pred"]
+    assert torch.equal(
+        torch.cat(evaluator.cache[1]["pred"][pos]),
+        torch.tensor([[11.0, 12.0], [13.0, 14.0], [15.0, 16.0]]),
+    )
+    assert torch.equal(
+        torch.cat(evaluator.cache[1]["pred"][vel]),
+        torch.tensor([[17.0, 18.0]]),
+    )
 
     # sess_C (seq 2): arm from samples 4,5 only
     assert len(evaluator.cache[2]["pred"][arm]) == 2
     assert vel not in evaluator.cache[2]["pred"]
     assert pos not in evaluator.cache[2]["pred"]
+    assert torch.equal(
+        torch.cat(evaluator.cache[2]["pred"][arm]),
+        torch.tensor([[19.0, 20.0], [21.0, 22.0], [23.0, 24.0]]),
+    )

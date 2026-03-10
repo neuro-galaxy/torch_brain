@@ -289,7 +289,7 @@ class DataForMultiTaskDecodingStitchEvaluator:
 
     timestamps: torch.FloatTensor  # B x T_max
     preds: List[Dict[str, torch.Tensor]]  # B-long list, Dict keys are task names
-    targets: List[Dict[str, torch.Tensor]]  #  B-long list, Dict keys are task names
+    targets: Dict[str, torch.Tensor]  # Keyed by task names, concatenated across batch
     decoder_indices: torch.LongTensor  # B x T_max
     # eval_masks: Keyed by task names, each tensor is mask that can be applied to a
     # task-concatenated tensor of predictions (look at output format of
