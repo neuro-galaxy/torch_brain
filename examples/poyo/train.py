@@ -206,7 +206,7 @@ class DataModule(L.LightningDataModule):
             window_length=self.sequence_length,
             generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
-        batch_size = (
+        gpu_batch_size = (
             self.cfg.batch_size // self.trainer.world_size
         )  # per-GPU batch size
 
@@ -214,7 +214,7 @@ class DataModule(L.LightningDataModule):
             self.train_dataset,
             sampler=train_sampler,
             collate_fn=collate,
-            batch_size=batch_size,
+            batch_size=gpu_batch_size,
             num_workers=self.cfg.num_workers,
             drop_last=True,
             pin_memory=True,
@@ -230,13 +230,13 @@ class DataModule(L.LightningDataModule):
 
     def val_dataloader(self):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
-        batch_size = batch_size // self.trainer.world_size
+        gpu_batch_size = batch_size // self.trainer.world_size
 
         val_sampler = DistributedStitchingFixedWindowSampler(
             sampling_intervals=self.eval_dataset.get_sampling_intervals("valid"),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
-            batch_size=batch_size,
+            batch_size=gpu_batch_size,
             num_replicas=self.trainer.world_size,
             rank=self.trainer.global_rank,
         )
@@ -245,7 +245,7 @@ class DataModule(L.LightningDataModule):
             self.eval_dataset,
             sampler=val_sampler,
             shuffle=False,
-            batch_size=batch_size,
+            batch_size=gpu_batch_size,
             collate_fn=collate,
             num_workers=self.cfg.num_workers,
             drop_last=False,
@@ -257,13 +257,13 @@ class DataModule(L.LightningDataModule):
 
     def test_dataloader(self):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
-        batch_size = batch_size // self.trainer.world_size
+        gpu_batch_size = batch_size // self.trainer.world_size
 
         test_sampler = DistributedStitchingFixedWindowSampler(
             sampling_intervals=self.eval_dataset.get_sampling_intervals("test"),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
-            batch_size=batch_size,
+            batch_size=gpu_batch_size,
             num_replicas=self.trainer.world_size,
             rank=self.trainer.global_rank,
         )
@@ -272,7 +272,7 @@ class DataModule(L.LightningDataModule):
             self.eval_dataset,
             sampler=test_sampler,
             shuffle=False,
-            batch_size=batch_size,
+            batch_size=gpu_batch_size,
             collate_fn=collate,
             num_workers=self.cfg.num_workers,
         )
