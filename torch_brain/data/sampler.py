@@ -1,6 +1,6 @@
 import math
 import logging
-from typing import List, Dict, Tuple, Optional, TypeVar, Iterator
+from typing import List, Dict, Optional
 from functools import cached_property
 
 import torch
@@ -25,7 +25,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
         N = \left\lfloor\frac{\text{interval_length}}{\text{window_length}}\right\rfloor
 
     Args:
-        sampling_intervals (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
+        sampling_intervals (Dict[str, Interval]): Sampling intervals for each
             session in the dataset.
         window_length (float): Length of the window to sample.
         generator (Optional[torch.Generator], optional): Generator for shuffling.
@@ -150,7 +150,7 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
     that the entire sequence is covered.
 
     Args:
-        sampling_intervals (Dict[str, List[Tuple[float, float]]]): Sampling intervals for each
+        sampling_intervals (Dict[str, Interval]): Sampling intervals for each
             session in the dataset.
         window_length (float): Length of the window to sample.
         step (float, optional): Step size between windows. If None, it
@@ -162,7 +162,7 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
     def __init__(
         self,
         *,
-        sampling_intervals: Dict[str, List[Tuple[float, float]]],
+        sampling_intervals: Dict[str, Interval],
         window_length: float,
         step: Optional[float] = None,
         drop_short=False,
@@ -231,7 +231,7 @@ class TrialSampler(torch.utils.data.Sampler):
     r"""Randomly samples a single trial interval from the given intervals.
 
     Args:
-        sampling_intervals (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
+        sampling_intervals (Dict[str, Interval]): Sampling intervals for each
             session in the dataset.
         generator (Optional[torch.Generator], optional): Generator for shuffling.
             Defaults to None.
@@ -241,7 +241,7 @@ class TrialSampler(torch.utils.data.Sampler):
     def __init__(
         self,
         *,
-        sampling_intervals: Dict[str, List[Tuple[float, float]]],
+        sampling_intervals: Dict[str, Interval],
         generator: Optional[torch.Generator] = None,
         shuffle: bool = False,
     ):
@@ -271,6 +271,102 @@ class TrialSampler(torch.utils.data.Sampler):
                 yield indices[idx]
         else:
             yield from indices
+
+
+class SameSessionBatchSampler(torch.utils.data.Sampler):
+    r"""Randomly samples batches of trials from given trial intervals. Each batch contains
+    trials from the same recording session.
+
+    Args:]
+        sampling_intervals (Dict[str, Interval]): Sampling intervals for each
+            session in the dataset.
+        generator (Optional[torch.Generator], optional): Generator for shuffling.
+            Defaults to None.
+        batch_size (int): Number of trials to sample per batch.
+        shuffle (bool, optional): Whether to shuffle the indices with a recording session.
+            Defaults to False.
+        shuffle_session (bool, optional): Whether to shuffle the sessions. If False, the batches are
+            drawn from the sessions in the order of `sampling_intervals.keys()`. Defaults to True.
+        drop_last (bool, optional): Whether to drop the last batch if it is not complete.
+            This drops the last `len(sampling_intervals[session]) % batch_size` trials for
+            every recording session.
+
+    """
+
+    def __init__(
+        self,
+        *,
+        sampling_intervals: Dict[str, Interval],
+        batch_size: int,
+        generator: Optional[torch.Generator] = None,
+        shuffle: bool = False,
+        shuffle_session: bool = True,
+        drop_last: bool = False,
+    ):
+        self.sampling_intervals = sampling_intervals
+        self.batch_size = batch_size
+        self.generator = generator
+        self.shuffle = shuffle
+        self.shuffle_session = shuffle_session
+        self.drop_last = drop_last
+
+        if self.drop_last:
+            no_data = True
+            for session_id, intervals in self.sampling_intervals.items():
+                session_dropped = len(intervals) < self.batch_size
+                if session_dropped:
+                    logging.warning(
+                        f"drop_last is True and session {session_id} has fewer intervals than the batch size. No data to sample."
+                    )
+                else:
+                    no_data = False
+
+            if no_data:
+                raise ValueError(
+                    "drop_last is True but no sessions have more intervals than the batch size. No data to sample."
+                )
+
+        self.session_lengths = torch.tensor(
+            [len(intervals) for intervals in self.sampling_intervals.values()]
+        )
+        self.session_start_idx = [0] + torch.cumsum(
+            self.session_lengths[:-1], dim=0
+        ).tolist()
+        self._flatten_idx = [
+            DatasetIndex(session_id, start, end)
+            for session_id, intervals in self.sampling_intervals.items()
+            for start, end in zip(intervals.start, intervals.end)
+        ]
+
+    def __len__(self):
+        return (
+            int(torch.floor(self.session_lengths / self.batch_size).sum())
+            if self.drop_last
+            else int(torch.ceil(self.session_lengths / self.batch_size).sum())
+        )
+
+    def __iter__(self):
+        # this builds a list of indices
+        batch_indices = []
+        for session_length, start_idx in zip(
+            self.session_lengths, self.session_start_idx
+        ):
+            session_indices = torch.arange(start_idx, start_idx + session_length)
+            if self.shuffle:
+                session_indices = session_indices[
+                    torch.randperm(session_length, generator=self.generator)
+                ]
+            session_batch_indices = list(torch.split(session_indices, self.batch_size))
+            if self.drop_last and len(session_batch_indices[-1]) < self.batch_size:
+                session_batch_indices = session_batch_indices[:-1]
+            batch_indices.extend(session_batch_indices)
+        if self.shuffle_session:
+            batch_indices = [
+                batch_indices[i]
+                for i in torch.randperm(len(batch_indices), generator=self.generator)
+            ]
+        for batch_idx in batch_indices:
+            yield [self._flatten_idx[i] for i in batch_idx]
 
 
 class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
@@ -362,7 +458,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
     allowing it to free up memory quickly.
 
     Args:
-        sampling_intervals (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
+        sampling_intervals (Dict[str, Interval]): Sampling intervals for each
             session in the dataset. Each interval is defined by a start and end time.
         window_length (float): Length of the sliding window.
         step (Optional[float], optional): Step size between windows. If None, defaults
