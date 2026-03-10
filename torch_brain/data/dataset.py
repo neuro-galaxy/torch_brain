@@ -89,7 +89,7 @@ class Dataset(torch.utils.data.Dataset):
         self,
         root: str,
         *,
-        config: Optional[str] = None,
+        config: Optional[str | Path | dict] = None,
         recording_id: Optional[str] = None,
         split: Optional[str] = None,
         transform: Optional[Callable[[Data], Any]] = None,
@@ -123,6 +123,8 @@ class Dataset(torch.utils.data.Dataset):
 
             if isinstance(config, omegaconf.listconfig.ListConfig):
                 config = omegaconf.OmegaConf.to_container(config)
+            elif isinstance(config, list):
+                config = omegaconf.OmegaConf.create(config)
             elif Path(config).is_file():
                 config = omegaconf.OmegaConf.load(config)
             else:
