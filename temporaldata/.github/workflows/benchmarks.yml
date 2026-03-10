@@ -1,0 +1,95 @@
+name: Benchmarks
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  compare-with-main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install package and dependencies
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Fetch main branch
+        run: git fetch origin main
+
+      - name: Run benchmark comparison (main vs PR HEAD)
+        run: |
+          uv run python benchmarks/compare.py origin/main HEAD | tee benchmark-report.txt
+
+      - name: Upsert PR benchmark comment
+        uses: actions/github-script@v7
+        env:
+          BENCHMARK_REPORT_PATH: benchmark-report.txt
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- benchmark-ci-report -->";
+            const reportPath = process.env.BENCHMARK_REPORT_PATH;
+            const report = fs.readFileSync(reportPath, "utf8");
+
+            const body = `${marker}
+            ## Benchmark comparison vs main
+
+            Baseline: \`origin/main\`  
+            Target: \`HEAD\`
+
+            \`\`\`text
+            ${report}
+            \`\`\`
+            `;
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              {
+                owner,
+                repo,
+                issue_number,
+                per_page: 100,
+              }
+            );
+
+            const existing = comments.find(
+              (comment) =>
+                comment.user.type === "Bot" &&
+                comment.body &&
+                comment.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
