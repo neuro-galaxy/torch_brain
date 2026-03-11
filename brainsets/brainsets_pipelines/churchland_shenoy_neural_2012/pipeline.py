@@ -1,6 +1,6 @@
 # /// brainset-pipeline
 # python-version = "3.11"
-# dependencies = ["dandi==0.61.2"]
+# dependencies = ["dandi==0.74.0"]
 # ///
 
 import datetime
