@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from temporaldata import Data
+from temporaldata import Data, Interval
 
 from torch_brain.utils import np_string_prefix
 
@@ -94,12 +94,9 @@ class SEEGDatasetMixin:
     Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing sEEG data.
 
     Provides:
-        - ``get_domain_intervals()`` for full-domain intervals
-          (inherited from :class:`torch_brain.dataset.Dataset`).
+        - ``get_domain_intervals()`` for full-domain intervals.
         - ``get_channel_ids()`` for retrieving recording-disambiguated
           channel IDs in ``<channel_id>/<recording_id>`` format.
-        - ``get_channel_arrays()`` for normalized channel metadata access
-          (inherited from :class:`torch_brain.dataset.Dataset`).
     """
 
     # Channel-ID components used for hook-based uniquification.
@@ -157,6 +154,16 @@ class SEEGDatasetMixin:
             return ""
         return "/".join(prefix_parts) + "/"
 
+    def get_domain_intervals(
+        self, recording_ids: list[str] | None = None
+    ) -> dict[str, Interval]:
+        """Return full-domain intervals for the provided recordings."""
+        ids = self.recording_ids if recording_ids is None else recording_ids
+        unknown_ids = [rid for rid in ids if rid not in self.recording_ids]
+        if unknown_ids:
+            raise KeyError(f"Unknown recording_ids: {unknown_ids}")
+        return {rid: self.get_recording(rid).domain for rid in ids}
+
     def get_channel_ids(self, *, included_only: bool = False) -> list[str]:
         """Return sorted channel IDs across recordings.
 
@@ -166,8 +173,15 @@ class SEEGDatasetMixin:
         """
         all_ids = []
         for rid in self.recording_ids:
-            channel_arrays = self.get_channel_arrays(rid, included_only=included_only)
-            ids = np.asarray(channel_arrays["ids"]).astype(str)
+            rec = self.get_recording(rid)
+            ids = np.asarray(rec.channels.id).astype(str)
+            if included_only:
+                included_mask = np.asarray(
+                    getattr(rec.channels, "included", np.ones(len(ids), dtype=bool)),
+                    dtype=bool,
+                )
+                ids = ids[included_mask]
+
             if self.seeg_dataset_mixin_uniquify_channel_ids:
                 all_ids.append(ids)
                 continue
