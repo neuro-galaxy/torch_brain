@@ -136,7 +136,11 @@ class _SEEGDatasetWithConstant(SEEGDatasetMixin, Dataset):
 
 
 class _SEEGDatasetWithConstantUniquify(_SEEGDatasetWithConstant):
-    seeg_dataset_mixin_uniquify_channel_ids = True
+    seeg_dataset_mixin_uniquify_channel_ids = {"subject_id", "session_id"}
+
+
+class _SEEGDatasetWithConstantUniquifySubjectOnly(_SEEGDatasetWithConstant):
+    seeg_dataset_mixin_uniquify_channel_ids = {"subject_id"}
 
 
 def configure_seeg_dataset_caches(
@@ -521,6 +525,37 @@ class TestSEEGDatasetMixin:
             "bob/session2/ch0",
             "bob/session2/ch2",
         ]
+
+    def test_get_channel_ids_match_hook_uniquified_subject_only_ids(
+        self, dummy_seeg_brainset
+    ):
+        ds = _SEEGDatasetWithConstantUniquifySubjectOnly(dummy_seeg_brainset)
+        configure_seeg_dataset_caches(ds, channel_views=True)
+
+        recording_ids = ds.get_recording("session1").channels.id.tolist()
+        assert recording_ids == [
+            "alice/ch0",
+            "alice/ch1",
+            "alice/ch2",
+        ]
+
+        all_ids = ds.get_channel_ids()
+        assert all_ids == [
+            "alice/ch0",
+            "alice/ch1",
+            "alice/ch2",
+            "bob/ch0",
+            "bob/ch1",
+            "bob/ch2",
+        ]
+
+    def test_get_recording_hook_rejects_invalid_uniquify_components(
+        self, dummy_seeg_brainset
+    ):
+        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
+        ds.seeg_dataset_mixin_uniquify_channel_ids = {"subject_id", "bad_component"}
+        with pytest.raises(ValueError, match="Invalid channel uniquify components"):
+            ds.get_recording("session1")
 
     def test_get_recording_info(self, dummy_seeg_brainset):
         ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)

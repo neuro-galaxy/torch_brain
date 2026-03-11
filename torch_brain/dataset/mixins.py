@@ -123,9 +123,10 @@ class SEEGDatasetMixin:
     seeg_dataset_mixin_recording_infos: (
         dict[str, "SEEGDatasetMixin.RecordingInfo"] | None
     ) = None
-    # If enabled, channel IDs are made unique in the returned recording view
-    # using subject/session context, matching the hook-based style of the other mixins.
-    seeg_dataset_mixin_uniquify_channel_ids: bool = False
+    # Channel-ID components used for hook-based uniquification.
+    # Supported values are "subject_id" and "session_id".
+    # Example: {"subject_id"} for subject-only prefixes.
+    seeg_dataset_mixin_uniquify_channel_ids: set[str] | frozenset[str] = frozenset()
 
     @dataclass(frozen=True)
     class ChannelView:
@@ -151,19 +152,51 @@ class SEEGDatasetMixin:
 
     def get_recording_hook(self, data: Data):
         if self.seeg_dataset_mixin_uniquify_channel_ids:
-            subject_id = getattr(getattr(data, "subject", None), "id", None)
-            session_id = getattr(getattr(data, "session", None), "id", None)
-            if subject_id is not None and session_id is not None:
-                prefix = f"{subject_id}/{session_id}/"
-            elif session_id is not None:
-                prefix = f"{session_id}/"
-            else:
-                prefix = ""
+            prefix = self._build_seeg_channel_id_prefix(data)
             if prefix:
                 data.channels.id = np_string_prefix(
                     prefix, data.channels.id.astype(str)
                 )
         super().get_recording_hook(data)
+
+    def _normalize_channel_uniquify_components(self) -> set[str]:
+        config = self.seeg_dataset_mixin_uniquify_channel_ids
+        valid_components = {"subject_id", "session_id"}
+
+        if not isinstance(config, (set, frozenset)):
+            raise TypeError(
+                "'seeg_dataset_mixin_uniquify_channel_ids' must be a set or "
+                f"frozenset; got {type(config).__name__}."
+            )
+
+        normalized = set(config)
+        invalid = [item for item in normalized if item not in valid_components]
+        if invalid:
+            invalid_str = ", ".join(sorted(repr(item) for item in invalid))
+            raise ValueError(
+                "Invalid channel uniquify components: "
+                f"{invalid_str}. Expected subset of "
+                f"{sorted(valid_components)}."
+            )
+        return normalized
+
+    def _build_seeg_channel_id_prefix(self, data: Data) -> str:
+        components = self._normalize_channel_uniquify_components()
+        if not components:
+            return ""
+
+        subject_id = getattr(getattr(data, "subject", None), "id", None)
+        session_id = getattr(getattr(data, "session", None), "id", None)
+
+        # Keep deterministic ordering regardless of set iteration order.
+        prefix_parts = []
+        if "subject_id" in components and subject_id is not None:
+            prefix_parts.append(str(subject_id))
+        if "session_id" in components and session_id is not None:
+            prefix_parts.append(str(session_id))
+        if not prefix_parts:
+            return ""
+        return "/".join(prefix_parts) + "/"
 
     def get_sampling_rate(self, recording_id: str | None = None) -> float:
         """Return recording sampling rate in Hz."""
