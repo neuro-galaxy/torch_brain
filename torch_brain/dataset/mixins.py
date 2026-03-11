@@ -1,7 +1,6 @@
-from dataclasses import dataclass
 import numpy as np
 import pandas as pd
-from temporaldata import Data, Interval
+from temporaldata import Data
 
 from torch_brain.utils import np_string_prefix
 
@@ -95,73 +94,29 @@ class SEEGDatasetMixin:
     Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing sEEG data.
 
     Provides:
-        - ``get_sampling_rate()`` for retrieving signal sampling rate (Hz).
-          Requires dataset classes to define
-          ``seeg_dataset_mixin_sampling_rate_hz``.
-        - ``get_domain_intervals()`` for retrieving full-domain intervals.
-          Requires dataset classes to define
-          ``seeg_dataset_mixin_domain_intervals``.
-        - ``get_channel_view()`` for normalized channel metadata access.
-          Requires dataset classes to define
-          ``seeg_dataset_mixin_channel_views`` with full channel views.
+        - ``get_domain_intervals()`` for full-domain intervals
+          (inherited from :class:`torch_brain.dataset.Dataset`).
         - ``get_channel_ids()`` for retrieving recording-disambiguated
           channel IDs in ``<channel_id>/<recording_id>`` format.
-        - ``get_recording_info()`` for compact per-recording metadata.
-          Requires dataset classes to define
-          ``seeg_dataset_mixin_recording_infos``.
+        - ``get_channel_arrays()`` for normalized channel metadata access
+          (inherited from :class:`torch_brain.dataset.Dataset`).
     """
 
-    # Dataset classes should set this to expose a stable sampling-rate contract.
-    seeg_dataset_mixin_sampling_rate_hz: float | None = None
-    # Dataset classes should set this with all available recording-domain intervals.
-    seeg_dataset_mixin_domain_intervals: dict[str, Interval] | None = None
-    # Dataset classes should set this with full channel views for each recording.
-    seeg_dataset_mixin_channel_views: (
-        dict[str, "SEEGDatasetMixin.ChannelView"] | None
-    ) = None
-    # Dataset classes should set this with compact recording metadata.
-    seeg_dataset_mixin_recording_infos: (
-        dict[str, "SEEGDatasetMixin.RecordingInfo"] | None
-    ) = None
     # Channel-ID components used for hook-based uniquification.
     # Supported values are "subject_id" and "session_id".
     # Example: {"subject_id"} for subject-only prefixes.
     seeg_dataset_mixin_uniquify_channel_ids: set[str] | frozenset[str] = frozenset()
-
-    @dataclass(frozen=True)
-    class ChannelView:
-        """Channel metadata view for one recording."""
-
-        ids: np.ndarray
-        names: np.ndarray
-        included_mask: np.ndarray
-        # Channel coordinates ordered as (L, I, P), or ``None`` when unavailable.
-        lip: np.ndarray | None
-
-    @dataclass(frozen=True)
-    class RecordingInfo:
-        """Compact metadata summary for one recording."""
-
-        recording_id: str
-        subject_id: str | int | None
-        session_id: str | int | None
-        sampling_rate_hz: float
-        domain: Interval
-        n_channels: int
-        n_included_channels: int
+    _SEEG_CHANNEL_ID_COMPONENT_ORDER: tuple[str, str] = ("subject_id", "session_id")
 
     def get_recording_hook(self, data: Data):
-        if self.seeg_dataset_mixin_uniquify_channel_ids:
-            prefix = self._build_seeg_channel_id_prefix(data)
-            if prefix:
-                data.channels.id = np_string_prefix(
-                    prefix, data.channels.id.astype(str)
-                )
+        prefix = self._build_seeg_channel_id_prefix(data)
+        if prefix:
+            data.channels.id = np_string_prefix(prefix, data.channels.id.astype(str))
         super().get_recording_hook(data)
 
-    def _normalize_channel_uniquify_components(self) -> set[str]:
+    def _normalize_channel_uniquify_components(self) -> tuple[str, ...]:
         config = self.seeg_dataset_mixin_uniquify_channel_ids
-        valid_components = {"subject_id", "session_id"}
+        valid_components = set(self._SEEG_CHANNEL_ID_COMPONENT_ORDER)
 
         if not isinstance(config, (set, frozenset)):
             raise TypeError(
@@ -178,82 +133,29 @@ class SEEGDatasetMixin:
                 f"{invalid_str}. Expected subset of "
                 f"{sorted(valid_components)}."
             )
-        return normalized
+        return tuple(
+            component
+            for component in self._SEEG_CHANNEL_ID_COMPONENT_ORDER
+            if component in normalized
+        )
 
     def _build_seeg_channel_id_prefix(self, data: Data) -> str:
         components = self._normalize_channel_uniquify_components()
         if not components:
             return ""
 
-        subject_id = getattr(getattr(data, "subject", None), "id", None)
-        session_id = getattr(getattr(data, "session", None), "id", None)
-
-        # Keep deterministic ordering regardless of set iteration order.
-        prefix_parts = []
-        if "subject_id" in components and subject_id is not None:
-            prefix_parts.append(str(subject_id))
-        if "session_id" in components and session_id is not None:
-            prefix_parts.append(str(session_id))
+        component_values = {
+            "subject_id": getattr(getattr(data, "subject", None), "id", None),
+            "session_id": getattr(getattr(data, "session", None), "id", None),
+        }
+        prefix_parts = [
+            str(component_values[component])
+            for component in components
+            if component_values[component] is not None
+        ]
         if not prefix_parts:
             return ""
         return "/".join(prefix_parts) + "/"
-
-    def get_sampling_rate(self, recording_id: str | None = None) -> float:
-        """Return recording sampling rate in Hz."""
-        _ = recording_id  # keep signature compatible with per-recording datasets
-        if self.seeg_dataset_mixin_sampling_rate_hz is None:
-            raise NotImplementedError(
-                "SEEG datasets must define 'seeg_dataset_mixin_sampling_rate_hz'."
-            )
-        return float(self.seeg_dataset_mixin_sampling_rate_hz)
-
-    def get_domain_intervals(
-        self, recording_ids: list[str] | None = None
-    ) -> dict[str, Interval]:
-        """Return full-domain intervals for the provided recordings."""
-        # Domain intervals are dataset-specific and should be precomputed at init.
-        if self.seeg_dataset_mixin_domain_intervals is None:
-            raise NotImplementedError(
-                "SEEG datasets must define 'seeg_dataset_mixin_domain_intervals'."
-            )
-        ids = self.recording_ids if recording_ids is None else recording_ids
-        missing = [
-            rid for rid in ids if rid not in self.seeg_dataset_mixin_domain_intervals
-        ]
-        if missing:
-            raise KeyError(f"Missing domain intervals for recording_ids: {missing}")
-        return {rid: self.seeg_dataset_mixin_domain_intervals[rid] for rid in ids}
-
-    def get_channel_view(
-        self, recording_id: str, *, included_only: bool = False
-    ) -> "SEEGDatasetMixin.ChannelView":
-        """Return normalized channel metadata and optional LIP coordinates."""
-        # Full channel views come from dataset-managed cache so schema conversion stays local.
-        if self.seeg_dataset_mixin_channel_views is None:
-            raise NotImplementedError(
-                "SEEG datasets must define 'seeg_dataset_mixin_channel_views'."
-            )
-
-        if recording_id not in self.seeg_dataset_mixin_channel_views:
-            raise KeyError(f"Missing channel view for recording_id '{recording_id}'.")
-
-        full_view = self.seeg_dataset_mixin_channel_views[recording_id]
-        if not included_only:
-            return full_view
-
-        # Included-only views are frequently requested by samplers/evaluators.
-        # Cache the derived filtered view to avoid repeated mask application.
-        included_cache = self._get_seeg_included_channel_view_cache()
-        if recording_id in included_cache:
-            # Keep the source full-view identity so we can invalidate stale derived
-            # views if datasets replace full channel views after initialization.
-            source_view_id, included_view = included_cache[recording_id]
-            if source_view_id == id(full_view):
-                return included_view
-
-        included_view = self._filter_included_channels(full_view)
-        included_cache[recording_id] = (id(full_view), included_view)
-        return included_view
 
     def get_channel_ids(self, *, included_only: bool = False) -> list[str]:
         """Return sorted channel IDs across recordings.
@@ -264,55 +166,13 @@ class SEEGDatasetMixin:
         """
         all_ids = []
         for rid in self.recording_ids:
+            channel_arrays = self.get_channel_arrays(rid, included_only=included_only)
+            ids = np.asarray(channel_arrays["ids"]).astype(str)
             if self.seeg_dataset_mixin_uniquify_channel_ids:
-                rec = self.get_recording(rid)
-                ids = np.asarray(rec.channels.id).astype(str)
-                if included_only:
-                    included_mask = np.asarray(
-                        getattr(
-                            rec.channels, "included", np.ones(len(ids), dtype=bool)
-                        ),
-                        dtype=bool,
-                    )
-                    ids = ids[included_mask]
                 all_ids.append(ids)
-            else:
-                ids = self.get_channel_view(rid, included_only=included_only).ids
-                ids = np.asarray(ids).astype(str)
-                # Postfix recording ID to avoid cross-recording collisions.
-                all_ids.append(np.char.add(np.char.add(ids, "/"), rid))
+                continue
+            # Postfix recording ID to avoid cross-recording collisions.
+            all_ids.append(np.char.add(np.char.add(ids, "/"), rid))
         if not all_ids:
             return []
         return np.sort(np.concatenate(all_ids).astype(str)).tolist()
-
-    def get_recording_info(self, recording_id: str) -> "SEEGDatasetMixin.RecordingInfo":
-        """Return compact metadata for one recording."""
-        # RecordingInfo is also dataset-managed to avoid mixin-side schema assumptions.
-        if self.seeg_dataset_mixin_recording_infos is None:
-            raise NotImplementedError(
-                "SEEG datasets must define 'seeg_dataset_mixin_recording_infos'."
-            )
-        if recording_id not in self.seeg_dataset_mixin_recording_infos:
-            raise KeyError(f"Missing recording info for recording_id '{recording_id}'.")
-        return self.seeg_dataset_mixin_recording_infos[recording_id]
-
-    def _filter_included_channels(
-        self, view: "SEEGDatasetMixin.ChannelView"
-    ) -> "SEEGDatasetMixin.ChannelView":
-        mask = view.included_mask
-        lip = None if view.lip is None else view.lip[mask]
-        return self.ChannelView(
-            ids=view.ids[mask],
-            names=view.names[mask],
-            included_mask=np.ones(int(np.sum(mask)), dtype=bool),
-            lip=lip,
-        )
-
-    def _get_seeg_included_channel_view_cache(
-        self,
-    ) -> dict[str, tuple[int, "SEEGDatasetMixin.ChannelView"]]:
-        cache = getattr(self, "_seeg_included_channel_view_cache", None)
-        if cache is None:
-            cache = {}
-            setattr(self, "_seeg_included_channel_view_cache", cache)
-        return cache

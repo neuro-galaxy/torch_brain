@@ -80,59 +80,8 @@ def create_seeg_data(brainset_id, subject_id, session_id, length, sampling_rate=
     )
 
 
-def build_seeg_channel_view_cache(ds):
-    channel_views = {}
-    for rid in ds.recording_ids:
-        rec = ds.get_recording(rid)
-        channels = rec.channels
-        ids = np.asarray(channels.id)
-        names = np.asarray(getattr(channels, "name", ids))
-        included_mask = np.asarray(
-            getattr(channels, "included", np.ones(len(ids), dtype=bool)),
-            dtype=bool,
-        )
-        lip = None
-        if all(
-            hasattr(channels, attr)
-            for attr in ("localization_L", "localization_I", "localization_P")
-        ):
-            lip = np.stack(
-                (
-                    np.asarray(channels.localization_L, dtype=float),
-                    np.asarray(channels.localization_I, dtype=float),
-                    np.asarray(channels.localization_P, dtype=float),
-                ),
-                axis=1,
-            )
-
-        channel_views[rid] = SEEGDatasetMixin.ChannelView(
-            ids=ids,
-            names=names,
-            included_mask=included_mask,
-            lip=lip,
-        )
-    return channel_views
-
-
-def build_seeg_recording_info_cache(ds):
-    infos = {}
-    for rid in ds.recording_ids:
-        rec = ds.get_recording(rid)
-        channel_view = ds.seeg_dataset_mixin_channel_views[rid]
-        infos[rid] = SEEGDatasetMixin.RecordingInfo(
-            recording_id=rid,
-            subject_id=rec.subject.id,
-            session_id=rec.session.id,
-            sampling_rate_hz=ds.get_sampling_rate(rid),
-            domain=ds.seeg_dataset_mixin_domain_intervals[rid],
-            n_channels=int(len(channel_view.ids)),
-            n_included_channels=int(np.sum(channel_view.included_mask)),
-        )
-    return infos
-
-
 class _SEEGDatasetWithConstant(SEEGDatasetMixin, Dataset):
-    seeg_dataset_mixin_sampling_rate_hz = 256.0
+    pass
 
 
 class _SEEGDatasetWithConstantUniquify(_SEEGDatasetWithConstant):
@@ -141,29 +90,6 @@ class _SEEGDatasetWithConstantUniquify(_SEEGDatasetWithConstant):
 
 class _SEEGDatasetWithConstantUniquifySubjectOnly(_SEEGDatasetWithConstant):
     seeg_dataset_mixin_uniquify_channel_ids = {"subject_id"}
-
-
-def configure_seeg_dataset_caches(
-    ds,
-    *,
-    domain: bool = False,
-    channel_views: bool = False,
-    recording_infos: bool = False,
-):
-    if domain:
-        ds.seeg_dataset_mixin_domain_intervals = {
-            rid: ds.get_recording(rid).seeg_data.domain for rid in ds.recording_ids
-        }
-    if channel_views:
-        ds.seeg_dataset_mixin_channel_views = build_seeg_channel_view_cache(ds)
-    if recording_infos:
-        if not domain:
-            ds.seeg_dataset_mixin_domain_intervals = {
-                rid: ds.get_recording(rid).seeg_data.domain for rid in ds.recording_ids
-            }
-        if not channel_views:
-            ds.seeg_dataset_mixin_channel_views = build_seeg_channel_view_cache(ds)
-        ds.seeg_dataset_mixin_recording_infos = build_seeg_recording_info_cache(ds)
 
 
 @pytest.fixture
@@ -401,81 +327,8 @@ class TestSpikingDatasetMixin:
 
 
 class TestSEEGDatasetMixin:
-    def test_get_sampling_rate(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        assert ds.get_sampling_rate() == 256.0
-        assert ds.get_sampling_rate("session2") == 256.0
-
-    def test_get_sampling_rate_requires_dataset_constant(self, dummy_seeg_brainset):
-        class SEEGDataset(SEEGDatasetMixin, Dataset): ...
-
-        ds = SEEGDataset(dummy_seeg_brainset)
-        with pytest.raises(
-            NotImplementedError, match="seeg_dataset_mixin_sampling_rate_hz"
-        ):
-            ds.get_sampling_rate()
-
-    def test_get_domain_intervals_uses_dataset_cache(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        configure_seeg_dataset_caches(ds, domain=True)
-
-        all_intervals = ds.get_domain_intervals()
-        assert set(all_intervals) == set(ds.recording_ids)
-
-        subset = ds.get_domain_intervals(recording_ids=["session2"])
-        assert list(subset) == ["session2"]
-
-    def test_get_domain_intervals_requires_dataset_cache(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        with pytest.raises(
-            NotImplementedError, match="seeg_dataset_mixin_domain_intervals"
-        ):
-            ds.get_domain_intervals()
-
-    def test_get_domain_intervals_raises_on_missing_ids(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        ds.seeg_dataset_mixin_domain_intervals = {
-            "session1": ds.get_recording("session1").seeg_data.domain
-        }
-        with pytest.raises(KeyError, match="Missing domain intervals"):
-            ds.get_domain_intervals(recording_ids=["session2"])
-
-    def test_get_channel_view(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        configure_seeg_dataset_caches(ds, domain=True, channel_views=True)
-        full_view = ds.get_channel_view("session1", included_only=False)
-        included_view = ds.get_channel_view("session1", included_only=True)
-
-        assert full_view.ids.tolist() == ["ch0", "ch1", "ch2"]
-        assert full_view.names.tolist() == ["C0", "C1", "C2"]
-        assert full_view.included_mask.tolist() == [True, False, True]
-        assert full_view.lip is not None
-        assert full_view.lip.shape == (3, 3)
-
-        assert included_view.ids.tolist() == ["ch0", "ch2"]
-        assert included_view.names.tolist() == ["C0", "C2"]
-        assert included_view.included_mask.tolist() == [True, True]
-        assert included_view.lip is not None
-        assert included_view.lip.shape == (2, 3)
-
-    def test_get_channel_view_requires_dataset_cache(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        with pytest.raises(
-            NotImplementedError, match="seeg_dataset_mixin_channel_views"
-        ):
-            ds.get_channel_view("session1")
-
-    def test_get_channel_view_raises_on_missing_recording(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        ds.seeg_dataset_mixin_channel_views = {
-            "session1": build_seeg_channel_view_cache(ds)["session1"]
-        }
-        with pytest.raises(KeyError, match="Missing channel view"):
-            ds.get_channel_view("session2")
-
     def test_get_channel_ids_are_recording_disambiguated(self, dummy_seeg_brainset):
         ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        configure_seeg_dataset_caches(ds, channel_views=True)
 
         all_ids = ds.get_channel_ids()
         assert all_ids == [
@@ -499,7 +352,6 @@ class TestSEEGDatasetMixin:
         self, dummy_seeg_brainset
     ):
         ds = _SEEGDatasetWithConstantUniquify(dummy_seeg_brainset)
-        configure_seeg_dataset_caches(ds, channel_views=True)
 
         recording_ids = ds.get_recording("session1").channels.id.tolist()
         assert recording_ids == [
@@ -530,7 +382,6 @@ class TestSEEGDatasetMixin:
         self, dummy_seeg_brainset
     ):
         ds = _SEEGDatasetWithConstantUniquifySubjectOnly(dummy_seeg_brainset)
-        configure_seeg_dataset_caches(ds, channel_views=True)
 
         recording_ids = ds.get_recording("session1").channels.id.tolist()
         assert recording_ids == [
@@ -556,41 +407,6 @@ class TestSEEGDatasetMixin:
         ds.seeg_dataset_mixin_uniquify_channel_ids = {"subject_id", "bad_component"}
         with pytest.raises(ValueError, match="Invalid channel uniquify components"):
             ds.get_recording("session1")
-
-    def test_get_recording_info(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        configure_seeg_dataset_caches(ds, recording_infos=True)
-        info = ds.get_recording_info("session1")
-
-        assert info.recording_id == "session1"
-        assert info.subject_id == "alice"
-        assert info.session_id == "session1"
-        assert info.sampling_rate_hz == 256.0
-        assert info.n_channels == 3
-        assert info.n_included_channels == 2
-
-    def test_get_recording_info_requires_dataset_cache(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        with pytest.raises(
-            NotImplementedError, match="seeg_dataset_mixin_recording_infos"
-        ):
-            ds.get_recording_info("session1")
-
-    def test_get_recording_info_raises_on_missing_recording(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        ds.seeg_dataset_mixin_recording_infos = {
-            "session1": SEEGDatasetMixin.RecordingInfo(
-                recording_id="session1",
-                subject_id="alice",
-                session_id="session1",
-                sampling_rate_hz=256.0,
-                domain=Interval(0, 1.0),
-                n_channels=3,
-                n_included_channels=2,
-            )
-        }
-        with pytest.raises(KeyError, match="Missing recording info"):
-            ds.get_recording_info("session2")
 
 
 def test_ensure_index_has_namespace():

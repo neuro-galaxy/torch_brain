@@ -17,11 +17,3 @@ Mixins
     :members:
     :show-inheritance:
     :undoc-members:
-
-.. autoclass:: SEEGDatasetMixin.ChannelView
-    :members:
-    :undoc-members:
-
-.. autoclass:: SEEGDatasetMixin.RecordingInfo
-    :members:
-    :undoc-members:
