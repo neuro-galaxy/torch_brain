@@ -94,8 +94,8 @@ class SEEGDatasetMixin:
     Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing sEEG data.
 
     Provides:
-        - ``get_channel_ids()`` for retrieving recording-disambiguated
-          channel IDs in ``<channel_id>/<recording_id>`` format.
+        - ``get_channel_ids()`` for retrieving sorted channel IDs from
+          recording views returned by ``get_recording(...)``.
     """
 
     # Channel-ID components used for hook-based uniquification.
@@ -156,9 +156,10 @@ class SEEGDatasetMixin:
     def get_channel_ids(self, *, included_only: bool = False) -> list[str]:
         """Return sorted channel IDs across recordings.
 
-        When channel-ID uniquification is enabled, this reuses ``get_recording(...)``
-        so the returned IDs exactly match the hook-mutated recording view. Otherwise
-        it falls back to ``<channel_id>/<recording_id>`` disambiguation.
+        ``get_channel_ids`` aggregates ``rec.channels.id`` from ``get_recording(...)``.
+        Any subject/session uniquification is applied there according to
+        ``seeg_dataset_mixin_uniquify_channel_ids``. ``included_only=True`` filters
+        by ``rec.channels.included`` before IDs are collected.
         """
         all_ids = []
         for rid in self.recording_ids:
@@ -170,12 +171,7 @@ class SEEGDatasetMixin:
                     dtype=bool,
                 )
                 ids = ids[included_mask]
-
-            if self.seeg_dataset_mixin_uniquify_channel_ids:
-                all_ids.append(ids)
-                continue
-            # Postfix recording ID to avoid cross-recording collisions.
-            all_ids.append(np.char.add(np.char.add(ids, "/"), rid))
+            all_ids.append(ids)
         if not all_ids:
             return []
         return np.sort(np.concatenate(all_ids).astype(str)).tolist()

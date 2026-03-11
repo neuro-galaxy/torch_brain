@@ -327,25 +327,25 @@ class TestSpikingDatasetMixin:
 
 
 class TestSEEGDatasetMixin:
-    def test_get_channel_ids_are_recording_disambiguated(self, dummy_seeg_brainset):
+    def test_get_channel_ids_use_recording_view_ids(self, dummy_seeg_brainset):
         ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
 
         all_ids = ds.get_channel_ids()
         assert all_ids == [
-            "ch0/session1",
-            "ch0/session2",
-            "ch1/session1",
-            "ch1/session2",
-            "ch2/session1",
-            "ch2/session2",
+            "ch0",
+            "ch0",
+            "ch1",
+            "ch1",
+            "ch2",
+            "ch2",
         ]
 
         included_ids = ds.get_channel_ids(included_only=True)
         assert included_ids == [
-            "ch0/session1",
-            "ch0/session2",
-            "ch2/session1",
-            "ch2/session2",
+            "ch0",
+            "ch0",
+            "ch2",
+            "ch2",
         ]
 
     def test_get_channel_ids_match_hook_uniquified_recording_ids(
