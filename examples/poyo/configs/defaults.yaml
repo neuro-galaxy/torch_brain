@@ -11,7 +11,7 @@ eval_transforms: []
 
 # Training
 epochs: 1000
-batch_size: 128
+batch_size: 128 # global batch size across all GPUs
 eval_epochs: 1  # frequency for doing validation
 eval_batch_size: null  # if null, will use batch_size
 seed: 42  # use to set random seed
