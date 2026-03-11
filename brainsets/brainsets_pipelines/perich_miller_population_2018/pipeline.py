@@ -1,7 +1,7 @@
 # /// brainset-pipeline
 # python-version = "3.11"
 # dependencies = [
-#   "dandi==0.61.2",
+#   "dandi==0.74.0",
 #   "scikit-learn==1.5.1",
 # ]
 # ///
