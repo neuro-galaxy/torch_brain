@@ -115,18 +115,11 @@ class IrregularTimeSeries(ArrayDict):
 
         self._domain = domain
 
-    # todo add setter for domain
     @property
     def domain(self):
         r"""The time domain over which the time series is defined. Usually a single
         interval, but could also be a set of intervals."""
         return self._domain
-
-    @domain.setter
-    def domain(self, value: Interval):
-        if not isinstance(value, Interval):
-            raise ValueError(f"domain must be an Interval object, got {type(value)}.")
-        self._domain = value
 
     def timekeys(self):
         r"""Returns a list of all time-based attributes."""
@@ -140,6 +133,21 @@ class IrregularTimeSeries(ArrayDict):
             self._timekeys.append(timekey)
 
     def __setattr__(self, name, value):
+        if name == "domain":
+            if not isinstance(value, Interval):
+                raise ValueError(
+                    f"domain must be an Interval object, got {type(value)}."
+                )
+
+            if not value.is_disjoint():
+                raise ValueError("The domain intervals must not be overlapping.")
+
+            if not value.is_sorted():
+                value.sort()
+
+            object.__setattr__(self, "_domain", value)
+            return
+
         super(IrregularTimeSeries, self).__setattr__(name, value)
 
         if name == "timestamps":
@@ -147,7 +155,6 @@ class IrregularTimeSeries(ArrayDict):
             assert ~np.isnan(value).any(), f"timestamps cannot contain NaNs."
             if value.dtype != np.float64:
                 logging.warning(f"{name} is of type {value.dtype} not of type float64.")
-            # timestamps has been updated, we no longer know whether it is sorted or not
             self._sorted = None
 
     def is_sorted(self):
