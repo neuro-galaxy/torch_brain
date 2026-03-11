@@ -327,19 +327,6 @@ class TestSpikingDatasetMixin:
 
 
 class TestSEEGDatasetMixin:
-    def test_get_domain_intervals_uses_recording_domains(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-
-        all_intervals = ds.get_domain_intervals()
-        assert set(all_intervals) == set(ds.recording_ids)
-
-        subset = ds.get_domain_intervals(recording_ids=["session2"])
-        assert list(subset) == ["session2"]
-
-    def test_get_domain_intervals_raises_on_unknown_ids(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        with pytest.raises(KeyError, match="Unknown recording_ids"):
-            ds.get_domain_intervals(recording_ids=["session3"])
     def test_get_channel_ids_are_recording_disambiguated(self, dummy_seeg_brainset):
         ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
 

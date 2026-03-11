@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from temporaldata import Data, Interval
+from temporaldata import Data
 
 from torch_brain.utils import np_string_prefix
 
@@ -94,7 +94,6 @@ class SEEGDatasetMixin:
     Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing sEEG data.
 
     Provides:
-        - ``get_domain_intervals()`` for full-domain intervals.
         - ``get_channel_ids()`` for retrieving recording-disambiguated
           channel IDs in ``<channel_id>/<recording_id>`` format.
     """
@@ -153,16 +152,6 @@ class SEEGDatasetMixin:
         if not prefix_parts:
             return ""
         return "/".join(prefix_parts) + "/"
-
-    def get_domain_intervals(
-        self, recording_ids: list[str] | None = None
-    ) -> dict[str, Interval]:
-        """Return full-domain intervals for the provided recordings."""
-        ids = self.recording_ids if recording_ids is None else recording_ids
-        unknown_ids = [rid for rid in ids if rid not in self.recording_ids]
-        if unknown_ids:
-            raise KeyError(f"Unknown recording_ids: {unknown_ids}")
-        return {rid: self.get_recording(rid).domain for rid in ids}
 
     def get_channel_ids(self, *, included_only: bool = False) -> list[str]:
         """Return sorted channel IDs across recordings.
