@@ -29,7 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `InfiniteVocabEmbedding.extend_vocab`: fix incorrect device behavior ([#99](https://github.com/neuro-galaxy/torch_brain/pull/99))
 - `InfiniteVocabEmbedding.load_state_dict`: fix inplace modification for source vocab ([#148](https://github.com/neuro-galaxy/torch_brain/pull/148))
 - `bin_spikes`: fix bug when start time is non-zero ([#160](https://github.com/neuro-galaxy/torch_brain/pull/160))
-- Fix `task_emb` size in CaPOYO and POYO+ to account for 1-indexed modality IDs, which caused an index error when accessing the last-registered modality. ([#174](https://github.com/neuro-galaxy/torch_brain/pull/174))
+- Fixed `task_emb` size in CaPOYO and POYO+ to account for 1-indexed modality IDs, which caused an index error when accessing the last-registered modality. ([#174](https://github.com/neuro-galaxy/torch_brain/pull/174))
 
 
 ## [0.1.0] - 2025-03-26
