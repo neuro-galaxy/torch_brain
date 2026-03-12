@@ -174,7 +174,7 @@ LmdbConfig(lmdb_path='/global/cfs/cdirs/m4750/DIVER/PRETRAINING_DATA_LMDB/arch_s
             else:
                 raise ValueError("No samples found for the specified split")
     
-    def _parse_sample_metadata(self, sample: Dict):
+    def _parse_sample_metadata(self, sample: Dict): #TODO : consider deleting fallback.
         """Extract metadata from a sample."""
         data_info = sample.get('data_info', {})
         
