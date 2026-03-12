@@ -25,7 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 - Refactor `RotaryEmbedding` to `RotaryTimeEmbedding` ([#97](https://github.com/neuro-galaxy/torch_brain/pull/97))
 
-## Fixed
+### Fixed
 - `InfiniteVocabEmbedding.extend_vocab`: fix incorrect device behavior ([#99](https://github.com/neuro-galaxy/torch_brain/pull/99))
 - `InfiniteVocabEmbedding.load_state_dict`: fix inplace modification for source vocab ([#148](https://github.com/neuro-galaxy/torch_brain/pull/148))
 - `bin_spikes`: fix bug when start time is non-zero ([#160](https://github.com/neuro-galaxy/torch_brain/pull/160))
