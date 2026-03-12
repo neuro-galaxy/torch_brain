@@ -1,0 +1,16 @@
+_target_: torch_brain.models.NDT2
+
+dim: 128
+max_bincount:  100
+max_num_units: 5000
+units_per_patch: 64
+bin_time: 0.02
+ctx_time: 1
+tokenize_task: false
+tokenize_session: true
+tokenize_subject: true
+enc_depth: 3
+enc_heads: 4
+enc_ffn_mult: 2
+dropout: 0.1
+is_causal: false
