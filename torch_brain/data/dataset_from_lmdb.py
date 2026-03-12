@@ -138,7 +138,6 @@ class DatasetFromLmdb(torch.utils.data.Dataset):
         logger.info(f"  Duration: {self._total_duration:.2f}s, Channels: {self._n_channels}")
     
     def _load_metadata(self):
-        import pdb; pdb.set_trace()
         """Load keys and sample metadata from LMDB."""
         with self._env.begin() as txn:
             # Load keys dictionary
@@ -368,7 +367,12 @@ class DatasetFromLmdb(torch.utils.data.Dataset):
                 'id': np.array(self._channel_names, dtype='U'),
             }
             if self._xyz_coords is not None:
-                units_data['imaging_plane_xy'] = np.array(self._xyz_coords)[:, :2].astype(np.float32)
+                xyz_array = np.array(self._xyz_coords).astype(np.float32)
+                # Store full xyz_id (3D coordinates) for DIVER STCPE
+                units_data['xyz_id'] = xyz_array
+                # Also store imaging_plane_xy (2D) for backward compatibility
+                if xyz_array.shape[1] >= 2:
+                    units_data['imaging_plane_xy'] = xyz_array[:, :2]
             data.units = ArrayDict(**units_data)
         
         # Add time series data as RegularTimeSeries

@@ -345,14 +345,14 @@ class DataModuleForDiver(DataModule):
     This class inherits from DataModule but:
     - Takes DIVER's argparse.Namespace instead of Hydra DictConfig
     - Uses DatasetFromLmdb instead of HDF5-based Dataset
-    - Uses a standalone tokenizer (not dependent on POYO model)
+    - Uses model.tokenize (same as DataModule) for transforms
     
     The dataloader produces batches with keys:
         dict_keys(['model_inputs', 'target_values', 'target_weights', 'session_id', 'absolute_start', 'eval_mask'])
     """
     
     def __init__(self, params, task_config: dict = None):
-        """Initialize DataModuleForDiver.
+        """Initialize DataModuleForDiver (config only, no dataset creation).
         
         Args:
             params: argparse.Namespace from DIVER containing:
@@ -370,62 +370,82 @@ class DataModuleForDiver(DataModule):
         """
         # Skip DataModule's __init__ which expects DictConfig
         L.LightningDataModule.__init__(self)
-        import pdb; pdb.set_trace()
         self.params = params
         self.task_config = task_config or {}
         self.log = logging.getLogger(__name__)
         
-        # Get parameters from task_config (with fallbacks from params or defaults)
-        self.sequence_length = self.task_config.get('sequence_length', getattr(params, 'sequence_length', 1.0))
+        # Store parameters from task_config (with fallbacks from params or defaults)
+        # Note: self.sequence_length will be set in setup_dataset_and_link_model from model
+        self._default_sequence_length = self.task_config.get('sequence_length', getattr(params, 'sequence_length', 1.0))
         self.batch_size = getattr(params, 'batch_size', 32)
         self.num_workers = 0  # TODO for debug, CHANGE LATER: getattr(params, 'num_workers', 0)
         self.seed = getattr(params, 'seed', 42)
         self.num_targets = self.task_config.get('num_targets', 9)
         
-        # Get POYO-specific config from task_config
-        brainset_id = self.task_config.get('brainset_id', 'lmdb_dataset')
-        session_id = self.task_config.get('session_id', 'session_001')
-        sampling_rate = self.task_config.get('sampling_rate', 500.0)
-        multitask_readout = self.task_config.get('multitask_readout', [])
+        # Store LMDB config params (will be used in setup_dataset_and_link_model)
+        self._brainset_id = self.task_config.get('brainset_id', 'lmdb_dataset')
+        self._session_id = self.task_config.get('session_id', 'session_001')
+        self._sampling_rate = self.task_config.get('sampling_rate', 500.0)
+        self._multitask_readout = self.task_config.get('multitask_readout', [])
+        self._lmdb_path = getattr(params, 'datasets_dir', '/pscratch/sd/a/ahhyun/data/FACED/FACED_LMDB')
         
-        # LMDB path from params
-        lmdb_path = getattr(params, 'datasets_dir', '/pscratch/sd/a/ahhyun/data/FACED/FACED_LMDB')
+        self.log.info(f"DataModuleForDiver initialized (datasets will be created in setup_dataset_and_link_model)")
+    
+    def setup_dataset_and_link_model(self, model):
+        """Setup Dataset objects using model.tokenize as transform.
         
-        # Create LmdbConfig for DatasetFromLmdb
+        Args:
+            model: Model with tokenize method (like POYOPlus or DIVER model)
+        """
+        # Get sequence_length from model (like DataModule does)
+        self.sequence_length = getattr(model, 'sequence_length', self._default_sequence_length)
+        
         from torch_brain.data import DatasetFromLmdb, LmdbConfig
         
         lmdb_cfg = LmdbConfig(
-            lmdb_path=lmdb_path,
-            brainset_id=brainset_id,
-            session_id=session_id,
-            sampling_rate=sampling_rate,
-            multitask_readout=multitask_readout,
+            lmdb_path=self._lmdb_path,
+            brainset_id=self._brainset_id,
+            session_id=self._session_id,
+            sampling_rate=self._sampling_rate,
+            multitask_readout=self._multitask_readout,
         )
         
-        # Create datasets for each split - same lmdb_config, different split parameter
+        # Create datasets for each split using model.tokenize (same pattern as DataModule)
         self.train_dataset = DatasetFromLmdb(
             lmdb_config=lmdb_cfg,
             split='train',
-            transform=self._create_tokenizer(),
+            transform=model.tokenize,
         )
         
         self.val_dataset = DatasetFromLmdb(
             lmdb_config=lmdb_cfg,
             split='valid',  # Note: might be 'valid' or 'val' depending on LMDB keys
-            transform=self._create_tokenizer(),
+            transform=model.tokenize,
         )
         
         self.test_dataset = DatasetFromLmdb(
             lmdb_config=lmdb_cfg,
             split='test',
-            transform=self._create_tokenizer(),
+            transform=model.tokenize,
         )
         
-        self.log.info(f"DataModuleForDiver initialized with LMDB path: {lmdb_path}")
-    
-    def _create_tokenizer(self): #!TODO : patch -> CNN -> backbone.
-        """Create a standalone tokenizer that produces POYO-style batch format.
+        self._init_model_vocab(model)
         
+        self.log.info(f"DataModuleForDiver: Datasets created with LMDB path: {self._lmdb_path}")
+    
+    def _init_model_vocab(self, model):
+        """Initialize model vocab if model supports it."""
+        # Check if model has the vocab initialization methods (like POYOPlus)
+        if hasattr(model, 'unit_emb') and hasattr(model.unit_emb, 'initialize_vocab'):
+            model.unit_emb.initialize_vocab(self.get_unit_ids())
+        if hasattr(model, 'session_emb') and hasattr(model.session_emb, 'initialize_vocab'):
+            model.session_emb.initialize_vocab(self.get_session_ids())
+    
+    # ==================== Legacy tokenizer (kept for reference) ====================
+    def _create_tokenizer_legacy(self): 
+        """[LEGACY] Standalone tokenizer that produces POYO-style batch format.
+        
+        NOTE: This is kept for reference. Use model.tokenize instead.
         Returns a callable that transforms temporaldata.Data -> POYO batch dict
         """
         sequence_length = self.sequence_length
@@ -485,6 +505,27 @@ class DataModuleForDiver(DataModule):
             
             output_session_index = np.repeat(session_index, len(output_timestamps))
             
+            # === Extract data_info for DIVER (xyz_id, modality, etc.) ===
+            data_info = {
+                'modality': 'EEG',
+                'ch_type': 'EEG',
+            }
+            # Get xyz_id from data.units if available (from LMDB)
+            if hasattr(data, 'units'):
+                if hasattr(data.units, 'xyz_id'):
+                    data_info['xyz_id'] = np.array(data.units.xyz_id, dtype=np.float32)
+                elif hasattr(data.units, 'imaging_plane_xy'):
+                    # Extend 2D to 3D with zeros for z
+                    xy = np.array(data.units.imaging_plane_xy, dtype=np.float32)
+                    xyz = np.zeros((xy.shape[0], 3), dtype=np.float32)
+                    xyz[:, :2] = xy
+                    data_info['xyz_id'] = xyz
+                else:
+                    # Default: NaN coordinates (will use dummy positional encoding)
+                    data_info['xyz_id'] = np.full((N, 3), np.nan, dtype=np.float32)
+            else:
+                data_info['xyz_id'] = np.full((N, 3), np.nan, dtype=np.float32)
+            
             # === Build the POYO-style dict ===
             data_dict = {
                 "model_inputs": {
@@ -508,20 +549,13 @@ class DataModuleForDiver(DataModule):
                 "session_id": data.session.id,
                 "absolute_start": getattr(data, 'absolute_start', 0.0),
                 "eval_mask": chain({'label': np.array([True] * len(label))}, allow_missing_keys=True),
+                # Data info for DIVER embedding (xyz_id required by STCPE)
+                "data_info": data_info,
             }
             
             return data_dict
         
         return tokenize
-    
-    def setup_dataset_and_link_model(self, model=None):
-        """Override parent - datasets are already set up in __init__, model not needed."""
-        self.log.info("DataModuleForDiver: Datasets already initialized, skipping model linking.")
-        pass
-    
-    def _init_model_vocab(self, model=None):
-        """Override parent - no model vocab initialization needed."""
-        pass
     
     # Note: get_session_ids, get_unit_ids, get_recording_config_dict 
     # are inherited from DataModule (identical implementation)
@@ -546,7 +580,7 @@ class DataModuleForDiver(DataModule):
             registry = {'label': {'type': 'classification', 'num_classes': self.num_targets}}
         return registry
     
-    def get_metrics(self):
+    def get_metrics(self): # TODO : 필요없으면 날리기!?
         """Return metrics for evaluation from task_config's multitask_readout.
         
         Returns:

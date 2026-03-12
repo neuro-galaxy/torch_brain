@@ -65,7 +65,8 @@ class CaPOYO(nn.Module):
         self.readout_specs = readout_specs
 
         # input value map
-        self.input_value_map = nn.Linear(1, dim // 2)
+        self.input_value_map = nn.Linear(1, dim // 2) #! import capoyo ; DIVER model 으로만 바꾼다던지. batchsize 다른게 어떻게 처리되는지? 그냥 linear 하면 문제일텐데.
+        # B,C,N zero padding 된 것끼리 attention 
         nn.init.trunc_normal_(self.input_value_map.weight, 0, emb_init_scale)
         nn.init.zeros_(self.input_value_map.bias)
         # ^ initialize weights for faster convergence
@@ -193,9 +194,10 @@ class CaPOYO(nn.Module):
                 "Session vocabulary has not been initialized, please use "
                 "`model.session_emb.initialize_vocab(session_ids)`"
             )
-
+        import pdb; 
+        pdb.set_trace()
         # input
-        inputs = cat(
+        inputs = cat( #input_value_map ; input_value -> model input 하는 건데, 우리는 그냥 DIVER model 이 되는 거임.
             (self.input_value_map(input_values), self.unit_emb(input_unit_index)),
             dim=-1,
         )
