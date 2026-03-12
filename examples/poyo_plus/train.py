@@ -442,7 +442,7 @@ class DataModuleForDiver(DataModule):
             model.session_emb.initialize_vocab(self.get_session_ids())
     
     # ==================== Legacy tokenizer (kept for reference) ====================
-    def _create_tokenizer_legacy(self): 
+    def _create_tokenizer_legacy_outdated(self): 
         """[LEGACY] Standalone tokenizer that produces POYO-style batch format.
         
         NOTE: This is kept for reference. Use model.tokenize instead.
