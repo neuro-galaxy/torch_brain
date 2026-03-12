@@ -367,6 +367,19 @@ class DataModuleForDiver(DataModule):
                 - sequence_length: length of each sequence in seconds
                 - num_targets: number of output classes
                 - multitask_readout: list of readout configurations
+                
+        Originally in the POYO code it's simple as setting self.cfg, self.log.
+        #(Pdb)  cfg
+        #{'data_root': '../poyo/data/processed/', 'log_dir': './logs', 
+        # 'train_transforms': [{'_target_': 'torch_brain.transforms.UnitDropout', 'field': 'calcium_traces.df_over_f', 'min_units': 10, 'mode_units': 50, 'max_units': 300, 'tail_right': 100}], 
+        # 'eval_transforms': [], 'epochs': 100, 'batch_size': 64, 'eval_epochs': 1, 'eval_batch_size': None, 'seed': 42, 'sanity_check_validation': False, 
+        # 'optim': {'base_lr': 3.125e-05, 'weight_decay': 0.0001, 'lr_decay_start': 0.5}, 'wandb': {'enable': False, 'entity': None, 'project': 'poyo', 'run_name': 'capoyo_single_session', 'log_model': False}, 
+        # 'precision': 32, 'nodes': 1, 'gpus': 1, 'num_workers': 1, 'ckpt_path': None, 
+        # 'model': {'_target_': 'torch_brain.models.CaPOYO', 'sequence_length': 1.0, 'latent_step': 0.125, 'num_latents_per_step': 16, 'dim': 64, 'dim_head': 64, 'depth': 6, 'cross_heads': 2, 'self_heads': 8, 'ffn_dropout': 0.2, 'lin_dropout': 0.4, 'atn_dropout': 0.2}, 
+        # 'dataset': [{'selection': [{'brainset': 'allen_visual_coding_ophys_2016', 'sessions': ['710504563']}], 'config': {'sampling_intervals_modifier': 'sampling_intervals = sampling_intervals & data.drifting_gratings.coalesce(0.3)\n', 
+        # 'multitask_readout': [{'readout_id': 'drifting_gratings_orientation', 'timestamp_key': 'drifting_gratings.timestamps', 'value_key': 'drifting_gratings.orientation_id', 'metrics': [{'metric': {'_target_': 'torchmetrics.Accuracy', 'task': 'multiclass', 'num_classes': 8}}]}, {'readout_id': 'drifting_gratings_temporal_frequency', 'timestamp_key': 'drifting_gratings.timestamps', 'value_key': 'drifting_gratings.temporal_frequency_id', 'metrics': [{'metric': {'_target_': 'torchmetrics.Accuracy', 'task': 'multiclass', 'num_classes': 5}}]}]}}]}
+
+
         """
         # Skip DataModule's __init__ which expects DictConfig
         L.LightningDataModule.__init__(self)
@@ -382,49 +395,46 @@ class DataModuleForDiver(DataModule):
         self.seed = getattr(params, 'seed', 42)
         self.num_targets = self.task_config.get('num_targets', 9)
         
-        # Store LMDB config params (will be used in setup_dataset_and_link_model)
-        self._brainset_id = self.task_config.get('brainset_id', 'lmdb_dataset')
-        self._session_id = self.task_config.get('session_id', 'session_001')
-        self._sampling_rate = self.task_config.get('sampling_rate', 500.0)
-        self._multitask_readout = self.task_config.get('multitask_readout', [])
-        self._lmdb_path = getattr(params, 'datasets_dir', '/pscratch/sd/a/ahhyun/data/FACED/FACED_LMDB')
+        # Create LMDB config (datasets will be created in setup_dataset_and_link_model)
+        from torch_brain.data import LmdbConfig
+        
+        self._lmdb_path = getattr(params, 'datasets_dir', '/pscratch/sd/a/ahhyun/data/FACED/FACED_LMDB') #* TODO: is this needed? lmdb_cfg alr has path.
+        self._lmdb_cfg = LmdbConfig(
+            lmdb_path=self._lmdb_path,
+            brainset_id=self.task_config.get('brainset_id', 'lmdb_dataset'),
+            session_id=self.task_config.get('session_id', 'session_001'),
+            sampling_rate=self.task_config.get('sampling_rate', 500.0),
+            multitask_readout=self.task_config.get('multitask_readout', []),
+        )
         
         self.log.info(f"DataModuleForDiver initialized (datasets will be created in setup_dataset_and_link_model)")
     
-    def setup_dataset_and_link_model(self, model):
+    def setup_dataset_and_link_model(self, model: POYOPlus):
         """Setup Dataset objects using model.tokenize as transform.
         
         Args:
-            model: Model with tokenize method (like POYOPlus or DIVER model)
+            model: Model with tokenize method
         """
         # Get sequence_length from model (like DataModule does)
         self.sequence_length = getattr(model, 'sequence_length', self._default_sequence_length)
         
-        from torch_brain.data import DatasetFromLmdb, LmdbConfig
-        
-        lmdb_cfg = LmdbConfig(
-            lmdb_path=self._lmdb_path,
-            brainset_id=self._brainset_id,
-            session_id=self._session_id,
-            sampling_rate=self._sampling_rate,
-            multitask_readout=self._multitask_readout,
-        )
+        from torch_brain.data import DatasetFromLmdb
         
         # Create datasets for each split using model.tokenize (same pattern as DataModule)
         self.train_dataset = DatasetFromLmdb(
-            lmdb_config=lmdb_cfg,
+            lmdb_config=self._lmdb_cfg,
             split='train',
-            transform=model.tokenize,
+            transform=model.tokenize, #TODO : for now, it's just model.tokenize. should there be transform for DIVER be incorporated?
         )
         
         self.val_dataset = DatasetFromLmdb(
-            lmdb_config=lmdb_cfg,
+            lmdb_config=self._lmdb_cfg,
             split='valid',  # Note: might be 'valid' or 'val' depending on LMDB keys
-            transform=model.tokenize,
+            transform=model.tokenize, #TODO : eval_transform can be different. check.
         )
         
         self.test_dataset = DatasetFromLmdb(
-            lmdb_config=lmdb_cfg,
+            lmdb_config=self._lmdb_cfg,
             split='test',
             transform=model.tokenize,
         )
@@ -434,12 +444,9 @@ class DataModuleForDiver(DataModule):
         self.log.info(f"DataModuleForDiver: Datasets created with LMDB path: {self._lmdb_path}")
     
     def _init_model_vocab(self, model):
-        """Initialize model vocab if model supports it."""
-        # Check if model has the vocab initialization methods (like POYOPlus)
-        if hasattr(model, 'unit_emb') and hasattr(model.unit_emb, 'initialize_vocab'):
-            model.unit_emb.initialize_vocab(self.get_unit_ids())
-        if hasattr(model, 'session_emb') and hasattr(model.session_emb, 'initialize_vocab'):
-            model.session_emb.initialize_vocab(self.get_session_ids())
+        """Initialize model vocab if model supports it.""" #TODO : check if works.
+        model.unit_emb.initialize_vocab(self.get_unit_ids())
+        model.session_emb.initialize_vocab(self.get_session_ids())
     
     # ==================== Legacy tokenizer (kept for reference) ====================
     def _create_tokenizer_legacy_outdated(self): 

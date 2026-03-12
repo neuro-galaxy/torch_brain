@@ -80,6 +80,10 @@ class DatasetFromLmdb(torch.utils.data.Dataset):
         ... )
         >>> dataset = DatasetFromLmdb(lmdb_config=config, split="train")
         >>> sample = dataset[DatasetIndex("faced/session_001", 0.0, 1.0)]
+        
+(Pdb) lmdb_config
+LmdbConfig(lmdb_path='/global/cfs/cdirs/m4750/DIVER/PRETRAINING_DATA_LMDB/arch_search_June_2025/FACED', brainset_id='faced', session_id='faced_session', sampling_rate=500.0, patch_duration=None, sample_duration=None, channel_key='channel_names', xyz_key='xyz_id', multitask_readout=[{'readout_id': 'emotion_classification', 'num_classes': 9, 'weight': 1.0, 'metrics': [{'metric': {'_target_': 'torchmetrics.Accuracy', 'task': 'multiclass', 'num_classes': 9}}, {'metric': {'_target_': 'torchmetrics.F1Score', 'task': 'multiclass', 'num_classes': 9, 'average': 'macro'}}]}], sampling_intervals_modifier=None)
+
     """
     
     _check_for_data_leakage_flag: bool = True
@@ -103,11 +107,11 @@ class DatasetFromLmdb(torch.utils.data.Dataset):
         self.config = lmdb_config #(Pdb) lmdb_config
                                     #LmdbConfig(lmdb_path='/global/cfs/cdirs/m4750/DIVER/PRETRAINING_DATA_LMDB/arch_search_June_2025/FACED', brainset_id='faced', session_id='faced_session', sampling_rate=500.0, patch_duration=1.0, sample_duration=10.0, channel_key='channel_names', xyz_key='xyz_id', multitask_readout=[], sampling_intervals_modifier=None)
         self.split = split
-        self.transform = transform #! <function DataModuleForDiver._create_tokenizer.<locals>.tokenize at 0x7ef7b2e1eca0>
+        self.transform = transform 
         # TODO : should get transform from model. 수인쌤이랑 이야기해보기. Also possible to do 
         # TODO : POYO tokenizer.
         
-        # Default prefix functions
+        # Default prefix functions (Local ID → Global Unique ID)
         self.unit_id_prefix_fn = unit_id_prefix_fn or (lambda data: f"{data.brainset.id}/{data.session.id}/")
         self.session_id_prefix_fn = session_id_prefix_fn or (lambda data: f"{data.brainset.id}/")
         self.subject_id_prefix_fn = subject_id_prefix_fn or (lambda data: f"{data.brainset.id}/")
@@ -207,7 +211,7 @@ class DatasetFromLmdb(torch.utils.data.Dataset):
         logger.info(f"Sample shape: {self._sample_shape}, sample_duration: {self.config.sample_duration}s")
     
     def _build_time_index(self):
-        """Build index mapping time to sample indices for efficient slicing."""
+        """Build index mapping time to sample indices for efficient slicing. Needed when sampler requests specific time intervals -> used in get()"""
         self._sample_start_times = []
         self._sample_end_times = []
         
@@ -340,10 +344,13 @@ class DatasetFromLmdb(torch.utils.data.Dataset):
             if end_idx > start_idx:
                 all_data.append(sample_data[start_idx:end_idx])
             
-            # Store label with timestamp at sample center
-            if 'label' in sample:
-                all_labels.append(sample['label'])
-                label_timestamps.append((sample_start + sample_end) / 2)
+            # Store label with timestamp at OVERLAP center (not sample center)
+            # This ensures the label falls within the requested time range
+            # For DIVER pipeline, label MUST exist in LMDB
+            assert 'label' in sample, f"LMDB sample '{key}' missing 'label' key. DIVER pipeline requires labels."
+            all_labels.append(sample['label'])
+            # Use overlap_start/overlap_end to ensure timestamp is within [start, end]
+            label_timestamps.append((overlap_start + overlap_end) / 2)
         
         # Concatenate all data
         continuous_data = np.concatenate(all_data, axis=0).astype(np.float32)
@@ -398,27 +405,42 @@ class DatasetFromLmdb(torch.utils.data.Dataset):
             )
         )
         
-        # Add task labels if present (e.g., drifting_gratings for classification)
-        if all_labels:
-            label_timestamps = np.array(label_timestamps) - start  # Relative to slice start
-            # Filter labels within the slice
-            mask = (label_timestamps >= 0) & (label_timestamps < (end - start))
-            
-            if np.any(mask):
-                filtered_timestamps = label_timestamps[mask]
-                filtered_labels = np.array(all_labels)[mask]
-                
-                data.drifting_gratings = IrregularTimeSeries(
-                    timestamps=filtered_timestamps,
-                    orientation_id=filtered_labels.astype(np.int64),
-                    orientation=filtered_labels.astype(np.float32),
-                    temporal_frequency_id=np.zeros_like(filtered_labels, dtype=np.int64),
-                    temporal_frequency=np.ones_like(filtered_labels, dtype=np.float32),
-                    domain=Interval(
-                        start=np.array([0.0]),
-                        end=np.array([end - start])
-                    )
-                )
+        # Add task labels (required for DIVER pipeline)
+        # Uses generic 'target' instead of task-specific names like 'drifting_gratings'
+        assert all_labels, "No labels found in the requested time range. DIVER pipeline requires labels."
+        
+        label_timestamps = np.array(label_timestamps) - start  # Relative to slice start
+        # Filter labels within the slice
+        mask = (label_timestamps >= 0) & (label_timestamps < (end - start))
+        
+        assert np.any(mask), f"No labels within time range [{start}, {end}]. Check your sampling intervals."
+        
+        filtered_timestamps = label_timestamps[mask]
+        filtered_labels = np.array(all_labels)[mask]
+        
+        # Generic target structure for any classification/regression task
+        data.target = IrregularTimeSeries(
+            timestamps=filtered_timestamps,
+            label=filtered_labels.astype(np.int64),  # Classification label
+            domain=Interval(
+                start=np.array([0.0]),
+                end=np.array([end - start])
+            )
+        )
+        
+        # Keep drifting_gratings for backward compatibility with POYO tokenizers
+        # TODO: Remove this once all tokenizers use data.target
+        data.drifting_gratings = IrregularTimeSeries(
+            timestamps=filtered_timestamps,
+            orientation_id=filtered_labels.astype(np.int64),
+            orientation=filtered_labels.astype(np.float32),
+            temporal_frequency_id=np.zeros_like(filtered_labels, dtype=np.int64),
+            temporal_frequency=np.ones_like(filtered_labels, dtype=np.float32),
+            domain=Interval(
+                start=np.array([0.0]),
+                end=np.array([end - start])
+            )
+        )
         
         # Add config for downstream processing
         data.config = self.recording_dict[recording_id]["config"]
@@ -448,11 +470,16 @@ class DatasetFromLmdb(torch.utils.data.Dataset):
         
         Returns:
             Dictionary mapping recording_id to Interval object
+        
+        For DIVER LMDB: Returns intervals aligned with sample boundaries.
+        Each sample becomes one interval, so RandomFixedWindowSampler will
+        pick windows that exactly match sample boundaries (no mid-sample windows).
         """
-        # For LMDB, the entire loaded data is one continuous interval
+        # DIVER LMDB: Return intervals aligned with each sample's boundaries
+        # This ensures RandomFixedWindowSampler picks windows that match samples exactly
         sampling_intervals = Interval(
-            start=np.array([0.0]),
-            end=np.array([self._total_duration])
+            start=np.array(self._sample_start_times),
+            end=np.array(self._sample_end_times)
         )
         
         # Apply sampling_intervals_modifier if specified

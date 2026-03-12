@@ -485,8 +485,117 @@ class CaPOYO(nn.Module):
         )
         return latent_index, latent_timestamps
 
+    
     def _tokenize_eeg(self, data: Data) -> Dict:
-        """EEG tokenization that returns raw ormat for DIVER processing."""
+        """Transform temporaldata.Data to POYO-style dict format.
+            
+            Produces:
+                dict_keys(['model_inputs', 'target_values', 'target_weights', 'session_id', 'absolute_start', 'eval_mask', 'data_info'])
+                data_info: dict_keys(['modality', 'ch_type', 'xyz_id']) => for DIVER!
+        """
+        import numpy as np
+        from torch_brain.data import pad8, track_mask8, chain
+        from torch_brain.utils import create_linspace_latent_tokens
+            
+        start, end = 0, self.sequence_length
+        
+        # === Prepare input (EEG data as continuous signal) ===
+        # data.eeg has shape (time, channels) 
+        eeg_data = data.eeg.values  # (T, N_channels)
+        timestamps = data.eeg.timestamps  # (T,)
+        unit_ids = data.units.id  # channel IDs
+        
+        T, N = eeg_data.shape #! TODO : might be needed when converting back to POYO format.(for input mask!) should it be saved as self.~ ?
+        
+        # Flatten to (T*N,) for input - each timepoint x channel is a token
+        input_values = eeg_data.flatten().reshape(-1, 1)  # (T*N, 1)
+        
+        # Create timestamps for each (time, channel) pair
+        input_timestamps = np.repeat(timestamps, N)  # (T*N,)
+        
+        # Create unit indices - map local channel IDs to global vocab indices (like calcium tokenizer)
+        local_to_global_map = np.array(self.unit_emb.tokenizer(unit_ids))
+        input_unit_index = np.tile(local_to_global_map, T)  # (T*N,)
+        
+        # === Prepare latents ===
+        latent_index, latent_timestamps = self._create_latent_tokens()
+        
+        # === Prepare outputs ===
+        session_index = self.session_emb.tokenizer(data.session.id)
+        
+        # Get label from data.target (DIVER pipeline) or fallback to drifting_gratings (POYO compat)
+        if hasattr(data, 'target') and hasattr(data.target, 'label'):
+            # DIVER pipeline: use data.target.label
+            label = data.target.label
+            label_timestamps = data.target.timestamps
+        elif hasattr(data, 'drifting_gratings') and hasattr(data.drifting_gratings, 'orientation_id'):
+            # POYO backward compatibility
+            label = data.drifting_gratings.orientation_id
+            label_timestamps = data.drifting_gratings.timestamps
+        else:
+            raise ValueError("No label found in data. Expected data.target.label or data.drifting_gratings.orientation_id")
+        
+        output_timestamps = label_timestamps
+        output_values = {'label': label}
+        output_weights = {'label': np.ones_like(label, dtype=np.float32)} #All set to 1 since 
+        output_decoder_index = np.zeros_like(label)  # Single decoder
+        
+        output_session_index = np.repeat(session_index, len(output_timestamps))
+        
+        # === Extract data_info for DIVER (xyz_id, modality, etc.) ===
+        data_info = {
+            'modality': 'EEG',
+            'ch_type': 'EEG',
+        }
+        # Get xyz_id from data.units if available (from LMDB)
+        if hasattr(data, 'units'):
+            if hasattr(data.units, 'xyz_id'):
+                data_info['xyz_id'] = np.array(data.units.xyz_id, dtype=np.float32)
+            elif hasattr(data.units, 'imaging_plane_xy'):
+                # Extend 2D to 3D with zeros for z
+                xy = np.array(data.units.imaging_plane_xy, dtype=np.float32)
+                xyz = np.zeros((xy.shape[0], 3), dtype=np.float32)
+                xyz[:, :2] = xy
+                data_info['xyz_id'] = xyz
+            else:
+                # Default: NaN coordinates (will use dummy positional encoding)
+                data_info['xyz_id'] = np.full((N, 3), np.nan, dtype=np.float32)
+        else:
+            data_info['xyz_id'] = np.full((N, 3), np.nan, dtype=np.float32)
+        
+        # === Build the POYO-style dict ===
+        data_dict = {
+            "model_inputs": {
+                # Input sequence (keys/values for encoder)
+                "input_unit_index": pad8(input_unit_index),
+                "input_timestamps": pad8(input_timestamps),
+                "input_values": pad8(input_values),
+                "input_mask": track_mask8(input_unit_index),
+                # Latent sequence
+                "latent_index": latent_index,
+                "latent_timestamps": latent_timestamps,
+                # Output query sequence (queries for decoder)
+                "output_session_index": pad8(output_session_index),
+                "output_timestamps": pad8(output_timestamps),
+                "output_decoder_index": pad8(output_decoder_index),
+            },
+            # Ground truth targets
+            "target_values": chain(output_values, allow_missing_keys=True),
+            "target_weights": chain(output_weights, allow_missing_keys=True),
+            # Extra data for evaluation
+            "session_id": data.session.id,
+            "absolute_start": getattr(data, 'absolute_start', 0.0),
+            "eval_mask": chain({'label': np.array([True] * len(label))}, allow_missing_keys=True),
+            # Data info for DIVER embedding (xyz_id required by STCPE). #! ONLY FOR DIVER
+            "data_info": data_info,
+        }
+        
+        return data_dict
+        
+
+
+    def _tokenize_eeg_outdated(self, data: Data) -> Dict:
+        """EEG tokenization that returns raw format for DIVER processing."""
         ### Extract EEG data
         eeg_data = data.eeg.values 
         x = eeg_data.T  
