@@ -20,7 +20,7 @@ from brainsets.descriptions import (
 from brainsets.taxonomy import Species
 
 from torch_brain.dataset import Dataset, DatasetIndex, NestedDataset
-from torch_brain.dataset.mixins import SpikingDatasetMixin, SEEGDatasetMixin
+from torch_brain.dataset.mixins import SpikingDatasetMixin, MultiChannelDatasetMixin
 
 
 def create_spiking_data(brainset_id, subject_id, session_id, length):
@@ -80,16 +80,19 @@ def create_seeg_data(brainset_id, subject_id, session_id, length, sampling_rate=
     )
 
 
-class _SEEGDatasetWithConstant(SEEGDatasetMixin, Dataset):
+class _MultiChannelDatasetWithConstant(MultiChannelDatasetMixin, Dataset):
     pass
 
 
-class _SEEGDatasetWithConstantUniquify(_SEEGDatasetWithConstant):
-    seeg_dataset_mixin_uniquify_channel_ids = {"subject_id", "session_id"}
+class _MultiChannelDatasetWithConstantUniquify(_MultiChannelDatasetWithConstant):
+    seeg_dataset_mixin_uniquify_channel_ids_with_subject = True
+    seeg_dataset_mixin_uniquify_channel_ids_with_session = True
 
 
-class _SEEGDatasetWithConstantUniquifySubjectOnly(_SEEGDatasetWithConstant):
-    seeg_dataset_mixin_uniquify_channel_ids = {"subject_id"}
+class _MultiChannelDatasetWithConstantUniquifySubjectOnly(
+    _MultiChannelDatasetWithConstant
+):
+    seeg_dataset_mixin_uniquify_channel_ids_with_subject = True
 
 
 @pytest.fixture
@@ -326,32 +329,32 @@ class TestSpikingDatasetMixin:
         assert actual_unit_ids == expected_unit_ids
 
 
-class TestSEEGDatasetMixin:
+class TestMultiChannelDatasetMixin:
     def test_get_channel_ids_use_recording_view_ids(self, dummy_seeg_brainset):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
+        ds = _MultiChannelDatasetWithConstant(dummy_seeg_brainset)
 
         all_ids = ds.get_channel_ids()
         assert all_ids == [
-            "ch0",
-            "ch0",
-            "ch1",
-            "ch1",
-            "ch2",
-            "ch2",
+            "alice/ch0",
+            "alice/ch1",
+            "alice/ch2",
+            "bob/ch0",
+            "bob/ch1",
+            "bob/ch2",
         ]
 
         included_ids = ds.get_channel_ids(included_only=True)
         assert included_ids == [
-            "ch0",
-            "ch0",
-            "ch2",
-            "ch2",
+            "alice/ch0",
+            "alice/ch2",
+            "bob/ch0",
+            "bob/ch2",
         ]
 
     def test_get_channel_ids_match_hook_uniquified_recording_ids(
         self, dummy_seeg_brainset
     ):
-        ds = _SEEGDatasetWithConstantUniquify(dummy_seeg_brainset)
+        ds = _MultiChannelDatasetWithConstantUniquify(dummy_seeg_brainset)
 
         recording_ids = ds.get_recording("session1").channels.id.tolist()
         assert recording_ids == [
@@ -381,7 +384,7 @@ class TestSEEGDatasetMixin:
     def test_get_channel_ids_match_hook_uniquified_subject_only_ids(
         self, dummy_seeg_brainset
     ):
-        ds = _SEEGDatasetWithConstantUniquifySubjectOnly(dummy_seeg_brainset)
+        ds = _MultiChannelDatasetWithConstantUniquifySubjectOnly(dummy_seeg_brainset)
 
         recording_ids = ds.get_recording("session1").channels.id.tolist()
         assert recording_ids == [
@@ -400,12 +403,15 @@ class TestSEEGDatasetMixin:
             "bob/ch2",
         ]
 
-    def test_get_recording_hook_rejects_invalid_uniquify_components(
+    def test_get_recording_hook_rejects_non_boolean_uniquify_flags(
         self, dummy_seeg_brainset
     ):
-        ds = _SEEGDatasetWithConstant(dummy_seeg_brainset)
-        ds.seeg_dataset_mixin_uniquify_channel_ids = {"subject_id", "bad_component"}
-        with pytest.raises(ValueError, match="Invalid channel uniquify components"):
+        ds = _MultiChannelDatasetWithConstant(dummy_seeg_brainset)
+        ds.seeg_dataset_mixin_uniquify_channel_ids_with_subject = "yes"
+        with pytest.raises(
+            TypeError,
+            match="seeg_dataset_mixin_uniquify_channel_ids_with_subject",
+        ):
             ds.get_recording("session1")
 
 

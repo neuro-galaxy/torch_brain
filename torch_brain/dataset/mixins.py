@@ -89,20 +89,23 @@ class CalciumImagingDatasetMixin:
         return np.sort(np.concatenate(ans)).tolist()
 
 
-class SEEGDatasetMixin:
+class MultiChannelDatasetMixin:
     """
-    Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing sEEG data.
+    Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing
+    multi-channel recordings (e.g., sEEG).
 
     Provides:
         - ``get_channel_ids()`` for retrieving sorted channel IDs from
           recording views returned by ``get_recording(...)``.
+        - Default channel-ID uniquification with ``subject.id`` only
+          (``seeg_dataset_mixin_uniquify_channel_ids_with_subject=True``,
+          ``seeg_dataset_mixin_uniquify_channel_ids_with_session=False``).
     """
 
-    # Channel-ID components used for hook-based uniquification.
-    # Supported values are "subject_id" and "session_id".
-    # Example: {"subject_id"} for subject-only prefixes.
-    seeg_dataset_mixin_uniquify_channel_ids: set[str] | frozenset[str] = frozenset()
-    _SEEG_CHANNEL_ID_COMPONENT_ORDER: tuple[str, str] = ("subject_id", "session_id")
+    # Channel-ID uniquification toggles used by get_recording_hook.
+    # Prefix order is always subject/session when enabled.
+    seeg_dataset_mixin_uniquify_channel_ids_with_subject: bool = True
+    seeg_dataset_mixin_uniquify_channel_ids_with_session: bool = False
 
     def get_recording_hook(self, data: Data):
         prefix = self._build_seeg_channel_id_prefix(data)
@@ -111,39 +114,36 @@ class SEEGDatasetMixin:
         super().get_recording_hook(data)
 
     def _normalize_channel_uniquify_components(self) -> tuple[str, ...]:
-        config = self.seeg_dataset_mixin_uniquify_channel_ids
-        valid_components = set(self._SEEG_CHANNEL_ID_COMPONENT_ORDER)
-
-        if not isinstance(config, (set, frozenset)):
+        with_subject = self.seeg_dataset_mixin_uniquify_channel_ids_with_subject
+        with_session = self.seeg_dataset_mixin_uniquify_channel_ids_with_session
+        if not isinstance(with_subject, bool):
             raise TypeError(
-                "'seeg_dataset_mixin_uniquify_channel_ids' must be a set or "
-                f"frozenset; got {type(config).__name__}."
+                "'seeg_dataset_mixin_uniquify_channel_ids_with_subject' must be "
+                f"bool; got {type(with_subject).__name__}."
+            )
+        if not isinstance(with_session, bool):
+            raise TypeError(
+                "'seeg_dataset_mixin_uniquify_channel_ids_with_session' must be "
+                f"bool; got {type(with_session).__name__}."
             )
 
-        normalized = set(config)
-        invalid = [item for item in normalized if item not in valid_components]
-        if invalid:
-            invalid_str = ", ".join(sorted(repr(item) for item in invalid))
-            raise ValueError(
-                "Invalid channel uniquify components: "
-                f"{invalid_str}. Expected subset of "
-                f"{sorted(valid_components)}."
-            )
-        return tuple(
-            component
-            for component in self._SEEG_CHANNEL_ID_COMPONENT_ORDER
-            if component in normalized
-        )
+        components = []
+        if with_subject:
+            components.append("subject_id")
+        if with_session:
+            components.append("session_id")
+        return tuple(components)
 
     def _build_seeg_channel_id_prefix(self, data: Data) -> str:
         components = self._normalize_channel_uniquify_components()
         if not components:
             return ""
 
-        component_values = {
-            "subject_id": getattr(getattr(data, "subject", None), "id", None),
-            "session_id": getattr(getattr(data, "session", None), "id", None),
-        }
+        component_values = {}
+        if "subject_id" in components:
+            component_values["subject_id"] = data.get_nested_attribute("subject.id")
+        if "session_id" in components:
+            component_values["session_id"] = data.get_nested_attribute("session.id")
         prefix_parts = [
             str(component_values[component])
             for component in components
@@ -158,16 +158,16 @@ class SEEGDatasetMixin:
 
         ``get_channel_ids`` aggregates ``rec.channels.id`` from ``get_recording(...)``.
         Any subject/session uniquification is applied there according to
-        ``seeg_dataset_mixin_uniquify_channel_ids``. ``included_only=True`` filters
-        by ``rec.channels.included`` before IDs are collected.
+        ``seeg_dataset_mixin_uniquify_channel_ids_with_subject`` and
+        ``seeg_dataset_mixin_uniquify_channel_ids_with_session``.
+        ``included_only=True`` filters by ``rec.channels.included`` before IDs are collected.
         """
         all_ids = []
         for rid in self.recording_ids:
             rec = self.get_recording(rid)
             ids = np.asarray(rec.channels.id).astype(str)
             if included_only:
-                included_mask = np.asarray(
-                    getattr(rec.channels, "included", np.ones(len(ids), dtype=bool)),
+                included_mask = np.asarray(rec.channels.included,
                     dtype=bool,
                 )
                 ids = ids[included_mask]
@@ -175,3 +175,7 @@ class SEEGDatasetMixin:
         if not all_ids:
             return []
         return np.sort(np.concatenate(all_ids).astype(str)).tolist()
+
+
+# Backwards-compatibility alias.
+SEEGDatasetMixin = MultiChannelDatasetMixin
