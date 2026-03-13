@@ -390,7 +390,10 @@ def rotary_attn_pytorch_func(
 
     # attention mask
     if attn_mask is not None:
-        attn_mask = rearrange(attn_mask, "b n -> b () () n")
+        if attn_mask.dim() == 2:
+            attn_mask = rearrange(attn_mask, "b n -> b () () n")
+        else:
+            attn_mask = rearrange(attn_mask, "b n l -> b () n l")
 
     # perform attention, by default will use the optimal attention implementation
     out = F.scaled_dot_product_attention(
@@ -458,11 +461,13 @@ def rotary_attn_xformers_func(
 
     # WARNING: this is very slow, avoid using attn_mask if possible, refer to xformers
     # documentation
-    attn_mask = (
-        repeat(attn_mask, "b m -> b h n m", h=num_heads, n=query.size(1))
-        if attn_mask is not None
-        else None
-    )
+    if attn_mask is not None:
+        if attn_mask.dim() == 2:
+            attn_mask = repeat(
+                attn_mask, "b m -> b h n m", h=num_heads, n=query.size(1)
+            )
+        else:
+            attn_mask = repeat(attn_mask, "b n m -> b h n m", h=num_heads)
     attn_bias = (
         attn_mask.to(query.dtype).masked_fill(attn_mask.logical_not(), float("-inf"))
         if attn_mask is not None
