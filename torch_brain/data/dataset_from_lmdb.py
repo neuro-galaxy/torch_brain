@@ -174,38 +174,69 @@ LmdbConfig(lmdb_path='/global/cfs/cdirs/m4750/DIVER/PRETRAINING_DATA_LMDB/arch_s
             else:
                 raise ValueError("No samples found for the specified split")
     
-    def _parse_sample_metadata(self, sample: Dict): #TODO : consider deleting fallback.
-        """Extract metadata from a sample."""
+    def _parse_sample_metadata(self, sample: Dict):
+        """Extract metadata from a sample.
+        
+        WARNING: This method will log warnings for missing/inferred fields.
+        All data should ideally be explicit in LMDB to avoid ambiguity.
+        """
         data_info = sample.get('data_info', {})
         
-        # Get channel information
+        # Get channel information - WARN if missing
         self._channel_names = data_info.get(self.config.channel_key, [])
         self._xyz_coords = data_info.get(self.config.xyz_key, None)
-        self._n_channels = len(self._channel_names) if self._channel_names else sample['sample'].shape[0]
         
-        # Get subject ID from data_info (fallback to 'subject_001' if not present)
-        self._subject_id = data_info.get('subject_id', 'subject_001')
+        if not self._channel_names:
+            self._n_channels = sample['sample'].shape[0]
+            logger.warning(f"LMDB missing '{self.config.channel_key}' in data_info. "
+                          f"Inferring n_channels={self._n_channels} from sample shape. "
+                          f"Consider adding channel_names to LMDB data_info.")
+        else:
+            self._n_channels = len(self._channel_names)
         
-        # Get sampling rate from data_info (overrides config if present)
-        # LMDB data_info uses 'resampling_rate' key
+        if self._xyz_coords is None:
+            logger.warning(f"LMDB missing '{self.config.xyz_key}' in data_info. "
+                          f"Spatial position encoding (STCPE) may not work correctly.")
+        
+        # Get subject ID - WARN if missing
+        if 'subject_id' not in data_info:
+            logger.warning("LMDB missing 'subject_id' in data_info. "
+                          "Using fallback 'subject_001'. "
+                          "Consider adding subject_id to LMDB data_info.")
+            self._subject_id = 'subject_001'
+        else:
+            self._subject_id = data_info['subject_id']
+        
+        # Get sampling rate - WARN if overriding config
         if 'resampling_rate' in data_info:
-            self.config.sampling_rate = float(data_info['resampling_rate'])
-            logger.info(f"Using sampling_rate from LMDB data_info: {self.config.sampling_rate} Hz")
+            lmdb_rate = float(data_info['resampling_rate'])
+            if self.config.sampling_rate != lmdb_rate:
+                logger.warning(f"LMDB data_info sampling_rate ({lmdb_rate} Hz) differs from "
+                              f"config ({self.config.sampling_rate} Hz). Using LMDB value.")
+            self.config.sampling_rate = lmdb_rate
         
-        # Infer sample shape and compute durations
+        # Infer sample shape and compute durations - WARN if inferring
         sample_data = sample['sample']  # Expected shape: (channels, patches, samples_per_patch)
         if sample_data.ndim == 3:
             n_channels, n_patches, samples_per_patch = sample_data.shape
             
-            # Compute durations from shape and sampling_rate
+            # Compute durations from shape and sampling_rate - WARN if inferring
             if self.config.patch_duration is None:
-                self.config.patch_duration = samples_per_patch / self.config.sampling_rate
+                self.config.patch_duration = samples_per_patch / self.config.sampling_rate #N/P
+                logger.warning(f"LmdbConfig.patch_duration not set. "
+                              f"Inferred {self.config.patch_duration}s from sample shape. "
+                              f"Consider setting patch_duration explicitly in config.")
             if self.config.sample_duration is None:
                 self.config.sample_duration = n_patches * self.config.patch_duration
+                logger.warning(f"LmdbConfig.sample_duration not set. "
+                              f"Inferred {self.config.sample_duration}s from sample shape. "
+                              f"Consider setting sample_duration explicitly in config.")
         else:
             # Handle 2D data (channels, time)
             if self.config.sample_duration is None:
                 self.config.sample_duration = sample_data.shape[1] / self.config.sampling_rate
+                logger.warning(f"LmdbConfig.sample_duration not set for 2D data. "
+                              f"Inferred {self.config.sample_duration}s from sample shape.")
         
         self._sample_shape = sample_data.shape
         logger.info(f"Sample shape: {self._sample_shape}, sample_duration: {self.config.sample_duration}s")
@@ -395,7 +426,14 @@ LmdbConfig(lmdb_path='/global/cfs/cdirs/m4750/DIVER/PRETRAINING_DATA_LMDB/arch_s
             )
         )
         
-        # Also keep calcium_traces for backward compatibility with POYO transforms
+        # BACKWARD COMPAT (AD-HOC): Also keep calcium_traces for POYO tokenizers
+        # WARNING: This copies EEG data as calcium df_over_f - semantically incorrect
+        # TODO: Remove once tokenizers use data.eeg directly
+        if not hasattr(self, '_warned_calcium_traces'):
+            logger.warning("AD-HOC: Storing EEG data in data.calcium_traces.df_over_f for "
+                          "backward compatibility with POYO tokenizers. This is semantically "
+                          "incorrect and should be removed once tokenizers use data.eeg.")
+            self._warned_calcium_traces = True
         data.calcium_traces = RegularTimeSeries(
             df_over_f=continuous_data,
             sampling_rate=self.config.sampling_rate,
@@ -428,14 +466,23 @@ LmdbConfig(lmdb_path='/global/cfs/cdirs/m4750/DIVER/PRETRAINING_DATA_LMDB/arch_s
             )
         )
         
-        # Keep drifting_gratings for backward compatibility with POYO tokenizers
-        # TODO: Remove this once all tokenizers use data.target
+        # BACKWARD COMPAT (AD-HOC): Keep drifting_gratings for POYO tokenizers
+        # WARNING: This maps generic labels to orientation_id/orientation fields
+        # temporal_frequency_* fields are FAKE (zeros/ones) - not real data!
+        # TODO: Remove once all tokenizers use data.target
+        if not hasattr(self, '_warned_drifting_gratings'):
+            logger.warning("AD-HOC: Storing labels in data.drifting_gratings for backward "
+                          "compatibility with POYO tokenizers. Fields 'orientation_id' and "
+                          "'orientation' contain the actual labels. Fields 'temporal_frequency_id' "
+                          "and 'temporal_frequency' are FAKE placeholder values (0/1). "
+                          "Tokenizers should use data.target.label instead.")
+            self._warned_drifting_gratings = True
         data.drifting_gratings = IrregularTimeSeries(
             timestamps=filtered_timestamps,
             orientation_id=filtered_labels.astype(np.int64),
             orientation=filtered_labels.astype(np.float32),
-            temporal_frequency_id=np.zeros_like(filtered_labels, dtype=np.int64),
-            temporal_frequency=np.ones_like(filtered_labels, dtype=np.float32),
+            temporal_frequency_id=np.zeros_like(filtered_labels, dtype=np.int64),  # FAKE
+            temporal_frequency=np.ones_like(filtered_labels, dtype=np.float32),    # FAKE
             domain=Interval(
                 start=np.array([0.0]),
                 end=np.array([end - start])
