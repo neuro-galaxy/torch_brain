@@ -264,3 +264,12 @@ register_modality(
     value_key="pupil.size_2d",
     loss_fn=torch_brain.nn.loss.MSELoss(),
 )
+
+register_modality(
+    "emotion_classification",
+    dim=9,
+    type=DataType.MULTINOMIAL,
+    timestamp_key="target.timestamps",
+    value_key="target.label",
+    loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
+)

@@ -83,7 +83,11 @@ class CaPOYO(nn.Module):
         self.unit_emb = InfiniteVocabEmbedding(dim // 2, init_scale=emb_init_scale)
         self.session_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.token_type_emb = Embedding(4, dim, init_scale=emb_init_scale)
-        self.task_emb = Embedding(len(readout_specs), dim, init_scale=emb_init_scale)
+        ##### suin 
+        # self.task_emb = Embedding(len(readout_specs), dim, init_scale=emb_init_scale)
+        max_task_id = max_task_id = max(spec.id for spec in readout_specs.values())
+        self.task_emb = Embedding(max_task_id + 1, dim, init_scale=emb_init_scale)
+        ######
         self.latent_emb = Embedding(
             num_latents_per_step, dim, init_scale=emb_init_scale
         )
@@ -342,7 +346,11 @@ class CaPOYO(nn.Module):
             for task_config in task_configs:
                 task_name = task_config['task_name']
                 task_timestamps = task_config['timestamps']
-                task_idx = self.readout_specs[task_name]['id']
+                ##### suin 
+                # task_idx = self.readout_specs[task_name]['id']
+                spec = self.readout_specs[task_name]
+                task_idx = spec.id if hasattr(spec, 'id') else spec['id']
+                #####
 
                 num_queries = len(task_timestamps)
                 elem_timestamps.extend(task_timestamps)
@@ -538,8 +546,13 @@ class CaPOYO(nn.Module):
         output_timestamps = label_timestamps
         output_values = {'label': label}
         output_weights = {'label': np.ones_like(label, dtype=np.float32)} #All set to 1 since 
-        output_decoder_index = np.zeros_like(label)  # Single decoder
         
+        ##### suin
+        # output_decoder_index = np.zeros_like(label)  # Single decoder
+        emotion_task_id = MODALITY_REGISTRY['emotion_classification'].id # TODO: #TODO: Hardcoded for emotion_classification. Should receive task_name as argument or from config? 
+        output_decoder_index = np.full_like(label, emotion_task_id, dtype=np.int64)
+        #####
+
         output_session_index = np.repeat(session_index, len(output_timestamps))
         
         # === Extract data_info for DIVER (xyz_id, modality, etc.) ===
@@ -591,80 +604,6 @@ class CaPOYO(nn.Module):
         }
         
         return data_dict
-        
-
-
-    def _tokenize_eeg_outdated(self, data: Data) -> Dict:
-        """EEG tokenization that returns raw format for DIVER processing."""
-        ### Extract EEG data
-        eeg_data = data.eeg.values 
-        x = eeg_data.T  
-
-        C, L = x.shape
-        patch_size = self.eeg_config["patch_size"]
-
-        N = L // patch_size  # num_patches
-
-        ### Create input timestamps and latents using helpers
-        input_timestamps = self._create_input_timestamps_eeg(C, N)
-        latent_index, latent_timestamps = self._create_latent_tokens()
-
-        ### Prepare input_values and input_unit_index for POYO compatibility
-        # Flatten (C, L) -> (C*L, 1) for input_values
-        input_values = rearrange(x, 'c l -> (c l) 1')  # (C*L, 1)
-
-        # Create input_unit_index: channel IDs repeated L times each
-        # [0,0,..,0 (L times), 1,1,..,1 (L times), , C-1,C-1,..C-1]
-        input_unit_index = np.repeat(np.arange(C, dtype=np.int64), L)  # (C*L,)
-
-        # Create per-sample timestamps for input_values
-        # Each sample gets timestamp based on its position in the sequence
-        sample_rate = L / self.sequence_length  # samples per second
-        sample_timestamps = np.arange(L, dtype=np.float32) / sample_rate  # (L,)
-        input_timestamps_full = np.tile(sample_timestamps, C)  # (C*L,) - repeat for each channel
-
-        ### prepare outputs
-        session_index = self.session_emb.tokenizer(data.session.id)
-
-        # Extract label/target information
-        if hasattr(data, 'drifting_gratings') and hasattr(data.drifting_gratings, 'orientation_id'):
-            label = data.drifting_gratings.orientation_id
-            label_timestamps = data.drifting_gratings.timestamps
-        else:
-            # Fallback: single label at sequence center
-            label = np.array([0])
-            label_timestamps = np.array([self.sequence_length / 2])
-
-        # Build output info (simplified for EEG)
-        # This assumes a single classification task
-        output_timestamps = label_timestamps
-        output_task_index = np.zeros(len(label_timestamps), dtype=np.int64)
-        session_index = np.repeat(session_index, len(output_timestamps))
-
-        data_dict = {
-            # Raw EEG for DIVER encoder
-            "x": x,  # (C, L) - used by DIVERCaPOYOFineTuneModel
-            "model_inputs": {
-                # Input sequence - POYO-compatible format
-                "input_values": pad8(input_values),  # (C*L, 1)
-                "input_unit_index": pad8(input_unit_index),  # (C*L,)
-                "input_timestamps": pad8(input_timestamps_full),  # (C*L,) - per-sample timestamps
-                "input_mask": track_mask8(input_unit_index),  # (C*L,)
-                # Latent sequence
-                "latent_index": latent_index,
-                "latent_timestamps": latent_timestamps,
-                # Output sequence
-                "output_session_index": pad8(session_index),
-                "output_timestamps": pad8(output_timestamps),
-                "output_decoder_index": pad8(output_task_index),
-            },
-            # Ground truth targets
-            "target_values": {"label": label},  # Simple dict for single task
-            "session_id": data.session.id,
-        }
-
-        return data_dict
-
 
     def _validate_params(self, sequence_length, latent_step):
         r"""Ensure: sequence_length, and latent_step are floating point numbers greater
