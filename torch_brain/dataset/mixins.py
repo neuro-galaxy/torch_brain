@@ -167,9 +167,7 @@ class MultiChannelDatasetMixin:
             rec = self.get_recording(rid)
             ids = np.asarray(rec.channels.id).astype(str)
             if included_only:
-                included_mask = np.asarray(rec.channels.included,
-                    dtype=bool,
-                )
+                included_mask = np.asarray(rec.channels.included, dtype=bool)
                 ids = ids[included_mask]
             all_ids.append(ids)
         if not all_ids:
