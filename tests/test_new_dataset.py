@@ -414,6 +414,22 @@ class TestMultiChannelDatasetMixin:
         ):
             ds.get_recording("session1")
 
+    def test_get_recording_hook_warns_for_session_only_uniquify(
+        self, dummy_seeg_brainset
+    ):
+        ds = _MultiChannelDatasetWithConstant(dummy_seeg_brainset)
+        ds.seeg_dataset_mixin_uniquify_channel_ids_with_subject = False
+        ds.seeg_dataset_mixin_uniquify_channel_ids_with_session = True
+
+        with pytest.warns(UserWarning, match="session only"):
+            rec = ds.get_recording("session1")
+
+        assert rec.channels.id.tolist() == [
+            "session1/ch0",
+            "session1/ch1",
+            "session1/ch2",
+        ]
+
 
 def test_ensure_index_has_namespace():
     from torch_brain.dataset.dataset import _ensure_index_has_namespace

@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 from temporaldata import Data
@@ -126,6 +128,16 @@ class MultiChannelDatasetMixin:
                 "'seeg_dataset_mixin_uniquify_channel_ids_with_session' must be "
                 f"bool; got {type(with_session).__name__}."
             )
+        if with_session and not with_subject:
+            warning_attr = "_seeg_dataset_mixin_warned_session_without_subject"
+            if not getattr(self, warning_attr, False):
+                warnings.warn(
+                    "Channel-id uniquification with session only can create "
+                    "cross-subject collisions when session.id is not globally unique.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                setattr(self, warning_attr, True)
 
         components = []
         if with_subject:
