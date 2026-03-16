@@ -579,6 +579,143 @@ def easy_symmetric_check(I1, I2, Iexp, op):
     easy_check(I2, I1, Iexp, op)
 
 
+def test_and_edge_cases():
+    op = lambda x, y: x & y
+    empty = Interval(np.array([]), np.array([]))
+
+    # both empty
+    easy_symmetric_check(empty, empty, empty, op)
+
+    # one empty
+    I1 = Interval.from_list([(1.0, 2.0)])
+    easy_symmetric_check(I1, empty, empty, op)
+
+    # full containment: one interval fully inside another
+    I1 = Interval.from_list([(0.0, 10.0)])
+    I2 = Interval.from_list([(3.0, 5.0)])
+    Iexp = Interval.from_list([(3.0, 5.0)])
+    easy_symmetric_check(I1, I2, Iexp, op)
+
+    # identical intervals
+    I1 = Interval.from_list([(1.0, 3.0), (5.0, 7.0)])
+    easy_symmetric_check(I1, I1, I1, op)
+
+    # single-segment with many-segment: Data.slice() hot path
+    I1 = Interval.from_list([(0.0, 1.0), (2.0, 3.0), (4.0, 5.0)])
+    I2 = Interval.from_list([(1.5, 4.5)])
+    Iexp = Interval.from_list([(2.0, 3.0), (4.0, 4.5)])
+    easy_check(I1, I2, Iexp, op)
+    Iexp_rev = Interval.from_list([(2.0, 3.0), (4.0, 4.5)])
+    easy_check(I2, I1, Iexp_rev, op)
+
+    # point interval intersected with a containing interval
+    point = Interval(np.array([2.0]), np.array([2.0]))
+    other = Interval(np.array([1.0]), np.array([3.0]))
+    Iexp = Interval(np.array([2.0]), np.array([2.0]))
+    easy_symmetric_check(point, other, Iexp, op)
+
+
+def test_or_edge_cases():
+    op = lambda x, y: x | y
+    empty = Interval(np.array([]), np.array([]))
+
+    # both empty
+    easy_symmetric_check(empty, empty, empty, op)
+
+    # one empty
+    I1 = Interval.from_list([(1.0, 2.0)])
+    easy_symmetric_check(I1, empty, I1, op)
+
+    # full containment
+    I1 = Interval.from_list([(0.0, 10.0)])
+    I2 = Interval.from_list([(3.0, 5.0)])
+    Iexp = Interval.from_list([(0.0, 10.0)])
+    easy_symmetric_check(I1, I2, Iexp, op)
+
+    # identical intervals
+    I1 = Interval.from_list([(1.0, 3.0), (5.0, 7.0)])
+    Iexp = Interval.from_list([(1.0, 3.0), (5.0, 7.0)])
+    easy_symmetric_check(I1, I1, Iexp, op)
+
+    # multiple containments in a row
+    I1 = Interval.from_list([(0.0, 20.0)])
+    I2 = Interval.from_list([(1.0, 3.0), (5.0, 7.0), (9.0, 11.0)])
+    Iexp = Interval.from_list([(0.0, 20.0)])
+    easy_symmetric_check(I1, I2, Iexp, op)
+
+    # adjacent intervals with empty operand must still merge
+    I1 = Interval.from_list([(0.0, 1.0), (1.0, 2.0)])
+    Iexp = Interval.from_list([(0.0, 2.0)])
+    easy_symmetric_check(I1, empty, Iexp, op)
+
+    I1 = Interval.from_list([(0.0, 1.0), (1.0, 2.0), (5.0, 6.0), (6.0, 7.0)])
+    Iexp = Interval.from_list([(0.0, 2.0), (5.0, 7.0)])
+    easy_symmetric_check(I1, empty, Iexp, op)
+
+    # adjacent self-union (doc example: adjacent | adjacent → merged)
+    adjacent = Interval(np.array([1.0, 2.0]), np.array([2.0, 3.0]))
+    Iexp = Interval.from_list([(1.0, 3.0)])
+    easy_symmetric_check(adjacent, adjacent, Iexp, op)
+
+    # point interval union
+    point = Interval(np.array([2.0]), np.array([2.0]))
+    other = Interval(np.array([1.0]), np.array([3.0]))
+    Iexp = Interval.from_list([(1.0, 3.0)])
+    easy_symmetric_check(point, other, Iexp, op)
+
+
+def test_overlapping_input_raises():
+    """Operations on non-disjoint or unsorted intervals must raise ValueError."""
+    valid = Interval.from_list([(1.0, 2.0)])
+    overlapping = Interval(np.array([1.0, 2.0]), np.array([3.0, 4.0]))
+    unsorted = Interval(np.array([3.0, 1.0]), np.array([4.0, 2.0]))
+
+    for bad in [overlapping, unsorted]:
+        with pytest.raises(ValueError):
+            bad | valid
+        with pytest.raises(ValueError):
+            valid | bad
+        with pytest.raises(ValueError):
+            bad & valid
+        with pytest.raises(ValueError):
+            valid & bad
+        with pytest.raises(ValueError):
+            bad.difference(valid)
+        with pytest.raises(ValueError):
+            valid.difference(bad)
+
+
+def test_difference_edge_cases():
+    op = lambda x, y: x.difference(y)
+    empty = Interval(np.array([]), np.array([]))
+
+    # both empty
+    easy_check(empty, empty, empty, op)
+
+    # self empty
+    I1 = Interval.from_list([(1.0, 2.0)])
+    easy_check(empty, I1, empty, op)
+
+    # other empty
+    I1 = Interval.from_list([(1.0, 2.0)])
+    easy_check(I1, empty, I1, op)
+
+    # self fully contains other
+    I1 = Interval.from_list([(0.0, 10.0)])
+    I2 = Interval.from_list([(3.0, 5.0)])
+    Iexp = Interval.from_list([(0.0, 3.0), (5.0, 10.0)])
+    easy_check(I1, I2, Iexp, op)
+
+    # identical intervals: difference should be empty
+    I1 = Interval.from_list([(1.0, 3.0), (5.0, 7.0)])
+    easy_check(I1, I1, empty, op)
+
+    # no overlap
+    I1 = Interval.from_list([(0.0, 1.0)])
+    I2 = Interval.from_list([(5.0, 6.0)])
+    easy_check(I1, I2, I1, op)
+
+
 def test_dilate():
     data = Interval(np.array([1.0, 5.0, 11.0]), np.array([2.0, 7.0, 12.0]))
 
@@ -943,3 +1080,108 @@ def test_subdivide_timekeys_preservation():
     assert np.allclose(result.end, expected_end)
     assert np.array_equal(result.go_cue_time, expected_go_cue_time)
     assert "go_cue_time" in result.timekeys()
+
+
+class TestPointIntervals:
+    """Point intervals (start == end) must be handled correctly."""
+
+    # -- union ---------------------------------------------------------
+
+    def test_union_point_or_empty_is_identity(self):
+        point = Interval(np.array([5.0]), np.array([5.0]))
+        empty = Interval(np.array([]), np.array([]))
+        easy_symmetric_check(point, empty, point, lambda x, y: x | y)
+
+    def test_union_two_distinct_points(self):
+        p1 = Interval(np.array([1.0]), np.array([1.0]))
+        p2 = Interval(np.array([3.0]), np.array([3.0]))
+        result = p1 | p2
+        assert len(result) == 2
+        assert np.allclose(result.start, [1.0, 3.0])
+        assert np.allclose(result.end, [1.0, 3.0])
+
+    def test_union_point_absorbed_by_range(self):
+        point = Interval(np.array([2.0]), np.array([2.0]))
+        rng = Interval(np.array([1.0]), np.array([3.0]))
+        expected = Interval.from_list([(1.0, 3.0)])
+        easy_symmetric_check(point, rng, expected, lambda x, y: x | y)
+
+    def test_union_duplicate_points_merge(self):
+        p = Interval(np.array([2.0]), np.array([2.0]))
+        result = p | p
+        assert len(result) == 1
+        assert result.start[0] == 2.0 and result.end[0] == 2.0
+
+    # -- intersection --------------------------------------------------
+
+    def test_intersect_point_with_containing_range(self):
+        point = Interval(np.array([2.0]), np.array([2.0]))
+        rng = Interval(np.array([1.0]), np.array([3.0]))
+        expected = Interval(np.array([2.0]), np.array([2.0]))
+        easy_symmetric_check(point, rng, expected, lambda x, y: x & y)
+
+    def test_intersect_point_with_point_same(self):
+        p = Interval(np.array([2.0]), np.array([2.0]))
+        expected = Interval(np.array([2.0]), np.array([2.0]))
+        easy_symmetric_check(p, p, expected, lambda x, y: x & y)
+
+    def test_intersect_point_with_point_different(self):
+        p1 = Interval(np.array([1.0]), np.array([1.0]))
+        p2 = Interval(np.array([3.0]), np.array([3.0]))
+        empty = Interval(np.array([]), np.array([]))
+        easy_symmetric_check(p1, p2, empty, lambda x, y: x & y)
+
+    def test_intersect_point_outside_range(self):
+        point = Interval(np.array([5.0]), np.array([5.0]))
+        rng = Interval(np.array([1.0]), np.array([3.0]))
+        empty = Interval(np.array([]), np.array([]))
+        easy_symmetric_check(point, rng, empty, lambda x, y: x & y)
+
+    def test_intersect_point_at_range_boundary(self):
+        point = Interval(np.array([3.0]), np.array([3.0]))
+        rng = Interval(np.array([1.0]), np.array([3.0]))
+        expected = Interval(np.array([3.0]), np.array([3.0]))
+        easy_symmetric_check(point, rng, expected, lambda x, y: x & y)
+
+    def test_intersect_point_at_range_start(self):
+        point = Interval(np.array([1.0]), np.array([1.0]))
+        rng = Interval(np.array([1.0]), np.array([5.0]))
+        expected = Interval(np.array([1.0]), np.array([1.0]))
+        easy_symmetric_check(point, rng, expected, lambda x, y: x & y)
+
+    # -- difference ----------------------------------------------------
+
+    def test_difference_point_minus_covering_range(self):
+        point = Interval(np.array([2.0]), np.array([2.0]))
+        rng = Interval(np.array([1.0]), np.array([3.0]))
+        empty = Interval(np.array([]), np.array([]))
+        easy_check(point, rng, empty, lambda x, y: x.difference(y))
+
+    def test_difference_point_minus_same_point(self):
+        p = Interval(np.array([2.0]), np.array([2.0]))
+        empty = Interval(np.array([]), np.array([]))
+        easy_check(p, p, empty, lambda x, y: x.difference(y))
+
+    def test_difference_point_minus_disjoint(self):
+        point = Interval(np.array([5.0]), np.array([5.0]))
+        rng = Interval(np.array([1.0]), np.array([3.0]))
+        easy_check(point, rng, point, lambda x, y: x.difference(y))
+
+    def test_difference_range_minus_inner_point(self):
+        rng = Interval(np.array([1.0]), np.array([3.0]))
+        point = Interval(np.array([2.0]), np.array([2.0]))
+        expected = Interval.from_list([(1.0, 2.0), (2.0, 3.0)])
+        easy_check(rng, point, expected, lambda x, y: x.difference(y))
+
+    def test_difference_point_minus_empty(self):
+        point = Interval(np.array([2.0]), np.array([2.0]))
+        empty = Interval(np.array([]), np.array([]))
+        easy_check(point, empty, point, lambda x, y: x.difference(y))
+
+    def test_difference_multiple_points_minus_some(self):
+        points = Interval(np.array([1.0, 3.0, 5.0]), np.array([1.0, 3.0, 5.0]))
+        other = Interval(np.array([3.0]), np.array([3.0]))
+        result = points.difference(other)
+        assert len(result) == 2
+        assert np.allclose(result.start, [1.0, 5.0])
+        assert np.allclose(result.end, [1.0, 5.0])
