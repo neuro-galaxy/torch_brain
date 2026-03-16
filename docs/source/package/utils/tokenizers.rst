@@ -1,8 +1,5 @@
 .. currentmodule:: torch_brain.utils
 
-torch_brain.utils
-=================
-
 Tokenizers
 ----------
 
@@ -17,3 +14,4 @@ Tokenizers
 .. autofunction:: create_linspace_latent_tokens
 
 .. autofunction:: create_start_end_unit_tokens
+

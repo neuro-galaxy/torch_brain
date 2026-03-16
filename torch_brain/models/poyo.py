@@ -418,6 +418,21 @@ class POYO(nn.Module):
 
 
 def poyo_mp(readout_spec: ModalitySpec, ckpt_path=None):
+    """Factory function for creating a small POYO model configuration.
+
+    Creates a POYO model with reduced dimensions suitable for quick experiments
+    or memory-constrained environments.
+
+    Args:
+        readout_spec: The modality specification defining the output task.
+        ckpt_path: Path to a checkpoint file. Currently not supported.
+
+    Returns:
+        POYO: A POYO model instance with the following configuration:
+            - dim=64, depth=6, dim_head=64
+            - sequence_length=1.0s, latent_step=0.125s
+            - 16 latents per step
+    """
     if ckpt_path is not None:
         raise NotImplementedError("Loading from checkpoint is not supported yet.")
 
