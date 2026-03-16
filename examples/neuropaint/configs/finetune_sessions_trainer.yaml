@@ -1,0 +1,27 @@
+seed: 42
+
+# wandb configuration
+wandb:
+  use: true
+  entity: null
+  project: mae-chaotic-rnn
+  
+# Training configuration
+training:
+  num_epochs: 1000
+  save_plot_every_n_epochs: 10  # Plot the model output every n epochs
+  save_every: 50  # Save checkpoint
+
+# Model configuration. 
+# Will be passed to the model __init__  method if a model is not passed to the Trainer __init__ method.
+model: 
+  model_class: null   # Any registered model class name. 
+
+optimizer:
+  gradient_accumulation_steps: 1
+  lr: 1.e-4
+  wd: 0.01
+  eps: 1.e-8
+  warmup_pct: 0.15 
+  gamma: 0.95     
+  div_factor: 10 
