@@ -357,49 +357,43 @@ class Interval(ArrayDict):
         if not other.is_sorted():
             raise ValueError("right Interval object must be sorted.")
 
-        # new start and end arrays where the intersection will be stored
-        start = np.array([])
-        end = np.array([])
+        _empty = np.array([], dtype=np.float64)
 
-        # we use a variable to store the current opening time
-        current_start = None
-        interval_open_left = False
-        interval_open_right = False
+        if len(self) == 0:
+            return Interval(start=_empty, end=_empty)
+        if len(other) == 0:
+            return Interval(start=self.start.copy(), end=self.end.copy())
 
-        for ptime, pop, pl in sorted_traversal(self, other):
-            if pop:
-                # opening
-                if pl:
-                    if not interval_open_right:
-                        current_start = ptime
-                    interval_open_left = True
-                else:
-                    interval_open_right = True
-                    # we have an opening and a closing paranthesis
-                    if (
-                        interval_open_left
-                        and current_start is not None
-                        and current_start != ptime
-                    ):
-                        # we have a non-zero interval
-                        start = np.append(start, current_start)
-                        end = np.append(end, ptime)
-                    current_start = None
+        out_starts = []
+        out_ends = []
+
+        for i in range(len(self)):
+            a, b = self.start[i], self.end[i]
+            if a == b:
+                left = np.searchsorted(other.end, a, side="left")
+                right = np.searchsorted(other.start, b, side="right")
             else:
-                # closing
-                if pl:
-                    if current_start is not None and current_start != ptime:
-                        # we have a non-zero interval
-                        start = np.append(start, current_start)
-                        end = np.append(end, ptime)
-                        current_start = None
-                    interval_open_left = False
-                else:
-                    interval_open_right = False
-                    if interval_open_left:
-                        current_start = ptime
+                left = np.searchsorted(other.end, a, side="right")
+                right = np.searchsorted(other.start, b, side="left")
 
-        return Interval(start=start, end=end)
+            if left >= right:
+                out_starts.append(np.array([a]))
+                out_ends.append(np.array([b]))
+                continue
+
+            o_starts = other.start[left:right]
+            o_ends = other.end[left:right]
+
+            gap_starts = np.concatenate([[a], o_ends])
+            gap_ends = np.concatenate([o_starts, [b]])
+            keep = gap_starts < gap_ends
+            if np.any(keep):
+                out_starts.append(gap_starts[keep])
+                out_ends.append(gap_ends[keep])
+
+        if not out_starts:
+            return Interval(start=_empty, end=_empty)
+        return Interval(start=np.concatenate(out_starts), end=np.concatenate(out_ends))
 
     def split(
         self,
@@ -755,42 +749,60 @@ class Interval(ArrayDict):
         if not other.is_sorted():
             raise ValueError("right Interval object must be sorted.")
 
-        # new start and end arrays where the intersection will be stored
-        start = np.array([])
-        end = np.array([])
+        _empty = np.array([], dtype=np.float64)
 
-        # we use a variable to store the current opening time
-        current_start = None
-        interval_open_left = False
-        interval_open_right = False
-        for ptime, pop, pl in sorted_traversal(self, other):
-            if pop:
-                # this is an opening paranthesis
-                # update current_start
-                current_start = ptime
-                if pl:
-                    interval_open_left = True
-                else:
-                    interval_open_right = True
-            else:
-                # this is a closing paranthesis
-                if (
-                    current_start is not None
-                    and interval_open_left
-                    and interval_open_right
-                ):
-                    # we have an opening and a closing paranthesis
-                    if current_start != ptime:
-                        # we have a non-zero interval
-                        start = np.append(start, current_start)
-                        end = np.append(end, ptime)
-                    current_start = None
-                if pl:
-                    interval_open_left = False
-                else:
-                    interval_open_right = False
+        if len(self) == 0 or len(other) == 0:
+            return Interval(start=_empty, end=_empty)
 
-        return Interval(start=start, end=end)
+        if len(self) == 1 and len(other) == 1:
+            start = max(self.start[0], other.start[0])
+            end = min(self.end[0], other.end[0])
+            either_is_point = (
+                self.start[0] == self.end[0] or other.start[0] == other.end[0]
+            )
+            if start < end or (start == end and either_is_point):
+                return Interval(
+                    start=np.array([start], dtype=np.float64),
+                    end=np.array([end], dtype=np.float64),
+                )
+            return Interval(start=_empty, end=_empty)
+
+        def _intersect_one(a, b):
+            left = np.searchsorted(self.end, a, side="left")
+            right = np.searchsorted(self.start, b, side="right")
+            if left >= right:
+                return None
+
+            s = self.start[left:right].copy()
+            e = self.end[left:right].copy()
+            s[0] = max(s[0], a)
+            e[-1] = min(e[-1], b)
+            keep = s <= e if a == b else s < e
+            if not np.any(keep):
+                return None
+            return s[keep], e[keep]
+
+        # This path is common during slicing where `other` is a single window.
+        if len(other) == 1:
+            overlap = _intersect_one(other.start[0], other.end[0])
+            if overlap is None:
+                return Interval(start=_empty, end=_empty)
+            s, e = overlap
+            return Interval(start=s, end=e)
+
+        out_starts = []
+        out_ends = []
+
+        for j in range(len(other)):
+            overlap = _intersect_one(other.start[j], other.end[j])
+            if overlap is not None:
+                s, e = overlap
+                out_starts.append(s)
+                out_ends.append(e)
+
+        if not out_starts:
+            return Interval(start=_empty, end=_empty)
+        return Interval(start=np.concatenate(out_starts), end=np.concatenate(out_ends))
 
     def __or__(self, other):
         """Union of two intervals.
@@ -806,53 +818,31 @@ class Interval(ArrayDict):
         if not other.is_sorted():
             raise ValueError("right Interval object must be sorted.")
 
-        # new start and end arrays where the intersection will be stored
-        start = np.array([])
-        end = np.array([])
+        if len(self) == 0 and len(other) == 0:
+            return Interval(start=np.array([]), end=np.array([]))
 
-        # we use a variable to store the current opening time
-        current_start = None
-        current_end = None
-        current_start_is_from_left = None
-        end_still_coming = False
+        all_starts = np.concatenate([self.start, other.start])
+        all_ends = np.concatenate([self.end, other.end])
+        order = np.argsort(all_starts, kind="mergesort")
+        all_starts = all_starts[order]
+        all_ends = all_ends[order]
 
-        for ptime, pop, pl in sorted_traversal(self, other):
-            if pop:
-                if current_end is None:
-                    if current_start is None:
-                        current_start = ptime
-                        current_start_is_from_left = pl
-                        end_still_coming = True
-                else:
-                    assert current_start is not None
-                    if not end_still_coming:
-                        # Check if this opening time matches the previous closing time
-                        # If they match, continue the current interval instead of creating a new one
-                        if ptime != current_end:
-                            # we have an opening and a closing paranthesis
-                            if current_start != current_end:
-                                # we have a non-zero interval
-                                start = np.append(start, current_start)
-                                end = np.append(end, current_end)
-                            current_start = ptime
-                            current_end = None
-                        end_still_coming = True
-                        current_start_is_from_left = pl
-            else:
-                if pl == current_start_is_from_left:
-                    end_still_coming = False
-                current_end = ptime
+        running_end = np.maximum.accumulate(all_ends)
 
-        assert current_end is not None
-        assert current_start is not None
+        # Touching intervals (start == prev_end) should merge, so use >
+        new_group = np.empty(len(all_starts), dtype=bool)
+        new_group[0] = True
+        new_group[1:] = all_starts[1:] > running_end[:-1]
 
-        # we have an opening and a closing paranthesis
-        if current_start != current_end:
-            # we have a non-zero interval
-            start = np.append(start, current_start)
-            end = np.append(end, current_end)
+        out_starts = all_starts[new_group]
+        group_indices = np.nonzero(new_group)[0]
+        group_last = np.empty_like(group_indices)
+        group_last[:-1] = group_indices[1:] - 1
+        group_last[-1] = len(all_starts) - 1
+        out_ends = running_end[group_last]
 
-        return Interval(start=start, end=end)
+        keep = out_starts <= out_ends
+        return Interval(start=out_starts[keep], end=out_ends[keep])
 
 
 class LazyInterval(Interval):
@@ -1077,87 +1067,3 @@ class LazyInterval(Interval):
         obj._lazy_ops = {}
 
         return obj
-
-
-def sorted_traversal(lintervals, rintervals):
-    # we use an index to iterate over the intervals from both left and right objects
-    lidx, ridx = 0, 0
-    # to track whether we are looking at start or end, we use a binary flag that
-    # denotes whether the current pointer is an "opening paranthesis" (lop=True)
-    # or a "closing paranthesis" (lop=False)
-    lop, rop = True, True
-
-    len_lintervals = len(lintervals)
-    len_rintervals = len(rintervals)
-
-    while (lidx < len_lintervals) or (ridx < len_rintervals):
-        # retrieve the time of the pointer in the left object
-        if lidx < len_lintervals:
-            # retrieve the time of the next interval in left object
-            ltime = lintervals.start[lidx] if lop else lintervals.end[lidx]
-        else:
-            # exhausted all intervals in left object
-            ltime = np.inf
-
-        # retrieve the time of the pointer in the right object
-        if ridx < len_rintervals:
-            # retrieve the time of the next interval in right object
-            rtime = rintervals.start[ridx] if rop else rintervals.end[ridx]
-        else:
-            # exhausted all intervals in right object
-            rtime = np.inf
-
-        # figure out which is the next pointer to process
-        if ltime < rtime:
-            # the next timestamps to consider is from the left object
-            ptime = ltime  # time of the current pointer
-            pop = lop  # True if pointer is opening
-            pl = True  # True if pointer is from left object
-
-            # move the left pointer accordingly
-            if lop:
-                # we only considered the start time, we now need to consider the
-                # end before moving to the next interval
-                lop = False
-            else:
-                # move to the next interval
-                lop = True
-                lidx += 1
-        elif rtime < ltime:
-            # the next timestamps to consider is from the right object
-            ptime = rtime
-            pop = rop
-            pl = False
-            if rop:
-                rop = False
-            else:
-                rop = True
-                ridx += 1
-        else:  # ltime == rtime
-            # When times are equal, prioritize closings over openings for union operations
-            if not lop and rop:  # left is closing, right is opening
-                ptime = ltime
-                pop = lop  # False (closing)
-                pl = True
-                lop = True
-                lidx += 1
-            elif lop and not rop:  # left is opening, right is closing
-                ptime = rtime
-                pop = rop  # False (closing)
-                pl = False
-                rop = True
-                ridx += 1
-            elif lop and rop:  # both are openings
-                # Process left opening first (arbitrary but consistent)
-                ptime = ltime
-                pop = lop
-                pl = True
-                lop = False
-            else:  # both are closings
-                # Process left closing first (arbitrary but consistent)
-                ptime = ltime
-                pop = lop
-                pl = True
-                lop = True
-                lidx += 1
-        yield ptime, pop, pl
