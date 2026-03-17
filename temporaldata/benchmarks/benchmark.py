@@ -232,6 +232,23 @@ def bench_its_slice():
     return _bench("IrregularTimeSeries.slice()", go, number=1_000)
 
 
+def bench_rts_slice():
+    """RegularTimeSeries.slice() on a realistic recording."""
+    rng = np.random.RandomState(42)
+    n = 50_000
+    rts = RegularTimeSeries(
+        sampling_rate=50,
+        waveforms=rng.standard_normal((n, 48)),
+        domain_start=0.0,
+        domain="auto",
+    )
+
+    def go():
+        rts.slice(500.0, 501.0)
+
+    return _bench("RegularTimeSeries.slice()", go, number=1_000)
+
+
 def bench_interval_slice():
     """Interval.slice() — 100 trial intervals over 1000s, slice a 1s window."""
     starts = np.arange(0, 1000, 10, dtype=np.float64)
@@ -356,6 +373,7 @@ BENCHMARKS = [
     bench_data_slice_lazy,
     bench_data_slice_inmemory,
     bench_its_slice,
+    bench_rts_slice,
     bench_interval_slice,
     bench_interval_and_single,
     bench_interval_and_multi,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Dict
 
 import h5py
@@ -89,32 +90,80 @@ class RegularTimeSeries(ArrayDict):
     def select_by_mask(self, mask: np.ndarray):
         raise NotImplementedError("Not implemented for RegularTimeSeries.")
 
-    def slice(self, start: float, end: float, reset_origin: bool = True):
-        r"""Returns a new :obj:`RegularTimeSeries` object that contains the data between
-        the start (inclusive) and end (exclusive) times.
+    def _time_to_idx(
+        self,
+        time: float,
+        is_start: bool,
+        eps: float = 1e-9,
+    ) -> tuple[int, float]:
+        """Converts a timestamp to a sample index and its exact reconstructed time.
+        Args:
+            time: The timestamp to convert.
+            is_start: Whether this is the start of a slice (inclusive) or the end
+                (exclusive). This affects the clamping and time reconstruction.
+            eps: Tolerance for floating-point precision. If the calculated index
+                is within ``eps`` of an integer, it is snapped to that integer.
+                This prevents tiny precision errors (e.g., 3.999999999999999) from
+                causing off-by-one errors when applying ``math.ceil``.
+        Returns:
+            tuple[int, float]: A tuple containing:
+                * **index**: The calculated integer sample index within the array.
+                * **reconstructed_time**: The exact timestamp in seconds that corresponds
+                  to the selected **index** (i.e. the actual time of the sample).
+        """
+        domain_start = self.domain.start[0]
+        domain_end = self.domain.end[0]
 
-        When slicing, the start and end times are rounded to the nearest timestamp.
+        # Clamp to domain bounds
+        if is_start and time <= domain_start:
+            return 0, domain_start
+        if not is_start and time > domain_end:
+            return len(self), domain_end
+
+        # Calculate relative index
+        rel_t = time - domain_start
+        idx_float = rel_t * self.sampling_rate
+
+        # Precision check: if it's "close enough" to an integer, treat it as that integer
+        rounded = round(idx_float)
+        if abs(idx_float - rounded) < eps:
+            idx_float = float(rounded)
+
+        # Determine index and reconstruct the actual timestamp of that sample
+        idx = math.ceil(idx_float)
+
+        # For the end index, the reconstruction logic shifts by 1 sample
+        recon_idx = idx if is_start else idx - 1
+        actual_time = domain_start + (recon_idx / self.sampling_rate)
+
+        return idx, actual_time
+
+    def slice(
+        self,
+        start: float,
+        end: float,
+        reset_origin: bool = True,
+        eps: float = 1e-9,
+    ):
+        r"""Returns a new :obj:`RegularTimeSeries` object that contains the data between
+        the start (inclusive) and end (exclusive) times (i.e., [start, end)]).
 
         Args:
             start: Start time.
             end: End time.
             reset_origin: If :obj:`True`, all time attributes will be updated to be
                 relative to the new start time. Defaults to :obj:`True`.
-        """
-        # we allow the start and end to be outside the domain of the time series
-        if start < self.domain.start[0]:
-            start_id = 0
-            out_start = self.domain.start[0]
-        else:
-            start_id = int(np.ceil((start - self.domain.start[0]) * self.sampling_rate))
-            out_start = self.domain.start[0] + start_id * 1.0 / self.sampling_rate
+            eps: A tiny 'rounding buffer' to handle floating-point noise when computing indices.
+                If your sampling rate is very high, you may need to increase
+                this (e.g., to 1e-7) to avoid off-by-one errors.
 
-        if end > self.domain.end[0]:
-            end_id = len(self) + 1
-            out_end = self.domain.end[0]
-        else:
-            end_id = int(np.floor((end - self.domain.start[0]) * self.sampling_rate))
-            out_end = self.domain.start[0] + (end_id - 1) * 1.0 / self.sampling_rate
+        Returns:
+            RegularTimeSeries: A new instance of the same class
+            containing a subset of the data. The new object will have a modified
+            :obj:`Interval` domain reflecting the actual sampled boundaries.
+        """
+        start_id, out_start = self._time_to_idx(start, is_start=True, eps=eps)
+        end_id, out_end = self._time_to_idx(end, is_start=False, eps=eps)
 
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
@@ -273,23 +322,31 @@ class LazyRegularTimeSeries(RegularTimeSeries):
                 return out
         return super(LazyRegularTimeSeries, self).__getattribute__(name)
 
-    def slice(self, start: float, end: float, reset_origin: bool = True):
+    def slice(
+        self,
+        start: float,
+        end: float,
+        reset_origin: bool = True,
+        eps: float = 1e-9,
+    ):
         r"""Returns a new :obj:`RegularTimeSeries` object that contains the data between
         the start and end times.
-        """
-        if start < self.domain.start[0]:
-            start_id = 0
-            out_start = self.domain.start[0]
-        else:
-            start_id = int(np.ceil((start - self.domain.start[0]) * self.sampling_rate))
-            out_start = self.domain.start[0] + start_id * 1.0 / self.sampling_rate
 
-        if end > self.domain.end[0]:
-            end_id = len(self) + 1
-            out_end = self.domain.end[0]
-        else:
-            end_id = int(np.floor((end - self.domain.start[0]) * self.sampling_rate))
-            out_end = self.domain.start[0] + (end_id - 1) * 1.0 / self.sampling_rate
+        Args:
+            start: Start time.
+            end: End time.
+            reset_origin: If :obj:`True`, all time attributes will be updated to be
+                relative to the new start time. Defaults to :obj:`True`.
+            eps: A tiny 'rounding buffer' to handle floating-point noise when computing indices.
+                If your sampling rate is very high, you may need to increase
+                this (e.g., to 1e-7) to avoid off-by-one errors.
+        Returns:
+            LazyRegularTimeSeries: A new instance of the same class
+            containing a subset of the data. The new object will have a modified
+            :obj:`Interval` domain reflecting the actual sampled boundaries.
+        """
+        start_id, out_start = self._time_to_idx(start, is_start=True, eps=eps)
+        end_id, out_end = self._time_to_idx(end, is_start=False, eps=eps)
 
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
