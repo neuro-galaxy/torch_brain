@@ -9,3 +9,9 @@ RegularTimeSeries
    :inherited-members:
    :undoc-members:
 
+
+.. autoclass:: LazyRegularTimeSeries
+   :show-inheritance:
+   :members:
+   :inherited-members:
+   :undoc-members:

@@ -9,3 +9,9 @@ IrregularTimeSeries
    :inherited-members:
    :undoc-members:
 
+
+.. autoclass:: LazyIrregularTimeSeries
+   :show-inheritance:
+   :members:
+   :inherited-members:
+   :undoc-members:
