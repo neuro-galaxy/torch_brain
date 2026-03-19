@@ -4,5 +4,4 @@ from .mixins import (
     SpikingDatasetMixin,
     CalciumImagingDatasetMixin,
     MultiChannelDatasetMixin,
-    SEEGDatasetMixin,
 )

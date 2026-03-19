@@ -17,7 +17,3 @@ Mixins
     :members:
     :show-inheritance:
     :undoc-members:
-
-Default channel-id uniquification behavior:
-``seeg_dataset_mixin_uniquify_channel_ids_with_subject=True`` and
-``seeg_dataset_mixin_uniquify_channel_ids_with_session=False``.

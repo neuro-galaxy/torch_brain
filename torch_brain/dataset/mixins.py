@@ -1,5 +1,3 @@
-import warnings
-
 import numpy as np
 import pandas as pd
 from temporaldata import Data
@@ -99,45 +97,42 @@ class MultiChannelDatasetMixin:
     Provides:
         - ``get_channel_ids()`` for retrieving sorted channel IDs from
           recording views returned by ``get_recording(...)``.
-        - Default channel-ID uniquification with ``subject.id`` only
-          (``seeg_dataset_mixin_uniquify_channel_ids_with_subject=True``,
-          ``seeg_dataset_mixin_uniquify_channel_ids_with_session=False``).
+        - Configurable channel-ID uniquification by prepending metadata
+          components before each channel id:
+          ``multichannel_dataset_mixin_uniquify_channel_ids_with_session``
+          prepends ``session.id`` (default ``False``) and
+          ``multichannel_dataset_mixin_uniquify_channel_ids_with_subject``
+          prepends ``subject.id`` (default ``True``). If both are enabled,
+          the prefix order is ``subject.id/session.id``.
     """
 
     # Channel-ID uniquification toggles used by get_recording_hook.
     # Prefix order is always subject/session when enabled.
-    seeg_dataset_mixin_uniquify_channel_ids_with_subject: bool = True
-    seeg_dataset_mixin_uniquify_channel_ids_with_session: bool = False
+    multichannel_dataset_mixin_uniquify_channel_ids_with_subject: bool = True
+    multichannel_dataset_mixin_uniquify_channel_ids_with_session: bool = False
 
     def get_recording_hook(self, data: Data):
-        prefix = self._build_seeg_channel_id_prefix(data)
+        prefix = self._build_multichannel_channel_id_prefix(data)
         if prefix:
-            data.channels.id = np_string_prefix(prefix, data.channels.id.astype(str))
+            data.channels.id = np_string_prefix(
+                prefix,
+                data.channels.id.astype(str),
+            )
         super().get_recording_hook(data)
 
     def _normalize_channel_uniquify_components(self) -> tuple[str, ...]:
-        with_subject = self.seeg_dataset_mixin_uniquify_channel_ids_with_subject
-        with_session = self.seeg_dataset_mixin_uniquify_channel_ids_with_session
+        with_subject = self.multichannel_dataset_mixin_uniquify_channel_ids_with_subject
+        with_session = self.multichannel_dataset_mixin_uniquify_channel_ids_with_session
         if not isinstance(with_subject, bool):
             raise TypeError(
-                "'seeg_dataset_mixin_uniquify_channel_ids_with_subject' must be "
+                "'multichannel_dataset_mixin_uniquify_channel_ids_with_subject' must be "
                 f"bool; got {type(with_subject).__name__}."
             )
         if not isinstance(with_session, bool):
             raise TypeError(
-                "'seeg_dataset_mixin_uniquify_channel_ids_with_session' must be "
+                "'multichannel_dataset_mixin_uniquify_channel_ids_with_session' must be "
                 f"bool; got {type(with_session).__name__}."
             )
-        if with_session and not with_subject:
-            warning_attr = "_seeg_dataset_mixin_warned_session_without_subject"
-            if not getattr(self, warning_attr, False):
-                warnings.warn(
-                    "Channel-id uniquification with session only can create "
-                    "cross-subject collisions when session.id is not globally unique.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                setattr(self, warning_attr, True)
 
         components = []
         if with_subject:
@@ -146,46 +141,40 @@ class MultiChannelDatasetMixin:
             components.append("session_id")
         return tuple(components)
 
-    def _build_seeg_channel_id_prefix(self, data: Data) -> str:
+    def _build_multichannel_channel_id_prefix(self, data: Data) -> str:
         components = self._normalize_channel_uniquify_components()
         if not components:
             return ""
 
-        component_values = {}
-        if "subject_id" in components:
-            component_values["subject_id"] = data.get_nested_attribute("subject.id")
-        if "session_id" in components:
-            component_values["session_id"] = data.get_nested_attribute("session.id")
-        prefix_parts = [
-            str(component_values[component])
-            for component in components
-            if component_values[component] is not None
-        ]
-        if not prefix_parts:
-            return ""
+        component_paths = {
+            "subject_id": "subject.id",
+            "session_id": "session.id",
+        }
+        prefix_parts = []
+        for component in components:
+            path = component_paths[component]
+            component_name = component.split("_")[0]
+            error_msg = (
+                f"'{path}' is required when "
+                f"'multichannel_dataset_mixin_uniquify_channel_ids_with_"
+                f"{component_name}' is enabled."
+            )
+            try:
+                value = data.get_nested_attribute(path)
+            except AttributeError as exc:
+                raise ValueError(error_msg) from exc
+            if value is None:
+                raise ValueError(error_msg)
+            prefix_parts.append(str(value))
         return "/".join(prefix_parts) + "/"
 
-    def get_channel_ids(self, *, included_only: bool = False) -> list[str]:
+    def get_channel_ids(self) -> list[str]:
         """Return sorted channel IDs across recordings.
 
         ``get_channel_ids`` aggregates ``rec.channels.id`` from ``get_recording(...)``.
         Any subject/session uniquification is applied there according to
-        ``seeg_dataset_mixin_uniquify_channel_ids_with_subject`` and
-        ``seeg_dataset_mixin_uniquify_channel_ids_with_session``.
-        ``included_only=True`` filters by ``rec.channels.included`` before IDs are collected.
+        ``multichannel_dataset_mixin_uniquify_channel_ids_with_subject`` and
+        ``multichannel_dataset_mixin_uniquify_channel_ids_with_session``.
         """
-        all_ids = []
-        for rid in self.recording_ids:
-            rec = self.get_recording(rid)
-            ids = np.asarray(rec.channels.id).astype(str)
-            if included_only:
-                included_mask = np.asarray(rec.channels.included, dtype=bool)
-                ids = ids[included_mask]
-            all_ids.append(ids)
-        if not all_ids:
-            return []
-        return np.sort(np.concatenate(all_ids).astype(str)).tolist()
-
-
-# Backwards-compatibility alias.
-SEEGDatasetMixin = MultiChannelDatasetMixin
+        ans = [self.get_recording(rid).channels.id for rid in self.recording_ids]
+        return np.sort(np.concatenate(ans)).tolist()

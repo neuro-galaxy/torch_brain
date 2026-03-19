@@ -85,14 +85,15 @@ class _MultiChannelDatasetWithConstant(MultiChannelDatasetMixin, Dataset):
 
 
 class _MultiChannelDatasetWithConstantUniquify(_MultiChannelDatasetWithConstant):
-    seeg_dataset_mixin_uniquify_channel_ids_with_subject = True
-    seeg_dataset_mixin_uniquify_channel_ids_with_session = True
+    multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
+    multichannel_dataset_mixin_uniquify_channel_ids_with_session = True
 
 
 class _MultiChannelDatasetWithConstantUniquifySubjectOnly(
     _MultiChannelDatasetWithConstant
 ):
-    seeg_dataset_mixin_uniquify_channel_ids_with_subject = True
+    multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
+    multichannel_dataset_mixin_uniquify_channel_ids_with_session = False
 
 
 @pytest.fixture
@@ -343,14 +344,6 @@ class TestMultiChannelDatasetMixin:
             "bob/ch2",
         ]
 
-        included_ids = ds.get_channel_ids(included_only=True)
-        assert included_ids == [
-            "alice/ch0",
-            "alice/ch2",
-            "bob/ch0",
-            "bob/ch2",
-        ]
-
     def test_get_channel_ids_match_hook_uniquified_recording_ids(
         self, dummy_seeg_brainset
     ):
@@ -370,14 +363,6 @@ class TestMultiChannelDatasetMixin:
             "alice/session1/ch2",
             "bob/session2/ch0",
             "bob/session2/ch1",
-            "bob/session2/ch2",
-        ]
-
-        included_ids = ds.get_channel_ids(included_only=True)
-        assert included_ids == [
-            "alice/session1/ch0",
-            "alice/session1/ch2",
-            "bob/session2/ch0",
             "bob/session2/ch2",
         ]
 
@@ -407,28 +392,43 @@ class TestMultiChannelDatasetMixin:
         self, dummy_seeg_brainset
     ):
         ds = _MultiChannelDatasetWithConstant(dummy_seeg_brainset)
-        ds.seeg_dataset_mixin_uniquify_channel_ids_with_subject = "yes"
+        ds.multichannel_dataset_mixin_uniquify_channel_ids_with_subject = "yes"
         with pytest.raises(
             TypeError,
-            match="seeg_dataset_mixin_uniquify_channel_ids_with_subject",
+            match="multichannel_dataset_mixin_uniquify_channel_ids_with_subject",
         ):
             ds.get_recording("session1")
 
-    def test_get_recording_hook_warns_for_session_only_uniquify(
+    def test_get_recording_hook_default_subject_only_uniquify(
         self, dummy_seeg_brainset
     ):
         ds = _MultiChannelDatasetWithConstant(dummy_seeg_brainset)
-        ds.seeg_dataset_mixin_uniquify_channel_ids_with_subject = False
-        ds.seeg_dataset_mixin_uniquify_channel_ids_with_session = True
-
-        with pytest.warns(UserWarning, match="session only"):
-            rec = ds.get_recording("session1")
+        rec = ds.get_recording("session1")
 
         assert rec.channels.id.tolist() == [
-            "session1/ch0",
-            "session1/ch1",
-            "session1/ch2",
+            "alice/ch0",
+            "alice/ch1",
+            "alice/ch2",
         ]
+
+    def test_build_channel_prefix_raises_for_missing_requested_component(
+        self, dummy_seeg_brainset
+    ):
+        ds = _MultiChannelDatasetWithConstant(dummy_seeg_brainset)
+        ds.multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
+        ds.multichannel_dataset_mixin_uniquify_channel_ids_with_session = False
+
+        class _MissingSubjectData:
+            @staticmethod
+            def get_nested_attribute(path):
+                if path == "subject.id":
+                    return None
+                if path == "session.id":
+                    return "session1"
+                raise AttributeError(path)
+
+        with pytest.raises(ValueError, match="'subject.id' is required"):
+            ds._build_multichannel_channel_id_prefix(_MissingSubjectData())
 
 
 def test_ensure_index_has_namespace():
