@@ -51,7 +51,9 @@ def create_spiking_data(brainset_id, subject_id, session_id, length):
     )
 
 
-def create_seeg_data(brainset_id, subject_id, session_id, length, sampling_rate=256.0):
+def create_multichannel_data(
+    brainset_id, subject_id, session_id, length, sampling_rate=256.0
+):
     n_channels = 3
     return Data(
         brainset=BrainsetDescription(
@@ -63,7 +65,7 @@ def create_seeg_data(brainset_id, subject_id, session_id, length, sampling_rate=
         ),
         subject=SubjectDescription(subject_id, Species.UNKNOWN),
         session=SessionDescription(session_id, datetime.now()),
-        seeg_data=RegularTimeSeries(
+        multichannel_data=RegularTimeSeries(
             sampling_rate=sampling_rate,
             value=np.random.normal(0.0, 1.0, (int(length * sampling_rate), n_channels)),
             domain="auto",
@@ -122,16 +124,16 @@ def dummy_spiking_brainset(tmp_path):
 
 
 @pytest.fixture
-def dummy_seeg_brainset(tmp_path):
-    BRAINSET_ID = "mock_seeg_brainset"
+def dummy_multichannel_brainset(tmp_path):
+    BRAINSET_ID = "mock_multichannel_brainset"
     store_path = tmp_path / BRAINSET_ID
     os.makedirs(store_path, exist_ok=True)
 
-    data = create_seeg_data(BRAINSET_ID, "alice", "session1", 1.0)
+    data = create_multichannel_data(BRAINSET_ID, "alice", "session1", 1.0)
     with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
         data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
 
-    data = create_seeg_data(BRAINSET_ID, "bob", "session2", 1.2)
+    data = create_multichannel_data(BRAINSET_ID, "bob", "session2", 1.2)
     with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
         data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
 
@@ -331,8 +333,8 @@ class TestSpikingDatasetMixin:
 
 
 class TestMultiChannelDatasetMixin:
-    def test_get_channel_ids_use_recording_view_ids(self, dummy_seeg_brainset):
-        ds = _MultiChannelDatasetWithConstant(dummy_seeg_brainset)
+    def test_get_channel_ids_use_recording_view_ids(self, dummy_multichannel_brainset):
+        ds = _MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
 
         all_ids = ds.get_channel_ids()
         assert all_ids == [
@@ -345,9 +347,9 @@ class TestMultiChannelDatasetMixin:
         ]
 
     def test_get_channel_ids_match_hook_uniquified_recording_ids(
-        self, dummy_seeg_brainset
+        self, dummy_multichannel_brainset
     ):
-        ds = _MultiChannelDatasetWithConstantUniquify(dummy_seeg_brainset)
+        ds = _MultiChannelDatasetWithConstantUniquify(dummy_multichannel_brainset)
 
         recording_ids = ds.get_recording("session1").channels.id.tolist()
         assert recording_ids == [
@@ -367,9 +369,11 @@ class TestMultiChannelDatasetMixin:
         ]
 
     def test_get_channel_ids_match_hook_uniquified_subject_only_ids(
-        self, dummy_seeg_brainset
+        self, dummy_multichannel_brainset
     ):
-        ds = _MultiChannelDatasetWithConstantUniquifySubjectOnly(dummy_seeg_brainset)
+        ds = _MultiChannelDatasetWithConstantUniquifySubjectOnly(
+            dummy_multichannel_brainset
+        )
 
         recording_ids = ds.get_recording("session1").channels.id.tolist()
         assert recording_ids == [
@@ -389,9 +393,9 @@ class TestMultiChannelDatasetMixin:
         ]
 
     def test_get_recording_hook_rejects_non_boolean_uniquify_flags(
-        self, dummy_seeg_brainset
+        self, dummy_multichannel_brainset
     ):
-        ds = _MultiChannelDatasetWithConstant(dummy_seeg_brainset)
+        ds = _MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
         ds.multichannel_dataset_mixin_uniquify_channel_ids_with_subject = "yes"
         with pytest.raises(
             TypeError,
@@ -400,9 +404,9 @@ class TestMultiChannelDatasetMixin:
             ds.get_recording("session1")
 
     def test_get_recording_hook_default_subject_only_uniquify(
-        self, dummy_seeg_brainset
+        self, dummy_multichannel_brainset
     ):
-        ds = _MultiChannelDatasetWithConstant(dummy_seeg_brainset)
+        ds = _MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
         rec = ds.get_recording("session1")
 
         assert rec.channels.id.tolist() == [
@@ -412,9 +416,9 @@ class TestMultiChannelDatasetMixin:
         ]
 
     def test_build_channel_prefix_raises_for_missing_requested_component(
-        self, dummy_seeg_brainset
+        self, dummy_multichannel_brainset
     ):
-        ds = _MultiChannelDatasetWithConstant(dummy_seeg_brainset)
+        ds = _MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
         ds.multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
         ds.multichannel_dataset_mixin_uniquify_channel_ids_with_session = False
 

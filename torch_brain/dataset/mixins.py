@@ -92,7 +92,7 @@ class CalciumImagingDatasetMixin:
 class MultiChannelDatasetMixin:
     """
     Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing
-    multi-channel recordings (e.g., sEEG).
+    multi-channel recordings (e.g., EEG, ECoG, EMG, sEEG, etc).
 
     Provides:
         - ``get_channel_ids()`` for retrieving sorted channel IDs from
@@ -102,7 +102,10 @@ class MultiChannelDatasetMixin:
           ``multichannel_dataset_mixin_uniquify_channel_ids_with_session``
           prepends ``session.id`` (default ``False``) and
           ``multichannel_dataset_mixin_uniquify_channel_ids_with_subject``
-          prepends ``subject.id`` (default ``True``). If both are enabled,
+          prepends ``subject.id`` (default ``True``). This ``subject.id``
+          uniquification allows channels with the same name in the same
+          subject to be treated as the same channel across sessions. If both
+          are enabled,
           the prefix order is ``subject.id/session.id``.
     """
 
