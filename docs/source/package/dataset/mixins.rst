@@ -12,3 +12,8 @@ Mixins
     :members:
     :show-inheritance:
     :undoc-members:
+
+.. autoclass:: MultiChannelDatasetMixin
+    :members:
+    :show-inheritance:
+    :undoc-members:
