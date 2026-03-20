@@ -777,7 +777,8 @@ class Interval(ArrayDict):
             e = self.end[left:right].copy()
             s[0] = max(s[0], a)
             e[-1] = min(e[-1], b)
-            keep = s <= e if a == b else s < e
+            is_point_in_self = self.start[left:right] == self.end[left:right]
+            keep = (s < e) | ((s == e) & (is_point_in_self | (a == b)))
             if not np.any(keep):
                 return None
             return s[keep], e[keep]

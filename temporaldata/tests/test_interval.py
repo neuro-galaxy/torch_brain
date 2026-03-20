@@ -1149,6 +1149,99 @@ class TestPointIntervals:
         expected = Interval(np.array([1.0]), np.array([1.0]))
         easy_symmetric_check(point, rng, expected, lambda x, y: x & y)
 
+    def test_intersect_point_with_multi_segment(self):
+        """Exact repro from issue #110: point & multi-segment must be commutative."""
+        x = Interval(0, 1) | Interval(3, 10)
+        y = Interval(5, 5)
+        expected = Interval(np.array([5.0]), np.array([5.0]))
+        easy_symmetric_check(x, y, expected, lambda a, b: a & b)
+
+    def test_intersect_point_with_multi_segment_at_boundary(self):
+        """Point at the exact end of a segment in a multi-segment interval."""
+        x = Interval.from_list([(0.0, 5.0), (7.0, 10.0)])
+        point_at_end = Interval(np.array([5.0]), np.array([5.0]))
+        expected = Interval(np.array([5.0]), np.array([5.0]))
+        easy_symmetric_check(x, point_at_end, expected, lambda a, b: a & b)
+
+    def test_intersect_point_with_multi_segment_at_start(self):
+        """Point at the exact start of a segment in a multi-segment interval."""
+        x = Interval.from_list([(0.0, 5.0), (7.0, 10.0)])
+        point_at_start = Interval(np.array([7.0]), np.array([7.0]))
+        expected = Interval(np.array([7.0]), np.array([7.0]))
+        easy_symmetric_check(x, point_at_start, expected, lambda a, b: a & b)
+
+    def test_intersect_point_outside_multi_segment(self):
+        """Point in a gap of a multi-segment interval → empty."""
+        x = Interval.from_list([(0.0, 3.0), (7.0, 10.0)])
+        point_in_gap = Interval(np.array([5.0]), np.array([5.0]))
+        empty = Interval(np.array([]), np.array([]))
+        easy_symmetric_check(x, point_in_gap, empty, lambda a, b: a & b)
+
+    def test_intersect_multiple_points_with_range(self):
+        """Multiple point intervals intersected with a range."""
+        points = Interval(np.array([1.0, 5.0, 9.0]), np.array([1.0, 5.0, 9.0]))
+        rng = Interval.from_list([(0.0, 2.0), (4.0, 6.0)])
+        expected = Interval(np.array([1.0, 5.0]), np.array([1.0, 5.0]))
+        easy_symmetric_check(points, rng, expected, lambda a, b: a & b)
+
+    def test_intersect_touching_segments_no_false_point(self):
+        """Boundary-touching non-point intervals must NOT produce a false point."""
+        I1 = Interval.from_list([(0.0, 5.0)])
+        I2 = Interval.from_list([(5.0, 10.0)])
+        empty = Interval(np.array([]), np.array([]))
+        easy_symmetric_check(I1, I2, empty, lambda a, b: a & b)
+
+    def test_intersect_mixed_points_and_ranges(self):
+        """Both operands contain a mix of point and non-point intervals."""
+        I1 = Interval(np.array([1.0, 3.0, 5.0]), np.array([2.0, 3.0, 7.0]))
+        I2 = Interval(np.array([0.0, 3.0, 6.0]), np.array([1.5, 4.0, 6.0]))
+        expected = Interval(np.array([1.0, 3.0, 6.0]), np.array([1.5, 3.0, 6.0]))
+        easy_symmetric_check(I1, I2, expected, lambda a, b: a & b)
+
+    def test_intersect_multiple_points_vs_multiple_points(self):
+        """Both operands are all point intervals."""
+        p1 = Interval(np.array([1.0, 3.0, 5.0]), np.array([1.0, 3.0, 5.0]))
+        p2 = Interval(np.array([2.0, 3.0, 4.0, 5.0]), np.array([2.0, 3.0, 4.0, 5.0]))
+        expected = Interval(np.array([3.0, 5.0]), np.array([3.0, 5.0]))
+        easy_symmetric_check(p1, p2, expected, lambda a, b: a & b)
+
+    def test_intersect_one_range_containing_many(self):
+        """One large interval fully contains many segments from the other."""
+        big = Interval.from_list([(0.0, 100.0)])
+        many = Interval.from_list(
+            [(1.0, 2.0), (10.0, 20.0), (50.0, 60.0), (90.0, 95.0)]
+        )
+        easy_symmetric_check(big, many, many, lambda a, b: a & b)
+
+    def test_intersect_asymmetric_segment_counts(self):
+        """Highly asymmetric: 1 segment vs many, with partial overlaps."""
+        one = Interval.from_list([(2.5, 7.5)])
+        many = Interval.from_list(
+            [
+                (0.0, 1.0),
+                (2.0, 3.0),
+                (4.0, 5.0),
+                (6.0, 7.0),
+                (8.0, 9.0),
+            ]
+        )
+        expected = Interval.from_list([(2.5, 3.0), (4.0, 5.0), (6.0, 7.0)])
+        easy_symmetric_check(one, many, expected, lambda a, b: a & b)
+
+    def test_intersect_point_between_segments(self):
+        """Point sitting in the gap between two segments → empty."""
+        segments = Interval.from_list([(0.0, 3.0), (5.0, 8.0)])
+        point = Interval(np.array([4.0]), np.array([4.0]))
+        empty = Interval(np.array([]), np.array([]))
+        easy_symmetric_check(segments, point, empty, lambda a, b: a & b)
+
+    def test_intersect_multi_segment_touching_no_false_point(self):
+        """Multi-segment boundaries that touch must not create false points."""
+        I1 = Interval.from_list([(0.0, 3.0), (6.0, 9.0)])
+        I2 = Interval.from_list([(3.0, 6.0), (9.0, 12.0)])
+        empty = Interval(np.array([]), np.array([]))
+        easy_symmetric_check(I1, I2, empty, lambda a, b: a & b)
+
     # -- difference ----------------------------------------------------
 
     def test_difference_point_minus_covering_range(self):
