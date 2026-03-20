@@ -123,53 +123,13 @@ class MultiChannelDatasetMixin:
             )
         super().get_recording_hook(data)
 
-    def _normalize_channel_uniquify_components(self) -> tuple[str, ...]:
-        with_subject = self.multichannel_dataset_mixin_uniquify_channel_ids_with_subject
-        with_session = self.multichannel_dataset_mixin_uniquify_channel_ids_with_session
-        if not isinstance(with_subject, bool):
-            raise TypeError(
-                "'multichannel_dataset_mixin_uniquify_channel_ids_with_subject' must be "
-                f"bool; got {type(with_subject).__name__}."
-            )
-        if not isinstance(with_session, bool):
-            raise TypeError(
-                "'multichannel_dataset_mixin_uniquify_channel_ids_with_session' must be "
-                f"bool; got {type(with_session).__name__}."
-            )
-
-        components = []
-        if with_subject:
-            components.append("subject_id")
-        if with_session:
-            components.append("session_id")
-        return tuple(components)
-
     def _build_multichannel_channel_id_prefix(self, data: Data) -> str:
-        components = self._normalize_channel_uniquify_components()
-        if not components:
-            return ""
-
-        component_paths = {
-            "subject_id": "subject.id",
-            "session_id": "session.id",
-        }
-        prefix_parts = []
-        for component in components:
-            path = component_paths[component]
-            component_name = component.split("_")[0]
-            error_msg = (
-                f"'{path}' is required when "
-                f"'multichannel_dataset_mixin_uniquify_channel_ids_with_"
-                f"{component_name}' is enabled."
-            )
-            try:
-                value = data.get_nested_attribute(path)
-            except AttributeError as exc:
-                raise ValueError(error_msg) from exc
-            if value is None:
-                raise ValueError(error_msg)
-            prefix_parts.append(str(value))
-        return "/".join(prefix_parts) + "/"
+        prefix = ""
+        if self.multichannel_dataset_mixin_uniquify_channel_ids_with_subject:
+            prefix += f"{data.subject.id}/"
+        if self.multichannel_dataset_mixin_uniquify_channel_ids_with_session:
+            prefix += f"{data.session.id}/"
+        return prefix
 
     def get_channel_ids(self) -> list[str]:
         """Return sorted channel IDs across recordings.

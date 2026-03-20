@@ -82,22 +82,6 @@ def create_multichannel_data(
     )
 
 
-class _MultiChannelDatasetWithConstant(MultiChannelDatasetMixin, Dataset):
-    pass
-
-
-class _MultiChannelDatasetWithConstantUniquify(_MultiChannelDatasetWithConstant):
-    multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
-    multichannel_dataset_mixin_uniquify_channel_ids_with_session = True
-
-
-class _MultiChannelDatasetWithConstantUniquifySubjectOnly(
-    _MultiChannelDatasetWithConstant
-):
-    multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
-    multichannel_dataset_mixin_uniquify_channel_ids_with_session = False
-
-
 @pytest.fixture
 def dummy_spiking_brainset(tmp_path):
     BRAINSET_ID = "mock_brainset"
@@ -334,7 +318,9 @@ class TestSpikingDatasetMixin:
 
 class TestMultiChannelDatasetMixin:
     def test_get_channel_ids_use_recording_view_ids(self, dummy_multichannel_brainset):
-        ds = _MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
+        class MultiChannelDatasetWithConstant(MultiChannelDatasetMixin, Dataset): ...
+
+        ds = MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
 
         all_ids = ds.get_channel_ids()
         assert all_ids == [
@@ -349,7 +335,13 @@ class TestMultiChannelDatasetMixin:
     def test_get_channel_ids_match_hook_uniquified_recording_ids(
         self, dummy_multichannel_brainset
     ):
-        ds = _MultiChannelDatasetWithConstantUniquify(dummy_multichannel_brainset)
+        class MultiChannelDatasetWithConstantUniquify(
+            MultiChannelDatasetMixin, Dataset
+        ):
+            multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
+            multichannel_dataset_mixin_uniquify_channel_ids_with_session = True
+
+        ds = MultiChannelDatasetWithConstantUniquify(dummy_multichannel_brainset)
 
         recording_ids = ds.get_recording("session1").channels.id.tolist()
         assert recording_ids == [
@@ -371,7 +363,13 @@ class TestMultiChannelDatasetMixin:
     def test_get_channel_ids_match_hook_uniquified_subject_only_ids(
         self, dummy_multichannel_brainset
     ):
-        ds = _MultiChannelDatasetWithConstantUniquifySubjectOnly(
+        class MultiChannelDatasetWithConstantUniquifySubjectOnly(
+            MultiChannelDatasetMixin, Dataset
+        ):
+            multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
+            multichannel_dataset_mixin_uniquify_channel_ids_with_session = False
+
+        ds = MultiChannelDatasetWithConstantUniquifySubjectOnly(
             dummy_multichannel_brainset
         )
 
@@ -392,21 +390,12 @@ class TestMultiChannelDatasetMixin:
             "bob/ch2",
         ]
 
-    def test_get_recording_hook_rejects_non_boolean_uniquify_flags(
-        self, dummy_multichannel_brainset
-    ):
-        ds = _MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
-        ds.multichannel_dataset_mixin_uniquify_channel_ids_with_subject = "yes"
-        with pytest.raises(
-            TypeError,
-            match="multichannel_dataset_mixin_uniquify_channel_ids_with_subject",
-        ):
-            ds.get_recording("session1")
-
     def test_get_recording_hook_default_subject_only_uniquify(
         self, dummy_multichannel_brainset
     ):
-        ds = _MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
+        class MultiChannelDatasetWithConstant(MultiChannelDatasetMixin, Dataset): ...
+
+        ds = MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
         rec = ds.get_recording("session1")
 
         assert rec.channels.id.tolist() == [
@@ -415,23 +404,19 @@ class TestMultiChannelDatasetMixin:
             "alice/ch2",
         ]
 
-    def test_build_channel_prefix_raises_for_missing_requested_component(
+    def test_build_channel_prefix_raises_when_subject_metadata_missing(
         self, dummy_multichannel_brainset
     ):
-        ds = _MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
+        class MultiChannelDatasetWithConstant(MultiChannelDatasetMixin, Dataset): ...
+
+        ds = MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
         ds.multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
         ds.multichannel_dataset_mixin_uniquify_channel_ids_with_session = False
 
         class _MissingSubjectData:
-            @staticmethod
-            def get_nested_attribute(path):
-                if path == "subject.id":
-                    return None
-                if path == "session.id":
-                    return "session1"
-                raise AttributeError(path)
+            session = type("Session", (), {"id": "session1"})()
 
-        with pytest.raises(ValueError, match="'subject.id' is required"):
+        with pytest.raises(AttributeError):
             ds._build_multichannel_channel_id_prefix(_MissingSubjectData())
 
 
