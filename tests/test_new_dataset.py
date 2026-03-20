@@ -20,7 +20,7 @@ from brainsets.descriptions import (
 from brainsets.taxonomy import Species
 
 from torch_brain.dataset import Dataset, DatasetIndex, NestedDataset
-from torch_brain.dataset.mixins import SpikingDatasetMixin
+from torch_brain.dataset.mixins import SpikingDatasetMixin, MultiChannelDatasetMixin
 
 
 def create_spiking_data(brainset_id, subject_id, session_id, length):
@@ -51,6 +51,37 @@ def create_spiking_data(brainset_id, subject_id, session_id, length):
     )
 
 
+def create_multichannel_data(
+    brainset_id, subject_id, session_id, length, sampling_rate=256.0
+):
+    n_channels = 3
+    return Data(
+        brainset=BrainsetDescription(
+            id=brainset_id,
+            origin_version="",
+            derived_version="",
+            source="",
+            description="",
+        ),
+        subject=SubjectDescription(subject_id, Species.UNKNOWN),
+        session=SessionDescription(session_id, datetime.now()),
+        multichannel_data=RegularTimeSeries(
+            sampling_rate=sampling_rate,
+            value=np.random.normal(0.0, 1.0, (int(length * sampling_rate), n_channels)),
+            domain="auto",
+        ),
+        channels=ArrayDict(
+            id=np.array([f"ch{i}" for i in range(n_channels)]),
+            name=np.array([f"C{i}" for i in range(n_channels)]),
+            included=np.array([True, False, True]),
+            localization_L=np.array([1.0, 2.0, 3.0]),
+            localization_I=np.array([4.0, 5.0, 6.0]),
+            localization_P=np.array([7.0, 8.0, 9.0]),
+        ),
+        domain=Interval(0, length),
+    )
+
+
 @pytest.fixture
 def dummy_spiking_brainset(tmp_path):
     BRAINSET_ID = "mock_brainset"
@@ -70,6 +101,23 @@ def dummy_spiking_brainset(tmp_path):
         data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
 
     data = create_spiking_data(BRAINSET_ID, "charlie", "session4", 2.0)
+    with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
+        data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
+
+    return store_path
+
+
+@pytest.fixture
+def dummy_multichannel_brainset(tmp_path):
+    BRAINSET_ID = "mock_multichannel_brainset"
+    store_path = tmp_path / BRAINSET_ID
+    os.makedirs(store_path, exist_ok=True)
+
+    data = create_multichannel_data(BRAINSET_ID, "alice", "session1", 1.0)
+    with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
+        data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
+
+    data = create_multichannel_data(BRAINSET_ID, "bob", "session2", 1.2)
     with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
         data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
 
@@ -266,6 +314,110 @@ class TestSpikingDatasetMixin:
         )
         actual_unit_ids = ds.get_unit_ids()
         assert actual_unit_ids == expected_unit_ids
+
+
+class TestMultiChannelDatasetMixin:
+    def test_get_channel_ids_use_recording_view_ids(self, dummy_multichannel_brainset):
+        class MultiChannelDatasetWithConstant(MultiChannelDatasetMixin, Dataset): ...
+
+        ds = MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
+
+        all_ids = ds.get_channel_ids()
+        assert all_ids == [
+            "alice/ch0",
+            "alice/ch1",
+            "alice/ch2",
+            "bob/ch0",
+            "bob/ch1",
+            "bob/ch2",
+        ]
+
+    def test_get_channel_ids_match_hook_uniquified_recording_ids(
+        self, dummy_multichannel_brainset
+    ):
+        class MultiChannelDatasetWithConstantUniquify(
+            MultiChannelDatasetMixin, Dataset
+        ):
+            multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
+            multichannel_dataset_mixin_uniquify_channel_ids_with_session = True
+
+        ds = MultiChannelDatasetWithConstantUniquify(dummy_multichannel_brainset)
+
+        recording_ids = ds.get_recording("session1").channels.id.tolist()
+        assert recording_ids == [
+            "alice/session1/ch0",
+            "alice/session1/ch1",
+            "alice/session1/ch2",
+        ]
+
+        all_ids = ds.get_channel_ids()
+        assert all_ids == [
+            "alice/session1/ch0",
+            "alice/session1/ch1",
+            "alice/session1/ch2",
+            "bob/session2/ch0",
+            "bob/session2/ch1",
+            "bob/session2/ch2",
+        ]
+
+    def test_get_channel_ids_match_hook_uniquified_subject_only_ids(
+        self, dummy_multichannel_brainset
+    ):
+        class MultiChannelDatasetWithConstantUniquifySubjectOnly(
+            MultiChannelDatasetMixin, Dataset
+        ):
+            multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
+            multichannel_dataset_mixin_uniquify_channel_ids_with_session = False
+
+        ds = MultiChannelDatasetWithConstantUniquifySubjectOnly(
+            dummy_multichannel_brainset
+        )
+
+        recording_ids = ds.get_recording("session1").channels.id.tolist()
+        assert recording_ids == [
+            "alice/ch0",
+            "alice/ch1",
+            "alice/ch2",
+        ]
+
+        all_ids = ds.get_channel_ids()
+        assert all_ids == [
+            "alice/ch0",
+            "alice/ch1",
+            "alice/ch2",
+            "bob/ch0",
+            "bob/ch1",
+            "bob/ch2",
+        ]
+
+    def test_get_recording_hook_default_subject_only_uniquify(
+        self, dummy_multichannel_brainset
+    ):
+        class MultiChannelDatasetWithConstant(MultiChannelDatasetMixin, Dataset): ...
+
+        ds = MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
+        rec = ds.get_recording("session1")
+
+        assert rec.channels.id.tolist() == [
+            "alice/ch0",
+            "alice/ch1",
+            "alice/ch2",
+        ]
+
+    def test_build_channel_prefix_raises_when_subject_metadata_missing(
+        self, dummy_multichannel_brainset
+    ):
+        class MultiChannelDatasetWithConstant(MultiChannelDatasetMixin, Dataset): ...
+
+        ds = MultiChannelDatasetWithConstant(dummy_multichannel_brainset)
+        ds.multichannel_dataset_mixin_uniquify_channel_ids_with_subject = True
+        ds.multichannel_dataset_mixin_uniquify_channel_ids_with_session = False
+
+        class _MissingSubjectData:
+            session = type("Session", (), {"id": "session1"})()
+
+        with pytest.raises(AttributeError):
+            ds._build_multichannel_channel_id_prefix(_MissingSubjectData())
 
 
 def test_ensure_index_has_namespace():
