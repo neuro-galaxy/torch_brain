@@ -87,3 +87,57 @@ class CalciumImagingDatasetMixin:
         """Return a sorted list of all ROI IDs across all recordings in the dataset."""
         ans = [self.get_recording(rid).rois.id for rid in self.recording_ids]
         return np.sort(np.concatenate(ans)).tolist()
+
+
+class MultiChannelDatasetMixin:
+    """
+    Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing
+    multi-channel recordings (e.g., EEG, ECoG, EMG, sEEG, etc).
+
+    Provides:
+        - ``get_channel_ids()`` for retrieving sorted channel IDs from
+          recording views returned by ``get_recording(...)``.
+        - Configurable channel-ID uniquification by prepending metadata
+          components before each channel id:
+          ``multichannel_dataset_mixin_uniquify_channel_ids_with_session``
+          prepends ``session.id`` (default ``False``) and
+          ``multichannel_dataset_mixin_uniquify_channel_ids_with_subject``
+          prepends ``subject.id`` (default ``True``). This ``subject.id``
+          uniquification allows channels with the same name in the same
+          subject to be treated as the same channel across sessions. If both
+          are enabled,
+          the prefix order is ``subject.id/session.id``.
+    """
+
+    # Channel-ID uniquification toggles used by get_recording_hook.
+    # Prefix order is always subject/session when enabled.
+    multichannel_dataset_mixin_uniquify_channel_ids_with_subject: bool = True
+    multichannel_dataset_mixin_uniquify_channel_ids_with_session: bool = False
+
+    def get_recording_hook(self, data: Data):
+        prefix = self._build_multichannel_channel_id_prefix(data)
+        if prefix:
+            data.channels.id = np_string_prefix(
+                prefix,
+                data.channels.id.astype(str),
+            )
+        super().get_recording_hook(data)
+
+    def _build_multichannel_channel_id_prefix(self, data: Data) -> str:
+        prefix = ""
+        if self.multichannel_dataset_mixin_uniquify_channel_ids_with_subject:
+            prefix += f"{data.subject.id}/"
+        if self.multichannel_dataset_mixin_uniquify_channel_ids_with_session:
+            prefix += f"{data.session.id}/"
+        return prefix
+
+    def get_channel_ids(self) -> list[str]:
+        """Return sorted channel IDs across recordings.
+
+        ``get_channel_ids`` aggregates ``rec.channels.id`` from ``get_recording(...)``.
+        Any subject/session uniquification is applied there according to
+        ``multichannel_dataset_mixin_uniquify_channel_ids_with_subject`` and
+        ``multichannel_dataset_mixin_uniquify_channel_ids_with_session``.
+        """
+        ans = [self.get_recording(rid).channels.id for rid in self.recording_ids]
+        return np.sort(np.concatenate(ans)).tolist()
