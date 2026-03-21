@@ -12,6 +12,11 @@ VALID_FOLD_TYPES = get_args(FoldType)
 class KempSleepEDF2013(Dataset):
     """Sleep-EDF Database Expanded containing 197 whole-night polysomnographic sleep recordings.
 
+    .. admonition:: Preprocessing
+
+        To download and prepare this dataset, run
+        ``brainsets prepare kemp_sleep_edf_2013``.
+
     Args:
         root (str): Root directory for the dataset.
         recording_ids (list[str], optional): List of recording IDs to load.

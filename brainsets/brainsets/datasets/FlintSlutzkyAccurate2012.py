@@ -5,6 +5,46 @@ from torch_brain.dataset import Dataset, SpikingDatasetMixin
 
 
 class FlintSlutzkyAccurate2012(SpikingDatasetMixin, Dataset):
+    """
+    Motor cortex (M1) spiking activity and reaching kinematics from 1 monkey
+    performing center-out reaching tasks.
+
+    .. admonition:: Preprocessing
+
+        To download and prepare this dataset, run
+        ``brainsets prepare flint_slutzky_accurate_2012``.
+
+    **Tasks:** Center-Out
+
+    **Brain Regions:** M1
+
+    **Dataset Statistics**
+
+    - **Subjects:** 1
+    - **Total Sessions:** 5
+    - **Total Units:** 957
+    - **Events:** ~7.9M spikes, ~319k behavioral timestamps
+
+    **Links**
+
+    - Paper: `Flint et al. (2012) – Journal of Neural Engineering <https://doi.org/10.1088/1741-2560/9/4/046006>`_
+    - Dataset: `CRCNS Flint 2012 dataset <https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012>`_
+
+    **Reference**
+
+    Flint, R. D., Lindberg, E. W., Jordan, L. R., Miller, L. E., & Slutzky, M. W. (2012).
+    *Accurate decoding of reaching movements from field potentials in the absence of spikes.*
+    `Journal of Neural Engineering <https://doi.org/10.1088/1741-2560/9/4/046006>`_, 9(4), 046006.
+
+    Args:
+        root (str): Root directory for the dataset.
+        recording_ids (list[str], optional): List of recording IDs to load.
+        transform (Callable, optional): Data transformation to apply.
+        split_type (str, optional): Which split type to use. Defaults to "hand_velocity".
+        dirname (str, optional): Subdirectory for the dataset. Defaults to "flint_slutzky_accurate_2012".
+
+    """
+
     def __init__(
         self,
         root: str,

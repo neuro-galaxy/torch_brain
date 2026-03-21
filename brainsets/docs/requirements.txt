@@ -7,3 +7,4 @@ sphinx-rtd-theme
 sphinx-tabs
 sphinx-design
 sphinx-copybutton
+git+https://github.com/neuro-galaxy/torch_brain

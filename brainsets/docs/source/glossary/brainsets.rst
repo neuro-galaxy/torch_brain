@@ -14,6 +14,7 @@ churchland_shenoy_neural_2012
 
 .. raw:: html
 
+  <div class="brainset-card">
    <table>
        <colgroup>
            <col style="width: 30%">
@@ -165,6 +166,7 @@ churchland_shenoy_neural_2012
            <td>The data is not contiguous. Neural and behavior data are provided only during the trials, and not between trials. Additionally, the raw data contains artifacts that were removed during processing. </td>
        </tr>
    </table>
+   </div>
 
 
 flint_slutzky_accurate_2012
@@ -180,6 +182,7 @@ flint_slutzky_accurate_2012
 
 .. raw:: html
 
+  <div class="brainset-card">
    <table>
        <colgroup>
            <col style="width: 30%">
@@ -368,7 +371,7 @@ flint_slutzky_accurate_2012
            <td>151 MB</td>
        </tr>
    </table>
-
+   </div>
 
 
 odoherty_sabes_nonhuman_2017
@@ -384,6 +387,7 @@ odoherty_sabes_nonhuman_2017
 
 .. raw:: html
 
+  <div class="brainset-card">
    <table>
        <colgroup>
            <col style="width: 30%">
@@ -525,7 +529,7 @@ odoherty_sabes_nonhuman_2017
            <td>26 GB</td>
        </tr>
    </table>
-
+   </div>
 
 pei_pandarinath_nlb_2021
 ------------------------
@@ -540,6 +544,7 @@ pei_pandarinath_nlb_2021
 
 .. raw:: html
 
+  <div class="brainset-card">
    <table>
        <colgroup>
            <col style="width: 30%">
@@ -681,7 +686,7 @@ pei_pandarinath_nlb_2021
            <td>22 MB</td>
        </tr>
    </table>
-
+   </div>
 
 perich_miller_population_2018
 ------------------------------
@@ -696,6 +701,7 @@ perich_miller_population_2018
 
 .. raw:: html
 
+  <div class="brainset-card">
    <table>
        <colgroup>
            <col style="width: 30%">
@@ -880,3 +886,4 @@ perich_miller_population_2018
            <td>2.9 GB</td>
        </tr>
    </table>
+   </div>

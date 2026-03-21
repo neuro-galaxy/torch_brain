@@ -1,5 +1,5 @@
 /* Custom styling for dataset tables */
-table {
+.brainset-card table {
     border-collapse: separate;
     border-spacing: 0;
     border-radius: 8px;
@@ -12,43 +12,43 @@ table {
 }
 
 /* Force column widths explicitly */
-table colgroup {
+.brainset-card table colgroup {
     display: table-column-group;
 }
 
-table col:first-child {
+.brainset-card table col:first-child {
     width: 30% !important;
 }
 
-table col:last-child {
+.brainset-card table col:last-child {
     width: 70% !important;
 }
 
 /* Directly target the td elements as a backup */
-table td:first-child {
+.brainset-card table td:first-child {
     width: 30% !important;
 }
 
-table td:last-child {
+.brainset-card table td:last-child {
     width: 70% !important;
 }
 
 /* Title row styling (first row) */
-table tr:first-child td {
+.brainset-card table tr:first-child td {
     background-color: var(--color-background-secondary);
     font-weight: bold;
     padding: 10px;
 }
 
 /* Section header rows styling (Subjects, Neural Data, etc.) */
-table th[colspan="2"] {
+.brainset-card table th[colspan="2"] {
     background-color: var(--color-background-secondary);
     padding: 8px;
     text-align: center;
 }
 
 /* Regular cell styling */
-td,
+.brainset-card table td,
 th {
     padding: 8px;
     border-bottom: 1px solid var(--color-foreground-border);
@@ -57,33 +57,33 @@ th {
 }
 
 /* Add padding to first and last columns */
-td:first-child,
+.brainset-card table td:first-child,
 th:first-child {
     padding-left: 15px;
 }
 
-td:last-child,
+.brainset-card table td:last-child,
 th:last-child {
     padding-right: 15px;
 }
 
 /* Strong element styling */
-strong {
+.brainset-card table strong {
     font-weight: bold;
 }
 
 /* Add padding between icons and text in section headers */
-table th[colspan="2"] i {
+.brainset-card table th[colspan="2"] i {
     margin-right: 6px;
 }
 
 /* Citation button and popup styles */
-.citation-container {
+.brainset-card .citation-container {
     position: relative;
     display: inline-block;
 }
 
-.cite-button {
+.brainset-card .cite-button {
     margin-left: 8px;
     padding: 2px 8px;
     background-color: var(--color-background-secondary);
@@ -94,11 +94,11 @@ table th[colspan="2"] i {
     color: var(--color-foreground-primary);
 }
 
-.cite-button:hover {
+.brainset-card .cite-button:hover {
     background-color: var(--color-background-hover);
 }
 
-.citation-popup {
+.brainset-card .citation-popup {
     position: absolute;
     background-color: var(--color-background-primary);
     border: 1px solid var(--color-foreground-border);
@@ -113,20 +113,20 @@ table th[colspan="2"] i {
     transform: translateX(-70%);
 }
 
-.citation-section {
+.brainset-card .citation-section {
     margin-bottom: 15px;
     position: relative;
     /* For absolute positioning of copy button */
 }
 
-.citation-section h4 {
+.brainset-card .citation-section h4 {
     margin-top: 0;
     margin-bottom: 8px;
     font-size: 0.9em;
     font-weight: bold;
 }
 
-.citation-content {
+.brainset-card .citation-content {
     position: relative;
     background-color: var(--color-background-secondary);
     padding: 15px;
@@ -135,7 +135,7 @@ table th[colspan="2"] i {
     font-family: monospace;
 }
 
-.citation-content pre {
+.brainset-card .citation-content pre {
     background-color: transparent;
     padding: 0;
     margin: 0;
@@ -146,7 +146,7 @@ table th[colspan="2"] i {
     font-family: inherit;
 }
 
-.citation-content p {
+.brainset-card .citation-content p {
     margin: 0;
     padding: 0;
     font-size: 0.8em;
@@ -154,7 +154,7 @@ table th[colspan="2"] i {
     font-family: inherit;
 }
 
-.copy-button {
+.brainset-card .copy-button {
     position: absolute;
     top: 8px;
     right: 8px;
@@ -167,25 +167,25 @@ table th[colspan="2"] i {
 }
 
 /* Update SVG colors for dark mode compatibility */
-.copy-button svg {
+.brainset-card .copy-button svg {
     stroke: var(--color-foreground-primary);
 }
 
-.copy-button:hover {
+.brainset-card .copy-button:hover {
     color: var(--color-brand-primary);
 }
 
-.copy-button:hover svg {
+.brainset-card .copy-button:hover svg {
     stroke: var(--color-brand-primary);
 }
 
 /* When showing success checkmark */
-.copy-button .fa-check {
+.brainset-card .copy-button .fa-check {
     color: var(--color-foreground-primary);
 }
 
 /* Code tag styling */
-.code-tag {
+.brainset-card .code-tag {
     display: inline-block;
     background-color: var(--color-background-secondary);
     border-radius: 4px;
@@ -194,4 +194,18 @@ table th[colspan="2"] i {
     font-family: monospace;
     font-size: 0.9em;
     border: 1px solid var(--color-foreground-border);
+}
+
+/* Autosummary table styling */
+table.autosummary {
+    width: 100% !important;
+    table-layout: auto !important;
+}
+
+table.autosummary tr:nth-child(odd) {
+    background-color: #f9f9f9 !important; /* The subtle gray stripe */
+}
+
+table.autosummary tr:nth-child(even) {
+    background-color: #ffffff !important; /* The white stripe */
 }
