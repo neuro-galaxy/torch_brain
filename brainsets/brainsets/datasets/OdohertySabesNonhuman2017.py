@@ -5,6 +5,46 @@ from torch_brain.dataset import Dataset, SpikingDatasetMixin
 
 
 class OdohertySabesNonhuman2017(SpikingDatasetMixin, Dataset):
+    """
+    Motor cortex (M1 and S1) spiking activity and reaching kinematics from 2 monkeys
+    performing random target reaching tasks with right hand.
+
+    .. admonition:: Preprocessing
+
+        To download and prepare this dataset, run
+        ``brainsets prepare odoherty_sabes_nonhuman_2017``.
+
+    **Tasks:** Random Target
+
+    **Brain Regions:** M1, S1
+
+    **Dataset Statistics**
+
+    - **Subjects:** 2
+    - **Total Sessions:** 47
+    - **Total Units:** 16,566
+    - **Events:** ~105.2M spikes, ~12.4M behavioral timestamps
+
+    **Links**
+
+    - Paper: `O'Doherty and Sabes (2018) – Journal of Neural Engineering <https://pubmed.ncbi.nlm.nih.gov/29192609/>`_
+    - Dataset: `Zenodo Record 3854034 <https://zenodo.org/records/3854034>`_
+
+    **Reference**
+
+    O'Doherty, J. E., Cardoso, M. M. B., Makin, J. G., & Sabes, P. N. (2020).
+    *Nonhuman Primate Reaching with Multichannel Sensorimotor Cortex Electrophysiology.*
+    `Zenodo Dataset <https://doi.org/10.5281/zenodo.788569>`_.
+
+    Args:
+        root (str): Root directory for the dataset.
+        recording_ids (list[str], optional): List of recording IDs to load.
+        transform (Callable, optional): Data transformation to apply.
+        split_type (str, optional): Which split type to use. Defaults to "cursor_velocity".
+        dirname (str, optional): Subdirectory for the dataset. Defaults to "odoherty_sabes_nonhuman_2017".
+
+    """
+
     def __init__(
         self,
         root: str,

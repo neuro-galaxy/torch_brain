@@ -5,6 +5,48 @@ from torch_brain.dataset import Dataset, SpikingDatasetMixin
 
 
 class ChurchlandShenoyNeural2012(SpikingDatasetMixin, Dataset):
+    """
+    Motor cortex (M1 and PMd) spiking activity and reaching kinematics from 2 monkeys
+    performing center-out reaching tasks with right hand.
+
+    .. admonition:: Preprocessing
+
+        To download and prepare this dataset, run
+        ``brainsets prepare churchland_shenoy_neural_2012``.
+
+    **Tasks:** Center-Out
+
+    **Brain Regions:** M1, PMd
+
+    **Dataset Statistics**
+
+    - **Subjects:** 2
+    - **Total Sessions:** 10
+    - **Total Units:** 1,911
+    - **Events:** ~739M spikes, ~85M behavioral timestamps
+
+    **Links**
+
+    - Paper: `Churchland et al. (2012) – Nature <https://www.nature.com/articles/nature11129>`_
+    - Dataset: `Dandiset 000070 <https://dandiarchive.org/dandiset/000070>`_
+
+    **Reference**
+
+    Churchland, M., Cunningham, J. P., Kaufman, M. T., Foster, J. D.,
+    Nuyujukian, P., Ryu, S. I., & Shenoy, K. V.
+    *Neural population dynamics during reaching.*
+    `DANDI Archive Dataset <https://doi.org/10.48324/dandi.000070/0.251218.1714>`_,
+    Version 0.251218.1714.
+
+    Args:
+        root (str): Root directory for the dataset.
+        recording_ids (list[str], optional): List of recording IDs to load.
+        transform (Callable, optional): Data transformation to apply.
+        split_type (str, optional): Which split type to use. Defaults to "cursor_velocity".
+        dirname (str, optional): Subdirectory for the dataset. Defaults to "churchland_shenoy_neural_2012".
+
+    """
+
     def __init__(
         self,
         root: str,

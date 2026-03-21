@@ -50,8 +50,6 @@ If you encounter any bugs or have feature requests, please submit them to our
    :caption: Glossary
 
    glossary/brainsets
-   glossary/modalities
-
 
 .. toctree::
    :maxdepth: 2
@@ -63,3 +61,9 @@ If you encounter any bugs or have feature requests, please submit them to our
    package/taxonomy
    package/utils
    .. package/processing
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Datasets
+   
+   package/datasets/index

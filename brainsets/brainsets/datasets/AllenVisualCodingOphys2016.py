@@ -5,6 +5,16 @@ from torch_brain.dataset import Dataset, CalciumImagingDatasetMixin
 
 
 class AllenVisualCodingOphys2016(CalciumImagingDatasetMixin, Dataset):
+    """
+
+
+    .. admonition:: Preprocessing
+
+        To download and prepare this dataset, run
+        ``brainsets prepare allen_visual_coding_ophys_2016``.
+
+    """
+
     def __init__(
         self,
         root: str,
