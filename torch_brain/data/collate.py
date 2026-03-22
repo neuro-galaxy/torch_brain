@@ -164,6 +164,63 @@ def pad2d_collate_object_fn(
     return _collate([e.obj for e in batch], collate_fn_map=pad2d_collate_fn_map)
 
 
+# pad2d8
+Padded2d8Object = namedtuple("Padded2d8Object", ["obj"])
+
+
+def pad2d8(obj):
+    """
+    Args:
+        obj: Can be tensors, numpy arrays, lists, tuples, or dictionaries.
+    """
+    return Padded2d8Object(obj)
+
+
+def track_mask2d8(input: Union[torch.Tensor, np.ndarray]):
+    r"""Wrap an array or tensor to specify that its padding mask should be tracked. This
+    is used in conjunction with :obj:`pad2d8`.
+
+    Args:
+        input: An array or tensor.
+    """
+    if input.ndim != 2:
+        raise ValueError(
+            f"Expected input to have 2 dimensions, but got {input.ndim} dimensions."
+        )
+    return pad2d8(torch.ones_like(input, dtype=torch.bool))
+
+
+def pad2d8_collate_tensor_fn(
+    batch,
+    *,
+    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+):
+    if any(elem.ndim < 2 for elem in batch):
+        raise ValueError("All tensors must have at least 2 dimensions.")
+    max_n = max([elem.shape[0] for elem in batch])
+    max_m = max([elem.shape[1] for elem in batch])
+    # round inner dim up to multiple of 8
+    max_m = max_m + (8 - max_m % 8) % 8
+
+    elem = batch[0]
+    b = torch.zeros((len(batch), max_n, max_m, *elem.shape[2:]), dtype=elem.dtype)
+    for i, elem in enumerate(batch):
+        b[i, : elem.shape[0], : elem.shape[1]] = elem
+    return b
+
+
+pad2d8_collate_fn_map = copy.deepcopy(default_collate_fn_map)
+pad2d8_collate_fn_map[torch.Tensor] = pad2d8_collate_tensor_fn
+
+
+def pad2d8_collate_object_fn(
+    batch,
+    *,
+    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+):
+    return _collate([e.obj for e in batch], collate_fn_map=pad2d8_collate_fn_map)
+
+
 # chain
 ChainObject = namedtuple("ChainObject", ["obj", "allow_missing_keys"])
 ChainBatchTrackerObject = namedtuple("ChainBatchTrackerObject", ["obj"])
@@ -268,9 +325,10 @@ def chain_collate_object_fn(
 collate_fn_map = copy.deepcopy(default_collate_fn_map)
 collate_fn_map[PaddedObject] = pad_collate_object_fn
 collate_fn_map[Padded8Object] = pad8_collate_object_fn
+collate_fn_map[Padded2dObject] = pad2d_collate_object_fn
+collate_fn_map[Padded2d8Object] = pad2d8_collate_object_fn
 collate_fn_map[ChainObject] = chain_collate_object_fn
 collate_fn_map[ChainBatchTrackerObject] = chain_batch_tracker_collate_tensor_fn
-collate_fn_map[Padded2dObject] = pad2d_collate_object_fn
 
 
 def collate(batch):
