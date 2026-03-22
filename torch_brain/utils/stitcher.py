@@ -81,3 +81,31 @@ def stitch(
             "Only floating points supported for mean pooling, "
             " and torch.long type supported for mode pooling."
         )
+
+
+
+def _deprecated_import_error(name):
+    raise ImportError(
+        f"`{name}` has been moved to `torch_brain.utils.callbacks`. "
+        f"Please update your import to: `from torch_brain.utils.callbacks import {name}`"
+    )
+
+
+class DecodingStitchEvaluator:
+    def __init__(self, *args, **kwargs):
+        _deprecated_import_error("DecodingStitchEvaluator")
+
+
+class DataForDecodingStitchEvaluator:
+    def __init__(self, *args, **kwargs):
+        _deprecated_import_error("DataForDecodingStitchEvaluator")
+
+
+class MultiTaskDecodingStitchEvaluator:
+    def __init__(self, *args, **kwargs):
+        _deprecated_import_error("MultiTaskDecodingStitchEvaluator")
+
+
+class DataForMultiTaskDecodingStitchEvaluator:
+    def __init__(self, *args, **kwargs):
+        _deprecated_import_error("DataForMultiTaskDecodingStitchEvaluator")
