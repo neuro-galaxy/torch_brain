@@ -142,7 +142,7 @@ class Dataset(torch.utils.data.Dataset):
             self.apply_namespace(data, _namespace + "/")
         return data
 
-    def __getitem__(self, index: DatasetIndex) -> Data:
+    def __getitem__(self, index: DatasetIndex):
         """Get a time-sliced sample from the dataset.
 
         If a transform was provided during construction, it will be applied to the sliced sample

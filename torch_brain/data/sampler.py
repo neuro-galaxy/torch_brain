@@ -7,7 +7,7 @@ import torch
 import torch.distributed as dist
 
 from temporaldata import Interval
-from torch_brain.data.dataset import DatasetIndex
+from torch_brain.dataset.dataset import DatasetIndex
 
 
 class RandomFixedWindowSampler(torch.utils.data.Sampler):
@@ -39,12 +39,14 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
         sampling_intervals: Dict[str, Interval],
         window_length: float,
         generator: Optional[torch.Generator] = None,
+        step: Optional[float] = None,
         drop_short: bool = True,
     ):
         self.sampling_intervals = sampling_intervals
         self.window_length = window_length
         self.generator = generator
         self.drop_short = drop_short
+        self.step = step or window_length
 
     @cached_property
     def _estimated_len(self):
@@ -107,7 +109,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
                     for t in torch.arange(
                         start + left_offset,
                         end,
-                        self.window_length,
+                        self.step,
                         dtype=torch.float64,
                     )
                     if t + self.window_length <= end
