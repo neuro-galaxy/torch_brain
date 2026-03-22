@@ -42,15 +42,11 @@ class CausalLinearDecoder(nn.Module):
         return self.net(x)
 
     def tokenize(self, data: Data):
-        x = np.zeros((self.num_units, self.num_bins), dtype=int)
-        spike_times = np.floor(data.spikes.timestamps / self.bin_size).astype(int)
-        np.add.at(x, (data.spikes.unit_index, spike_times), 1)
-        x = x.flatten().astype(np.float32)
-        # x = bin_spikes(
-        #     spikes=data.spikes,
-        #     num_units=len(data.units),
-        #     bin_size=self.bin_size,
-        # ).flatten()
+        x = bin_spikes(
+            spikes=data.spikes,
+            num_units=len(data.units),
+            bin_size=self.bin_size,
+        ).flatten()
 
         return x
 
