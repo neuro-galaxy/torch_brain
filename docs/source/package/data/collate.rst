@@ -7,19 +7,21 @@ Collate
 .. list-table::
    :widths: 25 125
 
-   * - :py:class:`collate`
+   * - :py:func:`collate`
      - An extended collate function that handles padding and chaining.
-   * - :py:class:`pad`
+   * - :py:func:`pad`
      - A wrapper to call when padding.
-   * - :py:class:`track_mask`
+   * - :py:func:`track_mask`
      - A wrapper to call to track the padding mask during padding.
-   * - :py:class:`pad8`
+   * - :py:func:`pad8`
      - A wrapper to call when padding, but length is rounded up to the nearest multiple of 8. 
-   * - :py:class:`track_mask8`
-     - A wrapper to call to track the padding mask during padding with :py:class:`pad8`.
-   * - :py:class:`chain`
+   * - :py:func:`track_mask8`
+     - A wrapper to call to track the padding mask during padding with :py:func:`pad8`.
+   * - :py:func:`pad2d`
+     - A wrapper to call when padding 2D tensors.
+   * - :py:func:`chain`
      - A wrapper to call when chaining.
-   * - :py:class:`track_batch`
+   * - :py:func:`track_batch`
      - A wrapper to call to track the batch index during chaining.
 
 
@@ -32,6 +34,8 @@ Collate
 .. autofunction:: pad8
 
 .. autofunction:: track_mask8
+
+.. autofunction:: pad2d
 
 .. autofunction:: chain
 

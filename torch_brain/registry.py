@@ -77,14 +77,14 @@ def register_modality(name: str, **kwargs: Any) -> int:
     return next_id
 
 
-def get_modality_by_id(modality_id: int) -> ModalitySpec:
-    """Get a modality specification by its ID.
+def get_modality_by_id(modality_id: int) -> str:
+    """Get a modality name by its ID.
 
     Args:
         modality_id: The numeric ID of the modality to retrieve
 
     Returns:
-        ModalitySpec: The modality specification
+        str: The name of the modality
 
     Raises:
         KeyError: If no modality exists with the given ID

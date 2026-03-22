@@ -50,6 +50,19 @@ def rescale(data: Data, scale: float, offset: float):
 
 
 class RandomTimeScaling:
+    r"""Randomly scales the time axis of the data.
+
+    The time axis is scaled by a random factor sampled uniformly between
+    ``min_scale`` and ``max_scale``, and offset by a random value sampled
+    uniformly between ``min_offset`` and ``max_offset``.
+
+    Args:
+        min_scale (float): Minimum scaling factor.
+        max_scale (float): Maximum scaling factor.
+        min_offset (float, optional): Minimum offset. Defaults to 0.
+        max_offset (float, optional): Maximum offset. Defaults to 0.
+    """
+
     def __init__(self, min_scale, max_scale, min_offset=0, max_offset=0):
         self.min_scale = min_scale
         self.max_scale = max_scale
