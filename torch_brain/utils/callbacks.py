@@ -190,6 +190,7 @@ class DecodingStitchEvaluator(L.Callback):
                 If not provided, the metric is inferred based on the modality_spec.
             quiet: If True, disables the logging of the metrics to the console.
         """
+        _check_lightning_available(self.__class__)
         self.quiet = quiet
 
         if metric_factory is not None:
@@ -332,6 +333,7 @@ class DataForMultiTaskDecodingStitchEvaluator:
 
 class MultiTaskDecodingStitchEvaluator(L.Callback):
     def __init__(self, metrics: dict):
+        _check_lightning_available(self.__class__)
         self.metrics = metrics
 
     def on_validation_epoch_start(self, trainer, pl_module):
