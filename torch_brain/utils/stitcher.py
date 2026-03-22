@@ -83,7 +83,6 @@ def stitch(
         )
 
 
-
 def _deprecated_import_error(name):
     raise ImportError(
         f"`{name}` has been moved to `torch_brain.utils.callbacks`. "
