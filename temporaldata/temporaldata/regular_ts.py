@@ -83,10 +83,6 @@ class RegularTimeSeries(ArrayDict):
         r"""Returns the domain of the time series."""
         return self._domain
 
-    def timekeys(self):
-        r"""Returns a list of all time-based attributes."""
-        return self._timekeys
-
     def select_by_mask(self, mask: np.ndarray):
         raise NotImplementedError("Not implemented for RegularTimeSeries.")
 
