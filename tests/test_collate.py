@@ -105,9 +105,7 @@ def test_track_mask8():
     assert batch.dtype == torch.bool
     assert torch.allclose(
         batch,
-        torch.BoolTensor(
-            [[1, 1, 1, 0, 0, 0, 0, 0], [1, 1, 0, 0, 0, 0, 0, 0]]
-        ),
+        torch.BoolTensor([[1, 1, 1, 0, 0, 0, 0, 0], [1, 1, 0, 0, 0, 0, 0, 0]]),
     )
 
     # torch.Tensors
@@ -119,9 +117,7 @@ def test_track_mask8():
     assert batch.dtype == torch.bool
     assert torch.allclose(
         batch,
-        torch.BoolTensor(
-            [[1, 1, 1, 0, 0, 0, 0, 0], [1, 1, 0, 0, 0, 0, 0, 0]]
-        ),
+        torch.BoolTensor([[1, 1, 1, 0, 0, 0, 0, 0], [1, 1, 0, 0, 0, 0, 0, 0]]),
     )
 
     # length already a multiple of 8
@@ -259,9 +255,7 @@ def test_pad2d8():
             ]
         ),
     )
-    assert torch.allclose(
-        batch[:, :, 3:, :], torch.zeros(2, 3, 5, 1, dtype=torch.long)
-    )
+    assert torch.allclose(batch[:, :, 3:, :], torch.zeros(2, 3, 5, 1, dtype=torch.long))
 
     # inner dim already a multiple of 8 — no extra padding
     x = pad2d8(np.zeros((2, 8)))
