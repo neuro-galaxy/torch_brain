@@ -181,9 +181,9 @@ def test_pad2d():
 
 
 def test_track_mask2d():
-    # basic 2d mask tracking
-    x_mask = track_mask2d(torch.ones(3, 4))
-    y_mask = track_mask2d(torch.ones(2, 3))
+    # padding applied to np.ndarrays
+    x_mask = track_mask2d(np.ones((3, 4)))
+    y_mask = track_mask2d(np.ones((2, 3)))
 
     batch = collate([x_mask, y_mask])
     assert batch.shape == (2, 3, 4)
@@ -191,6 +191,18 @@ def test_track_mask2d():
     # first sample fully True
     assert batch[0].all()
     # second sample: 2x3 True, rest False
+    assert batch[1, :2, :3].all()
+    assert not batch[1, :2, 3:].any()
+    assert not batch[1, 2, :].any()
+
+    # padding applied to torch.Tensors
+    x_mask = track_mask2d(torch.ones(3, 4))
+    y_mask = track_mask2d(torch.ones(2, 3))
+
+    batch = collate([x_mask, y_mask])
+    assert batch.shape == (2, 3, 4)
+    assert batch.dtype == torch.bool
+    assert batch[0].all()
     assert batch[1, :2, :3].all()
     assert not batch[1, :2, 3:].any()
     assert not batch[1, 2, :].any()
@@ -279,9 +291,9 @@ def test_pad2d8():
 
 
 def test_track_mask2d8():
-    # basic 2d8 mask tracking — inner dim rounded to multiple of 8
-    x_mask = track_mask2d8(torch.ones(3, 5))
-    y_mask = track_mask2d8(torch.ones(2, 3))
+    # padding applied to np.ndarrays
+    x_mask = track_mask2d8(np.ones((3, 5)))
+    y_mask = track_mask2d8(np.ones((2, 3)))
 
     batch = collate([x_mask, y_mask])
     # inner dim max is 5, rounded up to 8
@@ -295,15 +307,28 @@ def test_track_mask2d8():
     assert not batch[1, :2, 3:].any()
     assert not batch[1, 2, :].any()
 
+    # padding applied to torch.Tensors
+    x_mask = track_mask2d8(torch.ones(3, 5))
+    y_mask = track_mask2d8(torch.ones(2, 3))
+
+    batch = collate([x_mask, y_mask])
+    assert batch.shape == (2, 3, 8)
+    assert batch.dtype == torch.bool
+    assert batch[0, :, :5].all()
+    assert not batch[0, :, 5:].any()
+    assert batch[1, :2, :3].all()
+    assert not batch[1, :2, 3:].any()
+    assert not batch[1, 2, :].any()
+
     # inner dim already multiple of 8
-    x_mask = track_mask2d8(torch.ones(2, 8))
-    y_mask = track_mask2d8(torch.ones(3, 8))
+    x_mask = track_mask2d8(np.ones((2, 8)))
+    y_mask = track_mask2d8(np.ones((3, 8)))
     batch = collate([x_mask, y_mask])
     assert batch.shape == (2, 3, 8)
 
     # inner dim 9 -> rounds to 16
-    x_mask = track_mask2d8(torch.ones(2, 9))
-    y_mask = track_mask2d8(torch.ones(3, 7))
+    x_mask = track_mask2d8(np.ones((2, 9)))
+    y_mask = track_mask2d8(np.ones((3, 7)))
     batch = collate([x_mask, y_mask])
     assert batch.shape == (2, 3, 16)
 

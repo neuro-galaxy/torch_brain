@@ -132,7 +132,7 @@ def track_mask2d(input: Union[torch.Tensor, np.ndarray]):
         raise ValueError(
             f"Expected input to have 2 dimensions, but got {input.ndim} dimensions."
         )
-    return pad2d(torch.ones_like(input, dtype=torch.bool))
+    return pad2d(torch.ones(input.shape, dtype=torch.bool))
 
 
 def pad2d_collate_tensor_fn(
@@ -187,7 +187,7 @@ def track_mask2d8(input: Union[torch.Tensor, np.ndarray]):
         raise ValueError(
             f"Expected input to have 2 dimensions, but got {input.ndim} dimensions."
         )
-    return pad2d8(torch.ones_like(input, dtype=torch.bool))
+    return pad2d8(torch.ones(input.shape, dtype=torch.bool))
 
 
 def pad2d8_collate_tensor_fn(
