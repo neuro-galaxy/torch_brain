@@ -38,6 +38,7 @@ class RotaryCrossAttention(nn.Module):
         dim_head (int): Dimension of each attention head
         dropout (float): Dropout probability
         rotate_value (bool): Whether to apply rotary embeddings to values as well as queries/keys
+        use_xformers (bool): Whether to use xformers for attention. Defaults to True.
     """
 
     def __init__(
@@ -49,6 +50,7 @@ class RotaryCrossAttention(nn.Module):
         dim_head: int = 64,
         dropout: float = 0.0,
         rotate_value: bool = False,
+        use_xformers: bool = True,
     ):
         super().__init__()
 
@@ -57,6 +59,7 @@ class RotaryCrossAttention(nn.Module):
         self.heads = heads
         self.dropout = dropout
         self.rotate_value = rotate_value
+        self.use_xformers = use_xformers
 
         self.norm = nn.LayerNorm(dim)
         self.norm_context = nn.LayerNorm(context_dim)
@@ -96,8 +99,8 @@ class RotaryCrossAttention(nn.Module):
         k, v = self.to_kv(x_context).chunk(2, dim=-1)
 
         # select attention kernel
-        if xops is not None and x_query.device.type == "cuda":
-            # if xformers is available, use it for attention.
+        if self.use_xformers and xops is not None and x_query.device.type == "cuda":
+            # if xformers is available and not opted out of, use it for attention.
             # xformers supports attention masks when using the memory efficient attention
             # kernel, but pytorch does not.
             rotary_attn_func = rotary_attn_xformers_func
@@ -153,6 +156,17 @@ class RotaryCrossAttention(nn.Module):
             B is batch size, D is input dimension, D_c is context dimension, H is number of
             heads, and D_h is head dimension.
         """
+        if not x_query.device.type == "cuda":
+            raise NotImplementedError("No varlen attention kernel available for CPU.")
+        if not self.use_xformers:
+            raise RuntimeError(
+                "forward_varlen requires xformers, but use_xformers is False."
+            )
+        if xops is None:
+            raise RuntimeError(
+                "No varlen attention kernel available, please install xformers."
+            )
+
         # normalize
         x_query = self.norm(x_query)
         x_context = self.norm_context(x_context)
@@ -161,22 +175,8 @@ class RotaryCrossAttention(nn.Module):
         q = self.to_q(x_query)
         k, v = self.to_kv(x_context).chunk(2, dim=-1)
 
-        # select attention kernel
-        if xops is not None and x_query.device.type == "cuda":
-            rotary_attn_func = rotary_attn_xformers_varlen_func
-        else:
-            if x_query.device.type == "cuda":
-                raise RuntimeError(
-                    "No varlen attention kernel available, please install xformers."
-                )
-            else:
-                # forward_varlen is not implemented for CPU, forward should be used instead
-                raise NotImplementedError(
-                    "No varlen attention kernel available for CPU."
-                )
-
         # apply attention
-        out = rotary_attn_func(
+        out = rotary_attn_xformers_varlen_func(
             query=q,
             key=k,
             value=v,
@@ -216,6 +216,7 @@ class RotarySelfAttention(nn.Module):
         dim_head (int): Dimension of each attention head
         dropout (float): Dropout probability
         rotate_value (bool): Whether to apply rotary embeddings to values as well as queries/keys
+        use_xformers (bool): Whether to use xformers for attention. Defaults to True.
     """
 
     def __init__(
@@ -226,6 +227,7 @@ class RotarySelfAttention(nn.Module):
         dim_head: int = 64,
         dropout: float = 0.0,
         rotate_value: bool = False,
+        use_xformers: bool = True,
     ):
         super().__init__()
 
@@ -233,6 +235,7 @@ class RotarySelfAttention(nn.Module):
         self.heads = heads
         self.dropout = dropout
         self.rotate_value = rotate_value
+        self.use_xformers = use_xformers
 
         self.norm = nn.LayerNorm(dim)
 
@@ -263,7 +266,7 @@ class RotarySelfAttention(nn.Module):
         q, k, v = self.to_qkv(x).chunk(3, dim=-1)
 
         # select attention kernel
-        if xops is not None and x.device.type == "cuda":
+        if self.use_xformers and xops is not None and x.device.type == "cuda":
             rotary_attn_func = rotary_attn_xformers_func
         else:
             rotary_attn_func = rotary_attn_pytorch_func
@@ -302,28 +305,25 @@ class RotarySelfAttention(nn.Module):
             where N_total is the total sequence length across the batch,
             B is batch size, D is input dimension, and D_h is head dimension.
         """
+        if not x.device.type == "cuda":
+            raise NotImplementedError("No varlen attention kernel available for CPU.")
+        if not self.use_xformers:
+            raise RuntimeError(
+                "forward_varlen requires xformers, but use_xformers is False."
+            )
+        if xops is None:
+            raise RuntimeError(
+                "No varlen attention kernel available, please install xformers."
+            )
+
         # normalize
         x = self.norm(x)
 
         # project to q, k, v
         q, k, v = self.to_qkv(x).chunk(3, dim=-1)
 
-        # select attention kernel
-        if xops is not None and x.device.type == "cuda":
-            rotary_attn_func = rotary_attn_xformers_varlen_func
-        else:
-            if x.device.type == "cuda":
-                raise RuntimeError(
-                    "No varlen attention kernel available, please install xformers."
-                )
-            else:
-                # forward_varlen is not implemented for CPU, forward should be used instead
-                raise NotImplementedError(
-                    "No varlen attention kernel available for CPU."
-                )
-
         # apply attention
-        out = rotary_attn_func(
+        out = rotary_attn_xformers_varlen_func(
             query=q,
             key=k,
             value=v,
