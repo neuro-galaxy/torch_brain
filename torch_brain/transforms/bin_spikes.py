@@ -22,7 +22,7 @@ class BinSpikes:
         right: Decide which side gets truncated when duration is not
             a multiple of ``bin_size``. If ``True``, excess spikes are truncated from the left edge.
         eps: Small numerical margin used during bin assignment.
-        dtype: Data type of the output binned array. (default np.int64)
+        dtype: Data type of the output binned array. (default ``np.int64``)
     """
 
     def __init__(
