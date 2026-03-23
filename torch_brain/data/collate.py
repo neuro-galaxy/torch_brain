@@ -320,7 +320,7 @@ def chain_collate_object_fn(
 
 # add all new types to collate fn map
 # note that once a recipe is selected for a given object it cannot be overwritten
-# this is to avoid the following example scenario where pad(obj) is called but obj a
+# this is to avoid the following example scenario where pad(obj) is called but obj is a
 # dict and one of its values was already wrapped in chain.
 collate_fn_map = copy.deepcopy(default_collate_fn_map)
 collate_fn_map[PaddedObject] = pad_collate_object_fn
@@ -335,12 +335,12 @@ def collate(batch):
     r"""Extension of PyTorch's :obj:`default_collate` function to enable more advanced
     collation of samples of variable lengths.
 
-    To specify how the collation recipe, wrap the objects using :obj:`pad` or :obj:`chain`.
-    If the wrapped object is an Iterable or Mapping, all its elements will inherite
+    To specify the collation recipe, wrap the objects using :obj:`pad` or :obj:`chain`.
+    If the wrapped object is an Iterable or Mapping, all its elements will inherit
     the collation recipe. All objects that are already supported by :obj:`default_collate`
     can be wrapped.
 
-    If an object is not wrapped, the default collation recipe will be used. i.e. the
+    If an object is not wrapped, the default collation recipe will be used, i.e., the
     outcome will be identical to :obj:`default_collate`.
 
     :obj:`pad` or :obj:`chain` do not track any padding masks or batch index, since that might not

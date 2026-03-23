@@ -88,7 +88,7 @@ def stitch(
         avg_values.index_add_(0, indices, values).div_(counts)
         # Regarding division by zero: all elements of counts will be >= 1.
         # Reasoning: Since it was built using unique_timestamps, each index will have
-        # atleast one timestamp attached to it.
+        # at least one timestamp attached to it.
 
         return unique_timestamps, avg_values
 

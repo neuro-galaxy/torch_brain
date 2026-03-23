@@ -32,7 +32,7 @@ def test_pad():
     batch = collate([x, y])
     assert torch.allclose(batch, torch.tensor([[[1], [2], [3]], [[4], [5], [0]]]))
 
-    # paddding applied to other objects (lists, maps, etc.)
+    # padding applied to other objects (lists, maps, etc.)
     x = [pad({"a": np.array([1, 2, 3]), "b": np.array([11, 12, 13])}), np.array([0, 1])]
     y = [pad({"a": np.array([4, 5]), "b": np.array([14, 15])}), np.array([2, 3])]
 
@@ -61,7 +61,7 @@ def test_track_mask():
     assert batch.dtype == torch.bool
     assert torch.allclose(batch, torch.BoolTensor([[1, 1, 1], [1, 1, 0]]))
 
-    # paddding applied to other objects (lists, maps, etc.)
+    # padding applied to other objects (lists, maps, etc.)
     x = [
         pad({"a": np.array([1, 2, 3]), "b": np.array([11, 12, 13])}),
         track_mask(np.array([1, 2, 3])),
