@@ -11,7 +11,7 @@ def bin_spikes(
     max_spikes: Optional[int] = None,
     right: bool = True,
     eps: float = 1e-3,
-    dtype: np.dtype = np.long,
+    dtype: np.dtype = np.int64,
 ) -> np.ndarray:
     r"""Bins spikes into time bins of size `bin_size`. If the total time spanned by
     the spikes is not a multiple of `bin_size`, the spikes are truncated to the nearest
