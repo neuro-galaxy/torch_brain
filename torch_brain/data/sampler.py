@@ -7,7 +7,7 @@ import torch
 import torch.distributed as dist
 
 from temporaldata import Interval
-from torch_brain.data.dataset import DatasetIndex
+from torch_brain.dataset import DatasetIndex
 
 
 class RandomFixedWindowSampler(torch.utils.data.Sampler):
