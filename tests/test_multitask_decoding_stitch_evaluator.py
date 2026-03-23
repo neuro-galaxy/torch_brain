@@ -6,7 +6,7 @@ from collections import defaultdict
 
 import torch_brain
 from torch_brain.registry import MODALITY_REGISTRY
-from torch_brain.utils.stitcher import (
+from torch_brain.utils.callbacks import (
     MultiTaskDecodingStitchEvaluator,
     DataForMultiTaskDecodingStitchEvaluator,
 )
