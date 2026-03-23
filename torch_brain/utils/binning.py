@@ -35,7 +35,7 @@ def bin_spikes(
         right (bool, optional): Decide which side gets truncated when duration is not
             a multiple of ``bin_size``. If ``True``, excess spikes are truncated from the left edge.
         eps (float, optional): Small numerical margin used during bin assignment.
-        dtype (np.dtype, optional): Data type of the output binned array.
+        dtype (np.dtype, optional): Data type of the output binned array. (default np.int64)
 
     Returns:
         np.ndarray: Binned spike counts with shape ``(t, n)``, where ``t`` is the
