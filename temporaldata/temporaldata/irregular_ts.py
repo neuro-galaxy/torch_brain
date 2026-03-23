@@ -78,9 +78,9 @@ class IrregularTimeSeries(ArrayDict):
         self,
         timestamps: np.ndarray,
         *,
-        timekeys: List[str] = None,
+        timekeys: List[str] | None = None,
         domain: Union[Interval, str],
-        **kwargs: Dict[str, np.ndarray],
+        **kwargs: np.ndarray,
     ):
         super().__init__(timestamps=timestamps, **kwargs)
 
