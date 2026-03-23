@@ -14,15 +14,15 @@ class BinSpikes:
     nested attribute named ``{spikes_attribute}_binned``.
 
     Args:
-        bin_size (float): Bin width in seconds.
-        spikes_attribute (str): Nested attribute path to the spikes object.
-        units_attribute (str): Nested attribute path to the units object.
-        max_spikes (int, optional): Maximum number of spikes to include per unit per
+        bin_size: Bin width in seconds.
+        spikes_attribute: Nested attribute path to the spikes ``IrregularTimeseries``.
+        units_attribute: Nested attribute path to the units ``ArrayDict``.
+        max_spikes: Maximum number of spikes to include per unit per
             bin. If ``None``, no clipping is applied.
-        right (bool, optional): Decide which side gets truncated when duration is not
+        right: Decide which side gets truncated when duration is not
             a multiple of ``bin_size``. If ``True``, excess spikes are truncated from the left edge.
-        eps (float, optional): Small numerical margin used during bin assignment.
-        dtype (np.dtype, optional): Data type of the output binned array. (default np.int64)
+        eps: Small numerical margin used during bin assignment.
+        dtype: Data type of the output binned array. (default np.int64)
     """
 
     def __init__(
@@ -60,10 +60,12 @@ class BinSpikes:
             domain_start=spikes.domain.start[0],
         )
 
+        # TODO switch to Data.set_nested_attribute() when released through temporaldata
         _set_nested_attribute(data, f"{self.spikes_attr}_binned", binned_spikes)
         return data
 
 
+# TODO remove when Data.set_nested_attribute() is released through temporaldata
 def _set_nested_attribute(data, path: str, value):
     r"""Set a nested attribute in a :class:`temporaldata.Data` object using a dot-separated path.
 

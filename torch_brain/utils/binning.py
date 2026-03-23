@@ -27,19 +27,19 @@ def bin_spikes(
       computation numerically robust.
 
     Args:
-        spikes (IrregularTimeSeries): IrregularTimeSeries object containing the spikes.
-        num_units (int): Number of units in the population.
-        bin_size (float): Size of the time bins in seconds.
-        max_spikes (int, optional): Maximum number of spikes to include per unit per
+        spikes: IrregularTimeSeries object containing the spikes.
+        num_units: Number of units in the population.
+        bin_size: Size of the time bins in seconds.
+        max_spikes: Maximum number of spikes to include per unit per
             bin. If ``None``, no clipping is applied.
-        right (bool, optional): Decide which side gets truncated when duration is not
+        right: Decide which side gets truncated when duration is not
             a multiple of ``bin_size``. If ``True``, excess spikes are truncated from the left edge.
-        eps (float, optional): Small numerical margin used during bin assignment.
-        dtype (np.dtype, optional): Data type of the output binned array. (default np.int64)
+        eps: Small numerical margin used during bin assignment.
+        dtype: Data type of the output binned array. (default np.int64)
 
     Returns:
-        np.ndarray: Binned spike counts with shape ``(t, n)``, where ``t`` is the
-            number of time bins and ``n`` is ``num_units``.
+        Binned spike counts with shape ``(T, N)``, where ``T`` is the number of
+        time bins and ``N`` is ``num_units``.
     """
     start = spikes.domain.start[0]
     end = spikes.domain.end[-1]

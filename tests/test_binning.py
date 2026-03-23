@@ -17,19 +17,11 @@ class TestBinSpikes:
 
         expected = np.array(
             [
-                [1, 1],
-                [1, 1],
-                [1, 0],
-                [1, 0],
-                [2, 0],
-                [0, 0],
-                [1, 0],
-                [1, 0],
-                [1, 0],
-                [1, 0],
+                [1, 1, 1, 1, 2, 0, 1, 1, 1, 1],  # unit_0
+                [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],  # unit_1
             ],
             dtype=np.int64,
-        )
+        ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
         assert binned_data.dtype == np.int64
@@ -48,15 +40,13 @@ class TestBinSpikes:
         )
         binned_data = bin_spikes(spikes, num_units=2, bin_size=3.0, right=True)
 
-        # [unit_0, unit_1]
         expected = np.array(
             [
-                [2, 1],
-                [3, 0],
-                [3, 0],
+                [2, 3, 3],  # unit_0
+                [1, 0, 0],  # unit_1
             ],
             dtype=np.int64,
-        )
+        ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
 
@@ -65,13 +55,11 @@ class TestBinSpikes:
 
         expected = np.array(
             [
-                [3, 2],
-                [3, 0],
-                [2, 0],
-                [2, 0],
+                [3, 3, 2, 2],  # unit_0
+                [2, 0, 0, 0],  # unit_1
             ],
             dtype=np.int64,
-        )
+        ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
 
@@ -79,13 +67,11 @@ class TestBinSpikes:
         binned_data = bin_spikes(spikes, num_units=2, bin_size=3.0, right=False)
         expected = np.array(
             [
-                [3, 2],
-                [3, 0],
-                [3, 0],
+                [3, 3, 3],
+                [2, 0, 0],
             ],
             dtype=np.int64,
-        )
-
+        ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
 
@@ -101,19 +87,13 @@ class TestBinSpikes:
 
         expected = np.array(
             [
-                [1, 1, 0, 0],
-                [0, 0, 1, 0],
-                [0, 0, 0, 1],
-                [0, 0, 2, 0],
-                [0, 0, 0, 0],
-                [0, 1, 0, 0],
-                [1, 0, 0, 0],
-                [1, 0, 0, 0],
-                [0, 1, 0, 0],
-                [0, 0, 1, 0],
+                [1, 0, 0, 0, 0, 0, 1, 1, 0, 0],  # unit_0
+                [1, 0, 0, 0, 0, 1, 0, 0, 1, 0],  # unit_1
+                [0, 1, 0, 2, 0, 0, 0, 0, 0, 1],  # unit_2
+                [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],  # unit_3
             ],
             dtype=np.int64,
-        )
+        ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
 
@@ -131,19 +111,11 @@ class TestBinSpikes:
 
         expected = np.array(
             [
-                [1, 1],
-                [1, 3],
-                [1, 0],
-                [1, 0],
-                [2, 0],
-                [0, 0],
-                [1, 0],
-                [1, 0],
-                [1, 0],
-                [1, 0],
+                [1, 1, 1, 1, 2, 0, 1, 1, 1, 1],  # unit_0
+                [1, 3, 0, 0, 0, 0, 0, 0, 0, 0],  # unit_1
             ],
             dtype=np.int64,
-        )
+        ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
         assert binned_data.dtype == np.int64
@@ -163,19 +135,10 @@ class TestBinSpikes:
 
             expected = np.array(
                 [
-                    [1],
-                    [1],
-                    [1],
-                    [1],
-                    [1],
-                    [1],
-                    [1],
-                    [1],
-                    [1],
-                    [1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  # unit_0
                 ],
                 dtype=np.int64,
-            )
+            ).T
 
             assert binned_data.shape == expected.shape
             assert np.allclose(binned_data, expected)
@@ -229,7 +192,13 @@ class TestBinSpikesTransform:
         assert hasattr(data_t, "spikes_binned")
 
         # Verify the spikes_binned created
-        expected_binned = np.array([[1, 2], [1, 0], [1, 0]], dtype=np.int64)
+        expected_binned = np.array(
+            [
+                [1, 1, 1],  # unit_0
+                [2, 0, 0],  # unit_1
+            ],
+            dtype=np.int64,
+        ).T
 
         assert np.array_equal(data_t.spikes_binned.binned_counts, expected_binned)
 
@@ -262,16 +231,9 @@ class TestBinSpikesTransform:
 
         expected_binned = np.array(
             [
-                [1, 1],
-                [0, 0],
-                [0, 0],
-                [0, 0],
-                [0, 0],
-                [0, 0],
-                [0, 1],
-                [0, 0],
-                [1, 0],
+                [1, 0, 0, 0, 0, 0, 0, 0, 1],  # unit_0
+                [1, 0, 0, 0, 0, 0, 1, 0, 0],  # unit_1
             ],
             dtype=np.int64,
-        )
+        ).T
         assert np.array_equal(data_t.spikes_binned.binned_counts, expected_binned)
