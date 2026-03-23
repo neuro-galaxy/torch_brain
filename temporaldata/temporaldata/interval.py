@@ -83,7 +83,7 @@ class Interval(ArrayDict):
         end: Union[float, np.ndarray],
         *,
         timekeys=None,
-        **kwargs,
+        **kwargs: np.ndarray,
     ):
         # we allow for scalar start and end, since it is common to have a single
         # interval especially when defining a domain

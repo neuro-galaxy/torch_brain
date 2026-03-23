@@ -45,7 +45,10 @@ def test_array_dict():
         data.wrong_len = np.array([0, 1, 2, 3])
 
     with pytest.raises(AssertionError):
-        data = ArrayDict(unit_id=["unit01", "unit02"])
+        data = ArrayDict(
+            # Intentionally pass a wrong type (list instead of np.ndarray)
+            unit_id=["unit01", "unit02"]  # ty: ignore[invalid-argument-type]
+        )
 
     with pytest.raises(ValueError):
         data = ArrayDict(
