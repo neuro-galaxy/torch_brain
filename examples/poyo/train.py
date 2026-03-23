@@ -18,7 +18,7 @@ from torch_brain.optim import SparseLamb
 from torch_brain.models.poyo import POYO
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
-from torch_brain.utils.stitcher import (
+from torch_brain.utils.callbacks import (
     DecodingStitchEvaluator,
     DataForDecodingStitchEvaluator,
 )
