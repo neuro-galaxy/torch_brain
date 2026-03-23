@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Removed
 - Removed `add_split_mask` method from `Data`, `Interval`, `IrregularTimeSeries`, and `RegularTimeSeries` classes. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
 - Removed `allow_split_mask_overlap` method from `Interval`. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
+- Removed `RegularTimeSeries.timekeys()` as it was dead code. ([#112](https://github.com/neuro-galaxy/temporaldata/pull/112))
 
 ### Changed
 - Change minimum python version to 3.10 ([#93](https://github.com/neuro-galaxy/temporaldata/pull/93))
