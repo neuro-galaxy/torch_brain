@@ -102,7 +102,8 @@ class RotaryCrossAttention(nn.Module):
         if self.use_xformers and xops is not None and x_query.device.type == "cuda":
             # if xformers is available and not opted out of, use it for attention.
             # xformers supports attention masks when using the memory efficient attention
-            # kernel, but pytorch does not.
+            # kernel. PyTorch's SDPA also accepts attn_mask, but some backends may
+            # fall back to less efficient kernels depending on mask shape.
             rotary_attn_func = rotary_attn_xformers_func
         else:
             # otherwise use pytorch's default attention which will determine the best
@@ -156,7 +157,7 @@ class RotaryCrossAttention(nn.Module):
             B is batch size, D is input dimension, D_c is context dimension, H is number of
             heads, and D_h is head dimension.
         """
-        if not x_query.device.type == "cuda":
+        if x_query.device.type != "cuda":
             raise NotImplementedError("No varlen attention kernel available for CPU.")
         if not self.use_xformers:
             raise RuntimeError(
@@ -305,7 +306,7 @@ class RotarySelfAttention(nn.Module):
             where N_total is the total sequence length across the batch,
             B is batch size, D is input dimension, and D_h is head dimension.
         """
-        if not x.device.type == "cuda":
+        if x.device.type != "cuda":
             raise NotImplementedError("No varlen attention kernel available for CPU.")
         if not self.use_xformers:
             raise RuntimeError(
