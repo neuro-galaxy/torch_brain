@@ -1,0 +1,40 @@
+log_dir: ./logs/
+data_root: ./processed
+wandb:
+  enable: false
+  entity: aandre8-gatech
+  project: testing_NDT2
+  log_model: false
+
+
+train_transforms: []
+eval_transforms: []
+
+seed: 0
+epochs: 500
+
+precision: bf16-mixed
+batch_size: 256
+eval_epochs: 1
+num_workers:  16
+
+
+log_every_n_steps: 1
+superv_batch_size: null
+num_sanity_val_steps: 0
+
+callbacks: 
+  patience: 100
+  checkpoint: true
+  early_stop: true
+  checkpoint_path: ./ckpt
+
+optimizer:
+  lr: 5e-4
+  lr_min: 1e-6
+  scheduler: true
+  decay_steps: 2500
+  start_factor: 0.1
+  warmup_steps: 100
+  weight_decay: 1e-2
+
