@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 - Moved `DecodingStitchEvaluator` and `MultiTaskDecodingStitchEvaluator` to `utils/callbacks.py` ([#183](https://github.com/neuro-galaxy/torch_brain/pull/183))
+- Replaced `torch_brain.data.dataset.DatasetIndex` with `torch_brain.dataset.DatasetIndex` ([#186](https://github.com/neuro-galaxy/torch_brain/pull/186))
 
 ### Fixed
 - Fixed `MultiTaskDecodingStitchEvaluator` caching predictions under the wrong sequence index when batch samples have non-overlapping readout types. ([#175](https://github.com/neuro-galaxy/torch_brain/pull/175))

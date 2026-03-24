@@ -2,9 +2,8 @@ from typing import Optional, Iterable, Mapping, Callable
 from torch_brain.utils import np_string_prefix
 from temporaldata import Data, Interval
 
-from .dataset import Dataset, DatasetIndex, _ensure_index_has_namespace
+from .dataset import Dataset, DatasetIndex
 from .mixins import SpikingDatasetMixin
-
 
 _SEPARATOR = "/"
 
@@ -109,7 +108,6 @@ class NestedDataset(Dataset):
             ValueError: If `index.recording_id` does not contain a dataset prefix.
         """
         _validate_recording_id_has_separator(index.recording_id)
-        index = _ensure_index_has_namespace(index)
 
         dataset_name, recording_id = index.recording_id.split("/", 1)
         new_index = DatasetIndex(

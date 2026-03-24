@@ -154,8 +154,6 @@ class Dataset(torch.utils.data.Dataset):
         Returns:
             :class:`temporaldata.Data` object containing the sliced time interval, optionally transformed.
         """
-        index = _ensure_index_has_namespace(index)
-
         data = self.get_recording(index.recording_id, index._namespace)
         sample = data.slice(index.start, index.end)
         if self.transform is not None:
@@ -229,15 +227,6 @@ class Dataset(torch.utils.data.Dataset):
         if self.transform is not None:
             attrs.append(f"transform={self.transform}")
         return f"{cls}(n_recordings={n_rec}{', ' if attrs else ''}{', '.join(attrs)})"
-
-
-def _ensure_index_has_namespace(index: DatasetIndex) -> DatasetIndex:
-    r"""Ensure a DatasetIndex has a _namespace attribute for backwards compatibility.
-    This is a temporary solution and should be deprecated when older version of Dataset
-    is no longer supported."""
-    if not hasattr(index, "_namespace"):
-        index._namespace = ""
-    return index
 
 
 def _set_nested_attribute(data: Data, path: str, value: Any) -> Data:

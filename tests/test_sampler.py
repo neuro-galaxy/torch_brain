@@ -10,7 +10,7 @@ from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     TrialSampler,
 )
-from torch_brain.data.dataset import DatasetIndex
+from torch_brain.dataset import DatasetIndex
 
 
 # helper
