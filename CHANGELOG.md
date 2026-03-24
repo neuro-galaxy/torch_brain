@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
+- Added `MultiChannelDatasetMixin` to provide `get_channel_ids` and prefixing interface for EEG-like datasets ([#173](https://github.com/neuro-galaxy/torch_brain/pull/173))
 
 ### Removed
 
