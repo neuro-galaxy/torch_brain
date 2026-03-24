@@ -11,16 +11,7 @@ import numpy as np
 import omegaconf
 import torch
 from temporaldata import Data, Interval
-
-
-@dataclass
-class DatasetIndex:
-    r"""The dataset can be indexed by specifying a recording id and a start and end time."""
-
-    recording_id: str
-    start: float
-    end: float
-
+from torch_brain.dataset import DatasetIndex
 
 default_session_id_prefix_fn = lambda data: f"{data.brainset.id}/"
 default_unit_id_prefix_fn = lambda data: f"{data.brainset.id}/{data.session.id}/"
