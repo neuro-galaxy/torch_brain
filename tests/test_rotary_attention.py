@@ -145,6 +145,54 @@ def test_rotary_self_attention_varlen(device, dim):
                 pytest.skip("xformers not installed")
 
 
+def test_use_xformers_false(device, batch_size, dim):
+    # Use a sequence length that's not a multiple of 8, so xformers would error
+    # if it were accidentally called — proving that use_xformers=False routes to
+    # the PyTorch SDPA path.
+    seq_length = 7
+
+    # Cross attention: forward() should use PyTorch SDPA
+    cross = RotaryCrossAttention(dim=dim, use_xformers=False).to(device)
+    x_query = torch.randn(batch_size, seq_length, dim, device=device)
+    x_context = torch.randn(batch_size, seq_length, dim, device=device)
+    q_pos = torch.randn(batch_size, seq_length, dim, device=device)
+    c_pos = torch.randn(batch_size, seq_length, dim, device=device)
+
+    out = cross(x_query, x_context, q_pos, c_pos)
+    assert out.shape == (batch_size, seq_length, dim)
+
+    # Cross attention: forward_varlen() should raise
+    # CPU hits the device check first (NotImplementedError),
+    # CUDA hits the use_xformers check (RuntimeError).
+    total = seq_length * batch_size
+    expected = NotImplementedError if device == "cpu" else RuntimeError
+    with pytest.raises(expected):
+        cross.forward_varlen(
+            torch.randn(total, dim, device=device),
+            torch.randn(total, dim, device=device),
+            torch.randn(total, dim, device=device),
+            torch.randn(total, dim, device=device),
+            torch.tensor([seq_length] * batch_size),
+            torch.tensor([seq_length] * batch_size),
+        )
+
+    # Self attention: forward() should use PyTorch SDPA
+    self_attn = RotarySelfAttention(dim=dim, use_xformers=False).to(device)
+    x = torch.randn(batch_size, seq_length, dim, device=device)
+    pos = torch.randn(batch_size, seq_length, dim, device=device)
+
+    out = self_attn(x, pos)
+    assert out.shape == (batch_size, seq_length, dim)
+
+    # Self attention: forward_varlen() should raise
+    with pytest.raises(expected):
+        self_attn.forward_varlen(
+            torch.randn(total, dim, device=device),
+            torch.randn(total, dim, device=device),
+            torch.tensor([seq_length] * batch_size),
+        )
+
+
 def test_invalid_inputs(device, batch_size, seq_length, dim):
     model = RotaryCrossAttention(dim=dim).to(device)
 
