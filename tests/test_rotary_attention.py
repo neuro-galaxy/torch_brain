@@ -162,8 +162,11 @@ def test_use_xformers_false(device, batch_size, dim):
     assert out.shape == (batch_size, seq_length, dim)
 
     # Cross attention: forward_varlen() should raise
+    # CPU hits the device check first (NotImplementedError),
+    # CUDA hits the use_xformers check (RuntimeError).
     total = seq_length * batch_size
-    with pytest.raises((NotImplementedError, RuntimeError)):
+    expected = NotImplementedError if device == "cpu" else RuntimeError
+    with pytest.raises(expected):
         cross.forward_varlen(
             torch.randn(total, dim, device=device),
             torch.randn(total, dim, device=device),
@@ -182,7 +185,7 @@ def test_use_xformers_false(device, batch_size, dim):
     assert out.shape == (batch_size, seq_length, dim)
 
     # Self attention: forward_varlen() should raise
-    with pytest.raises((NotImplementedError, RuntimeError)):
+    with pytest.raises(expected):
         self_attn.forward_varlen(
             torch.randn(total, dim, device=device),
             torch.randn(total, dim, device=device),
