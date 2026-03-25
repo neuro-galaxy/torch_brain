@@ -1,16 +1,18 @@
-import pytest
-import os
 import copy
+import logging
+import os
+import tempfile
+
 import h5py
 import numpy as np
-import tempfile
-import logging
+import pytest
+
 from temporaldata import (
     ArrayDict,
+    Data,
+    Interval,
     IrregularTimeSeries,
     RegularTimeSeries,
-    Interval,
-    Data,
 )
 
 
@@ -569,7 +571,7 @@ def test_data_auto_domain():
     )
 
     assert np.allclose(data.domain.start, np.array([0, 5]))
-    assert np.allclose(data.domain.end, np.array([3.996, 6]))
+    assert np.allclose(data.domain.end, np.array([4, 6]))
 
 
 def test_data_save(tmp_path):

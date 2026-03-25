@@ -69,7 +69,7 @@ class RegularTimeSeries(ArrayDict):
                 )
             domain = Interval(
                 start=np.array([domain_start]),
-                end=np.array([domain_start + (len(self) - 1) / sampling_rate]),
+                end=np.array([domain_start + len(self) / sampling_rate]),
             )
         self._domain = domain
 
@@ -128,9 +128,7 @@ class RegularTimeSeries(ArrayDict):
         # Determine index and reconstruct the actual timestamp of that sample
         idx = math.ceil(idx_float)
 
-        # For the end index, the reconstruction logic shifts by 1 sample
-        recon_idx = idx if is_start else idx - 1
-        actual_time = domain_start + (recon_idx / self.sampling_rate)
+        actual_time = domain_start + (idx / self.sampling_rate)
 
         return idx, actual_time
 
@@ -285,7 +283,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
                 # this is because we are dealing with numerical noise
                 # we know the domain and the sampling rate, we can infer the number of pts
                 domain_length = self.domain.end[-1] - self.domain.start[0]
-                return int(np.round(domain_length * self.sampling_rate)) + 1
+                return int(np.round(domain_length * self.sampling_rate))
 
             # otherwise nothing was loaded, return the first dim of the h5py dataset
             return self.__dict__[self.keys()[0]].shape[0]

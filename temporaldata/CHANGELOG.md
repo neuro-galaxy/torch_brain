@@ -33,6 +33,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 - Change minimum python version to 3.10 ([#93](https://github.com/neuro-galaxy/temporaldata/pull/93))
 - Optimized performance of `Interval.coalesce()` ([#97](https://github.com/neuro-galaxy/temporaldata/pull/97))
+- New auto domain for `RegularTimeseries` to have no impact when doing `rts.slice(rts.domain.start[0], rts.domain.end[-1])` ([#109](https://github.com/neuro-galaxy/temporaldata/pull/109))
+
 
 ## [0.1.3] - 2025-03-21
 ### Added
