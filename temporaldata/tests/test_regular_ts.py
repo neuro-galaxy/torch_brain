@@ -28,18 +28,18 @@ def test_regulartimeseries(test_filepath):
         assert len(data) == 100
 
         assert data.domain.start[0] == 0.0
-        assert data.domain.end[0] == 9.9
+        assert data.domain.end[0] == 10.0
 
         data_slice = data.slice(2.0, 8.0, reset_origin=False)
         assert np.allclose(data_slice.lfp, data.lfp[20:80])
         assert data_slice.domain.start[0] == 2.0
-        assert data_slice.domain.end[0] == 7.9
+        assert data_slice.domain.end[0] == 8.0
         assert np.allclose(data_slice.timestamps, np.arange(2.0, 8.0, 0.1))
 
         data_slice = data.slice(2.0, 8.0, reset_origin=True)
         assert np.allclose(data_slice.lfp, data.lfp[20:80])
         assert data_slice.domain.start[0] == 0.0
-        assert data_slice.domain.end[0] == 5.9
+        assert data_slice.domain.end[0] == 6.0
         assert np.allclose(data_slice.timestamps, np.arange(0.0, 6.0, 0.1))
 
         # try slicing with skewed start and end
@@ -47,19 +47,19 @@ def test_regulartimeseries(test_filepath):
         data_slice = data.slice(2.03, 8.09, reset_origin=True)
         assert np.allclose(data_slice.lfp, data.lfp[21:81])
         assert np.allclose(data_slice.domain.start, np.array([0.07]))
-        assert np.allclose(data_slice.domain.end, np.array([5.97]))
+        assert np.allclose(data_slice.domain.end, np.array([6.07]))
         assert np.allclose(data_slice.timestamps, np.arange(0.07, 5.98, 0.1))
 
         data_slice = data.slice(4.051, 12.0, reset_origin=True)
         assert np.allclose(data_slice.lfp, data.lfp[41:])
         assert np.allclose(data_slice.domain.start, np.array([0.049]))
-        assert np.allclose(data_slice.domain.end, np.array([5.849]))
+        assert np.allclose(data_slice.domain.end, np.array([5.949]))
         assert np.allclose(data_slice.timestamps, np.arange(0.049, 5.88, 0.1))
 
         data_slice = data.slice(4.051, 12.0, reset_origin=False)
         assert np.allclose(data_slice.lfp, data.lfp[41:])
         assert np.allclose(data_slice.domain.start, np.array([4.1]))
-        assert np.allclose(data_slice.domain.end, np.array([9.9]))
+        assert np.allclose(data_slice.domain.end, np.array([10.0]))
         assert np.allclose(data_slice.timestamps, np.arange(4.1, 10.0, 0.1))
 
         data_slice = data.slice(-10, 20, reset_origin=False)
@@ -68,13 +68,12 @@ def test_regulartimeseries(test_filepath):
         assert np.allclose(data_slice.domain.end, data.domain.end)
         assert np.allclose(data_slice.timestamps, data.timestamps)
 
-        # TODO update when we update the domain convention
         domain_start, domain_end = data.domain.start[0], data.domain.end[-1]
         data_slice = data.slice(domain_start, domain_end, reset_origin=False)
-        assert np.allclose(data_slice.lfp, data.lfp[:-1])
+        assert np.allclose(data_slice.lfp, data.lfp)
         assert np.allclose(data_slice.domain.start, data.domain.start)
-        assert np.allclose(data_slice.domain.end, data.domain.end - 0.1)
-        assert np.allclose(data_slice.timestamps, data.timestamps[:-1])
+        assert np.allclose(data_slice.domain.end, data.domain.end)
+        assert np.allclose(data_slice.timestamps, data.timestamps)
 
     data = RegularTimeSeries(
         lfp=np.random.random((100, 48)), sampling_rate=10, domain="auto"
@@ -103,7 +102,7 @@ def test_regulartimeseries(test_filepath):
         assert len(data) == 100
 
         assert data.domain.start[0] == 1.0
-        assert data.domain.end[0] == 10.9
+        assert data.domain.end[0] == 11.0
 
         data_slice = data.slice(3.0, 9.0)
         assert np.allclose(data_slice.lfp, data.lfp[20:80])
@@ -210,12 +209,12 @@ def test_lazy_regular_timeseries(test_filepath):
         # even if no other attribute is loaded
         assert len(data.timestamps) == 500
         assert data.domain.start[0] == 1.0
-        assert data.domain.end[0] == 2.996
+        assert data.domain.end[0] == 3.0
         assert np.allclose(data.timestamps, np.arange(1.0, 3.0, 1 / 250.0))
 
         data = data.slice(1.0, 2.0, reset_origin=True)
         assert data.domain.start[0] == 0.0
-        assert data.domain.end[0] == 0.996
+        assert data.domain.end[0] == 1.0
         assert len(data.timestamps) == 250
         assert np.allclose(data.timestamps, np.arange(0.0, 1.0, 1 / 250.0))
 
@@ -259,6 +258,8 @@ def test_slice_numerical_instability():
     end = 1.0 - eps
     sliced_ts = ts.slice(start, end, reset_origin=False)
     assert np.allclose(sliced_ts.timestamps, np.array([0.0, 0.25, 0.5, 0.75]))
+    assert sliced_ts.domain.start[0] == 0.0
+    assert sliced_ts.domain.end[-1] == 1.0
 
     # `end` is infinitesimally larger than an exact timestamp (1.0000001 scenario).
     # As the end is larger due to numerical instability even if the interval is [start, end), 1.0 should still be EXCLUDED
@@ -266,6 +267,8 @@ def test_slice_numerical_instability():
     end = 1.0 + eps
     sliced_ts = ts.slice(start, end, reset_origin=False)
     assert np.allclose(sliced_ts.timestamps, np.array([0.25, 0.5, 0.75]))
+    assert sliced_ts.domain.start[0] == 0.25
+    assert sliced_ts.domain.end[-1] == 1.0
 
     # `start` is computed slightly larger than an exact timestamp.
     # As the start is larger due to numerical instability 0.25 should be INCLUDED.
@@ -273,6 +276,8 @@ def test_slice_numerical_instability():
     end = 1.0
     sliced_ts = ts.slice(start, end, reset_origin=False)
     assert np.allclose(sliced_ts.timestamps, np.array([0.25, 0.5, 0.75]))
+    assert sliced_ts.domain.start[0] == 0.25
+    assert sliced_ts.domain.end[-1] == 1.0
 
     # Maximum Precision Limits via np.nextafter
     # np.nextafter gives the very next representable float in memory.
@@ -280,6 +285,8 @@ def test_slice_numerical_instability():
     end = np.nextafter(1.0, 0.0)  # The largest possible float strictly less than 1.0
     sliced_ts = ts.slice(start, end, reset_origin=False)
     assert np.allclose(sliced_ts.timestamps, np.array([0.5, 0.75]))
+    assert sliced_ts.domain.start[0] == 0.5
+    assert sliced_ts.domain.end[-1] == 1.0
 
     # Should still treat `end` as 1.0 and EXCLUDED it
     start = 0.5
@@ -295,6 +302,8 @@ def test_slice_numerical_instability():
     end = 1.0
     sliced_ts = ts.slice(start, end, reset_origin=False)
     assert np.allclose(sliced_ts.timestamps, np.array([0.25, 0.5, 0.75]))
+    assert sliced_ts.domain.start[0] == 0.25
+    assert sliced_ts.domain.end[-1] == 1.0
 
     ts = RegularTimeSeries(value=np.zeros((40)), sampling_rate=10, domain="auto")
     # Expected timestamps: [0.0, 0.1, 0.2, ...]
@@ -305,3 +314,5 @@ def test_slice_numerical_instability():
     end = start * 3  # 0.9000000000000001
     sliced_ts = ts.slice(start, end, reset_origin=False)
     assert np.allclose(sliced_ts.timestamps, np.array([0.3, 0.4, 0.5, 0.6, 0.7, 0.8]))
+    assert sliced_ts.domain.start[0] == 0.3
+    assert sliced_ts.domain.end[-1] == 0.9
