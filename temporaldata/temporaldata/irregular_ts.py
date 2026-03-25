@@ -448,12 +448,6 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             # otherwise nothing was loaded, return the first dim of the h5py dataset
             return self.__dict__[self.keys()[0]].shape[0]
 
-    def load(self):
-        r"""Loads all the data from the HDF5 file into memory."""
-        # simply access all attributes to trigger the lazy loading
-        for key in self.keys():
-            getattr(self, key)
-
     def __getattribute__(self, name):
         if not name in ["__dict__", "keys"]:
             # intercept attribute calls
