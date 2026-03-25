@@ -20,11 +20,11 @@ class TestBinSpikes:
                 [1, 1, 1, 1, 2, 0, 1, 1, 1, 1],  # unit_0
                 [1, 1, 0, 0, 0, 0, 0, 0, 0, 0],  # unit_1
             ],
-            dtype=np.int64,
+            dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
-        assert binned_data.dtype == np.int64
+        assert binned_data.dtype == np.int32
 
         # test with np.float32
         binned_data = bin_spikes(
@@ -45,7 +45,7 @@ class TestBinSpikes:
                 [2, 3, 3],  # unit_0
                 [1, 0, 0],  # unit_1
             ],
-            dtype=np.int64,
+            dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
@@ -58,7 +58,7 @@ class TestBinSpikes:
                 [3, 3, 2, 2],  # unit_0
                 [2, 0, 0, 0],  # unit_1
             ],
-            dtype=np.int64,
+            dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
@@ -70,7 +70,7 @@ class TestBinSpikes:
                 [3, 3, 3],
                 [2, 0, 0],
             ],
-            dtype=np.int64,
+            dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
@@ -92,7 +92,7 @@ class TestBinSpikes:
                 [0, 1, 0, 2, 0, 0, 0, 0, 0, 1],  # unit_2
                 [0, 0, 1, 0, 0, 0, 0, 0, 0, 0],  # unit_3
             ],
-            dtype=np.int64,
+            dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
@@ -114,11 +114,11 @@ class TestBinSpikes:
                 [1, 1, 1, 1, 2, 0, 1, 1, 1, 1],  # unit_0
                 [1, 3, 0, 0, 0, 0, 0, 0, 0, 0],  # unit_1
             ],
-            dtype=np.int64,
+            dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
         assert np.allclose(binned_data, expected)
-        assert binned_data.dtype == np.int64
+        assert binned_data.dtype == np.int32
 
         # fix numerical instability
         # Duration is intended to be exactly 1.0, but represented with
@@ -137,7 +137,7 @@ class TestBinSpikes:
                 [
                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],  # unit_0
                 ],
-                dtype=np.int64,
+                dtype=np.int32,
             ).T
 
             assert binned_data.shape == expected.shape
@@ -197,7 +197,7 @@ class TestBinSpikesTransform:
                 [1, 1, 1],  # unit_0
                 [2, 0, 0],  # unit_1
             ],
-            dtype=np.int64,
+            dtype=np.int32,
         ).T
 
         assert np.array_equal(data_t.spikes_binned.binned_counts, expected_binned)
@@ -234,6 +234,6 @@ class TestBinSpikesTransform:
                 [1, 0, 0, 0, 0, 0, 0, 0, 1],  # unit_0
                 [1, 0, 0, 0, 0, 0, 1, 0, 0],  # unit_1
             ],
-            dtype=np.int64,
+            dtype=np.int32,
         ).T
         assert np.array_equal(data_t.spikes_binned.binned_counts, expected_binned)
