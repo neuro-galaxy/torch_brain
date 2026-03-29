@@ -1,0 +1,11 @@
+hydra-core>=1.1.0
+omegaconf>=2.1.0
+torch>=1.9.0
+scikit-learn>=0.24.0
+scipy>=1.7.0
+numpy>=1.21.0
+psutil>=5.8.0
+temporaldata>=0.1.0  # For processed data support
+wandb>=0.15.0  # For experiment tracking
+warmup-scheduler @ git+https://github.com/ildoonet/pytorch-gradual-warmup-lr.git@7021d63a49106e22c79b40564a7d39930e7b0f53  # For LR warmup scheduler
+
