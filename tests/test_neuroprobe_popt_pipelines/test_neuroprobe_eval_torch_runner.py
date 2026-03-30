@@ -7,6 +7,7 @@ from omegaconf import OmegaConf
 
 os.environ.setdefault("ROOT_DIR_BRAINTREEBANK", "/tmp")
 
+import neuroprobe_eval.torch_runner as torch_runner_module
 from neuroprobe_eval.models import build_model
 from neuroprobe_eval.torch_runner import TorchRunner
 from neuroprobe_eval.utils.collate import variable_channel_collate
@@ -157,8 +158,15 @@ def test_torch_runner_loader_mode_runs_fold():
         assert isinstance(result[key], float), f"{key} should be float"
 
 
-def test_torch_runner_loader_mode_steps_based():
+def test_torch_runner_loader_mode_steps_based(monkeypatch):
     """Steps-based training via loaders should complete and return metrics."""
+    messages = []
+    monkeypatch.setattr(
+        torch_runner_module,
+        "log",
+        lambda message, priority=0, indent=0: messages.append(str(message)),
+    )
+
     cfg = _cfg(
         name="mlp",
         device="cpu",
@@ -203,6 +211,15 @@ def test_torch_runner_loader_mode_steps_based():
         "test_accuracy",
         "test_roc_auc",
     }
+    validation_logs = [msg for msg in messages if "train_step=" in msg]
+    assert len(validation_logs) == 2
+    for msg in validation_logs:
+        assert "train_loss=" in msg
+        assert "train_acc=" in msg
+        assert "train_roc_auc=" in msg
+        assert "val_loss=" in msg
+        assert "val_acc=" in msg
+        assert "val_roc_auc=" in msg
 
 
 def test_torch_runner_rejects_missing_loaders():
