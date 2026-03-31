@@ -55,7 +55,9 @@ class RegionIntersectionPoolPreprocessor(BasePreprocessor):
                 "before fit_split(...)."
             )
 
-        train_regions: set[str] = set()
+        # Build the region set that is present in every train sample so the
+        # fitted state is always transformable per sample.
+        train_regions_intersection: set[str] | None = None
         saw_sample = False
         for sample in sample_iter:
             saw_sample = True
@@ -65,24 +67,32 @@ class RegionIntersectionPoolPreprocessor(BasePreprocessor):
                     "region_intersection_pool requires sample['brain_areas'] metadata."
                 )
             labels = _normalize_region_labels(brain_areas)
-            train_regions.update(str(label) for label in labels.tolist())
+            sample_regions = {str(label) for label in labels.tolist()}
+            if train_regions_intersection is None:
+                train_regions_intersection = sample_regions
+            else:
+                train_regions_intersection.intersection_update(sample_regions)
+                if not train_regions_intersection:
+                    break
 
         if not saw_sample:
             raise ValueError(
                 "region_intersection_pool fit_split received zero samples."
             )
-        if not train_regions:
+        if not train_regions_intersection:
             raise ValueError(
-                "region_intersection_pool could not resolve train-side brain areas."
+                "region_intersection_pool found empty train-side region intersection "
+                "across fit samples."
             )
 
         common_regions = np.intersect1d(
-            np.asarray(sorted(train_regions), dtype=object),
+            np.asarray(sorted(train_regions_intersection), dtype=object),
             np.asarray(self._test_regions, dtype=object),
         )
         if common_regions.size == 0:
             raise ValueError(
-                "region_intersection_pool found empty train/test brain-area intersection."
+                "region_intersection_pool found empty intersection between "
+                "train-side common regions and test-side regions."
             )
 
         self._common_regions = np.asarray(common_regions, dtype=object)
