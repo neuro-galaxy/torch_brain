@@ -430,6 +430,16 @@ class TorchRunner(BaseRunner):
                 train_accuracy=train_accuracy,
                 epoch=epoch,
             )
+            val_loss_text = f"{val_loss:.4f}" if val_loss is not None else "n/a"
+            fold_label = f"Fold {fold_idx}" if fold_idx is not None else "Fold"
+            log(
+                f"{fold_label}: train_epoch={epoch + 1}/{max_iter} "
+                f"train_loss={avg_train_loss:.4f} "
+                f"train_acc={train_accuracy:.3f} train_roc_auc={train_auroc:.3f} "
+                f"val_loss={val_loss_text} "
+                f"val_acc={val_accuracy:.3f} val_roc_auc={val_auroc:.3f}",
+                priority=0,
+            )
 
             if val_auroc > best_val_auroc + tol:
                 best_val_auroc = val_auroc
