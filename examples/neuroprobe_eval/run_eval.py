@@ -3,6 +3,7 @@ Main evaluation script for neuroprobe using Hydra configuration.
 """
 
 from functools import partial
+import logging
 
 from omegaconf import DictConfig, OmegaConf
 import hydra
@@ -37,81 +38,87 @@ from neuroprobe_eval.utils.logging_utils import (
 @hydra.main(config_path="conf", config_name="config", version_base="1.1")
 def main(cfg: DictConfig) -> None:
     """Main evaluation function."""
-    # Hydra automatically configures Python logging to output to both console and log file
-    # No manual setup needed - just use the logger from logging_utils
+    root_logger = logging.getLogger()
+    try:
+        # Hydra automatically configures Python logging to output to both console and log file
+        # No manual setup needed - just use the logger from logging_utils
 
-    # Setup
-    runtime_cfg = cfg.get("runtime")
-    if runtime_cfg is None:
-        raise ValueError("cfg.runtime is required and must be a mapping.")
-    if not hasattr(runtime_cfg, "get"):
-        raise TypeError("cfg.runtime must be a mapping/dict-like object.")
-    set_verbose(runtime_cfg.get("verbose", True))
-    log("Starting neuroprobe evaluation", priority=0)
-    log(f"Configuration:\n{OmegaConf.to_yaml(cfg, resolve=True)}", priority=1)
+        # Setup
+        runtime_cfg = cfg.get("runtime")
+        if runtime_cfg is None:
+            raise ValueError("cfg.runtime is required and must be a mapping.")
+        if not hasattr(runtime_cfg, "get"):
+            raise TypeError("cfg.runtime must be a mapping/dict-like object.")
+        set_verbose(runtime_cfg.get("verbose", True))
+        log("Starting neuroprobe evaluation", priority=0)
+        log(f"Configuration:\n{OmegaConf.to_yaml(cfg, resolve=True)}", priority=1)
 
-    # Initialize wandb if enabled
-    wandb_run = None
-    if cfg.get("wandb", {}).get("enabled", False):
-        if not WANDB_AVAILABLE:
-            log(
-                "WARNING: wandb is enabled in config but not installed. Install with: pip install wandb",
-                priority=0,
+        # Initialize wandb if enabled
+        wandb_run = None
+        if cfg.get("wandb", {}).get("enabled", False):
+            if not WANDB_AVAILABLE:
+                log(
+                    "WARNING: wandb is enabled in config but not installed. Install with: pip install wandb",
+                    priority=0,
+                )
+            else:
+                wandb_cfg = cfg.get("wandb", {})
+                # Prepare config for wandb (convert OmegaConf to dict)
+                wandb_config = OmegaConf.to_container(cfg, resolve=True)
+
+                # Initialize wandb
+                wandb.init(
+                    project=wandb_cfg.get("project", "neuroprobe_eval"),
+                    entity=wandb_cfg.get("entity") or None,
+                    name=wandb_cfg.get("name") or None,
+                    tags=normalize_wandb_tags(wandb_cfg.get("tags")),
+                    notes=wandb_cfg.get("notes") or None,
+                    group=wandb_cfg.get("group") or None,
+                    config=wandb_config,
+                    reinit=True,  # Allow reinitialization for multiple runs
+                )
+                wandb_run = wandb.run
+                log(
+                    f"Wandb initialized: project={wandb_cfg.get('project')}, run={wandb_run.name}",
+                    priority=0,
+                )
+
+        # Set random seeds
+        seed = runtime_cfg.seed
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+
+        # Build components
+        preprocessor = build_preprocessor(cfg.preprocessor)
+        runner = (
+            SKLearnRunner(cfg) if cfg.model.name == "logistic" else TorchRunner(cfg)
+        )  # Model will be built per fold
+
+        # Pass wandb_run to runner if it's a TorchRunner
+        if isinstance(runner, TorchRunner) and wandb_run is not None:
+            runner.set_wandb_run(wandb_run)
+
+        log(f"Using preprocessor: {cfg.preprocessor.name}", priority=0)
+        log(f"Using model: {cfg.model.name}", priority=0)
+
+        if "use_raw_data" in cfg or "raw_data_path" in cfg:
+            raise ValueError(
+                "Raw-data evaluation has been removed. "
+                "Use processed dataset mode via dataset.* config."
             )
-        else:
-            wandb_cfg = cfg.get("wandb", {})
-            # Prepare config for wandb (convert OmegaConf to dict)
-            wandb_config = OmegaConf.to_container(cfg, resolve=True)
 
-            # Initialize wandb
-            wandb.init(
-                project=wandb_cfg.get("project", "neuroprobe_eval"),
-                entity=wandb_cfg.get("entity") or None,
-                name=wandb_cfg.get("name") or None,
-                tags=normalize_wandb_tags(wandb_cfg.get("tags")),
-                notes=wandb_cfg.get("notes") or None,
-                group=wandb_cfg.get("group") or None,
-                config=wandb_config,
-                reinit=True,  # Allow reinitialization for multiple runs
-            )
-            wandb_run = wandb.run
-            log(
-                f"Wandb initialized: project={wandb_cfg.get('project')}, run={wandb_run.name}",
-                priority=0,
-            )
-
-    # Set random seeds
-    seed = runtime_cfg.seed
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-
-    # Build components
-    preprocessor = build_preprocessor(cfg.preprocessor)
-    runner = (
-        SKLearnRunner(cfg) if cfg.model.name == "logistic" else TorchRunner(cfg)
-    )  # Model will be built per fold
-
-    # Pass wandb_run to runner if it's a TorchRunner
-    if isinstance(runner, TorchRunner) and wandb_run is not None:
-        runner.set_wandb_run(wandb_run)
-
-    log(f"Using preprocessor: {cfg.preprocessor.name}", priority=0)
-    log(f"Using model: {cfg.model.name}", priority=0)
-
-    if "use_raw_data" in cfg or "raw_data_path" in cfg:
-        raise ValueError(
-            "Raw-data evaluation has been removed. "
-            "Use processed dataset mode via dataset.* config."
+        run_processed_evaluation(
+            cfg,
+            preprocessor,
+            runner,
+            wandb_run,
         )
-
-    run_processed_evaluation(
-        cfg,
-        preprocessor,
-        runner,
-        wandb_run,
-    )
+    except Exception:
+        # Ensure uncaught failures are persisted to Hydra's run_eval.log file.
+        root_logger.exception("Unhandled exception during neuroprobe_eval.run_eval")
+        raise
 
 
 def run_processed_evaluation(
