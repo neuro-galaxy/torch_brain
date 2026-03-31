@@ -346,6 +346,20 @@ class TorchRunner(BaseRunner):
         )
         return accuracy, roc_auc, avg_loss
 
+    def _compute_metrics_from_train_batches(
+        self,
+        *,
+        prob_chunks: list[np.ndarray],
+        target_chunks: list[np.ndarray],
+        classes: np.ndarray,
+    ) -> tuple[float, float]:
+        """Compute metrics from cached train-loop predictions/targets."""
+        if not prob_chunks or not target_chunks:
+            raise ValueError("Cannot compute train metrics from empty batch caches.")
+        y_proba = np.concatenate(prob_chunks, axis=0)
+        y_true = np.concatenate(target_chunks, axis=0)
+        return self._compute_metrics(y_true, y_proba, classes)
+
     def _train_with_early_stopping_loader(
         self,
         model,
@@ -373,6 +387,8 @@ class TorchRunner(BaseRunner):
             model.model.train()
             train_loss = 0.0
             train_total = 0
+            train_prob_chunks: list[np.ndarray] = []
+            train_target_chunks: list[np.ndarray] = []
             for raw_batch in train_loader:
                 batch = self._prepare_model_batch(model, raw_batch)
                 batch_x, batch_y, batch_coords, batch_seq_id, model_kwargs = (
@@ -403,6 +419,12 @@ class TorchRunner(BaseRunner):
 
                 train_loss += float(loss.item()) * batch_y.size(0)
                 train_total += batch_y.size(0)
+                # Keep online train metrics from the same batches used for updates
+                # to avoid a second full train-loader pass each epoch.
+                train_prob_chunks.append(
+                    torch.nn.functional.softmax(outputs.detach(), dim=1).cpu().numpy()
+                )
+                train_target_chunks.append(batch_y.detach().cpu().numpy())
 
             avg_train_loss = train_loss / train_total if train_total > 0 else 0.0
             val_accuracy, val_auroc, val_loss = self._evaluate_loader(
@@ -412,12 +434,10 @@ class TorchRunner(BaseRunner):
                 classes=classes,
                 criterion=criterion,
             )
-            train_accuracy, train_auroc, _ = self._evaluate_loader(
-                model,
-                train_loader,
-                n_classes=n_classes,
+            train_accuracy, train_auroc = self._compute_metrics_from_train_batches(
+                prob_chunks=train_prob_chunks,
+                target_chunks=train_target_chunks,
                 classes=classes,
-                criterion=None,
             )
 
             self._log_metrics_to_wandb(
@@ -477,6 +497,8 @@ class TorchRunner(BaseRunner):
         best_val_auroc = 0.0
         best_model_state = None
         wandb_prefix = self._get_wandb_prefix(fold_idx)
+        train_prob_chunks: list[np.ndarray] = []
+        train_target_chunks: list[np.ndarray] = []
 
         step = 0
         train_iter = iter(train_loader)
@@ -515,6 +537,13 @@ class TorchRunner(BaseRunner):
             if scheduler is not None:
                 scheduler.step(loss.item())
 
+            # Cache train-window predictions/targets so validation checkpoints can
+            # report train metrics without re-iterating the full train loader.
+            train_prob_chunks.append(
+                torch.nn.functional.softmax(outputs.detach(), dim=1).cpu().numpy()
+            )
+            train_target_chunks.append(batch_y.detach().cpu().numpy())
+
             step += 1
             if step % validation_interval != 0 and step != total_steps:
                 continue
@@ -526,13 +555,13 @@ class TorchRunner(BaseRunner):
                 classes=classes,
                 criterion=criterion,
             )
-            train_accuracy, train_auroc, _ = self._evaluate_loader(
-                model,
-                train_loader,
-                n_classes=n_classes,
+            train_accuracy, train_auroc = self._compute_metrics_from_train_batches(
+                prob_chunks=train_prob_chunks,
+                target_chunks=train_target_chunks,
                 classes=classes,
-                criterion=None,
             )
+            train_prob_chunks = []
+            train_target_chunks = []
 
             current_lr = scheduler.get_lr() if scheduler is not None else learning_rate
             self._log_metrics_to_wandb(
