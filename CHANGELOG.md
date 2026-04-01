@@ -6,12 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 ### Added
 - Added `MultiChannelDatasetMixin` to provide `get_channel_ids` and prefixing interface for EEG-like datasets ([#173](https://github.com/neuro-galaxy/torch_brain/pull/173))
+- Added `BinSpikes` transform ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 
 ### Removed
 
 ### Changed
 - Moved `DecodingStitchEvaluator` and `MultiTaskDecodingStitchEvaluator` to `utils/callbacks.py` ([#183](https://github.com/neuro-galaxy/torch_brain/pull/183))
 - Replaced `torch_brain.data.dataset.DatasetIndex` with `torch_brain.dataset.DatasetIndex` ([#186](https://github.com/neuro-galaxy/torch_brain/pull/186))
+- `bin_spikes` output shape changed from `(N, T)` to `(T, N)` and default `dtype` changed from `np.float32` to `np.int32` ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 
 ### Fixed
 - Fixed `MultiTaskDecodingStitchEvaluator` caching predictions under the wrong sequence index when batch samples have non-overlapping readout types. ([#175](https://github.com/neuro-galaxy/torch_brain/pull/175))
