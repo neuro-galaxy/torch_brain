@@ -4,3 +4,4 @@ from .sinusoidal_encoding import get_sinusoidal_encoding
 from .weights import resolve_weights_based_on_interval_membership, isin_interval
 from .readout import prepare_for_readout
 from .misc import np_string_prefix
+from .binning import bin_spikes

@@ -17,3 +17,14 @@ Tokenizers
 .. autofunction:: create_linspace_latent_tokens
 
 .. autofunction:: create_start_end_unit_tokens
+
+Binning
+-------
+
+.. list-table::
+   :widths: 25 125
+
+   * - :py:func:`bin_spikes`
+     - Bin spike timestamps into fixed-width time bins.
+
+.. autofunction:: bin_spikes
