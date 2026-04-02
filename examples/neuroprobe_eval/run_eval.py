@@ -39,6 +39,7 @@ from neuroprobe_eval.utils.logging_utils import (
 def main(cfg: DictConfig) -> None:
     """Main evaluation function."""
     root_logger = logging.getLogger()
+    wandb_run = None
     try:
         # Hydra automatically configures Python logging to output to both console and log file
         # No manual setup needed - just use the logger from logging_utils
@@ -53,8 +54,10 @@ def main(cfg: DictConfig) -> None:
         log("Starting neuroprobe evaluation", priority=0)
         log(f"Configuration:\n{OmegaConf.to_yaml(cfg, resolve=True)}", priority=1)
 
+        # Validate config before any external service initialization (e.g., wandb).
+        validate_eval_config(cfg)
+
         # Initialize wandb if enabled
-        wandb_run = None
         if cfg.get("wandb", {}).get("enabled", False):
             if not WANDB_AVAILABLE:
                 log(
@@ -119,6 +122,9 @@ def main(cfg: DictConfig) -> None:
         # Ensure uncaught failures are persisted to Hydra's run_eval.log file.
         root_logger.exception("Unhandled exception during neuroprobe_eval.run_eval")
         raise
+    finally:
+        if wandb_run is not None:
+            wandb.finish()
 
 
 def run_processed_evaluation(
@@ -143,76 +149,72 @@ def run_processed_evaluation(
     regime = dataset_cfg.regime
     seed = cfg.runtime.seed
 
-    try:
-        dataset_provider = dataset_cfg.provider
-        requires_aligned = cfg.model.requires_aligned_channels
-        needs_pool = needs_region_intersection_pool(
-            dataset_provider, regime, requires_aligned
-        )
-        n_folds = resolve_provider_n_folds(
-            dataset_provider=dataset_provider,
-            regime=regime,
-        )
+    dataset_provider = dataset_cfg.provider
+    requires_aligned = cfg.model.requires_aligned_channels
+    needs_pool = needs_region_intersection_pool(
+        dataset_provider, regime, requires_aligned
+    )
+    n_folds = resolve_provider_n_folds(
+        dataset_provider=dataset_provider,
+        regime=regime,
+    )
 
-        log(f"Using dataset.provider='{dataset_provider}'", priority=0)
-        log(f"Using dataset.regime='{regime}'", priority=0)
-        log(f"Using n_folds={n_folds} from dataset class API", priority=0)
+    log(f"Using dataset.provider='{dataset_provider}'", priority=0)
+    log(f"Using dataset.regime='{regime}'", priority=0)
+    log(f"Using n_folds={n_folds} from dataset class API", priority=0)
 
-        preprocess_type = cfg.preprocessor.name
-        model_name = cfg.model.name
-        # Keep result JSON in the Hydra run folder for per-run portability.
-        file_save_path = logging_utils.resolve_result_output_path(
-            eval_name=eval_name,
-            subject_id=subject_id,
-            trial_id=trial_id,
-        )
-        require_coords = cfg.model.requires_coords
-        # Short-circuit before fold construction if result already exists.
-        if logging_utils.should_skip_existing_output(cfg, file_save_path):
-            return
+    preprocess_type = cfg.preprocessor.name
+    model_name = cfg.model.name
+    # Keep result JSON in the Hydra run folder for per-run portability.
+    file_save_path = logging_utils.resolve_result_output_path(
+        eval_name=eval_name,
+        subject_id=subject_id,
+        trial_id=trial_id,
+    )
+    require_coords = cfg.model.requires_coords
+    # Short-circuit before fold construction if result already exists.
+    if logging_utils.should_skip_existing_output(cfg, file_save_path):
+        return
 
-        results_population, data_load_time, regression_run_time = (
-            fold_helpers.run_processed_fold_loop(
-                fold_iter=fold_helpers.iter_variable_channel_folds(
-                    n_folds=n_folds,
-                    dataset_cfg=dataset_cfg,
-                    preprocessor=preprocessor,
-                    seed=seed,
-                    require_coords=require_coords,
-                    needs_pool=needs_pool,
-                ),
-                evaluate_fold=partial(
-                    fold_helpers.evaluate_variable_fold,
-                    cfg=cfg,
-                    runner=runner,
-                    model_name=model_name,
-                    seed=seed,
-                ),
-                data_load_time=data_load_time,
-                prepare_label="prepared variable-channel payload",
-            )
-        )
-
-        if hasattr(preprocessor, "unload_model"):
-            preprocessor.unload_model()
-        logging_utils.format_and_save_results(
-            cfg=cfg,
-            dataset_provider=dataset_provider,
-            model_name=model_name,
-            preprocess_type=preprocess_type,
-            subject_id=subject_id,
-            trial_id=trial_id,
-            eval_name=eval_name,
-            results_splits_type=regime,
-            results_population=results_population,
+    results_population, data_load_time, regression_run_time = (
+        fold_helpers.run_processed_fold_loop(
+            fold_iter=fold_helpers.iter_variable_channel_folds(
+                n_folds=n_folds,
+                dataset_cfg=dataset_cfg,
+                preprocessor=preprocessor,
+                seed=seed,
+                require_coords=require_coords,
+                needs_pool=needs_pool,
+            ),
+            evaluate_fold=partial(
+                fold_helpers.evaluate_variable_fold,
+                cfg=cfg,
+                runner=runner,
+                model_name=model_name,
+                seed=seed,
+            ),
             data_load_time=data_load_time,
-            regression_run_time=regression_run_time,
-            file_save_path=file_save_path,
+            prepare_label="prepared variable-channel payload",
         )
-        logging_utils.log_final_wandb_metrics(wandb_run, results_population)
-    finally:
-        if wandb_run is not None:
-            wandb.finish()
+    )
+
+    if hasattr(preprocessor, "unload_model"):
+        preprocessor.unload_model()
+    logging_utils.format_and_save_results(
+        cfg=cfg,
+        dataset_provider=dataset_provider,
+        model_name=model_name,
+        preprocess_type=preprocess_type,
+        subject_id=subject_id,
+        trial_id=trial_id,
+        eval_name=eval_name,
+        results_splits_type=regime,
+        results_population=results_population,
+        data_load_time=data_load_time,
+        regression_run_time=regression_run_time,
+        file_save_path=file_save_path,
+    )
+    logging_utils.log_final_wandb_metrics(wandb_run, results_population)
 
 
 if __name__ == "__main__":
