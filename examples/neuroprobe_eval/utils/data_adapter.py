@@ -114,7 +114,7 @@ def validate_provider_interface(provider: Any) -> None:
     required = (
         "get_sampling_intervals",
         "get_recording",
-        "get_channel_arrays",
+        "get_channel_metadata",
         "describe_selection",
     )
     missing = [
@@ -484,16 +484,19 @@ class WindowedNeuroprobeSplitDataset(torch.utils.data.Dataset):
         if cached is not None:
             return cached
 
-        arrays = dict(self.provider.get_channel_arrays(recording_id))
+        channel_metadata = dict(self.provider.get_channel_metadata(recording_id))
         for key in ("indices", "ids", "included_mask"):
-            if key not in arrays:
+            if key not in channel_metadata:
                 raise KeyError(
-                    f"Provider channel arrays missing key '{key}' for recording '{recording_id}'."
+                    "Provider channel metadata missing key "
+                    f"'{key}' for recording '{recording_id}'."
                 )
 
-        indices_all = np.asarray(arrays["indices"], dtype=int).reshape(-1)
-        ids_all = np.asarray(arrays["ids"]).astype(str).reshape(-1)
-        included_mask = np.asarray(arrays["included_mask"], dtype=bool).reshape(-1)
+        indices_all = np.asarray(channel_metadata["indices"], dtype=int).reshape(-1)
+        ids_all = np.asarray(channel_metadata["ids"]).astype(str).reshape(-1)
+        included_mask = np.asarray(
+            channel_metadata["included_mask"], dtype=bool
+        ).reshape(-1)
         if len(ids_all) != len(included_mask):
             raise ValueError(
                 "ids/included_mask length mismatch for recording "
@@ -511,7 +514,7 @@ class WindowedNeuroprobeSplitDataset(torch.utils.data.Dataset):
         # is responsible for any subject/session uniqueness policy.
         channel_ids = ids.tolist()
 
-        names_arr = arrays.get("names")
+        names_arr = channel_metadata.get("names")
         channel_names: list[str] | None = None
         if names_arr is not None:
             names = np.asarray(names_arr).astype(str).reshape(-1)
@@ -522,8 +525,8 @@ class WindowedNeuroprobeSplitDataset(torch.utils.data.Dataset):
                 )
             channel_names = names[included_mask].tolist()
 
-        coords = arrays.get("coords")
-        coords_type = arrays.get("coords_type", "lip")
+        coords = channel_metadata.get("coords")
+        coords_type = channel_metadata.get("coords_type", "lip")
         if not isinstance(coords_type, str):
             raise TypeError(
                 "coords_type must be a str for recording "
@@ -533,7 +536,7 @@ class WindowedNeuroprobeSplitDataset(torch.utils.data.Dataset):
         if coords is not None and coords_type != "lip":
             raise ValueError(
                 "Unsupported channel coordinate type "
-                f"'{arrays.get('coords_type')}' for recording '{recording_id}'."
+                f"'{channel_metadata.get('coords_type')}' for recording '{recording_id}'."
             )
         if coords is not None:
             coords = np.asarray(coords, dtype=np.float32).reshape(-1, 3)
@@ -553,8 +556,8 @@ class WindowedNeuroprobeSplitDataset(torch.utils.data.Dataset):
             if source is None:
                 return None
             arr = np.asarray(source, dtype=object).reshape(-1)
-            # Accept either full-channel arrays, already-filtered arrays, or
-            # indexable arrays that can be projected to selected channels.
+            # Accept either full-channel metadata arrays, already-filtered arrays,
+            # or indexable arrays that can be projected to selected channels.
             if len(arr) == len(ids_all):
                 arr = arr[included_mask]
                 return _normalize_brain_area_array(
@@ -582,17 +585,18 @@ class WindowedNeuroprobeSplitDataset(torch.utils.data.Dataset):
         key = self._brain_area_key
         if key is not None:
             # Source precedence for brain_area_key:
-            # 1) provider.get_channel_arrays(recording_id)[key]
-            # 2) recording.channels.<key> fallback when arrays do not expose key
+            # 1) provider.get_channel_metadata(recording_id)[key]
+            # 2) recording.channels.<key> fallback when metadata does not expose key
             sources_seen: list[str] = []
-            if key in arrays:
-                sources_seen.append(f"channel arrays '{key}'")
+            if key in channel_metadata:
+                sources_seen.append(f"channel metadata '{key}'")
                 brain_areas = _maybe_extract_brain_areas(
-                    arrays.get(key), source_name=f"channel arrays '{key}'"
+                    channel_metadata.get(key),
+                    source_name=f"channel metadata '{key}'",
                 )
                 if brain_areas is None:
                     raise ValueError(
-                        f"Configured brain_area_key '{key}' in channel arrays for "
+                        f"Configured brain_area_key '{key}' in channel metadata for "
                         f"recording '{recording_id}' could not be aligned to selected "
                         "channels."
                     )
