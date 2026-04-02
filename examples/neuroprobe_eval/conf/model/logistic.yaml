@@ -1,0 +1,8 @@
+# Logistic Regression model (sklearn)
+name: logistic
+requires_aligned_channels: true
+max_iter: 10000
+tol: 1e-3
+random_state: 42
+device: cpu
+requires_coords: false  # Optional; set true only for models that require channel coordinates
