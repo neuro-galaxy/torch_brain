@@ -45,15 +45,21 @@ def test_torch_runner_deterministic_mode_configures_torch(monkeypatch):
     monkeypatch.setattr(
         torch, "use_deterministic_algorithms", _fake_use_deterministic_algorithms
     )
-    torch.backends.cudnn.deterministic = False
-    torch.backends.cudnn.benchmark = True
+    prev_deterministic = torch.backends.cudnn.deterministic
+    prev_benchmark = torch.backends.cudnn.benchmark
+    try:
+        torch.backends.cudnn.deterministic = False
+        torch.backends.cudnn.benchmark = True
 
-    runner = TorchRunner(_cfg(device="cpu", deterministic=True))
+        runner = TorchRunner(_cfg(device="cpu", deterministic=True))
 
-    assert runner.deterministic is True
-    assert calls["enabled"] is True
-    assert torch.backends.cudnn.deterministic is True
-    assert torch.backends.cudnn.benchmark is False
+        assert runner.deterministic is True
+        assert calls["enabled"] is True
+        assert torch.backends.cudnn.deterministic is True
+        assert torch.backends.cudnn.benchmark is False
+    finally:
+        torch.backends.cudnn.deterministic = prev_deterministic
+        torch.backends.cudnn.benchmark = prev_benchmark
 
 
 def test_torch_runner_configures_determinism_before_device_resolution(monkeypatch):

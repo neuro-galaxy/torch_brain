@@ -50,6 +50,10 @@ class BaseModel(ABC):
         Returns:
             Array of shape (n_samples,) with predicted class labels
         """
+        if self.classes_ is None:
+            raise RuntimeError(
+                "Model classes are unavailable. Call fit(...) before predict(...)."
+            )
         probs = self.predict_proba(X)
         return self.classes_[np.argmax(probs, axis=1)]
 

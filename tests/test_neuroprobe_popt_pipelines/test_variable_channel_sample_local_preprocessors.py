@@ -216,14 +216,21 @@ def test_raw_transform_sample_preserves_channel_alignment():
 def test_raw_transform_samples_matches_transform_sample_output():
     cfg = OmegaConf.create({"name": "raw"})
     pre = RawPreprocessor(cfg)
-    sample = _sample(["R1", "R2"])
+    sample_a = _sample(["R1", "R2"])
+    sample_b = _sample(["R1", "R2"])
+    sample_b["x"] = sample_b["x"] + 123.0
+    sample_b["sample_idx"] = 1
 
-    out_single = pre.transform_samples([sample])[0]
-    out_batch = pre.transform_samples([sample])[0]
+    out_single_a = pre.transform_samples([sample_a])[0]
+    out_single_b = pre.transform_samples([sample_b])[0]
+    out_batch = pre.transform_samples([sample_a, sample_b])
 
-    np.testing.assert_allclose(out_batch["x"], out_single["x"], atol=1e-6)
-    assert out_batch["channel_ids"] == out_single["channel_ids"]
-    assert out_batch["channel_names"] == out_single["channel_names"]
+    np.testing.assert_allclose(out_batch[0]["x"], out_single_a["x"], atol=1e-6)
+    np.testing.assert_allclose(out_batch[1]["x"], out_single_b["x"], atol=1e-6)
+    assert out_batch[0]["channel_ids"] == out_single_a["channel_ids"]
+    assert out_batch[1]["channel_ids"] == out_single_b["channel_ids"]
+    assert out_batch[0]["channel_names"] == out_single_a["channel_names"]
+    assert out_batch[1]["channel_names"] == out_single_b["channel_names"]
 
 
 def test_time_domain_filter_transform_samples_matches_transform_sample_output():
@@ -235,13 +242,19 @@ def test_time_domain_filter_transform_samples_matches_transform_sample_output():
         }
     )
     pre = TimeDomainFilterPreprocessor(cfg)
-    sample = _sample(["B1", "B2"])
+    sample_a = _sample(["B1", "B2"])
+    sample_b = _sample(["B1", "B2"])
+    sample_b["x"] = sample_b["x"] + 10.0
+    sample_b["sample_idx"] = 1
 
-    out_single = pre.transform_samples([sample])[0]
-    out_batch = pre.transform_samples([sample])[0]
+    out_single_a = pre.transform_samples([sample_a])[0]
+    out_single_b = pre.transform_samples([sample_b])[0]
+    out_batch = pre.transform_samples([sample_a, sample_b])
 
-    np.testing.assert_allclose(out_batch["x"], out_single["x"], atol=1e-6)
-    assert out_batch["channel_ids"] == out_single["channel_ids"]
+    np.testing.assert_allclose(out_batch[0]["x"], out_single_a["x"], atol=1e-6)
+    np.testing.assert_allclose(out_batch[1]["x"], out_single_b["x"], atol=1e-6)
+    assert out_batch[0]["channel_ids"] == out_single_a["channel_ids"]
+    assert out_batch[1]["channel_ids"] == out_single_b["channel_ids"]
 
 
 def test_stft_transform_samples_matches_transform_sample_output():
@@ -259,14 +272,21 @@ def test_stft_transform_samples_matches_transform_sample_output():
         }
     )
     pre = STFTPreprocessor(cfg)
-    sample = _sample(["A1", "A2"])
+    sample_a = _sample(["A1", "A2"])
+    sample_b = _sample(["A1", "A2"])
+    sample_b["x"] = sample_b["x"] + 5.0
+    sample_b["sample_idx"] = 1
 
-    out_single = pre.transform_samples([sample])[0]
-    out_batch = pre.transform_samples([sample])[0]
+    out_single_a = pre.transform_samples([sample_a])[0]
+    out_single_b = pre.transform_samples([sample_b])[0]
+    out_batch = pre.transform_samples([sample_a, sample_b])
 
-    np.testing.assert_allclose(out_batch["x"], out_single["x"], atol=1e-6)
-    assert out_batch["x"].shape[0] == len(sample["channel_ids"])
-    assert out_batch["channel_ids"] == out_single["channel_ids"]
+    np.testing.assert_allclose(out_batch[0]["x"], out_single_a["x"], atol=1e-6)
+    np.testing.assert_allclose(out_batch[1]["x"], out_single_b["x"], atol=1e-6)
+    assert out_batch[0]["x"].shape[0] == len(sample_a["channel_ids"])
+    assert out_batch[1]["x"].shape[0] == len(sample_b["channel_ids"])
+    assert out_batch[0]["channel_ids"] == out_single_a["channel_ids"]
+    assert out_batch[1]["channel_ids"] == out_single_b["channel_ids"]
 
 
 def test_channel_subselect_transform_samples_matches_transform_sample_and_metadata():
@@ -274,23 +294,43 @@ def test_channel_subselect_transform_samples_matches_transform_sample_and_metada
         {"name": "channel_subselect", "allowed_electrodes": ["T1b2"]}
     )
     pre = ChannelSubselectPreprocessor(cfg)
-    sample = _sample(
+    sample_a = _sample(
         ["id_1", "id_2", "id_3"],
         channel_names=["sub_2/sess_0/T1b1", "sub_2/sess_0/T1b2", "sub_2/sess_0/T1b3"],
     )
-
-    out_single = pre.transform_samples([sample])[0]
-    out_batch = pre.transform_samples([sample])[0]
-
-    np.testing.assert_allclose(out_batch["x"], out_single["x"], atol=1e-6)
-    assert out_batch["channel_names"] == out_single["channel_names"]
-    idx = [sample["channel_names"].index(name) for name in out_single["channel_names"]]
-    assert out_batch["channel_ids"] == [sample["channel_ids"][i] for i in idx]
-    np.testing.assert_array_equal(
-        out_batch["channel_coords_lip"], sample["channel_coords_lip"][idx]
+    sample_b = _sample(
+        ["id_1", "id_2", "id_3"],
+        channel_names=["sub_2/sess_0/T1b1", "sub_2/sess_0/T1b2", "sub_2/sess_0/T1b3"],
     )
-    np.testing.assert_array_equal(out_batch["seq_id"], sample["seq_id"][idx])
-    assert out_batch["brain_areas"] == [sample["brain_areas"][i] for i in idx]
+    sample_b["x"] = sample_b["x"] + 7.0
+    sample_b["sample_idx"] = 1
+
+    out_single_a = pre.transform_samples([sample_a])[0]
+    out_single_b = pre.transform_samples([sample_b])[0]
+    out_batch = pre.transform_samples([sample_a, sample_b])
+
+    np.testing.assert_allclose(out_batch[0]["x"], out_single_a["x"], atol=1e-6)
+    np.testing.assert_allclose(out_batch[1]["x"], out_single_b["x"], atol=1e-6)
+    assert out_batch[0]["channel_names"] == out_single_a["channel_names"]
+    assert out_batch[1]["channel_names"] == out_single_b["channel_names"]
+    idx_a = [
+        sample_a["channel_names"].index(name) for name in out_single_a["channel_names"]
+    ]
+    idx_b = [
+        sample_b["channel_names"].index(name) for name in out_single_b["channel_names"]
+    ]
+    assert out_batch[0]["channel_ids"] == [sample_a["channel_ids"][i] for i in idx_a]
+    assert out_batch[1]["channel_ids"] == [sample_b["channel_ids"][i] for i in idx_b]
+    np.testing.assert_array_equal(
+        out_batch[0]["channel_coords_lip"], sample_a["channel_coords_lip"][idx_a]
+    )
+    np.testing.assert_array_equal(
+        out_batch[1]["channel_coords_lip"], sample_b["channel_coords_lip"][idx_b]
+    )
+    np.testing.assert_array_equal(out_batch[0]["seq_id"], sample_a["seq_id"][idx_a])
+    np.testing.assert_array_equal(out_batch[1]["seq_id"], sample_b["seq_id"][idx_b])
+    assert out_batch[0]["brain_areas"] == [sample_a["brain_areas"][i] for i in idx_a]
+    assert out_batch[1]["brain_areas"] == [sample_b["brain_areas"][i] for i in idx_b]
 
 
 def test_laplacian_transform_samples_matches_transform_sample_and_metadata():
@@ -298,23 +338,43 @@ def test_laplacian_transform_samples_matches_transform_sample_and_metadata():
         {"name": "laplacian_rereference", "remove_non_laplacian": True}
     )
     pre = LaplacianRereferencePreprocessor(cfg)
-    sample = _sample(
+    sample_a = _sample(
         ["id_1", "id_2", "id_3"],
         channel_names=["sub_2/sess_0/T1b1", "sub_2/sess_0/T1b2", "sub_2/sess_0/P1b1"],
     )
-
-    out_single = pre.transform_samples([sample])[0]
-    out_batch = pre.transform_samples([sample])[0]
-
-    np.testing.assert_allclose(out_batch["x"], out_single["x"], atol=1e-6)
-    assert out_batch["channel_names"] == out_single["channel_names"]
-    idx = [sample["channel_names"].index(name) for name in out_single["channel_names"]]
-    assert out_batch["channel_ids"] == [sample["channel_ids"][i] for i in idx]
-    np.testing.assert_array_equal(
-        out_batch["channel_coords_lip"], sample["channel_coords_lip"][idx]
+    sample_b = _sample(
+        ["id_1", "id_2", "id_3"],
+        channel_names=["sub_2/sess_0/T1b1", "sub_2/sess_0/T1b2", "sub_2/sess_0/P1b1"],
     )
-    np.testing.assert_array_equal(out_batch["seq_id"], sample["seq_id"][idx])
-    assert out_batch["brain_areas"] == [sample["brain_areas"][i] for i in idx]
+    sample_b["x"] = sample_b["x"] + 9.0
+    sample_b["sample_idx"] = 1
+
+    out_single_a = pre.transform_samples([sample_a])[0]
+    out_single_b = pre.transform_samples([sample_b])[0]
+    out_batch = pre.transform_samples([sample_a, sample_b])
+
+    np.testing.assert_allclose(out_batch[0]["x"], out_single_a["x"], atol=1e-6)
+    np.testing.assert_allclose(out_batch[1]["x"], out_single_b["x"], atol=1e-6)
+    assert out_batch[0]["channel_names"] == out_single_a["channel_names"]
+    assert out_batch[1]["channel_names"] == out_single_b["channel_names"]
+    idx_a = [
+        sample_a["channel_names"].index(name) for name in out_single_a["channel_names"]
+    ]
+    idx_b = [
+        sample_b["channel_names"].index(name) for name in out_single_b["channel_names"]
+    ]
+    assert out_batch[0]["channel_ids"] == [sample_a["channel_ids"][i] for i in idx_a]
+    assert out_batch[1]["channel_ids"] == [sample_b["channel_ids"][i] for i in idx_b]
+    np.testing.assert_array_equal(
+        out_batch[0]["channel_coords_lip"], sample_a["channel_coords_lip"][idx_a]
+    )
+    np.testing.assert_array_equal(
+        out_batch[1]["channel_coords_lip"], sample_b["channel_coords_lip"][idx_b]
+    )
+    np.testing.assert_array_equal(out_batch[0]["seq_id"], sample_a["seq_id"][idx_a])
+    np.testing.assert_array_equal(out_batch[1]["seq_id"], sample_b["seq_id"][idx_b])
+    assert out_batch[0]["brain_areas"] == [sample_a["brain_areas"][i] for i in idx_a]
+    assert out_batch[1]["brain_areas"] == [sample_b["brain_areas"][i] for i in idx_b]
 
 
 def test_transform_samples_preserves_input_order_for_multiple_samples():

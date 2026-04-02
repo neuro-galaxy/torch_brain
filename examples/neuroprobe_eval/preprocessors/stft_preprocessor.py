@@ -84,8 +84,6 @@ class STFTPreprocessor(BasePreprocessor):
             x_np = np.abs(Zxx)
             if normalizing == "zscore":
                 x_np = zscore(x_np, dim=-1)
-                if np.all(np.std(x_np, axis=-1) == 0):
-                    x_np = np.ones_like(x_np)
             elif normalizing not in ("none", None):
                 raise ValueError(f"Unsupported STFT normalizing mode: {normalizing}")
             x_np = x_np.transpose(0, 2, 1)
@@ -153,8 +151,6 @@ class STFTPreprocessor(BasePreprocessor):
 
             if normalizing == "zscore":
                 x = zscore(x, dim=-1)
-                if (x.std() == 0).any():
-                    x = torch.ones_like(x)
             elif normalizing not in ("none", None):
                 raise ValueError(f"Unsupported STFT normalizing mode: {normalizing}")
 

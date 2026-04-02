@@ -70,7 +70,13 @@ class CNNModel(TorchBaseModel):
                     self.dropout = nn.Dropout(0.5)
 
                     # Calculate the size after convolutions and pooling
-                    conv_output_size = input_shape[1] // 8 * 128
+                    pooled_time = input_shape[1] // 8
+                    if pooled_time <= 0:
+                        raise ValueError(
+                            "CNN input time dimension is too small for three pooling "
+                            f"layers: got {input_shape[1]}, need >= 8."
+                        )
+                    conv_output_size = pooled_time * 128
 
                 else:  # 3D input (channels, freq, time)
                     # 2D CNN for (channels, freq, time)
@@ -81,9 +87,16 @@ class CNNModel(TorchBaseModel):
                     self.dropout = nn.Dropout(0.5)
 
                     # Calculate the size after convolutions and pooling
-                    conv_output_size = (
-                        (input_shape[1] // 8) * (input_shape[2] // 8) * 128
-                    )
+                    pooled_freq = input_shape[1] // 8
+                    pooled_time = input_shape[2] // 8
+                    if pooled_freq <= 0 or pooled_time <= 0:
+                        raise ValueError(
+                            "CNN input spatial dimensions are too small for three "
+                            "pooling layers: got "
+                            f"(freq={input_shape[1]}, time={input_shape[2]}), "
+                            "need both >= 8."
+                        )
+                    conv_output_size = pooled_freq * pooled_time * 128
 
                 # Build FC layers from hidden_dims
                 fc_layers = []

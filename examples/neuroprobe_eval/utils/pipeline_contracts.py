@@ -340,14 +340,21 @@ def validate_eval_config(cfg: DictConfig) -> None:
 
     # -- preprocessor --
     preprocessor_cfg = _require_cfg_mapping(cfg, "preprocessor")
-    _require_non_empty_cfg_str(preprocessor_cfg, section="preprocessor", key="name")
+    preprocessor_name = _require_non_empty_cfg_str(
+        preprocessor_cfg, section="preprocessor", key="name"
+    )
     if pool:
         chain = preprocessor_cfg.get("chain") or []
         stage_names = {s.get("name") for s in chain if hasattr(s, "get")}
-        if "region_intersection_pool" not in stage_names:
+        has_top_level_region_pool = preprocessor_name == "region_intersection_pool"
+        if (
+            not has_top_level_region_pool
+            and "region_intersection_pool" not in stage_names
+        ):
             raise ValueError(
                 "Multi-subject regime with model.requires_aligned_channels=true "
-                "requires a preprocessor chain that includes the "
+                "requires either a top-level 'region_intersection_pool' preprocessor "
+                "or a preprocessor chain that includes the "
                 "'region_intersection_pool' stage "
                 f"(dataset.provider='{provider}', dataset.regime='{regime}')."
             )
