@@ -56,6 +56,26 @@ def test_torch_runner_deterministic_mode_configures_torch(monkeypatch):
     assert torch.backends.cudnn.benchmark is False
 
 
+def test_torch_runner_configures_determinism_before_device_resolution(monkeypatch):
+    call_order = []
+
+    def _fake_configure(self):
+        _ = self
+        call_order.append("configure")
+        return True
+
+    def _fake_get_device(self, cfg):
+        _ = (self, cfg)
+        call_order.append("device")
+        return torch.device("cpu")
+
+    monkeypatch.setattr(TorchRunner, "_configure_determinism", _fake_configure)
+    monkeypatch.setattr(TorchRunner, "_get_device", _fake_get_device)
+
+    _ = TorchRunner(_cfg(device="cpu", deterministic=True))
+    assert call_order == ["configure", "device"]
+
+
 class _ListDataset(torch.utils.data.Dataset):
     def __init__(self, samples):
         self.samples = list(samples)
@@ -330,6 +350,43 @@ def test_forward_model_ignores_coords_for_modules_without_coord_support():
 
     assert tuple(out.shape) == (2, 2)
     assert module.called == 1
+
+
+def test_forward_model_moves_coords_for_legacy_coord_models(monkeypatch):
+    class _LegacyCoordsModule(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.last_coords_device = None
+
+        def forward(self, x, coords):
+            self.last_coords_device = coords.device
+            return torch.zeros((x.shape[0], 2), dtype=x.dtype, device=x.device)
+
+    cfg = _cfg(name="mlp", device="cpu")
+    runner = TorchRunner(cfg)
+    module = _LegacyCoordsModule().to(runner.device)
+
+    x = torch.randn(2, 3, 4, device=runner.device)
+    coords = torch.randn(2, 3, 3)
+
+    original_is_tensor = torch.is_tensor
+
+    def _fake_is_tensor(_obj):
+        return False
+
+    monkeypatch.setattr(torch, "is_tensor", _fake_is_tensor)
+    try:
+        out = runner._forward_model(
+            module,
+            x,
+            coords=coords,
+            accepts_coords=True,
+        )
+    finally:
+        monkeypatch.setattr(torch, "is_tensor", original_is_tensor)
+
+    assert tuple(out.shape) == (2, 2)
+    assert module.last_coords_device == runner.device
 
 
 def test_create_optimizer_and_scheduler_falls_back_to_adam():

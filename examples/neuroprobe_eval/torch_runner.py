@@ -18,8 +18,8 @@ class TorchRunner(BaseRunner):
 
     def __init__(self, cfg):
         super().__init__(cfg)
-        self.device = self._get_device(cfg)
         self.deterministic = self._configure_determinism()
+        self.device = self._get_device(cfg)
         self.wandb_run = None  # Will be set via set_wandb_run() if wandb is enabled
 
     def set_wandb_run(self, wandb_run):
@@ -782,7 +782,12 @@ class TorchRunner(BaseRunner):
             return torch_model(inputs, positions=positions, **model_kwargs)
         elif coords is not None and accepts_coords:
             # Explicitly-declared coords-only fallback for legacy models.
-            return torch_model(inputs, coords, **model_kwargs)
+            coords_t = (
+                coords.to(device=self.device)
+                if torch.is_tensor(coords)
+                else torch.as_tensor(coords, device=self.device)
+            )
+            return torch_model(inputs, coords_t, **model_kwargs)
         else:
             return torch_model(inputs, **model_kwargs)
 
