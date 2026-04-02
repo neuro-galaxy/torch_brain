@@ -55,23 +55,27 @@ class ChannelSubselectPreprocessor(BasePreprocessor):
     def _is_allowed_label(self, label):
         if self.allowed_electrodes is None:
             return True
-        if label in self.allowed_electrodes:
-            return True
+        inferred_subject = None
+        suffix = None
         if isinstance(label, str) and "/" in label:
-            # Variable-channel IDs may be prefixed as subject/session/channel.
-            # Accept by raw channel-id suffix when clean lists are unprefixed.
             suffix = label.split("/")[-1]
-            if suffix in self.allowed_electrodes:
-                return True
             inferred_subject = self._infer_subject_from_label(label)
             if inferred_subject is not None:
+                # Subject-specific allowlists take precedence over any global
+                # fallback/union when a subject prefix is present.
                 subject_allowed = self.allowed_electrodes_by_subject.get(
                     inferred_subject, set()
                 )
-                if label in subject_allowed:
+                if label in subject_allowed or suffix in subject_allowed:
                     return True
-                if suffix in subject_allowed:
-                    return True
+                return False
+        if label in self.allowed_electrodes:
+            return True
+        if suffix is not None:
+            # Variable-channel IDs may be prefixed as subject/session/channel.
+            # Accept by raw channel-id suffix when clean lists are unprefixed.
+            if suffix in self.allowed_electrodes:
+                return True
         return False
 
     def _normalize_allowed(self, allowed):

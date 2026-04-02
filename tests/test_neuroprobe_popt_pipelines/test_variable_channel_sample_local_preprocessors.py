@@ -99,6 +99,37 @@ def test_channel_subselect_uses_subject_prefix_for_dict_allowlist(tmp_path):
     assert out["brain_areas"] == [sample["brain_areas"][1]]
 
 
+def test_channel_subselect_subject_specific_list_overrides_union_fallback(tmp_path):
+    allow_path = tmp_path / "allow_subject_specific.json"
+    allow_path.write_text(
+        json.dumps(
+            {
+                "sub_1": ["T1b1"],
+                "sub_2": ["T2b2"],
+            }
+        )
+    )
+    cfg = OmegaConf.create(
+        {
+            "name": "channel_subselect",
+            "allowed_electrodes": str(allow_path),
+        }
+    )
+    pre = ChannelSubselectPreprocessor(cfg)
+
+    sample = _sample(
+        ["id_1", "id_2"],
+        channel_names=["sub_1/sess_0/T1b1", "sub_1/sess_0/T2b2"],
+    )
+    out = pre.transform_samples([sample])[0]
+
+    # T2b2 exists in the global union (from sub_2) but should be rejected for sub_1.
+    assert out["x"].shape[0] == 1
+    assert out["channel_ids"] == ["id_1"]
+    assert out["channel_names"] == ["sub_1/sess_0/T1b1"]
+    assert out["brain_areas"] == [sample["brain_areas"][0]]
+
+
 def test_laplacian_transform_sample_preserves_prefixed_labels():
     cfg = OmegaConf.create(
         {"name": "laplacian_rereference", "remove_non_laplacian": True}
