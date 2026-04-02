@@ -2,10 +2,12 @@ import os
 
 os.environ.setdefault("ROOT_DIR_BRAINTREEBANK", "/tmp")
 
+import neuroprobe_eval.utils.logging_utils as logging_utils
 from neuroprobe_eval.utils.logging_utils import (
     build_internal_eval_result,
     build_public_export_result,
     format_results,
+    log,
     resolve_public_result_filename,
     resolve_public_subject_identifier,
 )
@@ -75,3 +77,17 @@ def test_internal_eval_result_and_btb_export_boundary():
         )
         == "population_btbank2_0_onset.json"
     )
+
+
+def test_log_degrades_gracefully_when_psutil_unavailable(monkeypatch):
+    logged_messages = []
+
+    monkeypatch.setattr(logging_utils, "psutil", None)
+    monkeypatch.setattr(logging_utils.logger, "info", logged_messages.append)
+
+    log("hello", priority=0)
+
+    assert len(logged_messages) == 1
+    assert "hello" in logged_messages[0]
+    assert "ram" in logged_messages[0]
+    assert "n/a" in logged_messages[0]

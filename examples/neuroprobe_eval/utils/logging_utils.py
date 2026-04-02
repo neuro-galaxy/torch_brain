@@ -3,7 +3,6 @@ Logging and result formatting utilities.
 """
 
 import time
-import psutil
 import torch
 import json
 import os
@@ -11,6 +10,11 @@ import logging
 import numpy as np
 from hydra.core.hydra_config import HydraConfig
 from omegaconf import OmegaConf
+
+try:
+    import psutil
+except ImportError:  # pragma: no cover - exercised via monkeypatch in tests
+    psutil = None
 
 
 verbose = True  # Global verbose flag
@@ -54,12 +58,25 @@ def log(message, priority=0, indent=0):
     gpu_memory_reserved = (
         torch.cuda.memory_reserved() / 1024**3 if torch.cuda.is_available() else 0
     )
-    process = psutil.Process()
-    ram_usage = process.memory_info().rss / 1024**3
-    formatted_message = f"[gpu {gpu_memory_reserved:04.1f}G ram {ram_usage:05.1f}G] {' '*4*indent}{message}"
+    ram_usage = _resolve_ram_usage_gb()
+    ram_display = f"{ram_usage:05.1f}G" if ram_usage is not None else "  n/a"
+    formatted_message = (
+        f"[gpu {gpu_memory_reserved:04.1f}G ram {ram_display}] {' '*4*indent}{message}"
+    )
 
     # Use logger - Hydra handles routing to console and file automatically
     logger.info(formatted_message)
+
+
+def _resolve_ram_usage_gb():
+    """Return current process RSS in GiB, or None when memory telemetry is unavailable."""
+    if psutil is None:
+        return None
+    try:
+        process = psutil.Process()
+        return process.memory_info().rss / 1024**3
+    except Exception:
+        return None
 
 
 def normalize_wandb_tags(raw_tags):
