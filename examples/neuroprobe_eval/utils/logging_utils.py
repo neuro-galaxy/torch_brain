@@ -161,7 +161,24 @@ def should_skip_existing_output(cfg, file_save_path: str) -> bool:
 
 def log_fold_metrics(fold_idx: int, fold_result: dict) -> None:
     """Emit the standard fold metric summary line."""
-    if "val_accuracy" in fold_result:
+    if fold_result.get("status") == "skipped":
+        skip_reason = fold_result.get("skip_reason", "unspecified")
+        insufficient_splits = fold_result.get("insufficient_splits", [])
+        train_counts = fold_result.get("train_class_counts", {})
+        val_counts = fold_result.get("val_class_counts", {})
+        test_counts = fold_result.get("test_class_counts", {})
+        eval_counts = fold_result.get("eval_class_counts", None)
+        eval_counts_text = f" eval={eval_counts}" if eval_counts is not None else ""
+        log(
+            f"Fold {fold_idx}: skipped ({skip_reason}) "
+            f"splits={insufficient_splits} "
+            f"class_counts train={train_counts} val={val_counts} "
+            f"test={test_counts}{eval_counts_text}",
+            priority=0,
+        )
+        return
+
+    if "val_accuracy" in fold_result and "val_roc_auc" in fold_result:
         log(
             f"Fold {fold_idx}: Val acc: {fold_result['val_accuracy']:.3f}, "
             f"Val AUC: {fold_result['val_roc_auc']:.3f}, "
@@ -307,32 +324,67 @@ def log_final_wandb_metrics(wandb_run, results_population) -> None:
     """Log aggregate fold metrics to wandb at the end of a run."""
     if wandb_run is None:
         return
-    folds_data = results_population[DEFAULT_RESULTS_TIME_BIN]["folds"]
+    if not isinstance(results_population, dict):
+        return
+    time_bin = results_population.get(DEFAULT_RESULTS_TIME_BIN)
+    if not isinstance(time_bin, dict):
+        return
+    folds_data = time_bin.get("folds")
+    if not isinstance(folds_data, list):
+        return
     if not folds_data:
         return
 
-    train_accs = [f.get("train_accuracy", 0) for f in folds_data]
-    train_aucs = [f.get("train_roc_auc", 0) for f in folds_data]
-    val_accs = [f.get("val_accuracy", 0) for f in folds_data]
-    val_aucs = [f.get("val_roc_auc", 0) for f in folds_data]
-    test_accs = [f.get("test_accuracy", 0) for f in folds_data]
-    test_aucs = [f.get("test_roc_auc", 0) for f in folds_data]
+    completed_folds = [
+        fold for fold in folds_data if isinstance(fold, dict) and fold.get("status") != "skipped"
+    ]
+    skipped_folds = len(folds_data) - len(completed_folds)
+
+    def _metric_values(metric_key: str) -> list[float]:
+        values = []
+        for fold in completed_folds:
+            value = fold.get(metric_key, None)
+            if value is None:
+                continue
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                continue
+            if np.isfinite(value):
+                values.append(value)
+        return values
+
+    def _mean_std(metric_key: str) -> tuple[float, float]:
+        values = _metric_values(metric_key)
+        if not values:
+            return float("nan"), float("nan")
+        values_arr = np.asarray(values, dtype=np.float64)
+        return float(values_arr.mean()), float(values_arr.std())
+
+    train_acc_mean, train_acc_std = _mean_std("train_accuracy")
+    train_auc_mean, train_auc_std = _mean_std("train_roc_auc")
+    val_acc_mean, val_acc_std = _mean_std("val_accuracy")
+    val_auc_mean, val_auc_std = _mean_std("val_roc_auc")
+    test_acc_mean, test_acc_std = _mean_std("test_accuracy")
+    test_auc_mean, test_auc_std = _mean_std("test_roc_auc")
 
     wandb_run.log(
         {
-            "final/train_accuracy_mean": np.mean(train_accs),
-            "final/train_accuracy_std": np.std(train_accs),
-            "final/train_roc_auc_mean": np.mean(train_aucs),
-            "final/train_roc_auc_std": np.std(train_aucs),
-            "final/val_accuracy_mean": np.mean(val_accs),
-            "final/val_accuracy_std": np.std(val_accs),
-            "final/val_roc_auc_mean": np.mean(val_aucs),
-            "final/val_roc_auc_std": np.std(val_aucs),
-            "final/test_accuracy_mean": np.mean(test_accs),
-            "final/test_accuracy_std": np.std(test_accs),
-            "final/test_roc_auc_mean": np.mean(test_aucs),
-            "final/test_roc_auc_std": np.std(test_aucs),
+            "final/train_accuracy_mean": train_acc_mean,
+            "final/train_accuracy_std": train_acc_std,
+            "final/train_roc_auc_mean": train_auc_mean,
+            "final/train_roc_auc_std": train_auc_std,
+            "final/val_accuracy_mean": val_acc_mean,
+            "final/val_accuracy_std": val_acc_std,
+            "final/val_roc_auc_mean": val_auc_mean,
+            "final/val_roc_auc_std": val_auc_std,
+            "final/test_accuracy_mean": test_acc_mean,
+            "final/test_accuracy_std": test_acc_std,
+            "final/test_roc_auc_mean": test_auc_mean,
+            "final/test_roc_auc_std": test_auc_std,
             "final/n_folds": len(folds_data),
+            "final/n_completed_folds": len(completed_folds),
+            "final/n_skipped_folds": skipped_folds,
         }
     )
 
