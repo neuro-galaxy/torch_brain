@@ -10,7 +10,6 @@ from temporaldata import Data, Interval
 
 from torch_brain.dataset import Dataset, MultiChannelDatasetMixin
 
-
 SubsetTier = Literal["full", "lite", "nano"]
 LabelMode = Literal["binary", "multiclass"]
 Regime = Literal["SS-SM", "SS-DM", "DS-DM"]
@@ -138,12 +137,26 @@ def _from_recording_id(recording_id: str) -> tuple[int, int]:
 class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
     """Neuroprobe 2025 iEEG benchmark dataset.
 
+    .. admonition:: Preprocessing
+
+        To download and prepare this dataset, run
+        ``brainsets prepare neuroprobe_2025``.
+
     Each instance operates in exactly one of two mutually-exclusive modes:
+
     - Neuroprobe benchmark mode (`recording_ids=None`): splits are resolved
       from Neuroprobe benchmark split generators. Cross-session and Cross-subject
       are condensed to 'cross-x' splits that will be selected for train and test.
     - Recording id mode (`recording_ids` provided): no splits are resolved,
       only recording_ids specified are preprocessed to be used as continuous data.
+
+    **References**
+
+    Zahorodnii, A., Wang, C., Stankovits, B., Moraitaki, C., Chau, G., Barbu, A., Katz, B., & Fiete, I. R.
+    *Neuroprobe: Evaluating Intracranial Brain Responses to Naturalistic Stimuli.*
+    `arXiv:2509.21671 <https://arxiv.org/abs/2509.21671>`_.
+
+    Data sources: `BrainTreeBank <https://braintreebank.dev>`_ and `Neuroprobe Benchmark <https://neuroprobe.dev>`_
 
     Args:
         root: Root directory containing processed Neuroprobe artifacts.
