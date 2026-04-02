@@ -12,6 +12,7 @@ from neuroprobe_eval.preprocessors.channel_subselect_preprocessor import (
 from neuroprobe_eval.preprocessors.laplacian_stft_preprocessor import (
     LaplacianRereferencePreprocessor,
     LaplacianSTFTPreprocessor,
+    laplacian_rereference_neural_data,
 )
 
 
@@ -108,3 +109,25 @@ def test_channel_subselect_preprocessor_accepts_json_path(tmp_path):
 
     assert out["x"].shape[0] == 1
     assert out["channel_names"] == ["T1b2"]
+
+
+def test_laplacian_rereference_torch_input_matches_expected_neighbor_mean():
+    labels = ["T1b1", "T1b2", "T1b3"]
+    x = torch.tensor(
+        [[[1.0, 2.0], [3.0, 4.0], [7.0, 8.0]]],
+        dtype=torch.float32,
+    )
+
+    out_x, out_labels, out_indices = laplacian_rereference_neural_data(
+        x,
+        labels,
+        remove_non_laplacian=False,
+    )
+
+    expected = torch.tensor(
+        [[[-2.0, -2.0], [-1.0, -1.0], [4.0, 4.0]]],
+        dtype=torch.float32,
+    )
+    assert torch.allclose(out_x, expected)
+    assert out_labels == labels
+    assert out_indices == [0, 1, 2]

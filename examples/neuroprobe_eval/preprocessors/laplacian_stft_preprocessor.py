@@ -104,11 +104,17 @@ def laplacian_rereference_neural_data(
     for original_electrode_index, electrode_label in enumerate(electrode_labels):
         normalized_label = normalized_labels[original_electrode_index]
         if normalized_label in laplacian_electrode_set:
+            neighbor_values = electrode_data[
+                :, laplacian_neighbor_indices[normalized_label]
+            ]
+            neighbor_mean = (
+                neighbor_values.mean(dim=1)
+                if was_tensor
+                else neighbor_values.mean(axis=1)
+            )
             rereferenced_data[:, electrode_i] = electrode_data[
                 :, original_electrode_index
-            ] - electrode_data[:, laplacian_neighbor_indices[normalized_label]].mean(
-                axis=1
-            )
+            ] - neighbor_mean
             original_electrode_indices.append(original_electrode_index)
             rereferenced_labels.append(electrode_label)
             electrode_i += 1
