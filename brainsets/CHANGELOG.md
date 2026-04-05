@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added generic data extraction helpers in `mne_utils` to handle MNE Raw objects ([#78](https://github.com/neuro-galaxy/brainsets/pull/78)).
 - Enriched `s3_utils` with additional functionalities to get data from public buckets ([#78](https://github.com/neuro-galaxy/brainsets/pull/78)).
 - Added new utility functions to split data into train/valid/test splits intersession, intrassession, and intersubject ([#83](https://github.com/neuro-galaxy/brainsets/pull/83)).
+- Added shell completion for brainsets CLI tools ([#116](https://github.com/neuro-galaxy/brainsets/pull/116)).
 - Added the `Neuroprobe2025` dataset class and the `neuroprobe_2025` brainset pipeline ([#79](https://github.com/neuro-galaxy/brainsets/pull/79)).
 
 ### Removed
