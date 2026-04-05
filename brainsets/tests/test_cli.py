@@ -6,6 +6,87 @@ from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 
 from brainsets._cli.cli import cli
+from brainsets._cli.cli_completion import (
+    _detect_shell,
+    SHELL_COMPLETION_FILENAMES,
+)
+
+
+class TestDetectShell:
+    """Tests for _detect_shell."""
+
+    @pytest.mark.parametrize(
+        "shell_env, expected",
+        [
+            ("/bin/bash", "bash"),
+            ("/usr/bin/zsh", "zsh"),
+            ("/bin/sh", "sh"),
+        ],
+    )
+    def test_detects_shell_from_env(self, shell_env, expected):
+        with patch.dict("os.environ", {"SHELL": shell_env}):
+            assert _detect_shell() == expected
+
+
+class TestInstallCompletion:
+    """Tests for the --install-completion flag via the CLI."""
+
+    def test_installs_bash_completion(self, tmp_path):
+        runner = CliRunner()
+        comp_dir = tmp_path / "bash-completions"
+
+        with (
+            patch("brainsets._cli.cli_completion._detect_shell", return_value="bash"),
+            patch.dict(
+                "brainsets._cli.cli_completion.SHELL_COMPLETION_DIRS",
+                {"bash": comp_dir},
+            ),
+        ):
+            result = runner.invoke(cli, ["--install-completion"])
+
+        assert result.exit_code == 0
+        assert "Completion installed for bash" in result.output
+        assert "Restart your shell" in result.output
+
+        written = (comp_dir / SHELL_COMPLETION_FILENAMES["bash"]).read_text()
+        assert "_BRAINSETS_COMPLETE" in written
+
+    def test_installs_zsh_completion(self, tmp_path):
+        runner = CliRunner()
+        comp_dir = tmp_path / "zfunc"
+
+        with (
+            patch("brainsets._cli.cli_completion._detect_shell", return_value="zsh"),
+            patch.dict(
+                "brainsets._cli.cli_completion.SHELL_COMPLETION_DIRS",
+                {"zsh": comp_dir},
+            ),
+        ):
+            result = runner.invoke(cli, ["--install-completion"])
+
+        assert result.exit_code == 0
+        assert "Completion installed for zsh" in result.output
+        assert "fpath" in result.output
+
+        written = (comp_dir / SHELL_COMPLETION_FILENAMES["zsh"]).read_text()
+        assert "_BRAINSETS_COMPLETE" in written
+
+    def test_creates_completion_dir_if_missing(self, tmp_path):
+        runner = CliRunner()
+        comp_dir = tmp_path / "deep" / "nested" / "dir"
+
+        with (
+            patch("brainsets._cli.cli_completion._detect_shell", return_value="bash"),
+            patch.dict(
+                "brainsets._cli.cli_completion.SHELL_COMPLETION_DIRS",
+                {"bash": comp_dir},
+            ),
+        ):
+            result = runner.invoke(cli, ["--install-completion"])
+
+        assert result.exit_code == 0
+        assert comp_dir.exists()
+        assert (comp_dir / SHELL_COMPLETION_FILENAMES["bash"]).is_file()
 
 
 class TestPrepareCommand:
