@@ -237,7 +237,7 @@ class CaPOYO(nn.Module):
         )
         output_latents = output_queries + self.dec_ffn(output_queries)
 
-        # multitask readout layer, each task has a seperate linear readout layer
+        # multitask readout layer, each task has a separate linear readout layer
         output = self.readout(
             output_embs=output_latents,
             output_readout_index=output_decoder_index,

@@ -282,7 +282,7 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
 
     .. warning::
         This wrapper assumes that there is no communication between ranks except at the
-        begining or end of the evaluation, so it is only suitable for standard evaluation.
+        beginning or end of the evaluation, so it is only suitable for standard evaluation.
         This is because some ranks might end up performing more steps than others.
 
     Args:
