@@ -3,10 +3,13 @@ from .collate import (
     chain,
     collate,
     pad,
-    pad2d,
     pad8,
+    pad2d,
+    pad2d8,
     track_batch,
     track_mask,
     track_mask8,
+    track_mask2d,
+    track_mask2d8,
 )
 from .dataset import Dataset
