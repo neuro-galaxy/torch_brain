@@ -1,6 +1,10 @@
+import os
+import sys
 import datetime
 
 import brainsets
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "_ext"))
 
 author = "neuro-galaxy Team"
 project = "brainsets"
@@ -20,14 +24,16 @@ extensions = [
     "sphinx_inline_tabs",
     "sphinx.ext.mathjax",
     "sphinx_copybutton",
+    "custom_autosummary",  # local extension to expand `{% for name in module._list %}` blocks in rst files to render api tables and generate stub pages.
 ]
 
 html_theme = "furo"
 html_static_path = ["_static"]
 templates_path = ["_templates"]
 
-add_module_names = False
+add_module_names = True
 autodoc_member_order = "bysource"
+autosummary_generate = True
 
 suppress_warnings = ["autodoc.import_object"]
 

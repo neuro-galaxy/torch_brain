@@ -1,3 +1,12 @@
+_classes = [
+    "BrainsetDescription",
+    "SubjectDescription",
+    "SessionDescription",
+    "DeviceDescription",
+]
+
+__all__ = _classes
+
 import datetime
 from typing import Dict, List, Tuple, Optional, Union
 

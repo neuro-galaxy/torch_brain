@@ -1,18 +1,50 @@
-
 brainsets.utils
 ---------------
 
-.. automodule:: brainsets.utils.mat_utils
-    :members:
-    :show-inheritance:
-    :undoc-members:
+mat_utils
+~~~~~~~~~
 
-.. automodule:: brainsets.utils.dandi_utils
-    :members:
-    :show-inheritance:
-    :undoc-members:
+.. currentmodule:: brainsets.utils.mat_utils
 
-.. automodule:: brainsets.utils.dir_utils
-    :members:
-    :show-inheritance:
-    :undoc-members:
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/function.rst
+
+   {% for name in brainsets.utils.mat_utils._functions %}
+
+dandi_utils
+~~~~~~~~~~~
+
+.. currentmodule:: brainsets.utils.dandi_utils
+
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/function.rst
+
+   {% for name in brainsets.utils.dandi_utils._functions %}
+
+dir_utils
+~~~~~~~~~
+
+.. currentmodule:: brainsets.utils.dir_utils
+
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/function.rst
+
+   {% for name in brainsets.utils.dir_utils._functions %}
+
+split
+~~~~~
+
+.. currentmodule:: brainsets.utils.split
+
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/function.rst
+
+   {% for name in brainsets.utils.split._functions %}

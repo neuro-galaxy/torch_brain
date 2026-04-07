@@ -1,3 +1,17 @@
+_functions = [
+    "split_one_epoch",
+    "split_two_epochs",
+    "split_three_epochs",
+    "split_four_epochs",
+    "split_five_epochs",
+    "split_more_than_five_epochs",
+    "generate_train_valid_test_splits",
+    "generate_stratified_folds",
+    "generate_string_kfold_assignment",
+]
+
+__all__ = _functions
+
 import hashlib
 import logging
 import numpy as np

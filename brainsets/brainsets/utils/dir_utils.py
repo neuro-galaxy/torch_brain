@@ -1,3 +1,12 @@
+_functions = [
+    "find_files_by_extension",
+    "make_directory",
+    "get_dir_tree",
+    "walk_directory",
+]
+
+__all__ = _functions
+
 import os
 import pathlib
 import shutil
