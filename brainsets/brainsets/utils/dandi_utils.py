@@ -1,3 +1,14 @@
+_functions = [
+    "extract_metadata_from_nwb",
+    "extract_subject_from_nwb",
+    "extract_spikes_from_nwbfile",
+    "download_file",
+    "get_nwb_asset_list",
+]
+
+__all__ = _functions
+
+
 from pathlib import Path
 import numpy as np
 import pandas as pd

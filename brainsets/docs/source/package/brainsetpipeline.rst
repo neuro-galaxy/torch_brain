@@ -1,10 +1,12 @@
-.. currentmodule:: brainsets
+.. currentmodule:: brainsets.pipeline
 
-brainsets.BrainsetPipeline
--------------------------
+brainsets.pipeline
+-------------------
 
-.. autoclass:: brainsets.pipeline.BrainsetPipeline
-    :members:
-    :show-inheritance:
-    :undoc-members:
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/class.rst
+
+    BrainsetPipeline
 

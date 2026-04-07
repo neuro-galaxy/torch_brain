@@ -25,8 +25,8 @@
 **brainsets** is a Python package for processing neural data into a standardized format.
 
 
-If you encounter any bugs or have feature requests, please submit them to our 
-`GitHub Issues page <https://github.com/neuro-galaxy/brainsets/issues>`_. 
+If you encounter any bugs or have feature requests, please submit them to our
+`GitHub Issues page <https://github.com/neuro-galaxy/brainsets/issues>`_.
 
 ----
 
@@ -35,12 +35,11 @@ If you encounter any bugs or have feature requests, please submit them to our
    :caption: Get Started
 
    concepts/installation
-   .. concepts/getting_started
 
 .. toctree::
    :maxdepth: 1
    :caption: Tutorials
-   
+
    concepts/using_existing_data
    concepts/prepare_data
    concepts/create_pipeline
@@ -55,15 +54,15 @@ If you encounter any bugs or have feature requests, please submit them to our
    :maxdepth: 2
    :caption: Package Reference
 
-   package/core
    package/brainsetpipeline
-   package/descriptors
+   package/descriptions
    package/taxonomy
    package/utils
-   .. package/processing
+   package/core
+   package/processing
 
 .. toctree::
    :maxdepth: 2
    :caption: Datasets
-   
-   package/datasets/index
+
+   datasets/index

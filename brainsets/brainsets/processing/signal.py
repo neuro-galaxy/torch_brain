@@ -3,6 +3,14 @@
 https://dx.doi.org/10.1088/1741-2560/12/3/036009
 """
 
+_functions = [
+    "downsample_wideband",
+    "extract_bands",
+    "cube_to_long",
+]
+
+__all__ = _functions
+
 from typing import List, Tuple
 
 import numpy as np
