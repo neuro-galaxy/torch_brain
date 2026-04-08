@@ -51,6 +51,12 @@ If you encounter any bugs or have feature requests, please submit them to our
    glossary/brainsets
 
 .. toctree::
+   :maxdepth: 1
+   :caption: CLI Reference
+
+   Commands <cli/commands>
+
+.. toctree::
    :maxdepth: 2
    :caption: Package Reference
 

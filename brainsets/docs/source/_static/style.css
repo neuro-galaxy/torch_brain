@@ -196,6 +196,46 @@ th:last-child {
     border: 1px solid var(--color-foreground-border);
 }
 
+
+/* CLI option styling */
+.cli-option {
+    margin-bottom: 0em;
+}
+
+.cli-option > code {
+    /* Option name */
+    color: var(--color-brand-content); /* from furo */
+}
+
+.cli-option > em {
+    /* Option argument */
+    color: var(--color-foreground-secondary); /* from furo */
+    font-size: var(--font-size--small);
+}
+
+.cli-option > a:first-child {
+    /* Option name when it is link */
+    /* match styling of code (taken from furo's source css) */
+    color: var(--color-brand-content); /* from furo */
+    font-family: var(--font-stack--monospace);
+    font-size: var(--font-size--small--2);
+    background: var(--color-inline-code-background);
+    padding: 0.1em 0.3em;
+    border-radius: 0.2em;
+    border: 1px solid var(--color-background-border);
+}
+
+.cli-option + blockquote {
+    /* Option description */
+    margin-top: 0em;
+    margin-left: 1.5em;
+    border-left: none;
+    background: none;
+    padding-left: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
 /* Autosummary table styling */
 table.autosummary {
     width: 100% !important;
