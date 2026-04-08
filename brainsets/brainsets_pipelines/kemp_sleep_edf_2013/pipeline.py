@@ -34,13 +34,23 @@ from brainsets.utils.split import (
 from brainsets.utils.s3_utils import get_cached_s3_client
 from brainsets.utils.mne_utils import (
     extract_measurement_date,
-    extract_psg_signal,
+    extract_signal,
+    extract_channels,
 )
 from temporaldata import Data, Interval
 
 
 logging.basicConfig(level=logging.INFO)
 
+CHANNEL_TYPE_REMAPPING = {
+    "EEG": ["EEG Fpz-Cz", "EEG Pz-Oz"],
+    "EOG": ["EOG horizontal"],
+    "RESP": ["Resp oro-nasal"],
+    "EMG": ["EMG submental"],
+    "TEMP": ["Temp rectal"],
+}
+
+IGNORE_CHANNELS = ["Event marker"]
 
 parser = ArgumentParser()
 parser.add_argument("--redownload", action="store_true")
@@ -214,7 +224,14 @@ class Pipeline(BrainsetPipeline):
         )
 
         self.update_status("Extracting Signals")
-        signals, channels = extract_psg_signal(raw_psg)
+        signals = extract_signal(raw_psg, ignore_channels=IGNORE_CHANNELS)
+
+        self.update_status("Extracting Channels")
+        channels = extract_channels(
+            raw_psg,
+            type_channels_mapping=CHANNEL_TYPE_REMAPPING,
+            ignore_channels=IGNORE_CHANNELS,
+        )
 
         self.update_status("Extracting Sleep Stages")
         stages = extract_sleep_stages(str(hypnogram_path))
