@@ -1,5 +1,4 @@
 _functions = [
-    "extract_metadata_from_nwb",
     "extract_subject_from_nwb",
     "extract_spikes_from_nwbfile",
     "download_file",
@@ -12,6 +11,7 @@ __all__ = _functions
 from pathlib import Path
 import numpy as np
 import pandas as pd
+from pynwb import NWBFile
 
 from temporaldata import ArrayDict, IrregularTimeSeries
 
@@ -22,22 +22,40 @@ from brainsets.taxonomy import (
     Species,
 )
 
+try:
+    import dandi
 
-def extract_metadata_from_nwb(nwbfile):
-    recording_date = nwbfile.session_start_time.strftime("%Y%m%d")
-    related_publications = nwbfile.related_publications
-    return dict(
-        recording_date=recording_date, related_publications=related_publications
-    )
+    DANDI_AVAILABLE = True
+except ImportError:
+    DANDI_AVAILABLE = False
 
 
-def extract_subject_from_nwb(nwbfile):
-    r"""DANDI has requirements for metadata included in `subject`. This includes:
-    subject_id: A subject identifier must be provided.
-    species: either a latin binomial or NCBI taxonomic identifier.
-    sex: must be "M", "F", "O" (other), or "U" (unknown).
-    date_of_birth or age: this does not appear to be enforced, so will be skipped.
+def _check_dandi_available(func_name: str) -> None:
+    """Raise ImportError if DANDI is not available."""
+    if not DANDI_AVAILABLE:
+        raise ImportError(
+            f"{func_name} requires the dandi library which is not installed. "
+            "Install it with `pip install dandi`"
+        )
+
+
+def extract_subject_from_nwb(nwbfile: NWBFile):
+    r"""Extract a :obj:`SubjectDescription <brainsets.descriptions.SubjectDescription>` from an NWBFile
+
+    The resultant description will include ``id``, ``species``, and ``sex``
+
+    Args:
+        nwbfile: An open NWB file handle
+
+    Returns:
+        A :obj:`SubjectDescription <brainsets.descriptions.SubjectDescription>`
     """
+
+    # DANDI has requirements for metadata included in `subject`
+    # - subject_id: A subject identifier must be provided.
+    # - species: either a latin binomial or NCBI taxonomic identifier.
+    # - sex: must be "M", "F", "O" (other), or "U" (unknown).
+    # - date_of_birth or age: this does not appear to be enforced, so will be skipped.
     species = nwbfile.subject.species
 
     if "NCBITaxon" in species:
@@ -50,7 +68,15 @@ def extract_subject_from_nwb(nwbfile):
     )
 
 
-def extract_spikes_from_nwbfile(nwbfile, recording_tech):
+def extract_spikes_from_nwbfile(nwbfile: NWBFile, recording_tech: RecordingTech):
+    r"""Extract spikes and unit metadata from an NWBFile
+
+    Args:
+        nwbfile: An open NWB file handle
+        recording_tech: Only supports
+            :obj:`RecordingTech.UTAH_ARRAY_THRESHOLD_CROSSINGS` and
+            :obj:`RecordingTech.UTAH_ARRAY_SPIKES`
+    """
     # spikes
     timestamps = []
     unit_index = []
@@ -116,12 +142,28 @@ def extract_spikes_from_nwbfile(nwbfile, recording_tech):
     return spikes, units
 
 
-def download_file(path, url, raw_dir, overwrite=False) -> Path:
-    try:
-        import dandi.download
-    except:
-        raise RuntimeError("dandi package not present, and is required")
+def download_file(
+    path: str | Path,
+    url: str,
+    raw_dir: str | Path,
+    overwrite: bool = False,
+) -> Path:
+    r"""Download a file from DANDI
 
+    Full path of the downloaded path will be ``raw_dir / path``.
+
+    Args:
+        path: path of the downloaded file within :obj:`raw_dir`
+        url: URL of the DANDI asset
+        raw_dir: root directory where the file will be downloaded
+        overwrite: Will overwrite existing file if :obj:`True`
+            (default :obj:`False`)
+
+    """
+    _check_dandi_available("download_file")
+    import dandi.download
+
+    raw_dir = Path(raw_dir)
     asset_path = Path(path)
     download_dir = raw_dir / asset_path.parent
     download_dir.mkdir(exist_ok=True, parents=True)
@@ -137,11 +179,17 @@ def download_file(path, url, raw_dir, overwrite=False) -> Path:
     return raw_dir / asset_path
 
 
-def get_nwb_asset_list(dandiset_id: str):
-    try:
-        from dandi import dandiarchive
-    except:
-        raise RuntimeError("dandi package not present, and is required")
+def get_nwb_asset_list(dandiset_id: str) -> list:
+    r"""Get a list of all remote NWB assets in the given dandiset
+
+    Args:
+        dandiset_id: The dandiset ID (e.g. 'DANDI:000688/draft')
+
+    Returns:
+        A list of all remote NWB assets (``dandi.dandiapi.RemoteBlobAsset``) within this dandiset
+    """
+    _check_dandi_available("get_nwb_asset_list")
+    from dandi import dandiarchive
 
     parsed_url = dandiarchive.parse_dandi_url(dandiset_id)
     with parsed_url.navigate() as (client, dandiset, assets):
