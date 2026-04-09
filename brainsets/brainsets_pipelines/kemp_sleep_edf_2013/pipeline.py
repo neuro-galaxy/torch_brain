@@ -258,8 +258,6 @@ class Pipeline(BrainsetPipeline):
         )
 
         self.update_status("Storing")
-        self.processed_dir.mkdir(parents=True, exist_ok=True)
-
         with h5py.File(output_path, "w") as file:
             data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
 

@@ -52,7 +52,6 @@ class Pipeline(BrainsetPipeline):
 
     def download(self, manifest_item):
         self.update_status("DOWNLOADING")
-        self.raw_dir.mkdir(exist_ok=True, parents=True)
         fpath = download_file(
             manifest_item.path,
             manifest_item.url,
@@ -62,7 +61,6 @@ class Pipeline(BrainsetPipeline):
         return fpath
 
     def process(self, fpath):
-        self.processed_dir.mkdir(exist_ok=True, parents=True)
 
         # intiantiate a DatasetBuilder which provides utilities for processing data
         brainset_description = BrainsetDescription(

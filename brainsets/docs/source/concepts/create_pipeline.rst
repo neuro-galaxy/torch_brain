@@ -7,7 +7,7 @@ Creating a :obj:`BrainsetPipeline`
 .. |download| replace:: :meth:`download <BrainsetPipeline.download>`
 .. |process| replace:: :meth:`process <BrainsetPipeline.process>`
 
-Neural datasets typically contain many recording sessions that can be downloaded and 
+Neural datasets typically contain many recording sessions that can be downloaded and
 processed independently.
 A |BrainsetPipeline| encodes the repeatable steps required to download raw
 recordings and transform them into a processed brainset. Once you write a pipeline,
@@ -111,9 +111,9 @@ The pipeline runner will iterate over the rows in this table,
 downloading the processing each asset it describes.
 
 |get_manifest| receives the path to the directory where raw data should be downloaded
-and any arguments parsed from the CLI. 
-It should return a :class:`pandas.DataFrame` indexed by a unique identifier, with one 
-row per downloadable item. 
+and any arguments parsed from the CLI.
+It should return a :class:`pandas.DataFrame` indexed by a unique identifier, with one
+row per downloadable item.
 Columns can contain any metadata you find useful during download or processing.
 When doing single-asset processing (``brainsets prepare my_brainset -s <manifest_item_index>``),
 the CLI uses the index of the manifest directly, so keep it easy to understand.
@@ -133,10 +133,10 @@ using the Dandi API:
 
         asset_list = get_nwb_asset_list(cls.dandiset_id)
         manifest_list = [{"path": x.path, "url": x.download_url} for x in asset_list]
-        
+
         # Create a simple identifier for each item
         for m in manifest_list:
-            m["session_id"] = ... 
+            m["session_id"] = ...
 
         # Create a dataframe, set its index, and return
         manifest = pd.DataFrame(manifest_list).set_index("session_id")
@@ -152,23 +152,22 @@ Tips:
 Step 4 – Download each session
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The |download| method receives one row of the manifest at a time. 
+The |download| method receives one row of the manifest at a time.
 It should fetch raw data for that session and
-return whatever object |process| needs to process this item. 
+return whatever object |process| needs to process this item.
 
-As an example, here we download the file referred in a given manifest row, and 
+As an example, here we download the file referred in a given manifest row, and
 return the path to that file.
 
 .. code-block:: python
 
     def download(self, manifest_item):
         self.update_status("DOWNLOADING")
-        self.raw_dir.mkdir(exist_ok=True, parents=True)
 
         file_path = self.raw_dir / manifest_item.path
         if file_path.exists() and not self.args.redownload:
             return file_path
-        
+
         # code to download from url
         ...
 
@@ -194,7 +193,7 @@ it into processed :obj:`temporaldata.Data` object(s), and stores these inside ``
         self.update_status("Loading file")
         ...
 
-        output_file_path = self.processed_dir / f"{session_id}.h5" 
+        output_file_path = self.processed_dir / f"{session_id}.h5"
         if output_file_path.exists() and not self.args.reprocess:
             return
 
@@ -219,7 +218,7 @@ it into processed :obj:`temporaldata.Data` object(s), and stores these inside ``
             data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
 
 
-Most of the logic for implementing the |process| method will follow the tutorial 
+Most of the logic for implementing the |process| method will follow the tutorial
 `Preparing a new Dataset <prepare_data.html>`_.
 
 Best practices:
@@ -245,7 +244,7 @@ Once your class is in place you can run it through the CLI.
 
 
 For local development outside the ``brainsets`` repository, you can point the CLI to any pipeline directory by adding
-``--local``. 
+``--local``.
 
 .. code-block:: console
 
@@ -302,5 +301,5 @@ Supported keys:
 .. note::
 
     The ``brainsets`` package itself is automatically added to the environment
-    if not explicitly listed in ``dependencies``. Not adding ``brainsets`` to the 
+    if not explicitly listed in ``dependencies``. Not adding ``brainsets`` to the
     dependencies list is the recommended practice.

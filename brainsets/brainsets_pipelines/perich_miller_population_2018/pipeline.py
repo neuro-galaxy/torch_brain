@@ -74,7 +74,6 @@ class Pipeline(BrainsetPipeline):
 
     def download(self, manifest_item):
         self.update_status("DOWNLOADING")
-        self.raw_dir.mkdir(exist_ok=True, parents=True)
         fpath = download_file(
             manifest_item.path,
             manifest_item.url,
@@ -88,8 +87,6 @@ class Pipeline(BrainsetPipeline):
         self.update_status("Loading NWB")
         io = NWBHDF5IO(fpath, "r")
         nwbfile = io.read()
-
-        self.processed_dir.mkdir(exist_ok=True, parents=True)
 
         brainset_description = BrainsetDescription(
             id="perich_miller_population_2018",

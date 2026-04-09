@@ -80,7 +80,6 @@ class Pipeline(BrainsetPipeline):
         params = REQUEST_PARAMS.copy()
         params["fn"] = f"{FLINT_URL}/{manifest_item.fname}"
 
-        self.raw_dir.mkdir(parents=True, exist_ok=True)
         fpath = self.raw_dir / f"{manifest_item.fname}"
 
         with session.get(BASE_URL, params=params, stream=True) as response:
@@ -95,8 +94,6 @@ class Pipeline(BrainsetPipeline):
         # open file
         self.update_status("Loading mat")
         mat = loadmat(fpath)
-
-        self.processed_dir.mkdir(exist_ok=True, parents=True)
 
         brainset_description = BrainsetDescription(
             id="flint_slutzky_accurate_2012",
