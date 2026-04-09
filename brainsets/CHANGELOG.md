@@ -14,10 +14,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added the `Neuroprobe2025` dataset class and the `neuroprobe_2025` brainset pipeline ([#79](https://github.com/neuro-galaxy/brainsets/pull/79)).
 
 ### Removed
+- Remove `brainsets.utils.dir_utils` (legacy code) ([#120](https://github.com/neuro-galaxy/brainsets/pull/120)).
 - Removed `dandi_utils.extract_metadata_from_nwb` (unused, undocumented function) ([#117](https://github.com/neuro-galaxy/brainsets/pull/117))
 
 ### Changed
-- Suppress INFO logs from ray when calling `brainsets prepare` ([#70](https://github.com/neuro-galaxy/brainsets/pull/70))
+- Suppress INFO logs from ray when calling `brainsets prepare` ([#70](https://github.com/neuro-galaxy/brainsets/pull/70)).
 - Modified 'Kemp Sleep-EDF 2013' pipeline to use new splitting utilities ([#83](https://github.com/neuro-galaxy/brainsets/pull/83)).
 - Expanded `mne_utils` with robust channel extraction/remapping support and a validated `concatenate_recordings` workflow (gap checks, measurement date handling, and channel consistency checks) ([#107](https://github.com/neuro-galaxy/brainsets/pull/107)).
 - Exposed `--download-only` flag in `brainsets prepare --help` to allow downloading raw data without processing ([#98](https://github.com/neuro-galaxy/brainsets/pull/98)).

@@ -25,18 +25,6 @@ dandi_utils
 
    {% for name in brainsets.utils.dandi_utils._functions %}
 
-dir_utils
-~~~~~~~~~
-
-.. currentmodule:: brainsets.utils.dir_utils
-
-.. autosummary::
-   :nosignatures:
-   :toctree: ../_generated
-   :template: autosummary/function.rst
-
-   {% for name in brainsets.utils.dir_utils._functions %}
-
 split
 ~~~~~
 
