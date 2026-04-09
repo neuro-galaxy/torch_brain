@@ -113,7 +113,6 @@ class Pipeline(BrainsetPipeline):
         raw_dir: Path,
         args: Optional[Namespace],
     ) -> pd.DataFrame:
-        raw_dir.mkdir(exist_ok=True, parents=True)
         _prepare_neuroprobe_lib(raw_dir)
 
         # Ensure shared metadata/assets are present once before parallel workers run.
@@ -155,7 +154,6 @@ class Pipeline(BrainsetPipeline):
     def process(self, download_output):
         _prepare_neuroprobe_lib(self.raw_dir)
         self.update_status("Processing")
-        self.processed_dir.mkdir(exist_ok=True, parents=True)
         output_path = self.processed_dir / download_output.path.name
         if output_path.exists() and not (self.args and self.args.reprocess):
             logging.info(f"Skipping processing for {output_path} because it exists")
