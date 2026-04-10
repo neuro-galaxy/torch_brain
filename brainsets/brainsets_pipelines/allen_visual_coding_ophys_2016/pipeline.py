@@ -51,7 +51,7 @@ from brainsets.taxonomy.allen import (
     TEMPORAL_FREQ_5_map,
 )
 from brainsets.taxonomy.mice import BrainRegion
-from brainsets.utils.split import generate_train_valid_test_splits
+from split import generate_train_valid_test_splits
 
 logging.basicConfig(level=logging.INFO)
 
