@@ -3,37 +3,56 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### Unreleased
+## [Unreleased]
 
 ### Added
-- Added `has_nested_attribute` method to `Data` to check if an attribute exists in the Data object along with some tests for that method. ([#42](https://github.com/neuro-galaxy/temporaldata/pull/42))
-- Added `set_nested_attribute` method to `Data`. ([#86](https://github.com/neuro-galaxy/temporaldata/pull/67))
-- Added `Data.save` method. ([#88](https://github.com/neuro-galaxy/temporaldata/pull/88))
-- Benchmarking suite for temporaldata. ([#100](https://github.com/neuro-galaxy/temporaldata/pull/100))
-- Enhanced interval operations (difference, intersection, union) with improved performance with vectorized operations and handling of edge cases. ([#102](https://github.com/neuro-galaxy/temporaldata/pull/102))
-- Add eps in slice `RegularTimeSeries.slice` to handle the numerical instability when slicing ([#106](https://github.com/neuro-galaxy/temporaldata/pull/106))
 
 ### Fixed
-- Fixed a bug where `RegularTimeSeries.slice` does not take the last point if the start of the slice is not align with the `RegularTimeSeries` timestamps and improved numerical instability robustnest with a default `eps=1e-9` used to compute slice indices ([#106](https://github.com/neuro-galaxy/temporaldata/pull/106)) 
-- Fixed a bug where `RegularTimeSeries.slice` does not update the `domain` attribute and leads to incorrect resolution of `timestamps` after slicing. ([#39](https://github.com/neuro-galaxy/temporaldata/pull/39))
-- Fixed a bug where `data.materialize` would not actually load the domain information from the file which would cause issues when accessing it after file was closed. ([#43] (https://github.com/neuro-galaxy/temporaldata/pull/43))
-- Fixed an issue modifying the domain of an IrregularTimeSeries after initialization by adding proper validation to ensure only valid, non-overlapping, and sorted Interval values are accepted. ([#64](https://github.com/neuro-galaxy/temporaldata/pull/64))
-
-### Deprecated
-- Deprecated `set_train_domain`, `set_valid_domain`, and `set_test_domain` methods in `Data`. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
-- Deprecated `_check_for_data_leakage` method in `Data`. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))    
-
-### Removed
-- Removed `add_split_mask` method from `Data`, `Interval`, `IrregularTimeSeries`, and `RegularTimeSeries` classes. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
-- Removed `allow_split_mask_overlap` method from `Interval`. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
-- Removed `RegularTimeSeries.timekeys()` as it was dead code. ([#112](https://github.com/neuro-galaxy/temporaldata/pull/112))
-- Removed `LazyArrayDict.load()` and `LazyIrregularTimeSeries.load()`. Use `.materialize()` instead. ([`#114`](https://github.com/neuro-galaxy/temporaldata/pull/114))
-
 
 ### Changed
-- Change minimum python version to 3.10 ([#93](https://github.com/neuro-galaxy/temporaldata/pull/93))
-- Optimized performance of `Interval.coalesce()` ([#97](https://github.com/neuro-galaxy/temporaldata/pull/97))
-- New auto domain for `RegularTimeseries` to have no impact when doing `rts.slice(rts.domain.start[0], rts.domain.end[-1])` ([#109](https://github.com/neuro-galaxy/temporaldata/pull/109))
+
+### Removed
+
+
+## [0.1.4] - 2026-03-25
+
+### Added
+- Added `Data.has_nested_attribute()`. ([#42](https://github.com/neuro-galaxy/temporaldata/pull/42))
+- Added `Data.set_nested_attribute()`. ([#86](https://github.com/neuro-galaxy/temporaldata/pull/86))
+- Added `Data.load()`. ([#56](https://github.com/neuro-galaxy/temporaldata/pull/56))
+- Added `Data.save()`. ([#88](https://github.com/neuro-galaxy/temporaldata/pull/88))
+- Added `Data.file` property, `Data.close()`, and context manager support for lazy-loaded data. ([#95](https://github.com/neuro-galaxy/temporaldata/pull/95))
+- Added `Interval.subdivide()` method for fixed-duration subdivision of intervals. ([#63](https://github.com/neuro-galaxy/temporaldata/pull/63)) and ([#80](https://github.com/neuro-galaxy/temporaldata/pull/80))
+- Added lazy loading support for nested `Data` objects in `Data.from_hdf5`. ([#62](https://github.com/neuro-galaxy/temporaldata/pull/62))
+- Added benchmarking suite. ([#100](https://github.com/neuro-galaxy/temporaldata/pull/100))
+- Added `eps` parameter to `RegularTimeSeries.slice` to handle numerical instability. ([#106](https://github.com/neuro-galaxy/temporaldata/pull/106))
+
+### Fixed
+- Fixed `RegularTimeSeries.slice` not taking the last point when the start is not aligned with timestamps, and improved numerical stability with a default `eps=1e-9`. ([#106](https://github.com/neuro-galaxy/temporaldata/pull/106))
+- Fixed `RegularTimeSeries.slice` not updating the `domain` attribute, leading to incorrect `timestamps` resolution after slicing. ([#39](https://github.com/neuro-galaxy/temporaldata/pull/39))
+- Fixed `Data.materialize` not loading domain information from the file. ([#43](https://github.com/neuro-galaxy/temporaldata/pull/43))
+- Fixed `IrregularTimeSeries` domain setter to validate that the domain is a valid, non-overlapping, and sorted `Interval`. ([#64](https://github.com/neuro-galaxy/temporaldata/pull/64))
+- Fixed `Interval.select_by_interval` edge case with point intervals. ([#111](https://github.com/neuro-galaxy/temporaldata/pull/111))
+- Fixed type errors caught by type-checking harness. ([#113](https://github.com/neuro-galaxy/temporaldata/pull/113))
+
+### Changed
+- Changed minimum Python version to 3.10. ([#93](https://github.com/neuro-galaxy/temporaldata/pull/93))
+- Optimized performance of `Interval.coalesce()`. ([#97](https://github.com/neuro-galaxy/temporaldata/pull/97))
+- Made `temporaldata.data.serialize` private (`temporaldata.data._serialize`). ([#92](https://github.com/neuro-galaxy/temporaldata/pull/92))
+- Split `temporaldata.py` into separate module files. ([#58](https://github.com/neuro-galaxy/temporaldata/pull/58))
+- Performance improvements to numpy operations. ([#44](https://github.com/neuro-galaxy/temporaldata/pull/44))
+- Optimized interval operations (`difference`, `__and__`, `__or__`) with vectorized implementations and improved edge case handling. ([#102](https://github.com/neuro-galaxy/temporaldata/pull/102)) and ([#111](https://github.com/neuro-galaxy/temporaldata/pull/111))
+- Changed `"auto"` domain for `RegularTimeSeries` to have no impact when doing `rts.slice(rts.domain.start[0], rts.domain.end[-1])`. ([#109](https://github.com/neuro-galaxy/temporaldata/pull/109))
+
+### Deprecated
+- Started deprecation of `set_train_domain`, `set_valid_domain`, and `set_test_domain` methods in `Data`. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
+- Started deprecation of `_check_for_data_leakage` method in `Data`. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
+
+### Removed
+- Removed `add_split_mask` method from `Data`, `Interval`, `IrregularTimeSeries`, and `RegularTimeSeries`. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
+- Removed `allow_split_mask_overlap` method from `Interval`. ([#47](https://github.com/neuro-galaxy/temporaldata/pull/47))
+- Removed `RegularTimeSeries.timekeys()` as it was dead code. ([#112](https://github.com/neuro-galaxy/temporaldata/pull/112))
+- Removed `LazyArrayDict.load()` and `LazyIrregularTimeSeries.load()` (these performed materialization). Use `.materialize()` instead. ([#114](https://github.com/neuro-galaxy/temporaldata/pull/114))
 
 
 ## [0.1.3] - 2025-03-21
@@ -49,9 +68,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed `trials` as a special key that is not checked for data leakage. ([#32](https://github.com/neuro-galaxy/temporaldata/pull/32))
 
 ## [0.1.2] - 2025-01-22
-### Added 
+### Added
 - Added documentation. ([#24](https://github.com/neuro-galaxy/temporaldata/pull/24), [#25](https://github.com/neuro-galaxy/temporaldata/pull/25), [#26](https://github.com/neuro-galaxy/temporaldata/pull/26))
-- Added LISENCE file. ([#29](https://github.com/neuro-galaxy/temporaldata/pull/29))
+- Added LICENSE file. ([#29](https://github.com/neuro-galaxy/temporaldata/pull/29))
 
 ### Changed
 - Relaxed the requirements for `numpy`, `pandas`, and `h5py`. ([#27](https://github.com/neuro-galaxy/temporaldata/pull/27))
