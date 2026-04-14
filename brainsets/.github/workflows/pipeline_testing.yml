@@ -61,3 +61,13 @@ jobs:
         uv run brainsets config --raw-dir data/raw --processed-dir data/processed
         uv run brainsets prepare kemp_sleep_edf_2013 -s sleep_cassette_SC4002E0-PSG
 
+    - name: Download vollan_moser_alternating_2025 (navigation)
+      run: |
+        uv run brainsets config --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets prepare vollan_moser_alternating_2025 -s of_24365_2
+
+    - name: Download vollan_moser_alternating_2025 (sleep)
+      run: |
+        uv run brainsets config --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets prepare vollan_moser_alternating_2025 -s sleep_25691_1
+

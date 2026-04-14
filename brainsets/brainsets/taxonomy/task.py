@@ -23,6 +23,16 @@ class Task(StringIntEnum):
     # Full sentence speaking
     CONTINUOUS_SPEAKING_SENTENCE = 7
 
+    # Navigation
+    NAVIGATION_OPEN_FIELD = 8
+    NAVIGATION_MMAZE = 9
+    NAVIGATION_LINEAR_TRACK = 10
+    NAVIGATION_WAGON_WHEEL = 11
+    NAVIGATION_OPEN_FIELD_NOVEL = 12
+
+    # Sleep
+    SLEEP = 13
+
 
 class Stimulus(StringIntEnum):
     """Stimuli can variously act like inputs (for conditioning) or like outputs."""

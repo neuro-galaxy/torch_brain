@@ -4,6 +4,7 @@ _electrophysiology_datasets = [
     "FlintSlutzkyAccurate2012",
     "ChurchlandShenoyNeural2012",
     "OdohertySabesNonhuman2017",
+    "VollanMoserAlternating2025",
 ]
 
 _calcium_imaging_datasets = [
@@ -33,3 +34,4 @@ from .OdohertySabesNonhuman2017 import OdohertySabesNonhuman2017
 from .AllenVisualCodingOphys2016 import AllenVisualCodingOphys2016
 from .KempSleepEDF2013 import KempSleepEDF2013
 from .Neuroprobe2025 import Neuroprobe2025
+from .VollanMoserAlternating2025 import VollanMoserAlternating2025
