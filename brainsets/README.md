@@ -32,6 +32,7 @@ pip install brainsets
 | perich_miller_population_2018 | [Link](https://brainsets.readthedocs.io/en/latest/glossary/brainsets.html#perich-miller-population-2018) | 13 GB | 2.9 GB |
 | kemp_sleep_edf_2013 | TBA | 8.2 GB | 60 GB |
 | allen_visual_coding_ophys_2016 | TBA | 356 GB | 58 GB |
+| vollan_moser_alternating_2025 | TBA | 16.4 GB | 4.5 GB |
 
 
 ## Acknowledgements

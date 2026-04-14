@@ -8,6 +8,7 @@ class Species(StringIntEnum):
     MUS_MUSCULUS = 3
     MACACA_FASCICULARIS = NCBITaxon_9541 = 4
     CAENORHABDITIS_ELEGANS = 5
+    RATTUS_NORVEGICUS = 6
 
 
 class Sex(StringIntEnum):
