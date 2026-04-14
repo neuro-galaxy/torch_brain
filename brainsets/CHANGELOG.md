@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Remove `brainsets.utils.dir_utils` (legacy code) ([#120](https://github.com/neuro-galaxy/brainsets/pull/120)).
 - Removed `dandi_utils.extract_metadata_from_nwb` (unused, undocumented function) ([#117](https://github.com/neuro-galaxy/brainsets/pull/117))
 - Removed `brainsets.utils.split_*_epoch` and `generate_train_valid_test_splits` as they were too specific to the Allen VC Ophys pipeline ([#126](https://github.com/neuro-galaxy/brainsets/pull/126))
+- Removed `brainsets.utils.mat_utils` (legacy code) ([#119](https://github.com/neuro-galaxy/brainsets/pull/119))
 
 ### Changed
 - Suppress INFO logs from ray when calling `brainsets prepare` ([#70](https://github.com/neuro-galaxy/brainsets/pull/70)).

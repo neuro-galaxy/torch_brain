@@ -1,18 +1,6 @@
 brainsets.utils
 ---------------
 
-mat_utils
-~~~~~~~~~
-
-.. currentmodule:: brainsets.utils.mat_utils
-
-.. autosummary::
-   :nosignatures:
-   :toctree: ../_generated
-   :template: autosummary/function.rst
-
-   {% for name in brainsets.utils.mat_utils._functions %}
-
 dandi_utils
 ~~~~~~~~~~~
 
