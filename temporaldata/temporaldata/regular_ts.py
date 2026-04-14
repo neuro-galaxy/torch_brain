@@ -89,14 +89,11 @@ class RegularTimeSeries(ArrayDict):
     def _time_to_idx(
         self,
         time: float,
-        is_start: bool,
         eps: float = 1e-9,
     ) -> tuple[int, float]:
         """Converts a timestamp to a sample index and its exact reconstructed time.
         Args:
             time: The timestamp to convert.
-            is_start: Whether this is the start of a slice (inclusive) or the end
-                (exclusive). This affects the clamping and time reconstruction.
             eps: Tolerance for floating-point precision. If the calculated index
                 is within ``eps`` of an integer, it is snapped to that integer.
                 This prevents tiny precision errors (e.g., 3.999999999999999) from
@@ -111,9 +108,10 @@ class RegularTimeSeries(ArrayDict):
         domain_end = self.domain.end[0]
 
         # Clamp to domain bounds
-        if is_start and time <= domain_start:
+        if time <= domain_start:
             return 0, domain_start
-        if not is_start and time > domain_end:
+
+        if time > domain_end:
             return len(self), domain_end
 
         # Calculate relative index
@@ -156,8 +154,8 @@ class RegularTimeSeries(ArrayDict):
             containing a subset of the data. The new object will have a modified
             :obj:`Interval` domain reflecting the actual sampled boundaries.
         """
-        start_id, out_start = self._time_to_idx(start, is_start=True, eps=eps)
-        end_id, out_end = self._time_to_idx(end, is_start=False, eps=eps)
+        start_id, out_start = self._time_to_idx(start, eps=eps)
+        end_id, out_end = self._time_to_idx(end, eps=eps)
 
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
@@ -165,8 +163,14 @@ class RegularTimeSeries(ArrayDict):
         out._domain = Interval(start=out_start, end=out_end)
 
         if reset_origin:
-            out._domain.start = out._domain.start - start
-            out._domain.end = out._domain.end - start
+            outside_domain = end <= self.domain.start[0] or start >= self.domain.end[0]
+            if outside_domain:
+                out._domain.start = out._domain.start - out_start
+                out._domain.end = out._domain.end - out_end
+
+            else:
+                out._domain.start = out._domain.start - start
+                out._domain.end = out._domain.end - start
 
         for key in self.keys():
             out.__dict__[key] = self.__dict__[key][start_id:end_id].copy()
@@ -339,8 +343,8 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             containing a subset of the data. The new object will have a modified
             :obj:`Interval` domain reflecting the actual sampled boundaries.
         """
-        start_id, out_start = self._time_to_idx(start, is_start=True, eps=eps)
-        end_id, out_end = self._time_to_idx(end, is_start=False, eps=eps)
+        start_id, out_start = self._time_to_idx(start, eps=eps)
+        end_id, out_end = self._time_to_idx(end, eps=eps)
 
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
@@ -348,8 +352,13 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         out._domain = Interval(start=out_start, end=out_end)
 
         if reset_origin:
-            out._domain.start = out._domain.start - start
-            out._domain.end = out._domain.end - start
+            outside_domain = end <= self.domain.start[0] or start >= self.domain.end[0]
+            if outside_domain:
+                out._domain.start = out._domain.start - out_start
+                out._domain.end = out._domain.end - out_end
+            else:
+                out._domain.start = out._domain.start - start
+                out._domain.end = out._domain.end - start
 
         for key in self.keys():
             if isinstance(self.__dict__[key], h5py.Dataset):
