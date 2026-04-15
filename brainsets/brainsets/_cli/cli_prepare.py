@@ -15,9 +15,10 @@ except ModuleNotFoundError:  # Python <3.11
 
 from click.shell_completion import CompletionItem
 
+from brainsets.config import CONFIG_FILE, load_config
+
 from .utils import (
     PIPELINES_PATH,
-    load_config,
     get_available_brainsets,
     expand_path,
 )
@@ -107,6 +108,11 @@ def prepare(
     # Get raw and processed dirs
     if raw_dir is None or processed_dir is None:
         config = load_config()
+        if config is None:
+            raise click.ClickException(
+                f"Config not found or invalid at {CONFIG_FILE}. "
+                "Please run `brainsets config set`."
+            )
         raw_dir = expand_path(raw_dir or config["raw_dir"])
         processed_dir = expand_path(processed_dir or config["processed_dir"])
     else:

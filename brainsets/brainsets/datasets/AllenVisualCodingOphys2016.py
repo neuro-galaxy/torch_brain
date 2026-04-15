@@ -3,6 +3,8 @@ from pathlib import Path
 
 from torch_brain.dataset import Dataset, CalciumImagingDatasetMixin
 
+from ._utils import get_processed_dir
+
 
 class AllenVisualCodingOphys2016(CalciumImagingDatasetMixin, Dataset):
     """
@@ -17,13 +19,15 @@ class AllenVisualCodingOphys2016(CalciumImagingDatasetMixin, Dataset):
 
     def __init__(
         self,
-        root: str,
+        root: Optional[str] = None,
         recording_ids: Optional[list[str]] = None,
         transform: Optional[Callable] = None,
         split_type: Optional[Literal["poyo_plus"]] = "poyo_plus",
         dirname: str = "allen_visual_coding_ophys_2016",
         **kwargs,
     ):
+        if root is None:
+            root = get_processed_dir()
 
         super().__init__(
             dataset_dir=Path(root) / dirname,

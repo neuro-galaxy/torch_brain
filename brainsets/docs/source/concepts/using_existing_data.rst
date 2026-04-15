@@ -7,15 +7,19 @@ Configuring data directories
 ----------------------------
 First, configure the directories where brainsets will store raw and processed data::
 
-    brainsets config
+    brainsets config set
 
 You will be prompted to enter the paths to the raw and processed data directories::
 
-    $> brainsets config
+    $> brainsets config set
     Enter raw data directory: ./data/raw
     Enter processed data directory: ./data/processed
 
-You can update the configuration at any time by running the ``config`` command again.
+You can update the configuration at any time by running the ``config set`` command again.
+
+To view the current configuration::
+
+    brainsets config show
 
 Listing available datasets
 -------------------------

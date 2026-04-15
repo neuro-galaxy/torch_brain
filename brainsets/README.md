@@ -45,17 +45,22 @@ This work is only made possible thanks to the public release of these valuable d
 ### Configuring data directories
 First, configure the directories where brainsets will store raw and processed data:
 ```bash
-brainsets config
+brainsets config set
 ```
 
 You will be prompted to enter the paths to the raw and processed data directories.
 ```bash
-$> brainsets config
+$> brainsets config set
 Enter raw data directory: ./data/raw
 Enter processed data directory: ./data/processed
 ```
 
-You can update the configuration at any time by running the `config` command again.
+You can update the configuration at any time by running the `config set` command again.
+
+To view the current configuration:
+```bash
+brainsets config show
+```
 
 ### Listing available datasets
 You can list the available datasets by running the `list` command:

@@ -10,6 +10,8 @@ from temporaldata import Data, Interval
 
 from torch_brain.dataset import Dataset, MultiChannelDatasetMixin
 
+from ._utils import get_processed_dir
+
 SubsetTier = Literal["full", "lite", "nano"]
 LabelMode = Literal["binary", "multiclass"]
 Regime = Literal["SS-SM", "SS-DM", "DS-DM"]
@@ -159,7 +161,7 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
     Data sources: `BrainTreeBank <https://braintreebank.dev>`_ and `Neuroprobe Benchmark <https://neuroprobe.dev>`_
 
     Args:
-        root: Root directory containing processed Neuroprobe artifacts.
+        root: Root directory containing processed Neuroprobe artifacts. Defaults to ``processed_dir`` from brainsets config.
         recording_ids: Optional explicit recording-id subset to expose from disk.
             If omitted, the dataset uses benchmark-required recording ids inferred
             from ``subset_tier/test_subject/test_session/split/label_mode/task/regime/fold``.
@@ -208,7 +210,7 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
 
     def __init__(
         self,
-        root: str,
+        root: Optional[str] = None,
         recording_ids: Optional[list[str]] = None,
         transform: Optional[Callable] = None,
         *,
@@ -225,6 +227,8 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
         dirname: str = "neuroprobe_2025",
         **kwargs,
     ):
+        if root is None:
+            root = get_processed_dir()
         # Resolve and validate constructor inputs before touching dataset records.
         self._dataset_dir = Path(root) / dirname
 

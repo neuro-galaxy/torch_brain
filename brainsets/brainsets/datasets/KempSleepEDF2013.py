@@ -5,6 +5,8 @@ from temporaldata import Data
 
 from torch_brain.dataset import Dataset
 
+from ._utils import get_processed_dir
+
 FoldType = Literal["intrasession", "intersubject", "intersession"]
 VALID_FOLD_TYPES = get_args(FoldType)
 
@@ -18,7 +20,7 @@ class KempSleepEDF2013(Dataset):
         ``brainsets prepare kemp_sleep_edf_2013``.
 
     Args:
-        root (str): Root directory for the dataset.
+        root (str, optional): Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
         recording_ids (list[str], optional): List of recording IDs to load.
         transform (Callable, optional): Data transformation to apply.
         uniquify_channel_ids (bool, optional): Whether to prefix channel IDs with session ID to ensure uniqueness. Defaults to True.
@@ -33,7 +35,7 @@ class KempSleepEDF2013(Dataset):
 
     def __init__(
         self,
-        root: str,
+        root: Optional[str] = None,
         recording_ids: Optional[list[str]] = None,
         transform: Optional[Callable] = None,
         uniquify_channel_ids: bool = True,
@@ -42,6 +44,8 @@ class KempSleepEDF2013(Dataset):
         dirname: str = "kemp_sleep_edf_2013",
         **kwargs,
     ):
+        if root is None:
+            root = get_processed_dir()
         super().__init__(
             dataset_dir=Path(root) / dirname,
             recording_ids=recording_ids,

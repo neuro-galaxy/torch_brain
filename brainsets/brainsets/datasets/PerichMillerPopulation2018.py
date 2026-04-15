@@ -3,6 +3,8 @@ from pathlib import Path
 
 from torch_brain.dataset import Dataset, SpikingDatasetMixin
 
+from ._utils import get_processed_dir
+
 
 class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
     """
@@ -34,7 +36,7 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
     Dataset: `Dandiset 000688 <https://doi.org/10.48324/dandi.000688/0.250122.1735>`_.
 
     Args:
-        root (str): Root directory for the dataset.
+        root (str, optional): Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
         recording_ids (list[str], optional): List of recording IDs to load.
         transform (Callable, optional): Data transformation to apply.
         dirname (str, optional): Subdirectory for the dataset. Defaults to "perich_miller_population_2018".
@@ -42,12 +44,14 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
 
     def __init__(
         self,
-        root: str,
+        root: Optional[str] = None,
         recording_ids: Optional[list[str]] = None,
         transform: Optional[Callable] = None,
         dirname: str = "perich_miller_population_2018",
         **kwargs,
     ):
+        if root is None:
+            root = get_processed_dir()
         super().__init__(
             dataset_dir=Path(root) / dirname,
             recording_ids=recording_ids,
