@@ -10,6 +10,7 @@ from brainsets._cli.cli_completion import (
     _detect_shell,
     SHELL_COMPLETION_FILENAMES,
 )
+from brainsets.config import CONFIG_FILE
 
 
 class TestDetectShell:
@@ -87,6 +88,58 @@ class TestInstallCompletion:
         assert result.exit_code == 0
         assert comp_dir.exists()
         assert (comp_dir / SHELL_COMPLETION_FILENAMES["bash"]).is_file()
+
+
+class TestConfigCommand:
+    """Tests for the 'brainsets config' command group."""
+
+    def test_config_show(self, tmp_path):
+        """Test `brainsets config show` displays current configuration."""
+        runner = CliRunner()
+        raw_dir = str(tmp_path / "raw")
+        processed_dir = str(tmp_path / "processed")
+        mock_config = {"raw_dir": raw_dir, "processed_dir": processed_dir}
+
+        with patch("brainsets._cli.cli_config.load_config", return_value=mock_config):
+            result = runner.invoke(cli, ["config", "show"])
+            assert result.exit_code == 0, f"CLI failed with: {result.output}"
+            assert f"Config file: {CONFIG_FILE}" in result.output
+            assert f"Raw data dir: {raw_dir}" in result.output
+            assert f"Processed data dir: {processed_dir}" in result.output
+
+    def test_config_show_no_config(self):
+        """Test `brainsets config show` errors when no config exists."""
+        runner = CliRunner()
+
+        with patch("brainsets._cli.cli_config.load_config", return_value=None):
+            result = runner.invoke(cli, ["config", "show"])
+            assert result.exit_code != 0
+            assert "Config not found" in result.output
+
+    def test_config_set_with_options(self, tmp_path):
+        """Test `brainsets config set --raw-dir ... --processed-dir ...`."""
+        runner = CliRunner()
+        raw_dir = tmp_path / "raw"
+        processed_dir = tmp_path / "processed"
+
+        with (
+            patch("brainsets._cli.cli_config.load_config", return_value=None),
+            patch("brainsets._cli.cli_config.save_config", return_value=CONFIG_FILE),
+        ):
+            result = runner.invoke(
+                cli,
+                [
+                    "config",
+                    "set",
+                    "--raw-dir",
+                    str(raw_dir),
+                    "--processed-dir",
+                    str(processed_dir),
+                ],
+            )
+            assert result.exit_code == 0, f"CLI failed with: {result.output}"
+            assert f"Raw data dir: {raw_dir}" in result.output
+            assert f"Processed data dir: {processed_dir}" in result.output
 
 
 class TestPrepareCommand:

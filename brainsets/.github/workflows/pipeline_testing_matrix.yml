@@ -35,5 +35,5 @@ jobs:
 
     - name: Download pei_pandarinath_nlb_2021
       run: |
-        uv run brainsets config --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
         uv run brainsets prepare pei_pandarinath_nlb_2021

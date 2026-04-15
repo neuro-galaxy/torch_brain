@@ -3,6 +3,8 @@ from pathlib import Path
 
 from torch_brain.dataset import Dataset, SpikingDatasetMixin
 
+from ._utils import get_processed_dir
+
 
 class _RecordingGroup(list):
     """A list of recording IDs that also supports attribute access for sub-groups.
@@ -203,7 +205,7 @@ class VollanMoserAlternating2025(SpikingDatasetMixin, Dataset):
     Dataset: `EBRAINS <https://search.kg.ebrains.eu/instances/4080b78d-edc5-4ae4-8144-7f6de79930ea>`_.
 
     Args:
-        root (str): Root directory for the dataset.
+        root (str, optional): Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
         recording_ids (list[str] or str, optional): Recording IDs to load.
             Defaults to all sessions.  Can be:
 
@@ -234,12 +236,14 @@ class VollanMoserAlternating2025(SpikingDatasetMixin, Dataset):
 
     def __init__(
         self,
-        root: str,
+        root: Optional[str] = None,
         recording_ids: Optional[list[str] or str] = None,
         transform: Optional[Callable] = None,
         dirname: str = "vollan_moser_alternating_2025",
         **kwargs,
     ):
+        if root is None:
+            root = get_processed_dir()
         if isinstance(recording_ids, str):
             if recording_ids not in self._SHORTHAND:
                 raise ValueError(

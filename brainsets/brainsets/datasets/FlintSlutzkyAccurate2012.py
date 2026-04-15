@@ -3,6 +3,8 @@ from pathlib import Path
 
 from torch_brain.dataset import Dataset, SpikingDatasetMixin
 
+from ._utils import get_processed_dir
+
 
 class FlintSlutzkyAccurate2012(SpikingDatasetMixin, Dataset):
     """
@@ -37,7 +39,7 @@ class FlintSlutzkyAccurate2012(SpikingDatasetMixin, Dataset):
     `Journal of Neural Engineering <https://doi.org/10.1088/1741-2560/9/4/046006>`_, 9(4), 046006.
 
     Args:
-        root (str): Root directory for the dataset.
+        root (str, optional): Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
         recording_ids (list[str], optional): List of recording IDs to load.
         transform (Callable, optional): Data transformation to apply.
         split_type (str, optional): Which split type to use. Defaults to "hand_velocity".
@@ -47,13 +49,15 @@ class FlintSlutzkyAccurate2012(SpikingDatasetMixin, Dataset):
 
     def __init__(
         self,
-        root: str,
+        root: Optional[str] = None,
         recording_ids: Optional[list[str]] = None,
         transform: Optional[Callable] = None,
         split_type: Optional[Literal["hand_velocity"]] = "hand_velocity",
         dirname: str = "flint_slutzky_accurate_2012",
         **kwargs,
     ):
+        if root is None:
+            root = get_processed_dir()
         super().__init__(
             dataset_dir=Path(root) / dirname,
             recording_ids=recording_ids,
