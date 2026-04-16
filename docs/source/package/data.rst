@@ -1,14 +1,38 @@
-.. currentmodule:: torch_brain.dataset
+.. currentmodule:: torch_brain.data
 
-torch_brain.dataset
-===================
+torch_brain.data
+================
 
-.. toctree::
-   :maxdepth: 2
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/class.rst
 
-   dataset
-   nested
-   mixins
+   {% for name in torch_brain.data._classes %}
+
+Collate
+-------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/function.rst
+
+   {% for name in torch_brain.data._collate_functions %}
+
+.. currentmodule:: torch_brain.data.sampler
+
+Samplers
+--------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/class.rst
+
+   {% for name in torch_brain.data.sampler._classes %}
+
+
 
 Overview
 --------

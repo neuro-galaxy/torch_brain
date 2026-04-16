@@ -1,26 +1,21 @@
 .. currentmodule:: torch_brain.models
 
-
 torch_brain.models
 ==================
 
-Brain decoders
---------------
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/class.rst
 
-.. list-table::
-   :widths: 25 125
+   {% for name in torch_brain.models._classes %}
 
-   * - :py:class:`POYO`
-     - POYO model from `Azabou et al. 2023, A Unified, Scalable Framework for Neural Population Decoding <https://arxiv.org/abs/2310.16046>`_.
-   * - :py:class:`POYOPlus`
-     - POYO+ model from `Azabou et al. 2025, Multi-session, multi-task neural decoding from distinct cell-types and brain regions <https://openreview.net/forum?id=IuU0wcO0mo>`_.
+Utility Functions
+-----------------
 
-.. autoclass:: POYO
-    :members:
-    :show-inheritance:
-    :undoc-members:
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/function.rst
 
-.. autoclass:: POYOPlus
-    :members:
-    :show-inheritance:
-    :undoc-members:
+   {% for name in torch_brain.models._functions %}

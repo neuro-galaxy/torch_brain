@@ -13,3 +13,19 @@ from .collate import (
     track_mask2d8,
 )
 from .dataset import Dataset
+
+_classes = ["Dataset"]
+_functions = [
+    "chain",
+    "collate",
+    "pad",
+    "pad8",
+    "pad2d",
+    "pad2d8",
+    "track_batch",
+    "track_mask",
+    "track_mask8",
+    "track_mask2d",
+    "track_mask2d8",
+]
+_collate_functions = _functions

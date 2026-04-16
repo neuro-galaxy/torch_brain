@@ -42,6 +42,10 @@ class ModalitySpec:
     loss_fn: Callable  # can be overwritten
 
 
+_classes = ["DataType", "ModalitySpec"]
+_functions = ["register_modality", "get_modality_by_id"]
+_constants = ["MODALITY_REGISTRY"]
+
 MODALITY_REGISTRY: Dict[str, ModalitySpec] = {}
 _ID_TO_MODALITY: Dict[int, str] = {}
 

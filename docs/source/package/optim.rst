@@ -1,17 +1,11 @@
 .. currentmodule:: torch_brain.optim
 
 torch_brain.optim
-==================
+=================
 
-Optimizers
-----------
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/class.rst
 
-.. list-table::
-   :widths: 25 125
-
-   * - :py:class:`SparseLamb`
-     - Sparse variant of the Lamb optimizer.
-
-.. autoclass:: SparseLamb
-    :members:
-    :undoc-members:
+   {% for name in torch_brain.optim._classes %}

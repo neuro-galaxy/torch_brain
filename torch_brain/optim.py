@@ -3,6 +3,8 @@ import math
 import torch
 from torch.optim.optimizer import Optimizer
 
+_classes = ["SparseLamb"]
+
 
 class SparseLamb(Optimizer):
     r"""Implements the sparse variant of the Lamb algorithm.

@@ -488,3 +488,12 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         """Set the epoch number. Not strictly necessary for sequential sampler
         but included for API compatibility."""
         self.epoch = epoch
+
+
+_classes = [
+    "RandomFixedWindowSampler",
+    "SequentialFixedWindowSampler",
+    "TrialSampler",
+    "DistributedEvaluationSamplerWrapper",
+    "DistributedStitchingFixedWindowSampler",
+]
