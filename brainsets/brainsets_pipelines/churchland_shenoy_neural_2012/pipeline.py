@@ -78,7 +78,7 @@ class Pipeline(BrainsetPipeline):
         brainset_description = BrainsetDescription(
             id="churchland_shenoy_neural_2012",
             origin_version="dandi/000070/draft",
-            derived_version="1.0.0",
+            derived_version="2.0.0",
             source="https://dandiarchive.org/dandiset/000070",
             description="Monkeys recordings of Motor Cortex (M1) and dorsal Premotor Cortex"
             " (PMd) using two 96 channel high density Utah Arrays (Blackrock Microsystems) "
@@ -95,7 +95,7 @@ class Pipeline(BrainsetPipeline):
         recording_date = nwbfile.session_start_time.strftime("%Y%m%d")
         subject_id = subject.id
         device_id = f"{subject_id}_{recording_date}"
-        session_id = f"{device_id}_center_out_reaching"
+        session_id = f"{device_id}_maze"
 
         store_path = self.processed_dir / f"{session_id}.h5"
         if store_path.exists() and not self.args.reprocess:
@@ -207,8 +207,8 @@ def extract_trials(nwbfile, session_id):
     if len(artifact_index) > 0:
         # logging.info(f"Found {len(artifact_index)} artifacts in the trial table.")
         if session_id in [
-            "nitschke_20090910_center_out_reaching",
-            "nitschke_20090920_center_out_reaching",
+            "nitschke_20090910_maze",
+            "nitschke_20090920_maze",
         ]:
             # the first artifact corresponds to two overlapping trials
             # we will skip those two trials

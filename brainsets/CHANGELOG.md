@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Exposed `--download-only` flag in `brainsets prepare --help` to allow downloading raw data without processing ([#98](https://github.com/neuro-galaxy/brainsets/pull/98)).
 - Updated dandi version to 0.74.0 in pipelines due to deprecation from dandi ([#101](https://github.com/neuro-galaxy/brainsets/pull/101)).
 - `BrainsetPipeline` runner automatically creates `raw_dir` and `processed_dir` ([#125](https://github.com/neuro-galaxy/brainsets/pull/125))
+- `churchland_shenoy_neural_2012` pipeline: corrected session task metadata—the experiment is maze reaching, not center-out reaching (`derived_version` bumped to 2.0.0). ([#131](https://github.com/neuro-galaxy/brainsets/pull/131))
 
 ## [0.2.0] - 2025-12-24
 ### Added
