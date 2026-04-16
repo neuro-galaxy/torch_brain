@@ -164,3 +164,4 @@ data/raw
 checkpoint.pth
 
 uv.lock
+docs/source/_generated

@@ -3,28 +3,9 @@
 torch_brain.utils
 =================
 
-Tokenizers
-----------
+.. autosummary::
+   :nosignatures:
+   :toctree: ../_generated
+   :template: autosummary/function.rst
 
-.. list-table::
-   :widths: 25 125
-
-   * - :py:func:`create_linspace_latent_tokens`
-     - Create groups of latent tokens with timestamps.
-   * - :py:func:`create_start_end_unit_tokens`
-     - Adds start and end tokens to each unit.
-
-.. autofunction:: create_linspace_latent_tokens
-
-.. autofunction:: create_start_end_unit_tokens
-
-Binning
--------
-
-.. list-table::
-   :widths: 25 125
-
-   * - :py:func:`bin_spikes`
-     - Bin spike timestamps into fixed-width time bins.
-
-.. autofunction:: bin_spikes
+   {% for name in torch_brain.utils._functions %}
