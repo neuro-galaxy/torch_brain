@@ -39,9 +39,9 @@ Overview
 
 Base classes to ease creation of PyTorch datasets for your data.
 
-- The :doc:`Dataset <dataset>` class is inherited by all datasets. These handle opening and accessing single datasets.
-- The :doc:`NestedDataset <nested>` class is for opening and accessing multiple datasets through a unified interface.
-- :doc:`Mixin <mixins>` classes are provided to add modality-specific functionalities to the Dataset classes.
+- The :class:`Dataset` class is inherited by all datasets. These handle opening and accessing single datasets.
+- The :class:`NestedDataset` class is for opening and accessing multiple datasets through a unified interface.
+- :ref:`Mixin <Mixins>` classes are provided to add modality-specific functionalities to the Dataset classes.
 
 
 Dataset
@@ -57,7 +57,7 @@ To achieve arbitrary time-slice based access, our Dataset class is indexed by th
 
 These are put into a :class:`DatasetIndex` object, which is then used to index the :class:`Dataset`.
 Since different machine learning applications require different ways of sampling, we provide a collection of
-:doc:`samplers <../data/sampler>` which are responsible for creating these :class:`DatasetIndex` objects.
+:doc:`samplers <data>` which are responsible for creating these :class:`DatasetIndex` objects.
 
 NestedDataset
 ^^^^^^^^^^^^^
