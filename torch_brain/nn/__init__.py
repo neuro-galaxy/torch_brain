@@ -8,6 +8,7 @@ from .rotary_attention import RotaryCrossAttention, RotarySelfAttention
 from .feedforward import FeedForward
 
 # loss
+from . import loss
 from .loss import Loss, MSELoss, CrossEntropyLoss, MallowDistanceLoss
 
 # readout layers
