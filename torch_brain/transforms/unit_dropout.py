@@ -8,13 +8,13 @@ from temporaldata import Data, IrregularTimeSeries, RegularTimeSeries
 
 class TriangleDistribution:
     r"""Triangular distribution with a peak at mode_units, going from min_units to
-    max_units. 
+    max_units.
 
     The unnormalized density function is defined as:
-    
+
     .. math::
-        f(x) = 
-        \begin{cases} 
+        f(x) =
+        \begin{cases}
         0 & \text{if } x < \text{min_units} \\
         1 + (\text{peak} - 1) \cdot \frac{x - \text{min_units}}{\text{mode_units} - \text{min_units}} & \text{if } \text{min_units} \leq x \leq \text{mode_units} \\
         \text{peak} - (\text{peak} - 1) \cdot \frac{x - \text{mode_units}}{\text{tail_right} - \text{mode_units}} & \text{if } \text{mode_units} \leq x \leq \text{tail_right} \\
@@ -26,7 +26,7 @@ class TriangleDistribution:
         min_units (int): Minimum number of units to sample. If the population has fewer
             units than this, all units will be kept.
         mode_units (int): Mode of the distribution.
-        max_units (int): Maximum number of units to sample. 
+        max_units (int): Maximum number of units to sample.
         tail_right (int, optional): Right tail of the distribution. If None, it is set to
             `max_units`.
         peak (float, optional): Height of the peak of the distribution.
@@ -35,12 +35,12 @@ class TriangleDistribution:
             distribution.
         seed (int, optional): Seed for the random number generator.
 
-    .. image:: ../_static/img/triangle_distribution.png
+    .. image:: /_static/img/triangle_distribution.png
 
     To sample from the distribution, we use rejection sampling. We sample from a uniform
     distribution between `min_units` and `max_units` and accept the sample with
     probability :math:`\frac{f(x)}{M \cdot q(x)}`, where :math:`q(x)` is the proposal
-    distribution. 
+    distribution.
     """
 
     def __init__(
