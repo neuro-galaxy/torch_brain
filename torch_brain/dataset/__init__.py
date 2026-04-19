@@ -23,7 +23,7 @@ To achieve arbitrary time-slice based access, our Dataset class is indexed by th
 
 These are put into a :class:`DatasetIndex` object, which is then used to index the :class:`Dataset`.
 Since different machine learning applications require different ways of sampling, we provide a collection of
-:doc:`samplers <data>` which are responsible for creating these :class:`DatasetIndex` objects.
+:ref:`samplers <data.sampler_ref>` which are responsible for creating these :class:`DatasetIndex` objects.
 
 NestedDataset
 ^^^^^^^^^^^^^
