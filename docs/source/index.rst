@@ -3,6 +3,11 @@
 TorchBrain documentation
 ========================
 
+**torch_brain** is a Python library for various deep learning models designed for neuroscience.
+
+If you encounter any bugs or have feature requests, please submit them to our
+`GitHub Issues page <https://github.com/neuro-galaxy/torch_brain/issues>`_.
+
 .. image:: https://img.shields.io/pypi/v/torch_brain?color=blue&logo=pypi&logoColor=white
    :target: https://pypi.org/project/torch_brain/
    :alt: PyPI Package
@@ -15,11 +20,6 @@ TorchBrain documentation
    :target: https://discord.gg/kQNKA6B8ZC
    :alt: Discord
 
-**torch_brain** is a Python library for various deep learning models designed for neuroscience.
-
-
-If you encounter any bugs or have feature requests, please submit them to our
-`GitHub Issues page <https://github.com/neuro-galaxy/torch_brain/issues>`_.
 
 ----
 
