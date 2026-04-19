@@ -44,7 +44,14 @@ sass_targets = {
 }
 Path("generated/css/").mkdir(exist_ok=True, parents=True)
 
-html_theme = "furo"
+html_theme = "pydata_sphinx_theme"
+html_theme_options = {
+    "logo": {
+        "text": "torch_brain docs",
+        "image_light": "_static/torch_brain_logo.png",
+        "image_dark": "_static/torch_brain_logo.png",
+    }
+}
 html_static_path = ["_static", "generated/css", "js"]
 html_css_files = ["custom.css"]
 templates_path = ["_templates"]
@@ -74,7 +81,6 @@ bokeh_plot_pyfile_include_dirs = [
 ]
 html_copy_source = False
 html_show_sourcelink = True
-html_logo = "_static/torch_brain_logo.png"
 html_favicon = "_static/torch_brain_logo.png"
 
 
@@ -100,10 +106,6 @@ def add_js_css_files(app, pagename, templatename, context, doctree):
         # Internal: API search initialization and styling
         app.add_js_file("scripts/api-search.js")
         app.add_css_file("styles/api-search.css")
-    # elif pagename == "index":
-    #     app.add_css_file("styles/index.css")
-    # elif pagename.startswith("modules/generated/"):
-    #     app.add_css_file("styles/api.css")
 
 
 def _process_bases(app, name, obj, options, bases):

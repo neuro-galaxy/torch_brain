@@ -1,5 +1,5 @@
-furo
 sphinx
+pydata-sphinx-theme
 myst-parser
 sphinx-autodoc-typehints
 sphinx-inline-tabs
