@@ -4,10 +4,10 @@ import sys
 from pathlib import Path
 from sphinx.util.typing import restify
 
-import torch_brain
-
 sys.path.insert(0, os.path.abspath("."))
 sys.path.insert(0, os.path.abspath("sphinxext"))
+
+import torch_brain
 
 
 author = "neuro-galaxy Team"
