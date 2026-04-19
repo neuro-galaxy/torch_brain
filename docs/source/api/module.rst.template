@@ -1,5 +1,3 @@
-:html_theme.sidebar_secondary.remove:
-
 {% if module == "torch_brain" -%}
 {%- set module_hook = "torch_brain" -%}
 {%- elif module.startswith("torch_brain.") -%}
