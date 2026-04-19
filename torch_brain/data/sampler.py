@@ -490,10 +490,15 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         self.epoch = epoch
 
 
-_classes = [
+__all__ = [
     "RandomFixedWindowSampler",
     "SequentialFixedWindowSampler",
     "TrialSampler",
     "DistributedEvaluationSamplerWrapper",
     "DistributedStitchingFixedWindowSampler",
 ]
+
+__api_ref__ = {
+    "description": "See :ref:`sampling` for further details.",
+    "sections": [{"autosummary": __all__}],
+}

@@ -1,10 +1,12 @@
+.. _sampling:
+
 Sampling
 ========
 
-The advanced sampling capabilities in **torch_brain** enable flexible and customizable data 
-loading by allowing users to define arbitrary sampling intervals and window lengths for 
-their neural data. This design makes it easy to handle complex experimental protocols 
-with non-contiguous recording periods, while providing a simple interface that 
+The advanced sampling capabilities in **torch_brain** enable flexible and customizable data
+loading by allowing users to define arbitrary sampling intervals and window lengths for
+their neural data. This design makes it easy to handle complex experimental protocols
+with non-contiguous recording periods, while providing a simple interface that
 automatically handles the complexities of sampling from multiple intervals or sessions.
 
 
@@ -12,12 +14,12 @@ Sampling intervals
 ------------------
 
 Sampling intervals are the intervals from which a data sampler is allowed to sample data.
-The sampling intervals do not have to be contiguous, and can be of any length. 
+The sampling intervals do not have to be contiguous, and can be of any length.
 They are defined as :obj:`Interval` objects with start and end times.
 
 In **brainsets**, each recording has a `default` split, defined in the brainset's pipeline.
 Non-overlapping training, validation and testing :obj:`Interval` objects
-are stored in :obj:`data.train_domain`, :obj:`data.valid_domain` and :obj:`data.test_domain` 
+are stored in :obj:`data.train_domain`, :obj:`data.valid_domain` and :obj:`data.test_domain`
 respectively. These intervals can be used as the sampling intervals.
 
 When using :obj:`brainsets.data.Dataset`, the sampling intervals can be easily accessed using the :obj:`get_sampling_intervals` method.
@@ -33,8 +35,8 @@ For example, let's load a recording from the :obj:`perich_miller_population_2018
     >>> from torch_brain.data import Dataset
 
     >>> dataset = Dataset(
-    >>>     "./processed", 
-    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching", 
+    >>>     "./processed",
+    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
     >>>     split="train"
     >>> )
 
@@ -64,7 +66,7 @@ We can print the first 5 sampling intervals as follows:
 
 The intervals are of different lengths. We visualize the intervals below.
 
-.. bokeh-plot:: concepts/examples/plot_sampler_1.py
+.. bokeh-plot:: guides/sampling/plot_sampler_1.py
    :source-position: none
 
 We can visualize the validation and testing intervals as well.
@@ -72,29 +74,29 @@ We can visualize the validation and testing intervals as well.
 .. code-block:: python
 
     >>> train_dataset = Dataset(
-    >>>     "./processed", 
-    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching", 
+    >>>     "./processed",
+    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
     >>>     split="train"
     >>> )
     >>> train_sampling_intervals = train_dataset.get_sampling_intervals()
-    
+
     >>> valid_dataset = Dataset(
-    >>>     "./processed", 
-    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching", 
+    >>>     "./processed",
+    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
     >>>     split="valid"
     >>> )
     >>> valid_sampling_intervals = valid_dataset.get_sampling_intervals()
 
 
     >>> test_dataset = Dataset(
-    >>>     "./processed", 
-    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching", 
+    >>>     "./processed",
+    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
     >>>     split="test"
     >>> )
     >>> test_sampling_intervals = test_dataset.get_sampling_intervals()
 
 
-.. bokeh-plot:: concepts/examples/plot_sampler_2.py
+.. bokeh-plot:: guides/sampling/plot_sampler_2.py
    :source-position: none
 
 
@@ -108,7 +110,7 @@ Samplers in action
 
 .. list-table::
    :widths: 25 125
-    
+
    * - :py:class:`SequentialFixedWindowSampler`
      - A Sequential sampler, that samples fixed-length windows.
    * - :py:class:`RandomFixedWindowSampler`
@@ -117,8 +119,8 @@ Samplers in action
      - A sampler that randomly samples a full contiguous interval without slicing it into windows.
 
 
-The most common sampler used in practice is the :py:class:`RandomFixedWindowSampler`, which randomly samples 
-windows of a fixed length from the data. We provide the sampling intervals in order to 
+The most common sampler used in practice is the :py:class:`RandomFixedWindowSampler`, which randomly samples
+windows of a fixed length from the data. We provide the sampling intervals in order to
 restrict where the sampler can sample from.
 
 .. code-block:: python
@@ -152,14 +154,14 @@ We can visualize what the sampler is doing as we are iterating over it.
 
 
 
-.. bokeh-plot:: concepts/examples/plot_sampler_3.py
+.. bokeh-plot:: guides/sampling/plot_sampler_3.py
    :source-position: none
-   
+
 
 Note that the order of the samples is shuffled, and that temporal jitter is used, so that
-the windows are not sampled at the same time from epoch to epoch. 
+the windows are not sampled at the same time from epoch to epoch.
 
-We can also easily change the window length of the sampler to get different sized windows. 
+We can also easily change the window length of the sampler to get different sized windows.
 This flexibility is achieved without having to reprocess the underlying data.
 
 
@@ -176,7 +178,7 @@ This flexibility is achieved without having to reprocess the underlying data.
     Number of sampled windows in one epoch:  60
 
 
-.. bokeh-plot:: concepts/examples/plot_sampler_4.py
+.. bokeh-plot:: guides/sampling/plot_sampler_4.py
    :source-position: none
 
 
@@ -189,7 +191,7 @@ For example, we can create a dataset with multiple recordings using a configurat
 
 .. code-block:: yaml
     :caption: config.yaml
-    
+
     - selection:
       - brainset: perich_miller_population_2018
         sessions:
@@ -241,7 +243,7 @@ The sampler can be initialized in the same way as before.
 
 Below, we visualize how the sampler will sample from all three recordings.
 
-.. bokeh-plot:: concepts/examples/plot_sampler_5.py
+.. bokeh-plot:: guides/sampling/plot_sampler_5.py
    :source-position: none
 
 
@@ -255,7 +257,7 @@ This is done by adding a ``sampling_intervals_modifier`` key to the dataset conf
 
 .. code-block:: yaml
     :caption: config.yaml
-    
+
     - selection:
         - brainset: [YOUR_BRAINSET]
       config:
@@ -264,11 +266,11 @@ This is done by adding a ``sampling_intervals_modifier`` key to the dataset conf
            # sampling_intervals = ...
 
 
-The sampling_intervals_modifier allows you to modify the sampling intervals for each 
+The sampling_intervals_modifier allows you to modify the sampling intervals for each
 recording by executing custom Python code. You have access the following variables:
 
 - ``data``: The Data object for the current recording
-- ``sampling_intervals``: The current sampling intervals for the recording 
+- ``sampling_intervals``: The current sampling intervals for the recording
 - ``split``: The current split (e.g. "train", "val", "test")
 
 The modifier code should update the ``sampling_intervals`` variable with the modified intervals.
@@ -277,7 +279,7 @@ The modifier code should update the ``sampling_intervals`` variable with the mod
 
 .. code-block:: yaml
     :caption: config.yaml
-    
+
     - selection:
       - brainset: perich_miller_population_2018
         sessions:
@@ -290,15 +292,15 @@ The modifier code should update the ``sampling_intervals`` variable with the mod
 
 .. note::
 
-    The ``&`` operator performs an intersection between intervals. :obj:`temporaldata` allows for 
-    powerful interval operations, such as union, intersection, difference, and more. Refer to 
+    The ``&`` operator performs an intersection between intervals. :obj:`temporaldata` allows for
+    powerful interval operations, such as union, intersection, difference, and more. Refer to
     the  :obj:`temporaldata` documentation for more information.
 
 **Example 2**: Modify the sampling intervals to only include the first 10 intervals for the training split.
 
 .. code-block:: yaml
     :caption: config.yaml
-    
+
     - selection:
       - brainset: perich_miller_population_2018
         sessions:

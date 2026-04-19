@@ -16,7 +16,7 @@ from .multitask_readout import (
     prepare_for_multitask_readout,
 )
 
-_classes = [
+__all__ = [
     "Embedding",
     "InfiniteVocabEmbedding",
     "RotaryTimeEmbedding",
@@ -29,16 +29,44 @@ _classes = [
     "CrossEntropyLoss",
     "MallowDistanceLoss",
     "MultitaskReadout",
+    "prepare_for_multitask_readout",
 ]
-_functions = ["prepare_for_multitask_readout"]
 
-_embedding_classes = [
-    "Embedding",
-    "InfiniteVocabEmbedding",
-    "RotaryTimeEmbedding",
-    "SinusoidalTimeEmbedding",
-]
-_transformer_classes = ["FeedForward", "RotaryCrossAttention", "RotarySelfAttention"]
-_loss_classes = ["Loss", "MSELoss", "CrossEntropyLoss", "MallowDistanceLoss"]
-_readout_classes = ["MultitaskReadout"]
-_readout_functions = ["prepare_for_multitask_readout"]
+__api_ref__ = {
+    "description": None,
+    "sections": [
+        {
+            "title": "Embedding modules",
+            "autosummary": [
+                "Embedding",
+                "InfiniteVocabEmbedding",
+                "RotaryTimeEmbedding",
+                "SinusoidalTimeEmbedding",
+            ],
+        },
+        {
+            "title": "Transformer related modules",
+            "autosummary": [
+                "FeedForward",
+                "RotaryCrossAttention",
+                "RotarySelfAttention",
+            ],
+        },
+        {
+            "title": "Readout",
+            "autosummary": [
+                "MultitaskReadout",
+                "prepare_for_multitask_readout",
+            ],
+        },
+        {
+            "title": "Losses",
+            "autosummary": [
+                "Loss",
+                "MSELoss",
+                "CrossEntropyLoss",
+                "MallowDistanceLoss",
+            ],
+        },
+    ],
+}

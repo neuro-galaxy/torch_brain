@@ -1,0 +1,44 @@
+{% if module == "torch_brain" -%}
+{%- set module_hook = "torch_brain" -%}
+{%- elif module.startswith("torch_brain.") -%}
+{%- set module_hook = module[12:] -%}
+{%- else -%}
+{%- set module_hook = None -%}
+{%- endif -%}
+
+{% if module_hook %}
+.. _{{ module_hook }}_ref:
+{% endif %}
+
+{{ module }}
+{{ "=" * module|length }}
+
+.. automodule:: {{ module }}
+
+{% if module_info["description"] %}
+{{ module_info["description"] }}
+{% endif %}
+
+{% for section in module_info["sections"] %}
+{% if section["title"] and module_hook %}
+.. _{{ module_hook }}_ref-{{ section["title"]|lower|replace(" ", "-") }}:
+{% endif %}
+
+{% if section["title"] %}
+{{ section["title"] }}
+{{ "-" * section["title"]|length }}
+{% endif %}
+
+{% if section["description"] %}
+{{ section["description"] }}
+{% endif %}
+
+.. autosummary::
+  :nosignatures:
+  :toctree: .
+  :template: base.rst
+
+{% for obj in section["autosummary"] %}
+  {{ obj }}
+{%- endfor %}
+{% endfor %}

@@ -3,7 +3,9 @@ import math
 import torch
 from torch.optim.optimizer import Optimizer
 
-_classes = ["SparseLamb"]
+__all__ = [
+    "SparseLamb",
+]
 
 
 class SparseLamb(Optimizer):

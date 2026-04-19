@@ -28,26 +28,25 @@ If you encounter any bugs or have feature requests, please submit them to our
 ----
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Get Started
+   :maxdepth: 2
 
-   concepts/installation
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Concepts
-
-   concepts/sampler
+   guides/index
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Package Reference
+   :maxdepth: 2
 
-   package/data
-   package/dataset
-   package/nn
-   package/models
-   package/registry
-   package/optim
-   package/transforms
-   package/utils
+   generated/api/index
+
+
+.. .. toctree::
+..    :maxdepth: 1
+..    :caption: Package Reference
+..
+..    package/data
+..    package/dataset
+..    package/nn
+..    package/models
+..    package/registry
+..    package/optim
+..    package/transforms
+..    package/utils
