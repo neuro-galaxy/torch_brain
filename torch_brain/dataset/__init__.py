@@ -30,7 +30,7 @@ NestedDataset
 
 The :class:`Dataset` class is designed to operate on a single dataset. However, many modern ML methods perform
 training over multiple datasets. For this, we provide :class:`NestedDataset` that allows users to open and index through
-multple datasets.
+multiple datasets.
 """
 
 from .dataset import Dataset, DatasetIndex
