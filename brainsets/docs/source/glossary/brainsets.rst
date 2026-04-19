@@ -1,0 +1,1040 @@
+List of Brainsets
+==================
+
+churchland_shenoy_neural_2012
+-----------------------------
+
+**Downloading data using brainsets cli** ::
+
+
+    brainsets prepare churchland_shenoy_neural_2012
+
+
+**Brainset Card**
+
+.. raw:: html
+
+  <div class="brainset-card">
+   <table>
+       <colgroup>
+           <col style="width: 30%">
+           <col style="width: 70%">
+       </colgroup>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-circle-info"></i>Data Source</th>
+       </tr>
+       <tr>
+           <td><strong>Publication(s)</strong></td>
+           <td>
+               <div>
+                 <a href="https://doi.org/10.1038/nature11129">10.1038/nature11129</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="10.1038/nature11129">Cite</button>
+                   <div class="citation-popup" id="popup-10.1038/nature11129" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@article{churchland2012neural,
+    title={Neural population dynamics during reaching},
+    author={Churchland, Mark M and Cunningham, John P and Kaufman, Matthew T and Foster, Justin D and Nuyujukian, Paul and Ryu, Stephen I and Shenoy, Krishna V},
+    journal={Nature},
+    volume={487},
+    number={7405},
+    pages={51--56},
+    year={2012},
+    publisher={Nature Publishing Group UK London}
+    }
+    </pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                     <div class="citation-section">
+                       <h4>APA Style</h4>
+                       <div class="citation-content">
+                         <pre>Churchland, M., Cunningham, J., Kaufman, M. et al. Neural population dynamics during reaching. Nature 487, 51–56 (2012). https://doi.org/10.1038/nature11129</pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+           </td>
+       </tr>
+       <tr>
+           <td><strong>Data Source</strong></td>
+           <td><a href="https://dandiarchive.org/dandiset/000070">https://dandiarchive.org/dandiset/000070</a></td>
+       </tr>
+       <tr>
+           <td><strong>License</strong></td>
+           <td><a href="https://spdx.org/licenses/CC-BY-4.0.html">Creative Commons Attribution 4.0 International</a></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-user"></i>Subjects</th>
+       </tr>
+       <tr>
+           <td><strong>Number of subjects</strong></td>
+           <td>2</td>
+       </tr>
+       <tr>
+           <td><strong>Species</strong></td>
+           <td>Macaca mulatta</td>
+       </tr>
+        <tr>
+           <td><strong>Number of recordings</strong></td>
+           <td>10</td>
+       </tr>
+       <tr>
+           <td><strong>Total recording time</strong></td>
+           <td>28.9 hours</td>
+       </tr>
+       <tr>
+           <td><strong>Distribution of recording lengths (in minutes)</strong></td>
+           <td><div><img src="../_static/churchland_shenoy_neural_2012_recording_lengths_histogram.svg" alt="Histogram showing distribution of recording lengths"></div></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-brain"></i> Neural Data</th>
+       </tr>
+       <tr>
+           <td><strong>Neural Modality</strong></td>
+           <td>EPhys, spiking</td>
+       </tr>
+       <tr>
+           <td><strong>Device</strong></td>
+           <td>Utah Array</td>
+       </tr>
+       <tr>
+           <td><strong>Total number of units</strong></td>
+           <td>1911</td>
+       </tr>
+        <tr>
+           <td><strong>Distribution of number of units per recording</strong></td>
+           <td><div><img src="../_static/churchland_shenoy_neural_2012_num_units_histogram.svg" alt="Histogram showing distribution of number of units"></div></td>
+       </tr>
+       <tr>
+           <td><strong>Total number of spikes</strong></td>
+           <td>739.0M</td>
+       </tr>
+       <tr>
+           <td><strong>Brain regions</strong></td>
+           <td>M1, PMd</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.spikes</span><span class="code-tag">data.units</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral Data</th>
+       </tr>
+        <tr>
+           <td><strong>Description</strong></td>
+           <td>The animal is performing reaching tasks with right hand.</td>
+       </tr>
+       <tr>
+           <td><strong>Task</strong></td>
+           <td>Reaching task</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.cursor.pos</span><span class="code-tag">data.cursor.vel</span><span class="code-tag">data.cursor.acc</span><span class="code-tag">data.hand.pos_2d</span><span class="code-tag">data.hand.vel_2d</span><span class="code-tag">data.hand.acc_2d</span><span class="code-tag">data.eye.pos</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
+       </tr>
+       <tr>
+           <td><strong>Raw data size</strong></td>
+           <td>46 GB</td>
+       </tr>
+       <tr>
+           <td><strong>Processed data size</strong></td>
+           <td>25 GB</td>
+       </tr>
+        <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-triangle-exclamation"></i>Notes</th>
+       </tr>
+       <tr>
+           <td><strong>Warning</strong></td>
+           <td>The data is not contiguous. Neural and behavior data are provided only during the trials, and not between trials. Additionally, the raw data contains artifacts that were removed during processing. </td>
+       </tr>
+   </table>
+   </div>
+
+
+flint_slutzky_accurate_2012
+-----------------------------
+
+**Downloading data using brainsets cli** ::
+
+
+    brainsets prepare flint_slutzky_accurate_2012
+
+
+**Brainset Card**
+
+.. raw:: html
+
+  <div class="brainset-card">
+   <table>
+       <colgroup>
+           <col style="width: 30%">
+           <col style="width: 70%">
+       </colgroup>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-circle-info"></i>Data Source</th>
+       </tr>
+       <tr>
+           <td><strong>Publication(s)</strong></td>
+           <td>
+               <div>
+                 <a href="https://doi.org/10.1088/1741-2560/9/4/046006">10.1088/1741-2560/9/4/046006</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="10.1088/1741-2560/9/4/046006">Cite</button>
+                   <div class="citation-popup" id="popup-10.1088/1741-2560/9/4/046006" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@article{flint2012accurate,
+        title={Accurate decoding of reaching movements from field potentials in the absence of spikes},
+        author={Flint, Robert D and Lindberg, Eric W and Jordan, Luke R and Miller, Lee E and Slutzky, Marc W},
+        journal={Journal of neural engineering},
+        volume={9},
+        number={4},
+        pages={046006},
+        year={2012},
+        publisher={IOP Publishing}
+    }
+    </pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                     <div class="citation-section">
+                       <h4>APA Style</h4>
+                       <div class="citation-content">
+                         <pre>Flint, R. D., Lindberg, E. W., Jordan, L. R., Miller, L. E., & Slutzky, M. W. (2012). Accurate decoding of reaching movements from field potentials in the absence of spikes. Journal of neural engineering, 9(4), 046006. https://doi.org/10.1088/1741-2560/9/4/046006</pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+            <div>
+                 <a href="https://doi.org/10.1371/journal.pone.0078747">10.1371/journal.pone.0078747</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="10.1371/journal.pone.0078747">Cite</button>
+                   <div class="citation-popup" id="popup-10.1371/journal.pone.0078747" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@article{10.1371/journal.pone.0078747,
+        doi = {10.1371/journal.pone.0078747},
+        author = {Walker, Ben AND Kording, Konrad},
+        journal = {PLOS ONE},
+        publisher = {Public Library of Science},
+        title = {The Database for Reaching Experiments and Models},
+        year = {2013},
+        month = {11},
+        volume = {8},
+        url = {https://doi.org/10.1371/journal.pone.0078747},
+        pages = {1-10}
+    }
+    </pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                     <div class="citation-section">
+                       <h4>APA Style</h4>
+                       <div class="citation-content">
+                         <pre>Walker, B., Kording, K. The Database for Reaching Experiments and Models. PLOS ONE 8, e78747 (2013). https://doi.org/10.1371/journal.pone.0078747</pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+           </td>
+       </tr>
+       <tr>
+           <td><strong>Data Source</strong></td>
+           <td><a href="https://crcns.org/data-sets/movements/dream/">https://crcns.org/data-sets/movements/dream/</a></td>
+       </tr>
+       <tr>
+           <td><strong>License</strong></td>
+           <td>Unclear, see <a href="https://portal.nersc.gov/project/crcns/download/dream/documentation/DREAMUserManual.pdf">DREAM User Manual</a></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-user"></i>Subjects</th>
+       </tr>
+       <tr>
+           <td><strong>Number of subjects</strong></td>
+           <td>1</td>
+       </tr>
+       <tr>
+           <td><strong>Species</strong></td>
+           <td>Monkey</td>
+       </tr>
+        <tr>
+           <td><strong>Number of recordings</strong></td>
+           <td>5</td>
+       </tr>
+       <tr>
+           <td><strong>Total recording time</strong></td>
+           <td>0.88 hours</td>
+       </tr>
+       <tr>
+           <td><strong>Distribution of recording lengths (in minutes)</strong></td>
+           <td><div><img src="../_static/flint_slutzky_accurate_2012_recording_lengths_histogram.svg" alt="Histogram showing distribution of recording lengths"></div></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-brain"></i> Neural Data</th>
+       </tr>
+       <tr>
+           <td><strong>Neural Modality</strong></td>
+           <td>EPhys, spiking</td>
+       </tr>
+       <tr>
+           <td><strong>Device</strong></td>
+           <td>Utah Array</td>
+       </tr>
+       <tr>
+           <td><strong>Total number of units</strong></td>
+           <td>957</td>
+       </tr>
+        <tr>
+           <td><strong>Distribution of number of units per recording</strong></td>
+           <td><div><img src="../_static/flint_slutzky_accurate_2012_num_units_histogram.svg" alt="Histogram showing distribution of number of units"></div></td>
+       </tr>
+       <tr>
+           <td><strong>Total number of spikes</strong></td>
+           <td>7.88M</td>
+       </tr>
+       <tr>
+           <td><strong>Brain regions</strong></td>
+           <td>M1</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.spikes</span><span class="code-tag">data.units</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral Data</th>
+       </tr>
+        <tr>
+           <td><strong>Description</strong></td>
+           <td>The animal is performing a center-out reaching task.</td>
+       </tr>
+       <tr>
+           <td><strong>Task</strong></td>
+           <td>Center-out reaching</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.hand.vel</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
+       </tr>
+       <tr>
+           <td><strong>Raw data size</strong></td>
+           <td>3.2 GB</td>
+       </tr>
+       <tr>
+           <td><strong>Processed data size</strong></td>
+           <td>151 MB</td>
+       </tr>
+   </table>
+   </div>
+
+
+odoherty_sabes_nonhuman_2017
+----------------------------
+
+**Downloading data using brainsets cli** ::
+
+
+    brainsets prepare odoherty_sabes_nonhuman_2017
+
+
+**Brainset Card**
+
+.. raw:: html
+
+  <div class="brainset-card">
+   <table>
+       <colgroup>
+           <col style="width: 30%">
+           <col style="width: 70%">
+       </colgroup>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-circle-info"></i>Data Source</th>
+       </tr>
+       <tr>
+           <td><strong>Publication(s)</strong></td>
+           <td>
+               <div>
+                 <a href="https://doi.org/10.5281/zenodo.3854034">10.5281/zenodo.3854034</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="10.5281/zenodo.3854034">Cite</button>
+                   <div class="citation-popup" id="popup-10.5281/zenodo.3854034" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@article{odoherty2017nonhuman,
+    title={Nonhuman Primate Reaching with Multichannel Sensorimotor Cortex Electrophysiology [Data set]},
+    author={O'Doherty, Joseph E and Cardoso, Maria M B and Makin, John G and Sabes, Paul N},
+    journal={Zenodo},
+    year={2017},
+    url={https://doi.org/10.5281/zenodo.3854034}
+    }
+    </pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                     <div class="citation-section">
+                       <h4>APA Style</h4>
+                       <div class="citation-content">
+                         <pre>O'Doherty, J. E., Cardoso, M. M. B., Makin, J. G., & Sabes, P. N. (2020). Nonhuman Primate Reaching with Multichannel Sensorimotor Cortex Electrophysiology [Data set]. Zenodo. https://doi.org/10.5281/zenodo.3854034</pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+           </td>
+       </tr>
+       <tr>
+           <td><strong>Data Source</strong></td>
+           <td><a href="https://zenodo.org/records/3854034">https://zenodo.org/records/3854034</a></td>
+       </tr>
+       <tr>
+           <td><strong>License</strong></td>
+           <td><a href="https://spdx.org/licenses/CC-BY-4.0.html">Creative Commons Attribution 4.0 International</a></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-user"></i>Subjects</th>
+       </tr>
+       <tr>
+           <td><strong>Number of subjects</strong></td>
+           <td>2</td>
+       </tr>
+       <tr>
+           <td><strong>Species</strong></td>
+           <td>Macaca mulatta</td>
+       </tr>
+        <tr>
+           <td><strong>Number of recordings</strong></td>
+           <td>47</td>
+       </tr>
+       <tr>
+           <td><strong>Total recording time</strong></td>
+           <td>13.74 hours</td>
+       </tr>
+       <tr>
+           <td><strong>Distribution of recording lengths (in minutes)</strong></td>
+           <td><div><img src="../_static/odoherty_sabes_nonhuman_2017_recording_lengths_histogram.svg" alt="Histogram showing distribution of recording lengths"></div></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-brain"></i> Neural Data</th>
+       </tr>
+       <tr>
+           <td><strong>Neural Modality</strong></td>
+           <td>EPhys, spiking</td>
+       </tr>
+       <tr>
+           <td><strong>Device</strong></td>
+           <td>Utah Array</td>
+       </tr>
+       <tr>
+           <td><strong>Total number of units</strong></td>
+           <td>16,566</td>
+       </tr>
+        <tr>
+           <td><strong>Distribution of number of units per recording</strong></td>
+           <td><div><img src="../_static/odoherty_sabes_nonhuman_2017_num_units_histogram.svg" alt="Histogram showing distribution of number of units"></div></td>
+       </tr>
+       <tr>
+           <td><strong>Total number of spikes</strong></td>
+           <td>105.15M</td>
+       </tr>
+       <tr>
+           <td><strong>Brain regions</strong></td>
+           <td>M1, S1</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.spikes</span><span class="code-tag">data.units</span><span class="code-tag">data.units.waveforms</span><span class="code-tag">data.units.average_waveform</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral Data</th>
+       </tr>
+        <tr>
+           <td><strong>Description</strong></td>
+           <td>The animal is performing reaching tasks with right hand.</td>
+       </tr>
+       <tr>
+           <td><strong>Task</strong></td>
+           <td>Reaching task</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.cursor.pos</span><span class="code-tag">data.cursor.vel</span><span class="code-tag">data.cursor.acc</span><span class="code-tag">data.finger.pos_3d</span><span class="code-tag">data.finger.vel_3d</span><span class="code-tag">data.finger.orientation</span><span class="code-tag">data.finger.angular_vel</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
+       </tr>
+       <tr>
+           <td><strong>Raw data size</strong></td>
+           <td>22 GB</td>
+       </tr>
+       <tr>
+           <td><strong>Processed data size</strong></td>
+           <td>26 GB</td>
+       </tr>
+   </table>
+   </div>
+
+pei_pandarinath_nlb_2021
+------------------------
+
+**Downloading data using brainsets cli** ::
+
+
+    brainsets prepare pei_pandarinath_nlb_2021
+
+
+**Brainset Card**
+
+.. raw:: html
+
+  <div class="brainset-card">
+   <table>
+       <colgroup>
+           <col style="width: 30%">
+           <col style="width: 70%">
+       </colgroup>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-circle-info"></i>Data Source</th>
+       </tr>
+       <tr>
+           <td><strong>Publication(s)</strong></td>
+           <td>
+               <div>
+                 <a href="https://doi.org/10.48550/arXiv.2109.04463">10.48550/arXiv.2109.04463</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="10.48550/arXiv.2109.04463">Cite</button>
+                   <div class="citation-popup" id="popup-10.48550/arXiv.2109.04463" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@inproceedings{PeiYe2021NeuralLatents,
+    title={Neural Latents Benchmark '21: Evaluating latent variable models of neural population activity},
+    author={Felix Pei and Joel Ye and David M. Zoltowski and Anqi Wu and Raeed H. Chowdhury and Hansem Sohn and Joseph E. O'Doherty and Krishna V. Shenoy and Matthew T. Kaufman and Mark Churchland and Mehrdad Jazayeri and Lee E. Miller and Jonathan Pillow and Il Memming Park and Eva L. Dyer and Chethan Pandarinath},
+    booktitle={Advances in Neural Information Processing Systems (NeurIPS), Track on Datasets and Benchmarks},
+    year={2021},
+    url={https://arxiv.org/abs/2109.04463}
+    }
+    </pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                     <div class="citation-section">
+                       <h4>APA Style</h4>
+                       <div class="citation-content">
+                         <pre>Pei, F., Ye, J., Zoltowski, D. M., Wu, A., Chowdhury, R. H., Sohn, H., O'Doherty, J. E., Shenoy, K. V., Kaufman, M. T., Churchland, M. C., Jazayeri, M., Miller, L. E., Pillow, J., Park, M. M., Dyer, E. L., & Pandarinath, C. (2021). Neural Latents Benchmark '21: Evaluating latent variable models of neural population activity. In Advances in Neural Information Processing Systems (NeurIPS), Track on Datasets and Benchmarks. https://doi.org/10.48550/arXiv.2109.04463</pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+           </td>
+       </tr>
+       <tr>
+           <td><strong>Data Source</strong></td>
+           <td><a href="https://dandiarchive.org/dandiset/000140">https://dandiarchive.org/dandiset/000140</a></td>
+       </tr>
+       <tr>
+           <td><strong>License</strong></td>
+           <td><a href="https://spdx.org/licenses/CC-BY-4.0.html">Creative Commons Attribution 4.0 International</a></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-user"></i>Subjects</th>
+       </tr>
+       <tr>
+           <td><strong>Number of subjects</strong></td>
+           <td>1</td>
+       </tr>
+       <tr>
+           <td><strong>Species</strong></td>
+           <td>Rhesus Macaque, Macaca mulatta</td>
+       </tr>
+        <tr>
+           <td><strong>Number of recordings</strong></td>
+           <td>1</td>
+       </tr>
+       <tr>
+           <td><strong>Total recording time</strong></td>
+           <td>4.8 minutes</td>
+       </tr>
+       <tr>
+           <td><strong>Distribution of recording lengths (in minutes)</strong></td>
+           <td><div><img src="../_static/pei_pandarinath_nlb_2021_recording_lengths_histogram.svg" alt="Histogram showing distribution of recording lengths"></div></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-brain"></i> Neural Data</th>
+       </tr>
+       <tr>
+           <td><strong>Neural Modality</strong></td>
+           <td>EPhys, spiking</td>
+       </tr>
+       <tr>
+           <td><strong>Device</strong></td>
+           <td>Utah Array</td>
+       </tr>
+       <tr>
+           <td><strong>Total number of units</strong></td>
+           <td>142</td>
+       </tr>
+        <tr>
+           <td><strong>Distribution of number of units per recording</strong></td>
+           <td><div><img src="../_static/pei_pandarinath_nlb_2021_num_units_histogram.svg" alt="Histogram showing distribution of number of units"></div></td>
+       </tr>
+       <tr>
+           <td><strong>Total number of spikes</strong></td>
+           <td>131.67K</td>
+       </tr>
+       <tr>
+           <td><strong>Brain regions</strong></td>
+           <td>M1</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.spikes</span><span class="code-tag">data.units</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral Data</th>
+       </tr>
+        <tr>
+           <td><strong>Description</strong></td>
+           <td>The experimental task was a center-out reaching task with obstructing barriers forming a maze, resulting in a variety of straight and curved reaches.</td>
+       </tr>
+       <tr>
+           <td><strong>Task</strong></td>
+           <td>Delayed reaching task in a maze</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.cursor.pos</span><span class="code-tag">data.cursor.vel</span><span class="code-tag">data.cursor.acc</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
+       </tr>
+       <tr>
+           <td><strong>Raw data size</strong></td>
+           <td>688 KB</td>
+       </tr>
+       <tr>
+           <td><strong>Processed data size</strong></td>
+           <td>22 MB</td>
+       </tr>
+   </table>
+   </div>
+
+perich_miller_population_2018
+------------------------------
+
+**Downloading data using brainsets cli** ::
+
+
+    brainsets prepare perich_miller_population_2018
+
+
+**Brainset Card**
+
+.. raw:: html
+
+  <div class="brainset-card">
+   <table>
+       <colgroup>
+           <col style="width: 30%">
+           <col style="width: 70%">
+       </colgroup>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-circle-info"></i>Data Source</th>
+       </tr>
+       <tr>
+           <td><strong>Publication(s)</strong></td>
+           <td>
+               <div>
+                 <a href="https://doi.org/10.48324/dandi.000688/0.250122.1735">10.48324/dandi.000688/0.250122.1735</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="10.48324/dandi.000688/0.250122.1735">Cite</button>
+                   <div class="citation-popup" id="popup-10.48324/dandi.000688/0.250122.1735" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@dataset{Perich2025,
+    author = {Perich, Matthew G. and Miller, Lee E. and Azabou, Mehdi and Dyer, Eva L.},
+    title = {Long-term recordings of motor and premotor cortical spiking activity during reaching in monkeys},
+    year = {2025},
+    publisher = {DANDI Archive},
+    doi = {10.48324/dandi.000688/0.250122.1735}
+    }</pre>
+                            <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                     <div class="citation-section">
+                       <h4>APA Style</h4>
+                       <div class="citation-content">
+                         <pre>Perich, M. G., Miller, L. E., Azabou, M., & Dyer, E. L. (2025). Long-term recordings of motor and premotor cortical spiking activity during reaching in monkeys [Data set]. DANDI Archive. https://doi.org/10.48324/dandi.000688/0.250122.1735</pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+               <div>
+                 <a href="https://doi.org/10.1016/j.neuron.2018.09.030">10.1016/j.neuron.2018.09.030</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="10.1016/j.neuron.2018.09.030">Cite</button>
+                   <div class="citation-popup" id="popup-10.1016/j.neuron.2018.09.030" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@article{PERICH2018964,
+    title = {A Neural Population Mechanism for Rapid Learning},
+    journal = {Neuron},
+    volume = {100},
+    number = {4},
+    pages = {964-976.e7},
+    year = {2018},
+    issn = {0896-6273},
+    doi = {https://doi.org/10.1016/j.neuron.2018.09.030},
+    url = {https://www.sciencedirect.com/science/article/pii/S0896627318308328},
+    author = {Matthew G. Perich and Juan A. Gallego and Lee E. Miller}
+    }
+    </pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                     <div class="citation-section">
+                       <h4>APA Style</h4>
+                       <div class="citation-content">
+                         <pre>Perich, M. G., Gallego, J. A., & Miller, L. E. (2018). A Neural Population Mechanism for Rapid Learning. Neuron, 100(4), 964-976.e7. https://doi.org/10.1016/j.neuron.2018.09.030</pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+           </td>
+       </tr>
+       <tr>
+           <td><strong>Data Source</strong></td>
+           <td><a href="https://dandiarchive.org/dandiset/000688">https://dandiarchive.org/dandiset/000688</a></td>
+       </tr>
+       <tr>
+           <td><strong>License</strong></td>
+           <td><a href="https://spdx.org/licenses/CC-BY-4.0.html">Creative Commons Attribution 4.0 International</a></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-user"></i>Subjects</th>
+       </tr>
+       <tr>
+           <td><strong>Number of subjects</strong></td>
+           <td>4</td>
+       </tr>
+       <tr>
+           <td><strong>Species</strong></td>
+           <td>Rhesus Macaque, Macaca mulatta</td>
+       </tr>
+        <tr>
+           <td><strong>Number of recordings</strong></td>
+           <td>111</td>
+       </tr>
+       <tr>
+           <td><strong>Total recording time</strong></td>
+           <td>43.0 hours</td>
+       </tr>
+       <tr>
+           <td><strong>Distribution of recording lengths (in minutes)</strong></td>
+           <td><div><img src="../_static/perich_miller_population_2018_recording_lengths_histogram.svg" alt="Histogram showing distribution of recording lengths"></div></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-brain"></i> Neural Data</th>
+       </tr>
+       <tr>
+           <td><strong>Neural Modality</strong></td>
+           <td>EPhys, spiking</td>
+       </tr>
+       <tr>
+           <td><strong>Device</strong></td>
+           <td>Utah Array</td>
+       </tr>
+       <tr>
+           <td><strong>Total number of units</strong></td>
+           <td>10,410</td>
+       </tr>
+        <tr>
+           <td><strong>Distribution of number of units per recording</strong></td>
+           <td><div><img src="../_static/perich_miller_population_2018_num_units_histogram.svg" alt="Histogram showing distribution of number of units"></div></td>
+       </tr>
+       <tr>
+           <td><strong>Total number of spikes</strong></td>
+           <td>111.39M</td>
+       </tr>
+       <tr>
+           <td><strong>Brain regions</strong></td>
+           <td>M1, PMd</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.spikes</span><span class="code-tag">data.units</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral Data</th>
+       </tr>
+        <tr>
+           <td><strong>Description</strong></td>
+           <td>The monkeys were trained to move a cursor from a central target to one of eight peripheral targets arranged in a circle. The data includes both successful and unsuccessful trials, with different trial outcomes coded as reward (R), abort (A), fail (F), or incomplete (I).</td>
+       </tr>
+       <tr>
+           <td><strong>Task</strong></td>
+           <td>Center-out reaching, Random-target reaching</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.cursor.pos</span><span class="code-tag">data.cursor.vel</span><span class="code-tag">data.cursor.acc</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
+       </tr>
+       <tr>
+           <td><strong>Raw data size</strong></td>
+           <td>13 GB</td>
+       </tr>
+       <tr>
+           <td><strong>Processed data size</strong></td>
+           <td>2.9 GB</td>
+       </tr>
+   </table>
+   </div>
+
+
+vollan_moser_alternating_2025
+-----------------------------
+
+**Downloading data using brainsets cli** ::
+
+
+    brainsets prepare vollan_moser_alternating_2025
+
+
+**Brainset Card**
+
+.. raw:: html
+
+  <div class="brainset-card">
+   <table>
+       <colgroup>
+           <col style="width: 30%">
+           <col style="width: 70%">
+       </colgroup>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-circle-info"></i>Data Source</th>
+       </tr>
+       <tr>
+           <td><strong>Publication(s)</strong></td>
+           <td>
+               <div>
+                 <a href="https://doi.org/10.25493/R5FR-EDG">10.25493/R5FR-EDG</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="10.25493/R5FR-EDG">Cite</button>
+                   <div class="citation-popup" id="popup-10.25493/R5FR-EDG" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@article{vollan2025theta,
+    title={Left-right-alternating theta sweeps in the entorhinal-hippocampal spatial map},
+    author={Vollan, Abraham Z and Gardner, Richard J and Moser, May-Britt and Moser, Edvard I},
+    year={2025},
+    }
+    </pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+           </td>
+       </tr>
+       <tr>
+           <td><strong>Data Source</strong></td>
+           <td><a href="https://search.kg.ebrains.eu/instances/4080b78d-edc5-4ae4-8144-7f6de79930ea">EBRAINS Knowledge Graph</a></td>
+       </tr>
+       <tr>
+           <td><strong>License</strong></td>
+           <td><a href="https://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International</a></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-user"></i>Subjects</th>
+       </tr>
+       <tr>
+           <td><strong>Number of subjects</strong></td>
+           <td>19</td>
+       </tr>
+       <tr>
+           <td><strong>Species</strong></td>
+           <td>Rattus norvegicus</td>
+       </tr>
+        <tr>
+           <td><strong>Number of recordings</strong></td>
+           <td>51 (31 Open Field, 7 Linear Track, 2 Wagon Wheel, 1 M-Maze, 1 Novel Open Field, 9 Sleep)</td>
+       </tr>
+       <tr>
+           <td><strong>Total recording time</strong></td>
+           <td>63.3 hours (34.9 hours after speed filtering)</td>
+       </tr>
+       <tr>
+           <td><strong>Average recording length</strong></td>
+           <td>41.1 min</td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-brain"></i> Neural Data</th>
+       </tr>
+       <tr>
+           <td><strong>Neural Modality</strong></td>
+           <td>EPhys, spiking</td>
+       </tr>
+       <tr>
+           <td><strong>Device</strong></td>
+           <td>Neuropixels</td>
+       </tr>
+       <tr>
+           <td><strong>Total number of units</strong></td>
+           <td>45,821</td>
+       </tr>
+       <tr>
+           <td><strong>Average units per recording</strong></td>
+           <td>898.5</td>
+       </tr>
+       <tr>
+           <td><strong>Total number of spikes</strong></td>
+           <td>215.8M</td>
+       </tr>
+       <tr>
+           <td><strong>Brain regions</strong></td>
+           <td>MEC, Hippocampus</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.spikes</span><span class="code-tag">data.units</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral &amp; Model Data</th>
+       </tr>
+        <tr>
+           <td><strong>Description</strong></td>
+           <td>Rats performing spatial navigation tasks in various arena types. All timeseries on the shared 10 ms clock are stored in a single flat <code>data.samples</code> object. This includes observed tracking (head position, direction, speed, theta phase) and LMT model outputs (decoded internal direction and position per neural population). A separate <code>data.theta_chunks</code> stores per-theta-cycle decoded variables. Sleep sessions contain only SWS/REM epoch spikes &mdash; none of the navigation fields (<code>samples</code>, <code>theta_chunks</code>, <code>probe_channels</code>) are present and they should be treated as structurally independent.</td>
+       </tr>
+       <tr>
+           <td><strong>Task</strong></td>
+           <td>Open Field, Linear Track, M-Maze, Wagon Wheel, Sleep</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields (navigation)</strong></td>
+           <td><span class="code-tag">data.samples.x</span><span class="code-tag">data.samples.y</span><span class="code-tag">data.samples.z</span><span class="code-tag">data.samples.hd</span><span class="code-tag">data.samples.speed</span><span class="code-tag">data.samples.theta</span><span class="code-tag">data.samples.id</span><span class="code-tag">data.samples.lmt_{pop}_theta</span><span class="code-tag">data.samples.lmt_{pop}_hd</span><span class="code-tag">data.samples.lmt_{pop}_id</span><span class="code-tag">data.samples.lmt_{pop}_pos_x</span><span class="code-tag">data.samples.lmt_{pop}_pos_y</span><span class="code-tag">data.theta_chunks</span><span class="code-tag">data.probe_channels</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
+       </tr>
+       <tr>
+           <td><strong>Raw data size</strong></td>
+           <td>16.4 GB</td>
+       </tr>
+       <tr>
+           <td><strong>Processed data size</strong></td>
+           <td>4.5 GB</td>
+       </tr>
+        <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-triangle-exclamation"></i>Notes</th>
+       </tr>
+       <tr>
+           <td><strong>Warning</strong></td>
+           <td>Navigation data is not contiguous. All timeseries have been speed-filtered to discard samples when the animal's locomotion speed was below 5 cm/s, resulting in gaps identified in <code>domain</code>. Some sessions have empty <code>id</code> and <code>theta</code> fields (filled with NaN) where the LMT model was not fitted. LMT population fields (<code>lmt_{pop}_*</code>) are NaN-padded when a population is absent for a given animal. Sleep sessions have a fundamentally different structure &mdash; they contain only spikes and unit IDs within SWS/REM epochs.</td>
+       </tr>
+   </table>
+   </div>

@@ -1,0 +1,71 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+### Added
+- Added `config show`/`config set` subcommands and default dataset `root` to configured `processed_dir` ([#122](https://github.com/neuro-galaxy/brainsets/pull/122)).
+- Added normalization schemes for sex, age, and species in `SubjectDescription` ([#78](https://github.com/neuro-galaxy/brainsets/pull/78)).
+- Added generic data extraction helpers in `mne_utils` to handle MNE Raw objects ([#78](https://github.com/neuro-galaxy/brainsets/pull/78)).
+- Enriched `s3_utils` with additional functionalities to get data from public buckets ([#78](https://github.com/neuro-galaxy/brainsets/pull/78)).
+- Added new utility functions to split data into train/valid/test splits intersession, intrassession, and intersubject ([#83](https://github.com/neuro-galaxy/brainsets/pull/83)).
+- Added new `bids_utils` helpers to fetch and group recordings, validate their availability, and load participants .tsv and .json sidecar files for BIDS-compliant datasets ([#107](https://github.com/neuro-galaxy/brainsets/pull/107)).
+- Added shell completion for brainsets CLI tools ([#116](https://github.com/neuro-galaxy/brainsets/pull/116)).
+- Added the `Neuroprobe2025` dataset class and the `neuroprobe_2025` brainset pipeline ([#79](https://github.com/neuro-galaxy/brainsets/pull/79)).
+- Added new brainset `vollan_moser_alternating_2025`, a hippocampus/MEC dataset from the paper [Left–right-alternating theta sweeps in entorhinal–hippocampal maps of space](https://www.nature.com/articles/s41586-024-08527-1). See [#127](https://github.com/neuro-galaxy/brainsets/pull/127).
+
+### Removed
+- Remove `brainsets.utils.dir_utils` (legacy code) ([#120](https://github.com/neuro-galaxy/brainsets/pull/120)).
+- Removed `dandi_utils.extract_metadata_from_nwb` (unused, undocumented function) ([#117](https://github.com/neuro-galaxy/brainsets/pull/117))
+- Removed `brainsets.utils.split_*_epoch` and `generate_train_valid_test_splits` as they were too specific to the Allen VC Ophys pipeline ([#126](https://github.com/neuro-galaxy/brainsets/pull/126))
+- Removed `brainsets.utils.mat_utils` (legacy code) ([#119](https://github.com/neuro-galaxy/brainsets/pull/119))
+
+### Changed
+- Suppress INFO logs from ray when calling `brainsets prepare` ([#70](https://github.com/neuro-galaxy/brainsets/pull/70)).
+- Modified 'Kemp Sleep-EDF 2013' pipeline to use new splitting utilities ([#83](https://github.com/neuro-galaxy/brainsets/pull/83)).
+- Expanded `mne_utils` with robust channel extraction/remapping support and a validated `concatenate_recordings` workflow (gap checks, measurement date handling, and channel consistency checks) ([#107](https://github.com/neuro-galaxy/brainsets/pull/107)).
+- Exposed `--download-only` flag in `brainsets prepare --help` to allow downloading raw data without processing ([#98](https://github.com/neuro-galaxy/brainsets/pull/98)).
+- Updated dandi version to 0.74.0 in pipelines due to deprecation from dandi ([#101](https://github.com/neuro-galaxy/brainsets/pull/101)).
+- `BrainsetPipeline` runner automatically creates `raw_dir` and `processed_dir` ([#125](https://github.com/neuro-galaxy/brainsets/pull/125))
+- `churchland_shenoy_neural_2012` pipeline: corrected session task metadata—the experiment is maze reaching, not center-out reaching (`derived_version` bumped to 2.0.0). ([#131](https://github.com/neuro-galaxy/brainsets/pull/131))
+
+## [0.2.0] - 2025-12-24
+### Added
+- New brainset pipeline: `allen_visual_coding_ophys_2016` ([#16](https://github.com/neuro-galaxy/brainsets/pull/16)).
+- Added `STEREO_EEG` to `RecordingTech` enum ([#36](https://github.com/neuro-galaxy/brainsets/pull/36)).
+- Added `BrainsetPipeline` definition with a `brainset.runner` module to run `BrainsetPipeline` in parallel ([#37](https://github.com/neuro-galaxy/brainsets/pull/37)).
+- Added support for PEP723-style inline metadata blocks to specify Python version and dependencies in a `pipeline.py` file ([#62](https://github.com/neuro-galaxy/brainsets/pull/62)).
+- New brainset pipeline: `kemp_sleep_edf_2013` ([#54](https://github.com/neuro-galaxy/brainsets/pull/54)).
+
+### Changed
+- Fixed issue with "test" session being overwritten in the `perich_miller_population_2018` pipeline ([#25](https://github.com/neuro-galaxy/brainsets/pull/25)).
+- Updated all existing pipelines with `BrainsetPipeline` and dependencies in metadata block ([#37](https://github.com/neuro-galaxy/brainsets/pull/37) and [#62](https://github.com/neuro-galaxy/brainsets/pull/62)).
+
+
+## [0.1.3] - 2025-10-27
+### Added
+- Added support for python 3.12 and 3.13 ([#14](https://github.com/neuro-galaxy/brainsets/pull/30)).
+
+## [0.1.2] - 2025-03-27
+### Added
+- Added package version to `BrainsetDescription`.
+- Added pipeline for allen_visual_coding_ophys_2016 ([#4](https://github.com/neuro-galaxy/brainsets/pull/4)).
+- Added split functions to split variable number of epochs in train/validation/test ([#4](https://github.com/neuro-galaxy/brainsets/pull/4)).
+- Added allen-related taxonomy. ([#4](https://github.com/neuro-galaxy/brainsets/pull/4)).
+- Added unit tests for all enums to check for duplicates. ([#8](https://github.com/neuro-galaxy/brainsets/pull/8)).
+
+### Removed
+- Removed the dataset_builder class. Validation can be done through other means.
+- Removed multitask_readout. ([#8](https://github.com/neuro-galaxy/brainsets/pull/8))
+
+### Changed
+- Fixed issue in snakemake where checkpoints are global variables  ([#4](https://github.com/neuro-galaxy/brainsets/pull/4)).
+- Renamed `dandiset` to `brainset`.
+- Replaced `sortset` with `device`.
+- Updated snakemake pipeline to process one file at a time.
+- Made tests that require mne to be skipped if mne is not installed.
+
+## [0.1.0] - 2024-06-11
+### Added
+- Initial release of the package.

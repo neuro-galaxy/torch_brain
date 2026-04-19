@@ -1,0 +1,73 @@
+name: Pipeline Testing
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "*" ]
+
+permissions:
+  contents: read
+
+jobs:
+  pipeline-testing:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "0.6.11"
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+
+    - name: Install the project
+      run: uv sync --all-extras
+
+    - name: Download pei_pandarinath_nlb_2021
+      run: |
+        uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets prepare pei_pandarinath_nlb_2021
+
+    - name: Download perich_miller_population_2018
+      run: |
+        uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets prepare perich_miller_population_2018 -s c_20131219_center_out_reaching
+
+    - name: Download allen_visual_coding_ophys_2016
+      run: |
+        uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets prepare allen_visual_coding_ophys_2016 -s 717913184
+
+    - name: Download churchland_shenoy_neural_2012
+      run: |
+        uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets prepare churchland_shenoy_neural_2012 -s jenkins_20090912
+
+    - name: Download flint_slutzky_accurate_2012
+      run: |
+        uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets prepare flint_slutzky_accurate_2012 -s flint_2012_e1
+
+    - name: Download kemp_sleep_edf_2013
+      if: matrix.python-version != '3.9'
+      # scikit-learn>=1.7.2 is not compatible with python3.9
+      run: |
+        uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets prepare kemp_sleep_edf_2013 -s sleep_cassette_SC4002E0-PSG
+
+    - name: Download vollan_moser_alternating_2025 (navigation)
+      run: |
+        uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets prepare vollan_moser_alternating_2025 -s of_24365_2
+
+    - name: Download vollan_moser_alternating_2025 (sleep)
+      run: |
+        uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
+        uv run brainsets prepare vollan_moser_alternating_2025 -s sleep_25691_1
+
