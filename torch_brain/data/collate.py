@@ -356,7 +356,6 @@ def collate(batch):
 __all__ = [
     "collate",
     "chain",
-    "collate",
     "pad",
     "pad8",
     "pad2d",
