@@ -6,7 +6,7 @@ from .random_time_scaling import RandomTimeScaling
 from .unit_dropout import TriangleDistribution, UnitDropout
 from .unit_filter import UnitFilter, UnitFilterById
 
-_classes = [
+__all__ = [
     "Compose",
     "RandomChoice",
     "ConditionalChoice",

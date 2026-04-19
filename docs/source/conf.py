@@ -26,14 +26,14 @@ extensions = [
     "sphinx_copybutton",
 ]
 
-autosummary_generate = []
+autosummary_generate = True
 
 html_theme = "furo"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 templates_path = ["_templates"]
 
-add_module_names = False
+add_module_names = True
 autodoc_member_order = "bysource"
 
 suppress_warnings = ["autodoc.import_object"]
@@ -43,6 +43,7 @@ intersphinx_mapping = {
     "numpy": ("http://docs.scipy.org/doc/numpy", None),
     "h5py": ("http://docs.h5py.org/en/latest/", None),
     "temporaldata": ("https://temporaldata.readthedocs.io/en/latest/", None),
+    "torch": ("https://pytorch.org/docs/stable", None),
 }
 
 myst_enable_extensions = [
@@ -67,16 +68,18 @@ _API_MODULES = [
     ("torch_brain.data.collate", "torch_brain.data.collate", []),
     ("torch_brain.data.sampler", "torch_brain.data.sampler", []),
     ("torch_brain.data.dataset", "torch_brain.data.dataset", []),
+    ("torch_brain.transforms", "torch_brain.transforms", []),
     ("torch_brain.models", "torch_brain.models", []),
+    ("torch_brain.nn", "torch_brain.nn", []),
+    ("torch_brain.registry", "torch_brain.registry", []),
 ]
 
 
-def _build_api_rst(app):
+def _build_api_rst():
     import importlib
     import pathlib
 
-    src = pathlib.Path(app.srcdir)
-    generated = src / "generated"
+    generated = pathlib.Path(__file__).parent / "generated"
     generated.mkdir(exist_ok=True)
 
     index = [
@@ -90,11 +93,8 @@ def _build_api_rst(app):
     for mod_name, _, _ in _API_MODULES:
         index.append(f"   {mod_name}")
     generated.joinpath("api.rst").write_text("\n".join(index) + "\n")
-    autosummary_generate.append("generated/api")
 
     for mod_name, title, exclude in _API_MODULES:
-        autosummary_generate.append(f"generated/{mod_name}")
-
         mod = importlib.import_module(mod_name)
         members = [m for m in (getattr(mod, "__all__", []) or []) if m not in exclude]
         page = [
@@ -113,9 +113,8 @@ def _build_api_rst(app):
             "",
         ]
         for m in members:
-            page.append(f"   ~{mod_name}.{m}")
+            page.append(f"   {m}")
         generated.joinpath(f"{mod_name}.rst").write_text("\n".join(page) + "\n")
 
 
-def setup(app):
-    app.connect("builder-inited", _build_api_rst, priority=100)
+_build_api_rst()

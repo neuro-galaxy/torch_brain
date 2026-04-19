@@ -4,6 +4,14 @@ from typing import Dict, Tuple, Optional, Any, Callable
 from pydantic.dataclasses import dataclass
 import torch_brain
 
+__all__ = [
+    "DataType",
+    "ModalitySpec",
+    "register_modality",
+    "get_modality_by_id",
+    "MODALITY_REGISTRY",
+]
+
 
 class DataType(Enum):
     """Enum defining the possible data types.
@@ -41,10 +49,6 @@ class ModalitySpec:
     value_key: str  # can be overwritten
     loss_fn: Callable  # can be overwritten
 
-
-_classes = ["DataType", "ModalitySpec"]
-_functions = ["register_modality", "get_modality_by_id"]
-_constants = ["MODALITY_REGISTRY"]
 
 MODALITY_REGISTRY: Dict[str, ModalitySpec] = {}
 _ID_TO_MODALITY: Dict[int, str] = {}
