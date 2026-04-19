@@ -46,7 +46,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/vinamarora8/torchfoo",
+            "url": "https://github.com/neuro-galaxy/torch_brain",
             "icon": "fa-brands fa-github",
         },
         {
@@ -56,7 +56,7 @@ html_theme_options = {
         },
         {
             "name": "PyPI",
-            "url": "https://pypi.org/project/torchfoo/",
+            "url": "https://pypi.org/project/torch_brain/",
             "icon": "fa-brands fa-python",
         },
     ],
