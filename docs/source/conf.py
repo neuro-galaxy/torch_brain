@@ -106,6 +106,8 @@ def add_js_css_files(app, pagename, templatename, context, doctree):
         # Internal: API search initialization and styling
         app.add_js_file("scripts/api-search.js")
         app.add_css_file("styles/api-search.css")
+    elif pagename.startswith("generated/api"):
+        app.add_css_file("styles/api.css")
 
 
 def _process_bases(app, name, obj, options, bases):

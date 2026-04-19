@@ -66,6 +66,7 @@ API_MODS = [
     "torch_brain.nn",
     "torch_brain.models",
     "torch_brain.registry",
+    "torch_brain.utils",
 ]
 
 API_REFERENCE = {m: import_module(m).__api_ref__ for m in API_MODS}
