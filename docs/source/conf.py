@@ -36,22 +36,32 @@ extensions = [
 
 autosummary_generate = True
 
-# Compile scss files into css files using sphinxcontrib-sass
-sass_src_dir, sass_out_dir = "scss", "generated/css/styles"
-sass_targets = {
-    f"{file.stem}.scss": f"{file.stem}.css"
-    for file in Path(sass_src_dir).glob("*.scss")
-}
-Path("generated/css/").mkdir(exist_ok=True, parents=True)
-
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
     "logo": {
-        "text": "torch_brain docs",
+        "text": "TorchBrain",
         "image_light": "_static/torch_brain_logo.png",
         "image_dark": "_static/torch_brain_logo.png",
-    }
+    },
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/vinamarora8/torchfoo",
+            "icon": "fa-brands fa-github",
+        },
+        {
+            "name": "Discord",
+            "url": "https://discord.gg/kQNKA6B8ZC",
+            "icon": "fa-brands fa-discord",
+        },
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/torchfoo/",
+            "icon": "fa-brands fa-python",
+        },
+    ],
 }
+
 html_static_path = ["_static", "generated/css", "js"]
 html_css_files = ["custom.css"]
 templates_path = ["_templates"]
@@ -82,6 +92,14 @@ bokeh_plot_pyfile_include_dirs = [
 html_copy_source = False
 html_show_sourcelink = True
 html_favicon = "_static/torch_brain_logo.png"
+
+# Compile scss files into css files using sphinxcontrib-sass
+sass_src_dir, sass_out_dir = "scss", "generated/css/styles"
+sass_targets = {
+    f"{file.stem}.scss": f"{file.stem}.css"
+    for file in Path(sass_src_dir).glob("*.scss")
+}
+Path("generated/css/").mkdir(exist_ok=True, parents=True)
 
 
 from api_reference import build_api_rst

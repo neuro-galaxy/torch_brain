@@ -1,7 +1,7 @@
 .. torch_brain documentation master file
 
-**torch_brain**
-============================
+TorchBrain documentation
+========================
 
 .. image:: https://img.shields.io/pypi/v/torch_brain?color=blue&logo=pypi&logoColor=white
    :target: https://pypi.org/project/torch_brain/
@@ -10,10 +10,6 @@
 .. image:: https://img.shields.io/badge/GitHub-Repository-black?logo=github&logoColor=white
    :target: https://github.com/neuro-galaxy/torch_brain
    :alt: GitHub Repository
-
-.. image:: https://img.shields.io/badge/GitHub-Issues-black?logo=github&logoColor=white
-   :target: https://github.com/neuro-galaxy/torch_brain/issues
-   :alt: GitHub Issues
 
 .. image:: https://img.shields.io/discord/1338561153089146962?label=Discord&logo=discord
    :target: https://discord.gg/kQNKA6B8ZC
