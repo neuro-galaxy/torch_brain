@@ -2,6 +2,7 @@ import datetime
 import os
 import sys
 from pathlib import Path
+from sphinx.util.typing import restify
 
 import torch_brain
 
@@ -105,6 +106,13 @@ def add_js_css_files(app, pagename, templatename, context, doctree):
     #     app.add_css_file("styles/api.css")
 
 
+def _process_bases(app, name, obj, options, bases):
+    # This shows torch.utils.data.dataset.Dataset as the base
+    # without this, it would show up as "Dataset"
+    bases[:] = [restify(b, "fully-qualified-except-typing") for b in obj.__bases__]
+
+
 def setup(app):
+    app.connect("autodoc-process-bases", _process_bases)
     # triggered just before the HTML for an individual page is created
     app.connect("html-page-context", add_js_css_files)
