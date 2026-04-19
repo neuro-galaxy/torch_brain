@@ -1,5 +1,3 @@
-.. torch_brain documentation master file
-
 TorchBrain documentation
 ========================
 
