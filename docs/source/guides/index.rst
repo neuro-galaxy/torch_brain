@@ -5,4 +5,4 @@ User Guides
    :maxdepth: 1
 
    installation
-   sampler
+   sampling/index
