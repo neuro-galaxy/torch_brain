@@ -17,7 +17,7 @@
 .. autoclass:: {{ objname }}
    :members:
    :show-inheritance:
-   :special-members: __call__
+   :special-members: __getitem__
 
 {%- else -%}
 

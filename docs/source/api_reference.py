@@ -80,34 +80,30 @@ def build_api_rst():
     generated.mkdir(exist_ok=True)
     (generated / "api").mkdir(exist_ok=True)
 
-    # rst_templates format:
-    # (template_name, target_name, kwargs for jinja)
-    rst_templates: list[tuple[str, str, dict]] = [
-        (
-            "api/index",
-            "api/index",
-            {
-                "API_REFERENCE": API_REFERENCE.items(),
-            },
-        ),
+    # rst_templates
+    # kwargs: args to pass to jinja
+    rst_templates: list[dict] = [
+        {
+            "template_path": "api/index.rst.template",
+            "target_path": "generated/api/index.rst",
+            "kwargs": {"API_REFERENCE": API_REFERENCE.items()},
+        }
     ]
 
     for module in API_REFERENCE:
         rst_templates.append(
-            (
-                "api/module",
-                f"api/{module}",
-                {"module": module, "module_info": API_REFERENCE[module]},
-            )
+            {
+                "template_path": "api/module.rst.template",
+                "target_path": f"generated/api/{module}.rst",
+                "kwargs": {"module": module, "module_info": API_REFERENCE[module]},
+            }
         )
 
-    for rst_template_name, rst_target_name, kwargs in rst_templates:
+    for template in rst_templates:
         # Read the corresponding template file into jinja2
-        template_path = Path(".") / f"{rst_template_name}.rst.template"
-        with (template_path).open("r", encoding="utf-8") as f:
+        with open(template["template_path"], "r") as f:
             t = jinja2.Template(f.read())
 
         # Render the template and write to the target
-        out_path = generated / f"{rst_target_name}.rst"
-        with (out_path).open("w", encoding="utf-8") as f:
-            f.write(t.render(**kwargs))
+        with open(template["target_path"], "w") as f:
+            f.write(t.render(**template["kwargs"]))
