@@ -4,8 +4,10 @@
 API Reference
 =============
 
-Modules
--------
+Look through specific module or search through
+the entire list of APIs.
+
+**Modules**
 
 .. toctree::
   :maxdepth: 1
@@ -14,8 +16,7 @@ Modules
   {{ module }}
 {%- endfor %}
 
-All APIs
---------
+**All APIs**
 
 .. list-table::
   :header-rows: 1
