@@ -490,7 +490,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         self.epoch = epoch
 
 
-_classes = [
+__all__ = [
     "RandomFixedWindowSampler",
     "SequentialFixedWindowSampler",
     "TrialSampler",
