@@ -1,0 +1,20 @@
+// Styling the object description cells in the table
+div.apisearch-desc {
+  p {
+    margin-bottom: 0;
+  }
+
+  div.caption > p {
+    a,
+    code {
+      color: var(--color-foreground-muted);
+    }
+
+    code {
+      padding: 0;
+      font-size: 0.7rem;
+      font-weight: var(--font-size--small--2);
+      background-color: transparent;
+    }
+  }
+}

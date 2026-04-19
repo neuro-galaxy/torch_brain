@@ -8,3 +8,4 @@ sphinx-tabs
 bokeh==3.4.3
 sphinx-design
 sphinx-copybutton
+sphinxcontrib-sass
