@@ -5,7 +5,7 @@ Installation
 
 To install the package, run::
 
-    pip install pytorch_brain
+    pip install ytorch_brain
 
 To install the package from source, run::
 
