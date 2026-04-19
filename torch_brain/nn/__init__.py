@@ -31,3 +31,42 @@ __all__ = [
     "MultitaskReadout",
     "prepare_for_multitask_readout",
 ]
+
+__api_ref__ = {
+    "description": None,
+    "sections": [
+        {
+            "title": "Embedding modules",
+            "autosummary": [
+                "Embedding",
+                "InfiniteVocabEmbedding",
+                "RotaryTimeEmbedding",
+                "SinusoidalTimeEmbedding",
+            ],
+        },
+        {
+            "title": "Transformer related modules",
+            "autosummary": [
+                "FeedForward",
+                "RotaryCrossAttention",
+                "RotarySelfAttention",
+            ],
+        },
+        {
+            "title": "Readout",
+            "autosummary": [
+                "MultitaskReadout",
+                "prepare_for_multitask_readout",
+            ],
+        },
+        {
+            "title": "Losses",
+            "autosummary": [
+                "Loss",
+                "MSELoss",
+                "CrossEntropyLoss",
+                "MallowDistanceLoss",
+            ],
+        },
+    ],
+}

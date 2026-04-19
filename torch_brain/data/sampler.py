@@ -497,3 +497,8 @@ __all__ = [
     "DistributedEvaluationSamplerWrapper",
     "DistributedStitchingFixedWindowSampler",
 ]
+
+__api_ref__ = {
+    "description": "See :ref:`sampling` for further details.",
+    "sections": [{"autosummary": __all__}],
+}

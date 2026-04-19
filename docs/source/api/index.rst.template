@@ -1,0 +1,14 @@
+:html_theme.sidebar_secondary.remove:
+
+.. _api_ref:
+
+=============
+API Reference
+=============
+
+.. toctree::
+  :maxdepth: 1
+
+{% for module, _ in API_REFERENCE %}
+  {{ module }}
+{%- endfor %}

@@ -1,4 +1,5 @@
-"""
+"""Base classes for creating PyTorch datasets
+
 Module Overview
 ---------------
 
@@ -6,7 +7,7 @@ This module contains base classes to ease creation of PyTorch datasets for your 
 
 - The :class:`Dataset` class is inherited by all datasets. These handle opening and accessing single datasets.
 - The :class:`NestedDataset` class is for opening and accessing multiple datasets through a unified interface.
-- :ref:`Mixin <Mixins>` classes are provided to add modality-specific functionalities to the Dataset classes.
+- :ref:`Mixin <dataset_ref-mixins>` classes are provided to add modality-specific functionalities to the Dataset classes.
 
 
 Dataset
@@ -49,10 +50,27 @@ __all__ = [
     "CalciumImagingDatasetMixin",
     "MultiChannelDatasetMixin",
 ]
-# _dataset_classes = ["Dataset", "DatasetIndex"]
-# _nested_classes = ["NestedDataset", "NestedSpikingDataset"]
-# _mixin_classes = [
-#     "SpikingDatasetMixin",
-#     "CalciumImagingDatasetMixin",
-#     "MultiChannelDatasetMixin",
-# ]
+
+__api_ref__ = {
+    "description": None,
+    "sections": [
+        {
+            "title": "Base Classes",
+            "description": None,
+            "autosummary": [
+                "Dataset",
+                "DatasetIndex",
+                "NestedDataset",
+            ],
+        },
+        {
+            "title": "Mixins",
+            "description": None,
+            "autosummary": [
+                "SpikingDatasetMixin",
+                "CalciumImagingDatasetMixin",
+                "MultiChannelDatasetMixin",
+            ],
+        },
+    ],
+}

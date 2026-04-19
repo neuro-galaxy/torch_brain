@@ -1,17 +1,74 @@
+from importlib import import_module
+from pathlib import Path
+import jinja2
+
 import torch_brain
+import torch_brain.dataset
+import torch_brain.nn
+import torch_brain.registry
+import torch_brain.data.collate
+
+"""
+CONFIGURING API_REFERENCE
+=========================
+
+API_REFERENCE maps each module name to the modules's __api_ref__. Each module's
+__api_ref__ consists of the following components:
+
+description (required, `None` if not needed)
+    The additional description for the module to be placed under the module
+    docstring, before the sections start.
+sections (required)
+    A list of sections, each of which consists of:
+    - title (required, `None` if not needed): the section title, commonly it should
+      not be `None` except for the first section of a module,
+    - description (optional): the optional additional description for the section,
+    - autosummary (required): an autosummary block, assuming current module is the
+      current module name.
+
+Essentially, the rendered page would look like the following:
+
+|---------------------------------------------------------------------------------|
+|     {{ module_name }}                                                           |
+|     =================                                                           |
+|     {{ module_docstring }}                                                      |
+|     {{ description }}                                                           |
+|                                                                                 |
+|     {{ section_title_1 }}   <-------------- Optional if one wants the first     |
+|     ---------------------                   section to directly follow          |
+|     {{ section_description_1 }}             without a second-level heading.     |
+|     {{ section_autosummary_1 }}                                                 |
+|                                                                                 |
+|     {{ section_title_2 }}                                                       |
+|     ---------------------                                                       |
+|     {{ section_description_2 }}                                                 |
+|     {{ section_autosummary_2 }}                                                 |
+|                                                                                 |
+|     More sections...                                                            |
+|---------------------------------------------------------------------------------|
+
+Hooks will be automatically generated for each module and each section. For a module,
+e.g., `torch_brain.dataset`, the hook would be `dataset_ref`; for a
+section, e.g., "Mixins" under `torch_brain.dataset`, the hook would be
+`dataset_ref-mixins`. However, note that a better way is to refer using the :mod: directive,
+e.g., :mod:`torch_brain.dataset` for the module. Only in case that a section
+is not a particular submodule does the hook become useful.
+"""
+
 
 # Modules to include in API reference.
 # Each entry: (module_dotted_name, section_title, members_to_exclude)
-_API_MODULES = [
-    ("torch_brain.dataset", "torch_brain.dataset", []),
-    ("torch_brain.data.collate", "torch_brain.data.collate", []),
-    ("torch_brain.data.sampler", "torch_brain.data.sampler", []),
-    ("torch_brain.data.dataset", "torch_brain.data.dataset", []),
-    ("torch_brain.transforms", "torch_brain.transforms", []),
-    ("torch_brain.models", "torch_brain.models", []),
-    ("torch_brain.nn", "torch_brain.nn", []),
-    ("torch_brain.registry", "torch_brain.registry", []),
+API_MODS = [
+    "torch_brain.dataset",
+    "torch_brain.data",
+    "torch_brain.data.sampler",
+    "torch_brain.transforms",
+    "torch_brain.nn",
+    "torch_brain.models",
+    "torch_brain.registry",
 ]
+
+API_REFERENCE = {m: import_module(m).__api_ref__ for m in API_MODS}
 
 
 def build_api_rst():
@@ -20,37 +77,36 @@ def build_api_rst():
 
     generated = pathlib.Path(__file__).parent / "generated"
     generated.mkdir(exist_ok=True)
+    (generated / "api").mkdir(exist_ok=True)
 
-    index = [
-        "API Reference",
-        "=============",
-        "",
-        ".. toctree::",
-        "   :maxdepth: 1",
-        "",
+    # rst_templates format:
+    # (template_name, target_name, kwargs for jinja)
+    rst_templates: list[tuple[str, str, dict]] = [
+        (
+            "api/index",
+            "api/index",
+            {
+                "API_REFERENCE": API_REFERENCE.items(),
+            },
+        ),
     ]
-    for mod_name, _, _ in _API_MODULES:
-        index.append(f"   {mod_name}")
-    generated.joinpath("api.rst").write_text("\n".join(index) + "\n")
 
-    for mod_name, title, exclude in _API_MODULES:
-        mod = importlib.import_module(mod_name)
-        members = [m for m in (getattr(mod, "__all__", []) or []) if m not in exclude]
-        page = [
-            title,
-            "=" * len(title),
-            "",
-            f".. automodule:: {mod_name}",
-            "   :no-members:",
-            "",
-            "Module Reference",
-            "----------------",
-            "",
-            ".. autosummary::",
-            "   :toctree: .",
-            "   :nosignatures:",
-            "",
-        ]
-        for m in members:
-            page.append(f"   {m}")
-        generated.joinpath(f"{mod_name}.rst").write_text("\n".join(page) + "\n")
+    for module in API_REFERENCE:
+        rst_templates.append(
+            (
+                "api/module",
+                f"api/{module}",
+                {"module": module, "module_info": API_REFERENCE[module]},
+            )
+        )
+
+    for rst_template_name, rst_target_name, kwargs in rst_templates:
+        # Read the corresponding template file into jinja2
+        template_path = Path(".") / f"{rst_template_name}.rst.template"
+        with (template_path).open("r", encoding="utf-8") as f:
+            t = jinja2.Template(f.read())
+
+        # Render the template and write to the target
+        out_path = generated / f"{rst_target_name}.rst"
+        with (out_path).open("w", encoding="utf-8") as f:
+            f.write(t.render(**kwargs))

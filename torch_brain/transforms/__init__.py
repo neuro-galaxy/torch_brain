@@ -19,3 +19,12 @@ __all__ = [
     "UnitFilter",
     "UnitFilterById",
 ]
+
+__api_ref__ = {
+    "description": None,
+    "sections": [
+        {
+            "autosummary": __all__,
+        }
+    ],
+}

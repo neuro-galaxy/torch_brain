@@ -12,6 +12,11 @@ __all__ = [
     "MODALITY_REGISTRY",
 ]
 
+__api_ref__ = {
+    "description": None,
+    "sections": [{"autosummary": __all__}],
+}
+
 
 class DataType(Enum):
     """Enum defining the possible data types.

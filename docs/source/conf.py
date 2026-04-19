@@ -5,6 +5,7 @@ import sys
 import torch_brain
 
 sys.path.insert(0, os.path.abspath("."))
+sys.path.insert(0, os.path.abspath("sphinxext"))
 
 
 author = "neuro-galaxy Team"
@@ -25,6 +26,8 @@ extensions = [
     "sphinx_inline_tabs",
     "bokeh.sphinxext.bokeh_plot",
     "sphinx_copybutton",
+    # see sphinxext/
+    "autoshortsummary",
 ]
 
 autosummary_generate = True

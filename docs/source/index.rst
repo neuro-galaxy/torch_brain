@@ -35,7 +35,7 @@ If you encounter any bugs or have feature requests, please submit them to our
 .. toctree::
    :maxdepth: 2
 
-   generated/api
+   generated/api/index
 
 
 .. .. toctree::
