@@ -20,6 +20,7 @@ __all__ = [
     "UnitFilterById",
 ]
 
+# see docs/source/api_reference.py
 __api_ref__ = {
     "description": None,
     "sections": [
