@@ -1,0 +1,33 @@
+name: dandi Testing
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "*" ]
+
+permissions:
+  contents: read
+
+jobs:
+  dandi-testing:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.9"]
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m pip install --no-user --upgrade pip
+        pip install -e ".[dandi]"
+    - name: Download sample dataset
+      run: |
+        brainsets config --raw data/raw --processed data/processed
+        brainsets prepare pei_pandarinath_nlb_2021

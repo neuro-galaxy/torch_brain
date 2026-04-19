@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=60.2.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brainsets"
+version = "0.1.0"
+description = "A package for processing neural datasets"
+readme = "README.md"
+authors = [
+    {name = "Mehdi Azabou", email = "mehdiazabou@gmail.com"},
+]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License", 
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "temporaldata",
+    "scipy~=1.10.1",
+    "pynwb~=2.2.0",
+    "setuptools~=60.2.0", 
+    "numpy~=1.23.5",
+    "pandas~=1.5.3",
+    "jsonschema~=4.21.1",
+    "scikit-image~=0.19.3",
+    "tqdm~=4.64.1",
+    "rich==13.3.2",
+    "msgpack~=1.0.5",
+    "snakemake~=7.32.3",
+    "pydantic~=2.0",
+    "pulp==2.7.0",
+    "click~=8.1.3",
+    "dandi==0.61.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest~=7.2.1",
+    "black==24.2.0",
+    "pre-commit>=3.5.0",
+    "flake8",
+]
+
+[project.urls]
+Homepage = "https://github.com/neuro-galaxy/brainsets"
+Issues = "https://github.com/neuro-galaxy/brainsets/issues"
+Documentation = "https://brainsets.readthedocs.io/en/latest/"
+
+[project.scripts]
+brainsets = "brainsets.cli:cli"
