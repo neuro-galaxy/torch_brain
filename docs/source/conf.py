@@ -9,7 +9,6 @@ sys.path.insert(0, os.path.abspath("sphinxext"))
 
 import torch_brain
 
-
 author = "neuro-galaxy Team"
 project = "torch_brain"
 version = torch_brain.__version__
