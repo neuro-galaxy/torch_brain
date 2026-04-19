@@ -8,6 +8,7 @@ __all__ = [
     "CaPOYO",
 ]
 
+# see docs/source/api_reference.py
 __api_ref__ = {
     "description": None,
     "sections": [

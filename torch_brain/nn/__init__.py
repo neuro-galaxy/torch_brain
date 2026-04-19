@@ -32,6 +32,7 @@ __all__ = [
     "prepare_for_multitask_readout",
 ]
 
+# see docs/source/api_reference.py
 __api_ref__ = {
     "description": None,
     "sections": [
