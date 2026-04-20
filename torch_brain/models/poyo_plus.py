@@ -26,8 +26,7 @@ from torch_brain.utils import (
 
 
 class POYOPlus(nn.Module):
-    """POYO+ model from `Azabou et al. 2025, Multi-session, multi-task neural decoding
-    from distinct cell-types and brain regions <https://openreview.net/forum?id=IuU0wcO0mo>`_.
+    """POYO+ model from `Azabou et al. 2025, Multi-session, multi-task neural decoding from distinct cell-types and brain regions <https://openreview.net/forum?id=IuU0wcO0mo>`_.
 
     POYO+ is a transformer-based model for neural decoding from population recordings.
     It extends the POYO architecture with multiple task-specific decoders.

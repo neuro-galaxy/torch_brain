@@ -9,7 +9,6 @@ sys.path.insert(0, os.path.abspath("sphinxext"))
 
 import torch_brain
 
-
 author = "neuro-galaxy Team"
 project = "torch_brain"
 version = torch_brain.__version__
@@ -73,7 +72,10 @@ templates_path = ["_templates"]
 add_module_names = True
 autodoc_member_order = "bysource"
 
-suppress_warnings = ["autodoc.import_object"]
+suppress_warnings = [
+    "autodoc.import_object",
+    "sphinx_autodoc_typehints.guarded_import",
+]
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/", None),
