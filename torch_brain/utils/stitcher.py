@@ -12,18 +12,17 @@ def stitch(
     value per timestamp.
 
     Args:
-        timestamps (torch.Tensor): A 1D tensor containing timestamps. Shape: (N,)
+        timestamps (torch.Tensor): A 1D tensor containing timestamps. Shape: ``(N,)``.
         values (torch.Tensor): A tensor of values corresponding to the timestamps.
-            Shape:
-                - For floating point types: (N, ...)
-                - For categorical types (torch.long only): (N,)
+            Shape ``(N, ...)`` for floating point types, or ``(N,)`` for categorical
+            types (``torch.long`` only).
 
     Returns:
-        tuple[torch.Tensor, torch.Tensor]: A tuple containing:
-            - unique_timestamps: A 1D tensor of sorted unique timestamps
-            - pooled_values: A tensor containing the pooled values for each unique timestamp
-                - For continuous data (float types): Uses mean pooling
-                - For categorical data (long type): Uses mode pooling
+        tuple[torch.Tensor, torch.Tensor]: A tuple ``(unique_timestamps, pooled_values)``.
+        ``unique_timestamps`` is a 1D tensor of sorted unique timestamps.
+        ``pooled_values`` contains the pooled values for each unique timestamp —
+        mean pooling for continuous (float) data, mode pooling for categorical
+        (``torch.long``) data.
 
     Examples:
         >>> # Mean pooling for continuous values

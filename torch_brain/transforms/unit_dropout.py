@@ -118,7 +118,7 @@ class UnitDropout:
 
     Args:
         field (str, optional): Field to apply the dropout. Defaults to "spikes".
-        *args, **kwargs: Arguments to pass to the :class:`TriangleDistribution` constructor.
+        \*args, \*\*kwargs: Arguments to pass to the :class:`TriangleDistribution` constructor.
     """
 
     def __init__(self, field: str = "spikes", reset_index=True, *args, **kwargs):
