@@ -57,7 +57,6 @@ is not a particular submodule does the hook become useful.
 
 
 # Modules to include in API reference.
-# Each entry: (module_dotted_name, section_title, members_to_exclude)
 API_MODS = [
     "torch_brain.dataset",
     "torch_brain.data",
