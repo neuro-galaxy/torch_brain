@@ -1,8 +1,9 @@
 import math
 import logging
-from typing import List, Dict, Tuple, Optional, TypeVar, Iterator
+from typing import List, Dict, Tuple, Optional
 from functools import cached_property
 
+import numpy as np
 import torch
 import torch.distributed as dist
 
@@ -79,63 +80,80 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
         return self._estimated_len
 
     def __iter__(self):
-        if len(self) == 0.0:
+        if len(self) == 0:
             raise ValueError("All intervals are too short to sample from.")
 
-        indices = []
+        unique_session_names = list(self.sampling_intervals.keys())
+        session_to_idx = {name: idx for idx, name in enumerate(unique_session_names)}
+        session_idx_chunks: list[np.ndarray] = []
+        starts_chunks: list[np.ndarray] = []
+        ends_chunks: list[np.ndarray] = []
+
+        # Bridge the torch Generator to a numpy RNG to avoid per-element
+        # .item() calls that dominate the cost of the original implementation.
+        rng_seed = (
+            int(torch.randint(0, 2**31 - 1, (1,), generator=self.generator).item())
+            if self.generator is not None
+            else None
+        )
+        rng = np.random.default_rng(rng_seed)
+
         for session_name, sampling_intervals in self.sampling_intervals.items():
+            sid = session_to_idx[session_name]
             for start, end in zip(sampling_intervals.start, sampling_intervals.end):
-                interval_length = end - start
+                interval_length = float(end - start)
                 if interval_length < self.window_length:
                     if self.drop_short:
                         continue
-                    else:
-                        raise ValueError(
-                            f"Interval {(start, end)} is too short to sample from. "
-                            f"Minimum length is {self.window_length}."
-                        )
+                    raise ValueError(
+                        f"Interval {(start, end)} is too short to sample from. "
+                        f"Minimum length is {self.window_length}."
+                    )
 
-                # sample a random offset
-                left_offset = (
-                    torch.rand(1, generator=self.generator).item() * self.window_length
+                left_offset = float(rng.random() * self.window_length)
+                starts = np.arange(
+                    float(start) + left_offset,
+                    float(end) - self.window_length + 1e-12,
+                    self.window_length,
+                    dtype=np.float64,
                 )
 
-                indices_ = [
-                    DatasetIndex(
-                        session_name, t.item(), (t + self.window_length).item()
-                    )
-                    for t in torch.arange(
-                        start + left_offset,
-                        end,
-                        self.window_length,
-                        dtype=torch.float64,
-                    )
-                    if t + self.window_length <= end
-                ]
-
-                if len(indices_) > 0:
-                    indices.extend(indices_)
-                    right_offset = end - indices[-1].end
+                if starts.size > 0:
+                    chunk_ends = starts + self.window_length
+                    starts_chunks.append(starts)
+                    ends_chunks.append(chunk_ends)
+                    session_idx_chunks.append(np.full(starts.size, sid, dtype=np.int32))
+                    right_offset = float(end) - float(chunk_ends[-1])
                 else:
-                    right_offset = end - start - left_offset
+                    right_offset = interval_length - left_offset
 
-                # if there is one sample worth of data, add it
-                # this ensures that the number of samples is always consistent
+                # Ensure epoch length stays consistent: if the left and right
+                # remainders together span a full window, emit one extra sample.
                 if right_offset + left_offset >= self.window_length:
                     if right_offset > left_offset:
-                        indices.append(
-                            DatasetIndex(session_name, end - self.window_length, end)
-                        )
+                        extra_start = float(end) - self.window_length
+                        extra_end = float(end)
                     else:
-                        indices.append(
-                            DatasetIndex(
-                                session_name, start, start + self.window_length
-                            )
-                        )
+                        extra_start = float(start)
+                        extra_end = float(start) + self.window_length
+                    starts_chunks.append(np.array([extra_start], dtype=np.float64))
+                    ends_chunks.append(np.array([extra_end], dtype=np.float64))
+                    session_idx_chunks.append(np.array([sid], dtype=np.int32))
 
-        # shuffle
-        for idx in torch.randperm(len(indices), generator=self.generator):
-            yield indices[idx]
+        if not starts_chunks:
+            logging.warning("No valid windows were generated by sampler.")
+            return
+
+        starts_all = np.concatenate(starts_chunks)
+        ends_all = np.concatenate(ends_chunks)
+        session_idx_all = np.concatenate(session_idx_chunks)
+
+        for i in rng.permutation(starts_all.shape[0]):
+            yield DatasetIndex(
+                unique_session_names[session_idx_all[i]],
+                float(starts_all[i]),
+                float(ends_all[i]),
+            )
 
 
 class SequentialFixedWindowSampler(torch.utils.data.Sampler):
@@ -174,51 +192,73 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
 
         assert self.step > 0, "Step must be greater than 0."
 
-    # we cache the indices since they are deterministic
     @cached_property
     def _indices(self) -> List[DatasetIndex]:
-        indices = []
+        unique_session_names = list(self.sampling_intervals.keys())
+        session_to_idx = {name: idx for idx, name in enumerate(unique_session_names)}
+        session_idx_chunks: list[np.ndarray] = []
+        starts_chunks: list[np.ndarray] = []
+        ends_chunks: list[np.ndarray] = []
         total_short_dropped = 0.0
 
         for session_name, sampling_intervals in self.sampling_intervals.items():
+            sid = session_to_idx[session_name]
             for start, end in zip(sampling_intervals.start, sampling_intervals.end):
-                interval_length = end - start
+                interval_length = float(end - start)
                 if interval_length < self.window_length:
                     if self.drop_short:
                         total_short_dropped += interval_length
                         continue
-                    else:
-                        raise ValueError(
-                            f"Interval {(start, end)} is too short to sample from. "
-                            f"Minimum length is {self.window_length}."
+                    raise ValueError(
+                        f"Interval {(start, end)} is too short to sample from. "
+                        f"Minimum length is {self.window_length}."
+                    )
+
+                starts = np.arange(
+                    float(start), float(end), self.step, dtype=np.float64
+                )
+                mask = starts + self.window_length <= float(end)
+                starts = starts[mask]
+
+                if starts.size > 0:
+                    chunk_ends = starts + self.window_length
+                    starts_chunks.append(starts)
+                    ends_chunks.append(chunk_ends)
+                    session_idx_chunks.append(np.full(starts.size, sid, dtype=np.int32))
+
+                    if float(chunk_ends[-1]) < float(end):
+                        starts_chunks.append(
+                            np.array(
+                                [float(end) - self.window_length], dtype=np.float64
+                            )
                         )
-
-                indices_ = [
-                    DatasetIndex(
-                        session_name, t.item(), (t + self.window_length).item()
-                    )
-                    for t in torch.arange(start, end, self.step, dtype=torch.float64)
-                    if t + self.window_length <= end
-                ]
-
-                indices.extend(indices_)
-
-                # we need to make sure that the entire interval is covered
-                if indices_[-1].end < end:
-                    indices.append(
-                        DatasetIndex(session_name, end - self.window_length, end)
-                    )
+                        ends_chunks.append(np.array([float(end)], dtype=np.float64))
+                        session_idx_chunks.append(np.array([sid], dtype=np.int32))
 
         if self.drop_short and total_short_dropped > 0:
-            num_samples = len(indices)
+            total_count = sum(c.size for c in starts_chunks) if starts_chunks else 0
             logging.warning(
                 f"Skipping {total_short_dropped} seconds of data due to short "
-                f"intervals. Remaining: {num_samples * self.window_length} seconds."
+                f"intervals. Remaining: {total_count * self.window_length} seconds."
             )
-            if num_samples == 0:
+            if total_count == 0:
                 raise ValueError("All intervals are too short to sample from.")
 
-        return indices
+        if not starts_chunks:
+            return []
+
+        starts_all = np.concatenate(starts_chunks)
+        ends_all = np.concatenate(ends_chunks)
+        session_idx_all = np.concatenate(session_idx_chunks)
+
+        return [
+            DatasetIndex(
+                unique_session_names[session_idx_all[i]],
+                float(starts_all[i]),
+                float(ends_all[i]),
+            )
+            for i in range(starts_all.shape[0])
+        ]
 
     def __len__(self):
         return len(self._indices)
@@ -417,46 +457,40 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
     def _generate_indices(self) -> List[DatasetIndex]:
         """Generate indices for this rank, balancing the workload across ranks based on
         the number of windows in each interval."""
-        # first, we will compute the number of contiguous windows across all intervals
         all_intervals = []
         interval_sizes = []
         for session_name, intervals in self.sampling_intervals.items():
             for start, end in zip(intervals.start, intervals.end):
                 if end - start >= self.window_length:
-                    # calculate number of windows in this interval
                     num_windows = (
                         int((end - start - self.window_length + 1e-9) / self.step) + 1
                     )
                     if num_windows > 0:
                         interval_sizes.append(num_windows)
-                        all_intervals.append((session_name, start, end))
+                        all_intervals.append((session_name, float(start), float(end)))
 
-        # sort intervals by size in descending order for better load balancing
-        sorted_indices = torch.argsort(torch.tensor(interval_sizes), descending=True)
-        all_intervals = [all_intervals[i] for i in sorted_indices]
-        interval_sizes = [interval_sizes[i] for i in sorted_indices]
+        sizes_arr = np.array(interval_sizes)
+        sorted_order = np.argsort(-sizes_arr)
+        all_intervals = [all_intervals[i] for i in sorted_order]
+        interval_sizes = [interval_sizes[i] for i in sorted_order]
 
-        # track total windows per rank for load balancing
         rank_sizes = [0] * self.num_replicas
 
-        # assign intervals to ranks to minimize imbalance
         indices_list = []
         for session_name, start, end in all_intervals:
-            # assign to rank with fewest windows
             target_rank = min(range(self.num_replicas), key=lambda r: rank_sizes[r])
 
-            indices = []
-            # generate all windows for this interval
-            for t in torch.arange(
+            window_starts = np.arange(
                 start,
                 end - self.window_length + 1e-9,
                 self.step,
-                dtype=torch.float64,
-            ):
-                t = t.item()
-                indices.append(DatasetIndex(session_name, t, t + self.window_length))
+                dtype=np.float64,
+            )
+            indices = [
+                DatasetIndex(session_name, float(s), float(s + self.window_length))
+                for s in window_starts
+            ]
 
-            # add final window if needed
             last_start = indices[-1].start if indices else start
             if last_start + self.window_length < end:
                 indices.append(
@@ -464,12 +498,10 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
                 )
 
             if target_rank == self.rank:
-                # only add indices to this rank
                 indices_list.append(indices)
 
             rank_sizes[target_rank] += len(indices)
 
-        # shuffle indices for this rank
         indices_list = [indices_list[i] for i in torch.randperm(len(indices_list))]
         indices = [item for sublist in indices_list for item in sublist]
         sequence_index = torch.tensor(
