@@ -1,0 +1,48 @@
+.. _api_ref:
+
+=============
+API Reference
+=============
+
+Look through specific module or search through
+the entire list of APIs.
+
+.. toctree::
+  :maxdepth: 1
+
+{% for module, _ in API_REFERENCE %}
+  {{ module }}
+{%- endfor %}
+
+**All APIs**
+
+.. list-table::
+  :header-rows: 1
+  :class: apisearch-table
+
+  * - Object
+    - Description
+
+{% for module, module_info in API_REFERENCE %}
+{% for section in module_info["sections"] %}
+{% for obj in section["autosummary"] %}
+{% set parts = obj.rsplit(".", 1) %}
+{% if parts|length > 1 %}
+{% set full_module = module + "." + parts[0] %}
+{% else %}
+{% set full_module = module %}
+{% endif %}
+  * - :obj:`~{{ module }}.{{ obj }}`
+
+    - .. div:: apisearch-desc
+
+        .. currentmodule:: {{ full_module }}
+        .. autoshortsummary:: {{ module }}.{{ obj }}
+
+        .. div:: caption
+
+          :mod:`{{ full_module }}`
+{% endfor %}
+{% endfor %}
+{% endfor %}
+
