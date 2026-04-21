@@ -58,6 +58,21 @@ pytest
 ```
 or test individual files via, e.g., `pytest test/test_binning.py`
 
+## Building documentation for development
+
+Install requirements:
+```bash
+pip install -e ".[dev,docs]"
+```
+
+Build:
+```bash
+cd docs
+make clean html
+```
+
+The documentation is then present in `docs/build/html`
+
 ## Cite
 
 Please cite [our paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca113d122584f12a6727341aaf58887-Abstract-Conference.html) if you use this code in your own work:

@@ -41,6 +41,19 @@ dev = [
     "pytest-cov",
     "brainsets",
 ]
+docs = [
+    "sphinx",
+    "pydata-sphinx-theme",
+    "myst-parser",
+    "sphinx-autodoc-typehints",
+    "sphinx-inline-tabs",
+    "sphinx-rtd-theme",
+    "sphinx-tabs",
+    "bokeh==3.4.3",
+    "sphinx-design",
+    "sphinx-copybutton",
+    "sphinxcontrib-sass",
+]
 
 [project.urls]
 Homepage = "https://github.com/neuro-galaxy/torch_brain"

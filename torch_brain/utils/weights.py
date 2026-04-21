@@ -28,13 +28,14 @@ def resolve_weights_based_on_interval_membership(timestamps, data, config=None):
     The intervals and corresponding weights are specified in the config dictionary.
 
     The config dictionary maps interval names (nested notation allowed) to weight values.
-    For example:
+    For example::
+
         {
             'movement_periods.random_period': 1.0,
             'movement_periods.hold_period': 0.1,
             'movement_periods.reach_period': 5.0,
             'movement_periods.return_period': 1.0,
-            'cursor_outlier_segments': 0.0
+            'cursor_outlier_segments': 0.0,
         }
 
     These weights can be used to weight different time periods differently in the loss

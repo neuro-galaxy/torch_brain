@@ -19,7 +19,8 @@ default_subject_id_prefix_fn = lambda data: f"{data.brainset.id}/"
 
 
 class Dataset(torch.utils.data.Dataset):
-    r"""
+    r"""Deprecated. Please use :class:`torch_brain.dataset.Dataset`.
+
     .. warning::
         :class:`torch_brain.data.dataset.Dataset` is **deprecated** in favor of the newer
         :class:`torch_brain.dataset.Dataset`, and it will be removed in a future release.
@@ -490,3 +491,8 @@ class Dataset(torch.utils.data.Dataset):
 
     def __repr__(self):
         return f"Dataset(root={self.root}, config={self.config}, split={self.split})"
+
+
+__all__ = [
+    "Dataset",
+]

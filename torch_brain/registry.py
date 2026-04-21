@@ -4,6 +4,20 @@ from typing import Dict, Tuple, Optional, Any, Callable
 from pydantic.dataclasses import dataclass
 import torch_brain
 
+__all__ = [
+    "DataType",
+    "ModalitySpec",
+    "register_modality",
+    "get_modality_by_id",
+    "MODALITY_REGISTRY",
+]
+
+# see docs/source/api_reference.py
+__api_ref__ = {
+    "description": None,
+    "sections": [{"autosummary": __all__}],
+}
+
 
 class DataType(Enum):
     """Enum defining the possible data types.

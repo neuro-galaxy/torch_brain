@@ -19,12 +19,12 @@ def bin_spikes(
     end of the time series, otherwise they are truncated from the right end.
 
     Notes:
-    - The number of units cannot be inferred from a subset of spikes,
-      so `num_units` must be provided explicitly.
-    - Floating-point roundoff can cause `(end - start) / bin_size` to be
-      very close to an integer without being exact (e.g. 9.99999999).
-      The `eps` parameter is added before flooring to make the bin-count
-      computation numerically robust.
+        - The number of units cannot be inferred from a subset of spikes,
+          so ``num_units`` must be provided explicitly.
+        - Floating-point roundoff can cause ``(end - start) / bin_size`` to be
+          very close to an integer without being exact (e.g. 9.99999999).
+          The ``eps`` parameter is added before flooring to make the bin-count
+          computation numerically robust.
 
     Args:
         spikes: IrregularTimeSeries object containing the spikes.

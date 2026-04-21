@@ -204,6 +204,7 @@ class RotarySelfAttention(nn.Module):
     projects back to the original dimension.
 
     The layer provides two forward methods:
+
     - forward(): This is the default, and is used for sequences in a batch that are of
       the same length, or are padded to the same length. When padding is used, attention
       masks need to be provided.
