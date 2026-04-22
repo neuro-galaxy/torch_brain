@@ -17,7 +17,7 @@ If you encounter any bugs or have feature requests, please submit them to our
    :target: https://github.com/neuro-galaxy/torch_brain
    :alt: GitHub Repository
 
-.. image:: https://img.shields.io/discord/1338561153089146962?label=Discord&logo=discord
+.. image:: https://img.shields.io/discord/1338561153089146962?color=3CB371&label=Discord&logo=discord&logoColor=white
    :target: https://discord.gg/kQNKA6B8ZC
    :alt: Discord
 
