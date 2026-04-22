@@ -26,7 +26,6 @@ from brainsets.descriptions import (
 from brainsets.pipeline import BrainsetPipeline
 from brainsets.taxonomy import RecordingTech, Sex, Species, Task
 
-
 parser = ArgumentParser()
 parser.add_argument("--redownload", action="store_true")
 parser.add_argument("--reprocess", action="store_true")
@@ -313,9 +312,9 @@ class Pipeline(BrainsetPipeline):
         train_domain, valid_domain, test_domain = domain.split(
             [0.7, 0.1, 0.2], shuffle=True, random_seed=42
         )
-        data.set_train_domain(train_domain)
-        data.set_valid_domain(valid_domain)
-        data.set_test_domain(test_domain)
+        data.train_domain = train_domain
+        data.valid_domain = valid_domain
+        data.test_domain = test_domain
 
         self.update_status("Storing")
         with h5py.File(store_path, "w") as file:
@@ -389,9 +388,9 @@ class Pipeline(BrainsetPipeline):
         train_domain, valid_domain, test_domain = domain.split(
             [0.7, 0.1, 0.2], shuffle=True, random_seed=42
         )
-        data.set_train_domain(train_domain)
-        data.set_valid_domain(valid_domain)
-        data.set_test_domain(test_domain)
+        data.train_domain = train_domain
+        data.valid_domain = valid_domain
+        data.test_domain = test_domain
 
         self.update_status("Storing")
         with h5py.File(store_path, "w") as file:

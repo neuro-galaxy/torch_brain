@@ -154,9 +154,9 @@ class Pipeline(BrainsetPipeline):
             ).split([0.8, 0.2], shuffle=True, random_seed=42)
             test_trials = trials.select_by_mask(trials.test_mask_nwb)
 
-            data.set_train_domain(train_trials)
-            data.set_valid_domain(valid_trials)
-            data.set_test_domain(test_trials)
+            data.train_domain = train_trials
+            data.valid_domain = valid_trials
+            data.test_domain = test_trials
 
         # close file
         io.close()

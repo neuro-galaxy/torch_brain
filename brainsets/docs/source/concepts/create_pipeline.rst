@@ -206,12 +206,6 @@ it into processed :obj:`temporaldata.Data` object(s), and stores these inside ``
         # create data object
         data = Data(...)
 
-        # split data into train, validation and test
-        self.update_status("Creating splits")
-        data.set_train_domain(...)
-        data.set_valid_domain(...)
-        data.set_test_domain(...)
-
         # save data to disk
         self.update_status("Storing")
         with h5py.File(output_file_path, "w") as file:

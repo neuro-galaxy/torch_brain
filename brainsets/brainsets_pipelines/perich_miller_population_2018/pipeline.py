@@ -204,9 +204,9 @@ class Pipeline(BrainsetPipeline):
             (valid_trials | test_trials).dilate(1.0)
         )
 
-        data.set_train_domain(train_sampling_intervals)
-        data.set_valid_domain(valid_trials)
-        data.set_test_domain(test_trials)
+        data.train_domain = train_sampling_intervals
+        data.valid_domain = valid_trials
+        data.test_domain = test_trials
 
         self.update_status("Storing")
         with h5py.File(store_path, "w") as file:

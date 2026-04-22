@@ -163,9 +163,9 @@ class Pipeline(BrainsetPipeline):
             [0.7, 0.1, 0.2], shuffle=True, random_seed=42
         )
 
-        data.set_train_domain(train_trials)
-        data.set_valid_domain(valid_trials)
-        data.set_test_domain(test_trials)
+        data.train_domain = train_trials
+        data.valid_domain = valid_trials
+        data.test_domain = test_trials
 
         # save data to disk
         with h5py.File(store_path, "w") as file:

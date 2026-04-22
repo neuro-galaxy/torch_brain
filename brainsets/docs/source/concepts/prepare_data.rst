@@ -44,11 +44,6 @@ The following is an example ``prepare_data.py`` script that can serve as a templ
         # create data object
         data = Data(...)
 
-        # split data into train, validation and test
-        data.set_train_domain(...)
-        data.set_valid_domain(...)
-        data.set_test_domain(...)
-
         # save data to disk
         path = os.path.join(args.output_dir, f"{session_id}.h5")
         with h5py.File(path, "w") as file:
@@ -290,9 +285,9 @@ Split the data into train, validation and test sets, you can do this in any way 
         )
 
         # Set domains based on trial splits
-        data.set_train_domain(train_trials)
-        data.set_valid_domain(valid_trials) 
-        data.set_test_domain(test_trials)
+        data.train_domain = train_trials
+        data.valid_domain = valid_trials
+        data.test_domain = test_trials
 
 .. tab:: Split by Time
 
@@ -302,15 +297,15 @@ Split the data into train, validation and test sets, you can do this in any way 
         total_time = data.domain.end - data.domain.start
         train_end = data.domain.start + 0.7 * total_time    # 70% for training
         valid_end = train_end + 0.1 * total_time            # 10% for validation
-        
+
         train_interval = Interval(data.domain.start, train_end)
         valid_interval = Interval(train_end, valid_end)
         test_interval = Interval(valid_end, data.domain.end)
 
         # Set domains based on time intervals
-        data.set_train_domain(train_interval)
-        data.set_valid_domain(valid_interval)
-        data.set_test_domain(test_interval)
+        data.train_domain = train_interval
+        data.valid_domain = valid_interval
+        data.test_domain = test_interval
 
 Tips
 ----

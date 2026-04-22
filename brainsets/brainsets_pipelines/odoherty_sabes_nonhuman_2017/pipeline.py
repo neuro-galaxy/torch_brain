@@ -199,10 +199,9 @@ class Pipeline(BrainsetPipeline):
         train_sampling_intervals, valid_sampling_intervals, test_sampling_intervals = (
             split_intervals(data)
         )
-        # set the domains
-        data.set_train_domain(train_sampling_intervals)
-        data.set_valid_domain(valid_sampling_intervals)
-        data.set_test_domain(test_sampling_intervals)
+        data.train_domain = train_sampling_intervals
+        data.valid_domain = valid_sampling_intervals
+        data.test_domain = test_sampling_intervals
 
         # save data to disk
         self.update_status("Storing")

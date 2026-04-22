@@ -169,9 +169,9 @@ class Pipeline(BrainsetPipeline):
         # we will still use the invalid trials for training
         train_trials = train_trials | trials.select_by_mask(~trials.is_valid)
 
-        data.set_train_domain(train_trials)
-        data.set_valid_domain(valid_trials)
-        data.set_test_domain(test_trials)
+        data.train_domain = train_trials
+        data.valid_domain = valid_trials
+        data.test_domain = test_trials
 
         self.update_status("Storing")
         with h5py.File(store_path, "w") as file:

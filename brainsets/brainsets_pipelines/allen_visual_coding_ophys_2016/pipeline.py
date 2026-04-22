@@ -210,9 +210,9 @@ class Pipeline(BrainsetPipeline):
             generate_train_valid_test_splits(epoch_dict, grid)
         )
 
-        data.set_train_domain(train_intervals)
-        data.set_valid_domain(valid_intervals)
-        data.set_test_domain(test_intervals)
+        data.train_domain = train_intervals
+        data.valid_domain = valid_intervals
+        data.test_domain = test_intervals
 
         # save data to disk
         self.update_status("Storing")
