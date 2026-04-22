@@ -138,6 +138,18 @@ Download and process a single brainset.
 
 .. rst-class:: cli-option
 
+``--list``
+
+    Print the manifest for the brainset and exit.
+
+.. rst-class:: cli-option
+
+``-s``, ``--single`` *manifest index id*
+
+    Prepare a single item from the manifest if provided.
+
+.. rst-class:: cli-option
+
 ``--local``
 
     Prepare a brainset from a local pipeline directory instead of the built-in registry.

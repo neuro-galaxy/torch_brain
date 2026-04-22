@@ -251,6 +251,106 @@ class TestPrepareCommand:
 
             assert "--download-only" in command
 
+    def test_list_flag(self, mock_config):
+        """Test prepare command with --list flag
+        Ensure it is forwarded to the runner subprocess."""
+        runner = CliRunner()
+
+        # --list passed if present in cli args
+        with (
+            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
+            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+        ):
+            mock_subprocess.return_value = MagicMock(returncode=0)
+            result = runner.invoke(
+                cli, ["prepare", "pei_pandarinath_nlb_2021", "--list"]
+            )
+            assert result.exit_code == 0, f"CLI failed with: {result.output}"
+
+            mock_subprocess.assert_called_once()
+            call_args = mock_subprocess.call_args
+            command = call_args[1].get("command") or call_args[0][0]
+
+            assert "--list" in command
+
+        # --list not passed if absent in cli args
+        with (
+            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
+            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+        ):
+            mock_subprocess.return_value = MagicMock(returncode=0)
+            result = runner.invoke(cli, ["prepare", "pei_pandarinath_nlb_2021"])
+            assert result.exit_code == 0, f"CLI failed with: {result.output}"
+
+            mock_subprocess.assert_called_once()
+            call_args = mock_subprocess.call_args
+            command = call_args[1].get("command") or call_args[0][0]
+
+            assert "--list" not in command
+
+    def test_single_option(self, mock_config):
+        """Test passthrough of the --single/-s option to the runner subprocess."""
+        runner = CliRunner()
+
+        # --single=test passed if "--single test" present in cli args
+        with (
+            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
+            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+        ):
+            mock_subprocess.return_value = MagicMock(returncode=0)
+            result = runner.invoke(
+                cli, ["prepare", "pei_pandarinath_nlb_2021", "--single", "test-index"]
+            )
+            assert result.exit_code == 0, f"CLI failed with: {result.output}"
+
+            mock_subprocess.assert_called_once()
+            call_args = mock_subprocess.call_args
+            command = call_args[1].get("command") or call_args[0][0]
+
+            assert "--single=test-index" in command
+            for part in command:
+                assert part != "-s"
+                assert not part.startswith("-s=")
+
+        # --single=test passed if "-s test" test present in cli args
+        with (
+            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
+            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+        ):
+            mock_subprocess.return_value = MagicMock(returncode=0)
+            result = runner.invoke(
+                cli, ["prepare", "pei_pandarinath_nlb_2021", "-s", "test-index"]
+            )
+            assert result.exit_code == 0, f"CLI failed with: {result.output}"
+
+            mock_subprocess.assert_called_once()
+            call_args = mock_subprocess.call_args
+            command = call_args[1].get("command") or call_args[0][0]
+
+            assert "--single=test-index" in command
+            for part in command:
+                assert part != "-s"
+                assert not part.startswith("-s=")
+
+        # --single not passed if absent in cli args
+        with (
+            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
+            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+        ):
+            mock_subprocess.return_value = MagicMock(returncode=0)
+            result = runner.invoke(cli, ["prepare", "pei_pandarinath_nlb_2021"])
+            assert result.exit_code == 0, f"CLI failed with: {result.output}"
+
+            mock_subprocess.assert_called_once()
+            call_args = mock_subprocess.call_args
+            command = call_args[1].get("command") or call_args[0][0]
+
+            for part in command:
+                assert part != "--single"
+                assert part != "-s"
+                assert not part.startswith("--single=")
+                assert not part.startswith("-s=")
+
     def test_extra_option_passthrough(self, mock_config):
         """Test that extra options are passed through to the subprocess."""
         runner = CliRunner()

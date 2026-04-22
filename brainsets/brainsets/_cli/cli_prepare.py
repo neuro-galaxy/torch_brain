@@ -51,6 +51,20 @@ def complete_brainset(ctx, param, incomplete):
     help="Path for storing processed brainset. Overrides config.",
 )
 @click.option(
+    "--list",
+    "list_flag_",
+    is_flag=True,
+    default=False,
+    help="Print the manifest for the brainset and exit.",
+)
+@click.option(
+    "--single",
+    "-s",
+    type=str,
+    default=None,
+    help="Prepare a single item from the manifest if provided. Value: manifest index id for the item.",
+)
+@click.option(
     "--local",
     is_flag=True,
     default=False,
@@ -88,6 +102,8 @@ def prepare(
     cores: int,
     verbose: bool,
     download_only: bool,
+    list_flag_: bool,
+    single: str,
     use_active_env: bool,
     raw_dir: Optional[str],
     processed_dir: Optional[str],
@@ -102,6 +118,8 @@ def prepare(
     $ brainsets prepare pei_pandarinath_nlb_2021
     $ brainsets prepare pei_pandarinath_nlb_2021 --download-only
     $ brainsets prepare pei_pandarinath_nlb_2021 --cores 8 --raw-dir ~/data/raw --processed-dir ~/data/processed
+    $ brainsets prepare pei_pandarinath_nlb_2021 --list
+    $ brainsets prepare pei_pandarinath_nlb_2021 --single jenkins_maze_train
     $ brainsets prepare ./my_local_brainsets_pipeline --local
     """
 
@@ -153,6 +171,8 @@ def prepare(
         f"--processed-dir={processed_dir}",
         f"-c{cores}",
         *(["--download-only"] if download_only else []),
+        *(["--list"] if list_flag_ else []),
+        *([f"--single={single}"] if single is not None else []),
         *ctx.args,  # extra arguments
     ]
 
