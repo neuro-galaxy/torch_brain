@@ -336,6 +336,63 @@ class TestRandomFixedWindowSamplerEdgeCases:
         samples = list(sampler)
         assert len(samples) == 9
 
+    def test_exact_integer_ratio_float_precision(self):
+        """Intervals whose length is an exact multiple of window_length must not
+        lose a sample due to floating-point rounding in the extra-sample check.
+
+        When interval_length / window_length is an exact integer, the random
+        left_offset consumes the exact remainder so that
+        right_offset + left_offset == window_length *mathematically*, but
+        floating-point arithmetic can produce 0.9999999... < 1.0, causing the
+        extra-sample branch to be skipped and the epoch to be one sample short.
+        """
+        window_length = 1.0
+        n_intervals = 500
+        starts = np.arange(0, n_intervals * 30, 30, dtype=np.float64)
+        ends = starts + 30.0
+        intervals = {"s": Interval(start=starts, end=ends)}
+
+        expected = int(30.0 / window_length) * n_intervals
+
+        for seed in range(50):
+            sampler = RandomFixedWindowSampler(
+                sampling_intervals=intervals,
+                window_length=window_length,
+                generator=torch.Generator().manual_seed(seed),
+            )
+            samples = list(sampler)
+            assert (
+                len(samples) == expected
+            ), f"seed={seed}: got {len(samples)}, expected {expected}"
+            assert_all_windows_valid(samples, window_length, intervals)
+
+    def test_exact_integer_ratio_various_lengths(self):
+        """Same precision bug tested across many exact-integer ratios."""
+        test_cases = [
+            (2.0, 1.0),
+            (5.0, 1.0),
+            (10.0, 2.0),
+            (6.0, 3.0),
+            (12.0, 4.0),
+            (100.0, 10.0),
+        ]
+        for interval_len, window_length in test_cases:
+            intervals = {
+                "s": Interval(start=np.array([0.0]), end=np.array([interval_len])),
+            }
+            expected = int(interval_len / window_length)
+            for seed in range(20):
+                sampler = RandomFixedWindowSampler(
+                    sampling_intervals=intervals,
+                    window_length=window_length,
+                    generator=torch.Generator().manual_seed(seed),
+                )
+                samples = list(sampler)
+                assert len(samples) == expected, (
+                    f"L={interval_len}, W={window_length}, seed={seed}: "
+                    f"got {len(samples)}, expected {expected}"
+                )
+
 
 class TestSequentialFixedWindowSamplerEdgeCases:
     """Edge-case and property tests for SequentialFixedWindowSampler."""
@@ -417,3 +474,50 @@ class TestSequentialFixedWindowSamplerEdgeCases:
         assert len(samples) > 0
         for s in samples:
             assert np.isclose(s.end - s.start, 3.0)
+
+    def test_exact_integer_ratio_no_lost_windows(self):
+        """When interval_length / step is exact, the mask comparison
+        ``starts + window_length <= end`` can lose the last window due to
+        floating-point accumulation in np.arange.
+        """
+        test_cases = [
+            (10.0, 2.0, 2.0),
+            (9.0, 3.0, 3.0),
+            (100.0, 10.0, 10.0),
+            (12.0, 4.0, 2.0),
+        ]
+        for interval_len, window_length, step in test_cases:
+            intervals = {
+                "s": Interval(start=np.array([0.0]), end=np.array([interval_len])),
+            }
+            sampler = SequentialFixedWindowSampler(
+                sampling_intervals=intervals,
+                window_length=window_length,
+                step=step,
+            )
+            samples = list(sampler)
+            expected = int((interval_len - window_length) / step) + 1
+            assert len(samples) == expected, (
+                f"L={interval_len}, W={window_length}, S={step}: "
+                f"got {len(samples)}, expected {expected}"
+            )
+            for s in samples:
+                assert np.isclose(s.end - s.start, window_length)
+
+    def test_exact_integer_ratio_accumulated_arange_drift(self):
+        """np.arange accumulates float errors over many steps; verify the
+        sequential sampler doesn't drop the last window in a long interval.
+        """
+        intervals = {
+            "s": Interval(start=np.array([0.0]), end=np.array([1000.0])),
+        }
+        sampler = SequentialFixedWindowSampler(
+            sampling_intervals=intervals,
+            window_length=0.3,
+            step=0.3,
+        )
+        samples = list(sampler)
+        expected = int(1000.0 / 0.3)
+        assert (
+            len(samples) >= expected
+        ), f"got {len(samples)}, expected at least {expected}"

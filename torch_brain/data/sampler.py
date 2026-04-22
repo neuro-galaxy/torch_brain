@@ -129,7 +129,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
 
                 # Ensure epoch length stays consistent: if the left and right
                 # remainders together span a full window, emit one extra sample.
-                if right_offset + left_offset >= self.window_length:
+                if right_offset + left_offset >= self.window_length - 1e-9:
                     if right_offset > left_offset:
                         extra_start = float(end) - self.window_length
                         extra_end = float(end)
@@ -217,7 +217,7 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
                 starts = np.arange(
                     float(start), float(end), self.step, dtype=np.float64
                 )
-                mask = starts + self.window_length <= float(end)
+                mask = starts + self.window_length <= float(end) + 1e-12
                 starts = starts[mask]
 
                 if starts.size > 0:
@@ -226,7 +226,7 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
                     ends_chunks.append(chunk_ends)
                     session_idx_chunks.append(np.full(starts.size, sid, dtype=np.int32))
 
-                    if float(chunk_ends[-1]) < float(end):
+                    if float(chunk_ends[-1]) < float(end) - 1e-9:
                         starts_chunks.append(
                             np.array(
                                 [float(end) - self.window_length], dtype=np.float64
@@ -492,7 +492,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
             ]
 
             last_start = indices[-1].start if indices else start
-            if last_start + self.window_length < end:
+            if last_start + self.window_length < end - 1e-12:
                 indices.append(
                     DatasetIndex(session_name, end - self.window_length, end)
                 )
