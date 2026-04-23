@@ -31,8 +31,10 @@ class MultitaskReadout(nn.Module):
 
         # Create a bunch of projection layers. One for each readout
         self.projections = nn.ModuleDict({})
-        for readout_id, spec in self.readout_specs.items():
-            self.projections[readout_id] = nn.Linear(dim, spec.dim)
+        self._readout_id_to_name = {}
+        for readout_name, readout_spec in self.readout_specs.items():
+            self.projections[readout_name] = nn.Linear(dim, readout_spec.dim)
+            self._readout_id_to_name[readout_spec.id] = readout_name
 
     def forward(
         self,
@@ -63,13 +65,16 @@ class MultitaskReadout(nn.Module):
         else:
             outputs = {}
 
-        for readout_name, readout_spec in self.readout_specs.items():
-            # get the mask of tokens that belong to this task
-            mask = output_readout_index == readout_spec.id
+        for readout_id in output_readout_index.unique().tolist():
+            readout_name = self._readout_id_to_name.get(readout_id, None)
 
-            if not torch.any(mask):
-                # there is not a single token in the batch for this task, so we skip
+            # if the readout_id is not found in the registry, skip it
+            # this deals with padding and potentially tasks to be ignored during training
+            if readout_name is None:
                 continue
+
+            # get the mask of tokens that belong to this task
+            mask = output_readout_index == readout_id
 
             # apply the appropriate projection for all tokens in the batch that belong to this task
             task_output = self.projections[readout_name](output_embs[mask])
@@ -127,13 +132,16 @@ class MultitaskReadout(nn.Module):
         else:
             outputs = {}
 
-        for readout_name, readout_spec in self.readout_specs.items():
-            # get the mask of tokens that belong to this task
-            mask = output_readout_index == readout_spec.id
+        for readout_id in output_readout_index.unique().tolist():
+            readout_name = self._readout_id_to_name.get(readout_id, None)
 
-            if not torch.any(mask):
-                # there is not a single token in the batch for this task, so we skip
+            # if the readout_id is not found in the registry, skip it
+            # this deals with padding and potentially tasks to be ignored during training
+            if readout_name is None:
                 continue
+
+            # get the mask of tokens that belong to this task
+            mask = output_readout_index == readout_id
 
             # apply the projection
             task_output = self.projections[readout_name](output_embs[mask])
