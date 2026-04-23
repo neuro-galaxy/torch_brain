@@ -32,7 +32,6 @@ from torch_brain.utils.stitcher import (
     DataForMultiTaskDecodingStitchEvaluator,
 )
 
-
 # higher speed on machines with tensor cores
 torch.set_float32_matmul_precision("medium")
 
@@ -329,7 +328,7 @@ class DataModule(L.LightningDataModule):
             shuffle=False,
             batch_size=batch_size,
             collate_fn=collate,
-            num_workers=0,
+            num_workers=self.cfg.num_workers,
         )
 
         self.log.info(f"Testing on {len(test_sampler)} samples")
