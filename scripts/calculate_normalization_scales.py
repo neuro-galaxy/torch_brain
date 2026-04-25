@@ -52,12 +52,21 @@ def calculate_zscales(dataset: Dataset) -> Dict[str, Tuple[float, float]]:
     print("[blue] calculating normalization scales")
     for session_id in tqdm(dataset.get_session_ids()):
         task_readouts = dataset.get_recording_config_dict()[session_id]["multitask_readout"]
-        # get a data object that is sliced according to the training sample intervals
+        recording_data = None
         for task_readout in task_readouts:
             task_id = task_readout["readout_id"]
-            modality = get_modality_by_name(task_id)
+            try:
+                modality = get_modality_by_name(task_id)
+            except KeyError as e:
+                raise KeyError(
+                    f"Unknown readout_id {task_id!r} for session {session_id!r}: "
+                    f"not registered in torch_brain.registry.MODALITY_REGISTRY. "
+                    f"Did you forget to register it?"
+                ) from e
             if modality.type == DataType.CONTINUOUS:
-                values = dataset.get_recording_data(session_id).get_nested_attribute(modality.value_key)
+                if recording_data is None:
+                    recording_data = dataset.get_recording_data(session_id)
+                values = recording_data.get_nested_attribute(modality.value_key)
                 mean = values.mean(axis=0)
                 std = values.std(axis=0)
                 n = len(values)
