@@ -1,0 +1,133 @@
+# Schema example for the multi-task Calcium POYO+ dataset config.
+#
+# This file intentionally contains only a couple of representative groups so the
+# expected structure is easy to see. The full dataset config (~80 groups, ~1700
+# lines) is generated locally by `examples/poyo_plus/scripts/generate_config.py`
+# and written to `examples/poyo_plus/configs/dataset/calcium_poyo_plus.yaml`.
+#
+# To use the full config:
+#   cd examples/poyo_plus/scripts
+#   python generate_config.py
+#   # then run training with: dataset=calcium_poyo_plus.yaml
+#
+# To use this example directly (much smaller, for debugging only):
+#   python examples/poyo_plus/train.py dataset=calcium_poyo_plus_example.yaml ...
+
+# Group 1 - example - NM1 + NS + running + static gratings (orient/phase/spat_freq)
+- selection:
+  - brainset: allen_visual_coding_ophys_2016
+    sessions:
+    - "500964514"
+    - "501498760"
+    - "501559087"
+  config:
+    multitask_readout:
+      - readout_id: running_speed
+        weights:
+          running.domain: 1.5
+        normalize_mean: 6.80354332
+        normalize_std: 13.87822103
+        timestamp_key: running.timestamps
+        value_key: running.running_speed
+        metrics:
+          - metric:
+              _target_: torchmetrics.MeanSquaredError
+      - readout_id: static_gratings_phase
+        weights:
+          static_gratings: 1.0
+        timestamp_key: static_gratings.timestamps
+        value_key: static_gratings.phase_id
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 5
+      - readout_id: static_gratings_spatial_frequency
+        weights:
+          static_gratings: 1.0
+        timestamp_key: static_gratings.timestamps
+        value_key: static_gratings.spatial_frequency_id
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 5
+      - readout_id: static_gratings_orientation
+        weights:
+          static_gratings: 1.0
+        timestamp_key: static_gratings.timestamps
+        value_key: static_gratings.orientation_id
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 6
+      - readout_id: natural_scenes
+        weights:
+          natural_scenes: 0.3
+        timestamp_key: natural_scenes.timestamps
+        value_key: natural_scenes.frame
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 119
+      - readout_id: natural_movie_one_frame
+        weights:
+          natural_movie_one: 0.25
+        timestamp_key: natural_movie_one.timestamps
+        value_key: natural_movie_one.frame
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 900
+          # Tolerant frame-window accuracy: count a hit if the predicted frame
+          # is within +/- 30 frames (~1 s @ 30 Hz) of the true frame.
+          - metric:
+              _target_: torch_brain.metrics.WithinDeltaAccuracy
+              tolerance: 30
+
+# Group 2 - example - drifting gratings + pupil
+- selection:
+  - brainset: allen_visual_coding_ophys_2016
+    sessions:
+    - "501794235"
+    - "501800164"
+    - "501889084"
+  config:
+    multitask_readout:
+      - readout_id: drifting_gratings_orientation
+        weights:
+          drifting_gratings: 1.0
+        timestamp_key: drifting_gratings.timestamps
+        value_key: drifting_gratings.orientation_id
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 8
+      - readout_id: drifting_gratings_temporal_frequency
+        weights:
+          drifting_gratings: 1.0
+        timestamp_key: drifting_gratings.timestamps
+        value_key: drifting_gratings.temporal_frequency_id
+        metrics:
+          - metric:
+              _target_: torchmetrics.Accuracy
+              task: multiclass
+              num_classes: 5
+      - readout_id: pupil_location
+        weights:
+          pupil.domain: 8.0
+        normalize_mean:
+          - 11.02599208
+          - 16.91118513
+        normalize_std:
+          - 15.94543917
+          - 6.83344030
+        timestamp_key: pupil.timestamps
+        value_key: pupil.location
+        metrics:
+          - metric:
+              _target_: torchmetrics.MeanSquaredError
