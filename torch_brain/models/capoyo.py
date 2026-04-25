@@ -28,9 +28,7 @@ from torch_brain.utils import (
 
 
 class CaPOYO(nn.Module):
-    """
-    CaPOYO (Calcium POYO+) model from `Azabou et al. 2025, Multi-session, multi-task neural decoding
-    from distinct cell-types and brain regions <https://openreview.net/forum?id=IuU0wcO0mo>`_.
+    """CaPOYO (Calcium POYO+) model from `Azabou et al. 2025, Multi-session, multi-task neural decoding from distinct cell-types and brain regions <https://openreview.net/forum?id=IuU0wcO0mo>`_.
 
     CaPOYO is a transformer-based model for neural decoding from calcium imaging recordings.
     It extends the POYO+ architecture with a calcium value map.
@@ -74,7 +72,9 @@ class CaPOYO(nn.Module):
         self.unit_emb = InfiniteVocabEmbedding(dim // 2, init_scale=emb_init_scale)
         self.session_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.token_type_emb = Embedding(4, dim, init_scale=emb_init_scale)
-        self.task_emb = Embedding(len(readout_specs), dim, init_scale=emb_init_scale)
+        self.task_emb = Embedding(
+            len(readout_specs) + 1, dim, init_scale=emb_init_scale
+        )
         self.latent_emb = Embedding(
             num_latents_per_step, dim, init_scale=emb_init_scale
         )
@@ -235,7 +235,7 @@ class CaPOYO(nn.Module):
         )
         output_latents = output_queries + self.dec_ffn(output_queries)
 
-        # multitask readout layer, each task has a seperate linear readout layer
+        # multitask readout layer, each task has a separate linear readout layer
         output = self.readout(
             output_embs=output_latents,
             output_readout_index=output_decoder_index,

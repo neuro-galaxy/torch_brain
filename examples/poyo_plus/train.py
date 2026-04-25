@@ -27,7 +27,7 @@ from torch_brain.registry import MODALITY_REGISTRY
 from torch_brain.transforms import Compose
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
-from torch_brain.utils.stitcher import (
+from torch_brain.utils.callbacks import (
     MultiTaskDecodingStitchEvaluator,
     DataForMultiTaskDecodingStitchEvaluator,
 )
@@ -265,11 +265,15 @@ class DataModule(L.LightningDataModule):
             generator=torch.Generator().manual_seed(self.cfg.seed + 1),
         )
 
+        gpu_batch_size = (
+            self.cfg.batch_size // self.trainer.world_size
+        )  # per-GPU batch size
+
         train_loader = DataLoader(
             self.train_dataset,
             sampler=train_sampler,
             collate_fn=collate,
-            batch_size=self.cfg.batch_size,
+            batch_size=gpu_batch_size,
             num_workers=self.cfg.num_workers,
             drop_last=True,
             pin_memory=True,
@@ -285,12 +289,13 @@ class DataModule(L.LightningDataModule):
 
     def val_dataloader(self):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
+        gpu_batch_size = batch_size // self.trainer.world_size
 
         val_sampler = DistributedStitchingFixedWindowSampler(
             sampling_intervals=self.val_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
-            batch_size=batch_size,
+            batch_size=gpu_batch_size,
             num_replicas=self.trainer.world_size,
             rank=self.trainer.global_rank,
         )
@@ -299,7 +304,7 @@ class DataModule(L.LightningDataModule):
             self.val_dataset,
             sampler=val_sampler,
             shuffle=False,
-            batch_size=batch_size,
+            batch_size=gpu_batch_size,
             collate_fn=collate,
             num_workers=self.cfg.num_workers,
             drop_last=False,
@@ -312,12 +317,13 @@ class DataModule(L.LightningDataModule):
 
     def test_dataloader(self):
         batch_size = self.cfg.eval_batch_size or self.cfg.batch_size
+        gpu_batch_size = batch_size // self.trainer.world_size
 
         test_sampler = DistributedStitchingFixedWindowSampler(
             sampling_intervals=self.test_dataset.get_sampling_intervals(),
             window_length=self.sequence_length,
             step=self.sequence_length / 2,
-            batch_size=batch_size,
+            batch_size=gpu_batch_size,
             num_replicas=self.trainer.world_size,
             rank=self.trainer.global_rank,
         )
@@ -326,7 +332,7 @@ class DataModule(L.LightningDataModule):
             self.test_dataset,
             sampler=test_sampler,
             shuffle=False,
-            batch_size=batch_size,
+            batch_size=gpu_batch_size,
             collate_fn=collate,
             num_workers=self.cfg.num_workers,
         )

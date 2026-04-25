@@ -7,7 +7,7 @@ import torch
 import torch.distributed as dist
 
 from temporaldata import Interval
-from torch_brain.data.dataset import DatasetIndex
+from torch_brain.dataset import DatasetIndex
 
 
 class RandomFixedWindowSampler(torch.utils.data.Sampler):
@@ -282,7 +282,7 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
 
     .. warning::
         This wrapper assumes that there is no communication between ranks except at the
-        begining or end of the evaluation, so it is only suitable for standard evaluation.
+        beginning or end of the evaluation, so it is only suitable for standard evaluation.
         This is because some ranks might end up performing more steps than others.
 
     Args:
@@ -488,3 +488,18 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         """Set the epoch number. Not strictly necessary for sequential sampler
         but included for API compatibility."""
         self.epoch = epoch
+
+
+__all__ = [
+    "RandomFixedWindowSampler",
+    "SequentialFixedWindowSampler",
+    "TrialSampler",
+    "DistributedEvaluationSamplerWrapper",
+    "DistributedStitchingFixedWindowSampler",
+]
+
+# see docs/source/api_reference.py
+__api_ref__ = {
+    "description": "See :ref:`sampling` for further details.",
+    "sections": [{"autosummary": __all__}],
+}

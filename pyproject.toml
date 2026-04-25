@@ -1,15 +1,15 @@
 [build-system]
-requires = ["setuptools>=60.2.0"]
+requires = ["setuptools>=80", "setuptools-scm[simple]>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "torch_brain"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A package for deep learning models for neuroscience"
 readme = "README.md"
 authors = [
     { name = "Mehdi Azabou", email = "mehdiazabou@gmail.com" },
-    { name = "Vinam Arora", email = "vinam@gatech.edu" },
+    { name = "Vinam Arora", email = "vinam@seas.upenn.edu" },
 ]
 license = { text = "Apache-2.0" }
 classifiers = [
@@ -39,6 +39,20 @@ dev = [
     "boto3",
     "tqdm",
     "pytest-cov",
+    "brainsets",
+]
+docs = [
+    "sphinx",
+    "pydata-sphinx-theme",
+    "myst-parser",
+    "sphinx-autodoc-typehints",
+    "sphinx-inline-tabs",
+    "sphinx-rtd-theme",
+    "sphinx-tabs",
+    "bokeh==3.4.3",
+    "sphinx-design",
+    "sphinx-copybutton",
+    "sphinxcontrib-sass",
 ]
 
 [project.urls]
@@ -50,6 +64,7 @@ Documentation = "https://torch-brain.readthedocs.io/en/latest/"
 packages = [
     "torch_brain",
     "torch_brain.data",
+    "torch_brain.dataset",
     "torch_brain.nn",
     "torch_brain.models",
     "torch_brain.utils",

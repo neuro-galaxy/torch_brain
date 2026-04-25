@@ -19,7 +19,7 @@ class InfiniteVocabEmbedding(nn.Module):
     matrix is initialized when:
 
     - The vocabulary is initialized via :meth:`initialize_vocab()`.
-    - or The model is loaded from a checkpoint that contains the vocabulary.
+    - or the model is loaded from a checkpoint that contains the vocabulary.
 
     If the vocabulary is initialized before :meth:`load_state_dict` is called,
     an error will be raised if the vocabulary in the checkpoint does not match the
@@ -30,11 +30,11 @@ class InfiniteVocabEmbedding(nn.Module):
     (that you loaded from a checkpoint), you can use:
 
     - :meth:`extend_vocab()` to add new words to the vocabulary. The embeddings for the new
-    words will be initialized randomly.
+      words will be initialized randomly.
 
     - :meth:`subset_vocab()` to select a subset of the vocabulary. The embeddings for the
-    selected words will be copied from the original embeddings, and the ids for the
-    selected words will change and :meth:`tokenizer` will be updated accordingly.
+      selected words will be copied from the original embeddings, and the ids for the
+      selected words will change and :meth:`tokenizer` will be updated accordingly.
 
     This module also plays the role of the tokenizer, which is accessible via
     :meth:`tokenizer`, and is a Callable.

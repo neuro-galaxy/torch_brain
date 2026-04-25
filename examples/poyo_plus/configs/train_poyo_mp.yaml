@@ -4,6 +4,8 @@ defaults:
   - dataset: perich_miller_population_2018.yaml
   - _self_
 
+batch_size: 1024
+
 train_transforms:
   - _target_: torch_brain.transforms.UnitDropout
     max_units: 1000

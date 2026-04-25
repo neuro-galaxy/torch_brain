@@ -1,52 +1,35 @@
-.. torch_brain documentation master file
+TorchBrain documentation
+========================
 
-**torch_brain**
-============================
+**torch_brain** is a library for designing and training deep learning models on neural data.
+It provides `PyTorch <https://pytorch.org>`_-compatible interfaces like :ref:`Dataset <dataset_ref>`,
+:ref:`Samplers <data.sampler_ref>`, :ref:`nn.Modules <nn_ref>`, and more to help you write your
+very own models and training scripts.
 
-.. image:: https://img.shields.io/pypi/v/pytorch_brain?color=blue&logo=pypi&logoColor=white
-   :target: https://pypi.org/project/pytorch_brain/
+If you encounter any bugs or have feature requests, please submit them to our
+`GitHub Issues page <https://github.com/neuro-galaxy/torch_brain/issues>`_.
+
+.. image:: https://img.shields.io/pypi/v/torch_brain?color=blue&logo=pypi&logoColor=white
+   :target: https://pypi.org/project/torch_brain/
    :alt: PyPI Package
 
 .. image:: https://img.shields.io/badge/GitHub-Repository-black?logo=github&logoColor=white
    :target: https://github.com/neuro-galaxy/torch_brain
    :alt: GitHub Repository
 
-.. image:: https://img.shields.io/badge/GitHub-Issues-black?logo=github&logoColor=white
-   :target: https://github.com/neuro-galaxy/torch_brain/issues
-   :alt: GitHub Issues
-
-.. image:: https://img.shields.io/discord/1338561153089146962?label=Discord&logo=discord
+.. image:: https://img.shields.io/discord/1338561153089146962?color=3CB371&label=Discord&logo=discord&logoColor=white
    :target: https://discord.gg/kQNKA6B8ZC
    :alt: Discord
 
-**torch_brain** is a Python library for various deep learning models designed for neuroscience.
-
-
-If you encounter any bugs or have feature requests, please submit them to our 
-`GitHub Issues page <https://github.com/neuro-galaxy/torch_brain/issues>`_. 
 
 ----
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Get Started
+   :maxdepth: 2
 
-   concepts/installation
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Concepts
-
-   concepts/sampler
+   guides/index
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Package Reference
+   :maxdepth: 2
 
-   package/data/index
-   package/nn/index
-   package/models
-   package/registry
-   package/optim
-   package/transforms
-   package/utils
+   generated/api/index
