@@ -25,14 +25,6 @@ To prepare the data, run:
 brainsets prepare allen_visual_coding_ophys_2016
 ```
 
-**Training**
-
-```bash
-python train.py --config-name=train_calcium_poyo_plus.yaml
-```
-
-Check out `configs/train_calcium_poyo_plus.yaml` for full-model config and `configs/train_calcium_poyo_plus_single_session.yaml` for a single-session example.
-
 ### Generating the full multi-task dataset config
 
 The full multi-task dataset config groups every Allen Visual Coding session by
@@ -49,6 +41,14 @@ and writes the full grouped dataset file to
 `examples/poyo_plus/configs/dataset/calcium_poyo_plus.yaml`. A small reference
 stub lives at `examples/poyo_plus/configs/dataset/calcium_poyo_plus_example.yaml`
 so you can see the schema without running the generator.
+
+**Training**
+
+```bash
+python train.py --config-name=train_calcium_poyo_plus.yaml
+```
+
+Check out `configs/train_calcium_poyo_plus.yaml` for full-model config and `configs/train_calcium_poyo_plus_single_session.yaml` for a single-session example.
 
 ## Finetuning
 
