@@ -16,7 +16,7 @@ from rich import print
 from torch_brain.data import Dataset
 import numpy as np
 from omegaconf import OmegaConf
-from torch_brain.registry import DataType, get_modality_by_name
+from torch_brain.registry import DataType, MODALITY_REGISTRY
 from tqdm import tqdm
 
 
@@ -56,7 +56,7 @@ def calculate_zscales(dataset: Dataset) -> Dict[str, Tuple[float, float]]:
         for task_readout in task_readouts:
             task_id = task_readout["readout_id"]
             try:
-                modality = get_modality_by_name(task_id)
+                modality = MODALITY_REGISTRY[task_id]
             except KeyError as e:
                 raise KeyError(
                     f"Unknown readout_id {task_id!r} for session {session_id!r}: "
