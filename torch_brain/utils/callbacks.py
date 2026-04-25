@@ -418,14 +418,17 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                 )
 
         metrics = {}
+        per_task_values: Dict[str, List[torch.Tensor]] = defaultdict(list)
         for recording_id in self.metrics.keys():
             for task_name in self.metrics[recording_id].keys():
                 for metric_name in self.metrics[recording_id][task_name].keys():
-                    metrics[f"{recording_id}/{task_name}/{metric_name}/{prefix}"] = (
+                    value = (
                         self.metrics[recording_id][task_name][metric_name]
                         .to(pl_module.device)
                         .compute()
                     )
+                    metrics[f"{recording_id}/{task_name}/{metric_name}/{prefix}"] = value
+                    per_task_values[task_name].append(value)
                     self.metrics[recording_id][task_name][metric_name].reset()
                     self.metrics[recording_id][task_name][metric_name].to("cpu")
 
@@ -433,6 +436,12 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
         metrics[f"average_{prefix}_metric"] = torch.tensor(
             list(metrics.values())
         ).mean()
+
+        # compute per-task averages across recordings/metrics
+        for task_name, values in per_task_values.items():
+            metrics[f"average_{task_name}_{prefix}_metric"] = torch.tensor(
+                values
+            ).mean()
 
         # log the metrics
         self.log_dict(metrics)

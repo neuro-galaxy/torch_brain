@@ -1,7 +1,7 @@
 defaults:
   - defaults.yaml
-  - model: capoyo_single_session.yaml
-  - dataset: capoyo_single_session.yaml
+  - model: calcium_poyo_plus_single_session.yaml
+  - dataset: calcium_poyo_plus_single_session.yaml
   - _self_  # ensures current config overrides defaults
 
 epochs: 100
@@ -16,5 +16,5 @@ train_transforms:
     tail_right: 100
 
 wandb:
-  run_name: capoyo_single_session
+  run_name: calcium_poyo_plus_single_session
   

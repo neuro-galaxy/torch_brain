@@ -32,7 +32,6 @@ from torch_brain.utils.callbacks import (
     DataForMultiTaskDecodingStitchEvaluator,
 )
 
-
 # higher speed on machines with tensor cores
 torch.set_float32_matmul_precision("medium")
 
@@ -307,7 +306,7 @@ class DataModule(L.LightningDataModule):
             shuffle=False,
             batch_size=gpu_batch_size,
             collate_fn=collate,
-            num_workers=0,
+            num_workers=self.cfg.num_workers,
             drop_last=False,
         )
 
@@ -335,7 +334,7 @@ class DataModule(L.LightningDataModule):
             shuffle=False,
             batch_size=gpu_batch_size,
             collate_fn=collate,
-            num_workers=0,
+            num_workers=self.cfg.num_workers,
         )
 
         self.log.info(f"Testing on {len(test_sampler)} samples")
@@ -383,6 +382,11 @@ def main(cfg: DictConfig):
             save_on_train_epoch_end=True,
             every_n_epochs=cfg.eval_epochs,
         ),
+        ModelCheckpoint(
+            every_n_epochs=cfg.eval_epochs,
+            save_top_k=-1,
+            filename="epoch_{epoch:02d}",
+        ),
         LearningRateMonitor(
             logging_interval="step"
         ),  # Create a callback to log the learning rate.
@@ -415,7 +419,7 @@ def main(cfg: DictConfig):
     )
 
     # Train
-    trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path)
+    trainer.fit(wrapper, data_module, ckpt_path=cfg.ckpt_path, weights_only=False)
 
     # Test
     trainer.test(wrapper, data_module, ckpt_path="best", weights_only=False)
