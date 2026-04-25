@@ -6,18 +6,18 @@ Official codebase for POYO+ from [ICLR 2025].
 ---
 
 POYO+ is a multi-task version of POYO.
-This is an example training script for the model in [Azabou and Pan et al. 2025](https://proceedings.iclr.cc/paper_files/paper/2025/file/953390c834451505703c9da45de634d8-Paper-Conference.pdf), corresonding to the module `torch_brain.models.CaPOYO`.
+This is an example training script for the model in [Azabou and Pan et al. 2025](https://proceedings.iclr.cc/paper_files/paper/2025/file/953390c834451505703c9da45de634d8-Paper-Conference.pdf), corresonding to the module `torch_brain.models.CalciumPOYOPlus`.
 
 
 ## Training POYO+ on Calcium Traces
 
 **Installing necessary packages**
 ```bash
-pip install pytorch_brain lightning wandb brainsets
+pip install torch_brain lightning wandb brainsets
 ```
 
 **Data Preparation**  
-There are 1304 sessions in the full CaPOYO model and 30 holdout drifting gratings sessions.
+There are 1304 sessions in the full Calcium POYO+ model and 30 holdout drifting gratings sessions.
 The raw data for all sessions is ~360GB and processed data uses ~58GB.
 To prepare the data, run:
 
@@ -25,13 +25,63 @@ To prepare the data, run:
 brainsets prepare allen_visual_coding_ophys_2016
 ```
 
-**Training**  
+**Training**
 
 ```bash
-python train.py --config-name=train_capoyo.yaml
+python train.py --config-name=train_calcium_poyo_plus.yaml
 ```
 
-Check out `configs/train_capoyo.yaml` for full-model config and `configs/train_capoyo_single_session.yaml` for a single-session example.
+Check out `configs/train_calcium_poyo_plus.yaml` for full-model config and `configs/train_calcium_poyo_plus_single_session.yaml` for a single-session example.
+
+### Generating the full multi-task dataset config
+
+The full multi-task dataset config groups every Allen Visual Coding session by
+the exact set of tasks it supports. Because that file is ~1.7k lines, it is
+generated rather than checked in. To produce it locally:
+
+```bash
+cd examples/poyo_plus/scripts
+python generate_config.py
+```
+
+This reads `task_contents.csv` (which lists, per session, the tasks available)
+and writes the full grouped dataset file to
+`examples/poyo_plus/configs/dataset/calcium_poyo_plus.yaml`. A small reference
+stub lives at `examples/poyo_plus/configs/dataset/calcium_poyo_plus_example.yaml`
+so you can see the schema without running the generator.
+
+### Running on SLURM
+
+A minimal sbatch wrapper for the full POYO+ run looks like the following.
+Substitute your own venv, working directory, and (optional) initialization
+checkpoint via environment variables before submitting:
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=poyo_plus-full
+#SBATCH --nodes=1
+#SBATCH --gpus=4
+#SBATCH --mem-per-gpu=128G
+#SBATCH --cpus-per-gpu=16
+#SBATCH --output=logs/poyo_plus-full-%j.out
+#SBATCH --error=logs/poyo_plus-full-%j.err
+
+: "${VENV:?set VENV to the path of your virtualenv activate script}"
+: "${WORKDIR:=$HOME/torch_brain}"
+: "${CKPT:=}"  # optional: path to an initialization checkpoint
+
+mkdir -p logs
+# shellcheck disable=SC1091
+source "$VENV"
+cd "$WORKDIR" || exit 1
+
+srun python examples/poyo_plus/train.py \
+    --config-name=train_calcium_poyo_plus.yaml \
+    model=calcium_poyo_plus.yaml \
+    dataset=calcium_poyo_plus.yaml \
+    wandb.run_name="poyo_plus-full" \
+    ${CKPT:+ckpt_path="$CKPT"}
+```
 
 
 ## Finetuning
