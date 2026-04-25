@@ -1,3 +1,3 @@
-from .frame_index_window_accuracy import FrameIndexWindowAccuracy
+from .within_delta_accuracy import WithinDeltaAccuracy
 
-__all__ = ["FrameIndexWindowAccuracy"]
+__all__ = ["WithinDeltaAccuracy"]
