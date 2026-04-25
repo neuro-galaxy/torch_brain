@@ -50,12 +50,26 @@ python train.py --config-name=train_calcium_poyo_plus.yaml
 
 Check out `configs/train_calcium_poyo_plus.yaml` for full-model config and `configs/train_calcium_poyo_plus_single_session.yaml` for a single-session example.
 
+## Pretrained weights
+
+A Calcium POYO+ checkpoint trained on the full 1304-session Allen Visual
+Coding corpus is available here:
+
+- [Calcium POYO+ checkpoint (epoch 414, ~275 MB)](https://drive.google.com/file/d/1zKzR9YU1dDfqe9ygcBLfdj8Masjk_I-l/view?usp=sharing)
+
+Download it and load it with the same model config used at training time
+(`configs/model/calcium_poyo_plus.yaml`):
+
+The `unit_emb` and `session_emb` `InfiniteVocabEmbedding` layers will be
+materialized automatically from the vocabulary saved alongside the weights
+(116702 units, 1306 sessions).
+
 ## Finetuning
 
-To finetune a pre-trained model, run:
+To finetune a pre-trained model, download the checkpoint above and run:
 
 ```bash
-python finetune.py ckpt_path="*your_path_here*"
+python finetune.py ckpt_path="/path/to/epoch_epoch=414.ckpt"
 ```
 
 - Set which model and dataset to use in `configs/finetune.yaml`.
