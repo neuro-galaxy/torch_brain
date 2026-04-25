@@ -50,40 +50,6 @@ and writes the full grouped dataset file to
 stub lives at `examples/poyo_plus/configs/dataset/calcium_poyo_plus_example.yaml`
 so you can see the schema without running the generator.
 
-### Running on SLURM
-
-A minimal sbatch wrapper for the full POYO+ run looks like the following.
-Substitute your own venv, working directory, and (optional) initialization
-checkpoint via environment variables before submitting:
-
-```bash
-#!/bin/bash
-#SBATCH --job-name=poyo_plus-full
-#SBATCH --nodes=1
-#SBATCH --gpus=4
-#SBATCH --mem-per-gpu=128G
-#SBATCH --cpus-per-gpu=16
-#SBATCH --output=logs/poyo_plus-full-%j.out
-#SBATCH --error=logs/poyo_plus-full-%j.err
-
-: "${VENV:?set VENV to the path of your virtualenv activate script}"
-: "${WORKDIR:=$HOME/torch_brain}"
-: "${CKPT:=}"  # optional: path to an initialization checkpoint
-
-mkdir -p logs
-# shellcheck disable=SC1091
-source "$VENV"
-cd "$WORKDIR" || exit 1
-
-srun python examples/poyo_plus/train.py \
-    --config-name=train_calcium_poyo_plus.yaml \
-    model=calcium_poyo_plus.yaml \
-    dataset=calcium_poyo_plus.yaml \
-    wandb.run_name="poyo_plus-full" \
-    ${CKPT:+ckpt_path="$CKPT"}
-```
-
-
 ## Finetuning
 
 To finetune a pre-trained model, run:
