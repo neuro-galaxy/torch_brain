@@ -1,4 +1,11 @@
-"""Tolerant top-1 accuracy: hit if argmax prediction is within +/- delta of target."""
+"""Custom torchmetrics for the Calcium POYO+ example.
+
+Lives under ``examples/poyo_plus`` so it can be referenced from the dataset
+configs as ``_target_: metrics.WithinDeltaAccuracy``. The ``examples/poyo_plus``
+directory is on ``sys.path`` whenever ``train.py`` / ``finetune.py`` is invoked
+(the script's directory is auto-prepended to ``sys.path[0]``), which makes
+``metrics`` importable as a sibling module without a package install.
+"""
 
 import torch
 from torch import Tensor

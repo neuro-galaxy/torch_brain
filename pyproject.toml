@@ -65,7 +65,6 @@ packages = [
     "torch_brain",
     "torch_brain.data",
     "torch_brain.dataset",
-    "torch_brain.metrics",
     "torch_brain.nn",
     "torch_brain.models",
     "torch_brain.utils",

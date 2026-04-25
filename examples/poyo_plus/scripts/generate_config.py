@@ -255,7 +255,7 @@ def create_readout_config(tasks: Dict[str, bool]) -> List[Dict]:
                 metrics.append(
                     {
                         "metric": {
-                            "_target_": "torch_brain.metrics.WithinDeltaAccuracy",
+                            "_target_": "metrics.WithinDeltaAccuracy",
                             "tolerance": NM_TOLERANCE_FRAMES,
                         }
                     }

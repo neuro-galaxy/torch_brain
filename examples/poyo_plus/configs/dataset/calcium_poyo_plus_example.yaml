@@ -85,7 +85,7 @@
           # Tolerant frame-window accuracy: count a hit if the predicted frame
           # is within +/- 30 frames (~1 s @ 30 Hz) of the true frame.
           - metric:
-              _target_: torch_brain.metrics.WithinDeltaAccuracy
+              _target_: metrics.WithinDeltaAccuracy
               tolerance: 30
 
 # Group 2 - example - drifting gratings + pupil
