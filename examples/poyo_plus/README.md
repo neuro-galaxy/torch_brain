@@ -83,7 +83,6 @@ Held-out test metrics for this checkpoint, averaged across recordings (overall
 | natural_movie_one_frame              | mean(Accuracy, WithinDeltaAcc)    | 0.4296 |
 | natural_movie_two_frame              | mean(Accuracy, WithinDeltaAcc)    | 0.3685 |
 | natural_movie_three_frame            | mean(Accuracy, WithinDeltaAcc)    | 0.1598 |
-| locally_sparse_noise_frame           | mean(Accuracy, WithinDeltaAcc)    | ~0.000 |
 | pupil_location                       | MeanSquaredError (z-normalized)   | 0.2791 |
 | running_speed                        | MeanSquaredError (z-normalized)   | 0.4021 |
 
