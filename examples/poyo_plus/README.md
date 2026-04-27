@@ -67,6 +67,32 @@ The `unit_emb` and `session_emb` `InfiniteVocabEmbedding` layers will be
 materialized automatically from the vocabulary saved alongside the weights
 (116702 units, 1306 sessions).
 
+### Test results
+
+Held-out test metrics for this checkpoint, averaged across recordings (overall
+`average_test_metric = 0.3352`):
+
+| Task                                 | Metric                            |  Value |
+| ------------------------------------ | --------------------------------- | -----: |
+| drifting_gratings_orientation        | Accuracy                          | 0.4719 |
+| drifting_gratings_temporal_frequency | Accuracy                          | 0.4503 |
+| static_gratings_orientation          | Accuracy                          | 0.3347 |
+| static_gratings_phase                | Accuracy                          | 0.2664 |
+| static_gratings_spatial_frequency    | Accuracy                          | 0.4455 |
+| natural_scenes                       | Accuracy                          | 0.0968 |
+| natural_movie_one_frame              | mean(Accuracy, WithinDeltaAcc)    | 0.4296 |
+| natural_movie_two_frame              | mean(Accuracy, WithinDeltaAcc)    | 0.3685 |
+| natural_movie_three_frame            | mean(Accuracy, WithinDeltaAcc)    | 0.1598 |
+| locally_sparse_noise_frame           | mean(Accuracy, WithinDeltaAcc)    | ~0.000 |
+| pupil_location                       | MeanSquaredError (z-normalized)   | 0.2791 |
+| running_speed                        | MeanSquaredError (z-normalized)   | 0.4021 |
+
+> Note: numbers differ from those reported in the paper. In particular, our
+> `running_speed` prediction target was actually the monotonically-increasing
+> timestamps rather than the m/s running-speed value, so that row is not
+> directly comparable. The remaining differences are attributable to small
+> hyperparameter/implementation deltas and stochasticity in training.
+
 ## Finetuning
 
 To finetune a pre-trained model, download the checkpoint above and run:
