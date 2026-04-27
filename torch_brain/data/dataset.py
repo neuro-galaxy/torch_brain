@@ -73,7 +73,7 @@ class Dataset(torch.utils.data.Dataset):
             to the files, and does not load the data into memory.
     """
 
-    _check_for_data_leakage_flag: bool = False
+    _check_for_data_leakage_flag: bool = True
     _open_files: Optional[Dict[str, h5py.File]] = None
     _data_objects: Optional[Dict[str, Data]] = None
 

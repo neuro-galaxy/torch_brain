@@ -427,7 +427,9 @@ class MultiTaskDecodingStitchEvaluator(L.Callback):
                         .to(pl_module.device)
                         .compute()
                     )
-                    metrics[f"{recording_id}/{task_name}/{metric_name}/{prefix}"] = value
+                    metrics[f"{recording_id}/{task_name}/{metric_name}/{prefix}"] = (
+                        value
+                    )
                     per_task_values[task_name].append(value)
                     self.metrics[recording_id][task_name][metric_name].reset()
                     self.metrics[recording_id][task_name][metric_name].to("cpu")

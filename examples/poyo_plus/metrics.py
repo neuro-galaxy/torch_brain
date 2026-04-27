@@ -63,7 +63,5 @@ class WithinDeltaAccuracy(Metric):
 
     def compute(self) -> Tensor:
         if self.total == 0:
-            return torch.tensor(
-                0.0, device=self.correct.device, dtype=torch.float32
-            )
+            return torch.tensor(0.0, device=self.correct.device, dtype=torch.float32)
         return self.correct.float() / self.total.float()

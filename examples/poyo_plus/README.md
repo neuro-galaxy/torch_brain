@@ -6,15 +6,18 @@ Official codebase for POYO+ from [ICLR 2025].
 ---
 
 POYO+ is a multi-task version of POYO.
-This is an example training script for the model in [Azabou and Pan et al. 2025](https://proceedings.iclr.cc/paper_files/paper/2025/file/953390c834451505703c9da45de634d8-Paper-Conference.pdf), corresonding to the module `torch_brain.models.CalciumPOYOPlus`.
+This is an example training script for the model in [Azabou and Pan et al. 2025](https://proceedings.iclr.cc/paper_files/paper/2025/file/953390c834451505703c9da45de634d8-Paper-Conference.pdf), corresponding to the module `torch_brain.models.CalciumPOYOPlus`.
 
 
 ## Training POYO+ on Calcium Traces
 
 **Installing necessary packages**
 ```bash
-pip install torch_brain lightning wandb brainsets
+pip install torch_brain "lightning>=2.6.0" wandb brainsets
 ```
+
+> Note: `lightning>=2.6.0` is required because `train.py` passes the
+> `weights_only=False` argument to `Trainer.fit`, which was added in 2.6.0.
 
 **Data Preparation**  
 There are 1304 sessions in the full Calcium POYO+ model and 30 holdout drifting gratings sessions.

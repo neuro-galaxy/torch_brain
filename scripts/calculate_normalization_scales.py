@@ -51,7 +51,9 @@ def calculate_zscales(dataset: Dataset) -> Dict[str, Tuple[float, float]]:
     chunk_metrics = {}
     print("[blue] calculating normalization scales")
     for session_id in tqdm(dataset.get_session_ids()):
-        task_readouts = dataset.get_recording_config_dict()[session_id]["multitask_readout"]
+        task_readouts = dataset.get_recording_config_dict()[session_id][
+            "multitask_readout"
+        ]
         recording_data = None
         for task_readout in task_readouts:
             task_id = task_readout["readout_id"]
