@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added `BinSpikes` transform ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 
 ### Removed
+- Remove `utils/gradient_rescale.py` (legacy) ([#201](https://github.com/neuro-galaxy/torch_brain/pull/201))
 
 ### Changed
 - Moved `DecodingStitchEvaluator` and `MultiTaskDecodingStitchEvaluator` to `utils/callbacks.py` ([#183](https://github.com/neuro-galaxy/torch_brain/pull/183))
