@@ -27,10 +27,10 @@ from torch_brain.utils import (
 )
 
 
-class CaPOYO(nn.Module):
-    """CaPOYO (Calcium POYO+) model from `Azabou et al. 2025, Multi-session, multi-task neural decoding from distinct cell-types and brain regions <https://openreview.net/forum?id=IuU0wcO0mo>`_.
+class CalciumPOYOPlus(nn.Module):
+    """Calcium POYO+ model from `Azabou et al. 2025, Multi-session, multi-task neural decoding from distinct cell-types and brain regions <https://openreview.net/forum?id=IuU0wcO0mo>`_.
 
-    CaPOYO is a transformer-based model for neural decoding from calcium imaging recordings.
+    Calcium POYO+ is a transformer-based model for neural decoding from calcium imaging recordings.
     It extends the POYO+ architecture with a calcium value map.
     """
 
