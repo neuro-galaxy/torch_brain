@@ -43,6 +43,7 @@ If you encounter any bugs or have feature requests, please submit them to our
    concepts/using_existing_data
    concepts/prepare_data
    concepts/create_pipeline
+   concepts/neuroprobe
 
 .. toctree::
    :maxdepth: 1

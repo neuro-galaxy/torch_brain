@@ -202,21 +202,24 @@ th:last-child {
     margin-bottom: 0em;
 }
 
-.cli-option > code {
+.cli-option>code {
     /* Option name */
-    color: var(--color-brand-content); /* from furo */
+    color: var(--color-brand-content);
+    /* from furo */
 }
 
-.cli-option > em {
+.cli-option>em {
     /* Option argument */
-    color: var(--color-foreground-secondary); /* from furo */
+    color: var(--color-foreground-secondary);
+    /* from furo */
     font-size: var(--font-size--small);
 }
 
-.cli-option > a:first-child {
+.cli-option>a:first-child {
     /* Option name when it is link */
     /* match styling of code (taken from furo's source css) */
-    color: var(--color-brand-content); /* from furo */
+    color: var(--color-brand-content);
+    /* from furo */
     font-family: var(--font-stack--monospace);
     font-size: var(--font-size--small--2);
     background: var(--color-inline-code-background);
@@ -225,7 +228,7 @@ th:last-child {
     border: 1px solid var(--color-background-border);
 }
 
-.cli-option + blockquote {
+.cli-option+blockquote {
     /* Option description */
     margin-top: 0em;
     margin-left: 1.5em;
@@ -243,9 +246,17 @@ table.autosummary {
 }
 
 table.autosummary tr:nth-child(odd) {
-    background-color: #f9f9f9 !important; /* The subtle gray stripe */
+    background-color: #f9f9f9 !important;
+    /* The subtle gray stripe */
 }
 
 table.autosummary tr:nth-child(even) {
-    background-color: #ffffff !important; /* The white stripe */
+    background-color: #ffffff !important;
+    /* The white stripe */
+}
+
+/* Center the first column (both header and body cells) */
+table.center-first-col th:nth-child(1),
+table.center-first-col td:nth-child(1) {
+    text-align: center !important;
 }

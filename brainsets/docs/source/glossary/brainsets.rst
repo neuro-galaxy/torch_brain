@@ -889,6 +889,154 @@ perich_miller_population_2018
    </div>
 
 
+neuroprobe_2025
+---------------
+
+**Downloading data using brainsets cli** ::
+
+
+    brainsets prepare neuroprobe_2025
+
+
+**Brainset Card**
+
+.. raw:: html
+
+  <div class="brainset-card">
+   <table>
+       <colgroup>
+           <col style="width: 30%">
+           <col style="width: 70%">
+       </colgroup>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-circle-info"></i>Data Source</th>
+       </tr>
+       <tr>
+           <td><strong>Publication(s)</strong></td>
+           <td>
+               <div>
+                 <a href="https://arxiv.org/abs/2509.21671">arXiv:2509.21671</a>
+                 <span class="citation-container">
+                   <button class="cite-button" data-doi="2509.21671">Cite</button>
+                   <div class="citation-popup" id="popup-2509.21671" style="display:none;">
+                     <div class="citation-section">
+                       <h4>BibTeX</h4>
+                       <div class="citation-content">
+                         <pre>@article{zahorodnii2025neuroprobe,
+    title={Neuroprobe: Evaluating Intracranial Brain Responses to Naturalistic Stimuli},
+    author={Zahorodnii, Andrii and Wang, Christopher and Stankovits, Bennett and Moraitaki, Charikleia and Chau, Geeling and Barbu, Andrei and Katz, Boris and Fiete, Ila R},
+    journal={arXiv preprint arXiv:2509.21671},
+    year={2025}
+    }
+    </pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                     <div class="citation-section">
+                       <h4>APA Style</h4>
+                       <div class="citation-content">
+                         <pre>Zahorodnii, A., Wang, C., Stankovits, B., Moraitaki, C., Chau, G., Barbu, A., Katz, B., & Fiete, I. R. (2025). Neuroprobe: Evaluating Intracranial Brain Responses to Naturalistic Stimuli. arXiv preprint arXiv:2509.21671.</pre>
+                         <button class="copy-button" title="Copy to clipboard"><svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-copy" width="44" height="44" viewBox="0 0 24 24" stroke-width="1.5" stroke="#000000" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <title>Copy to clipboard</title>
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+    <rect x="8" y="8" width="12" height="12" rx="2"></rect>
+    <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+    </svg></button>
+                       </div>
+                     </div>
+                   </div>
+                 </span>
+               </div>
+           </td>
+       </tr>
+       <tr>
+           <td><strong>Data Source</strong></td>
+           <td><a href="https://braintreebank.dev">https://braintreebank.dev</a></td>
+       </tr>
+       <tr>
+           <td><strong>License</strong></td>
+           <td><a href="https://spdx.org/licenses/CC-BY-4.0.html">Creative Commons Attribution 4.0 International</a></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-user"></i>Subjects</th>
+       </tr>
+       <tr>
+           <td><strong>Number of subjects</strong></td>
+           <td>10</td>
+       </tr>
+       <tr>
+           <td><strong>Species</strong></td>
+           <td>Homo sapiens</td>
+       </tr>
+        <tr>
+           <td><strong>Number of recordings</strong></td>
+           <td>21 movie sessions across 10 subjects</td>
+       </tr>
+       <tr>
+           <td><strong>Total recording time</strong></td>
+           <td>~43 hours</td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-brain"></i> Neural Data</th>
+       </tr>
+       <tr>
+           <td><strong>Neural Modality</strong></td>
+           <td>iEEG (stereoelectroencephalography; sEEG)</td>
+       </tr>
+       <tr>
+           <td><strong>Device</strong></td>
+           <td>sEEG depth electrodes</td>
+       </tr>
+       <tr>
+           <td><strong>Sampling rate</strong></td>
+           <td>2048 Hz</td>
+       </tr>
+       <tr>
+           <td><strong>Brain regions</strong></td>
+           <td>Various cortical regions (electrode placements determined by clinical needs)</td>
+       </tr>
+       <tr>
+           <td><strong>Available fields</strong></td>
+           <td><span class="code-tag">data.seeg_data</span><span class="code-tag">data.channels</span></td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-bolt-lightning"></i> Behavioral Data</th>
+       </tr>
+        <tr>
+           <td><strong>Description</strong></td>
+           <td>Subjects watched naturalistic Hollywood movies while neural activity was recorded. Neuroprobe defines 15 binary classification tasks across audio, language, and vision domains, aligned to word onsets.</td>
+       </tr>
+       <tr>
+           <td><strong>Task</strong></td>
+           <td>Naturalistic movie viewing with 15 decoding tasks</td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-database"></i> File Sizes</th>
+       </tr>
+       <tr>
+           <td><strong>Raw data size</strong></td>
+           <td>~138 GB</td>
+       </tr>
+       <tr>
+           <td><strong>Processed data size</strong></td>
+           <td>~257 GB</td>
+       </tr>
+       <tr>
+           <th colspan="2" align="center"><i class="fa-solid fa-triangle-exclamation"></i>Notes</th>
+       </tr>
+       <tr>
+           <td><strong>Benchmark</strong></td>
+           <td>Neuroprobe is both a dataset and a benchmark. For details on running the benchmark with brainsets, see the <a href="../concepts/neuroprobe.html">Neuroprobe Benchmark</a> tutorial.</td>
+       </tr>
+   </table>
+   </div>
+
+
 vollan_moser_alternating_2025
 -----------------------------
 
