@@ -11,8 +11,10 @@ This is an example training script for the Calcium POYO+ model in [Azabou and Pa
 ## Training POYO+ on Calcium Traces
 
 **Installing necessary packages**
+
+In addition to `torch_brain`, the following packages are needed to run the training scripts in this directory.
 ```bash
-pip install torch_brain "lightning>=2.6.0" wandb brainsets
+pip install "lightning>=2.6.0" wandb brainsets
 ```
 
 **Data Preparation**
