@@ -88,8 +88,9 @@ Please cite [our paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca11
 @inproceedings{
     azabou2025multisession,
     title={Multi-session, multi-task neural decoding from distinct cell-types and brain regions},
-    author={Mehdi Azabou and Krystal Pan and Vinam Arora and Ian Knight and Eva L. Dyer and Blake A. Richards},
-    booktitle={International Conference on Learning Representations},
+    author={Mehdi Azabou and Krystal Xuejing Pan and Vinam Arora and Ian Jarratt Knight and Eva L Dyer and Blake Aaron Richards},
+    booktitle={The Thirteenth International Conference on Learning Representations},
     year={2025},
+    url={https://openreview.net/forum?id=IuU0wcO0mo}
 }
 ```
