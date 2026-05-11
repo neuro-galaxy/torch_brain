@@ -15,10 +15,6 @@ This is an example training script for the Calcium POYO+ model in [Azabou and Pa
 pip install torch_brain "lightning>=2.6.0" wandb brainsets
 ```
 
-> [!Note]
-> `lightning>=2.6.0` is required because `train.py` passes the
-> `weights_only=False` argument to `Trainer.fit`, which was added in 2.6.0.
-
 **Data Preparation**
 There are 1304 sessions in the full Calcium POYO+ model and 30 holdout drifting gratings sessions.
 The raw data for all sessions is ~360GB and processed data uses ~58GB.
