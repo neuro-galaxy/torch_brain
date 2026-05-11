@@ -1,12 +1,11 @@
 # POYO+ 🧠
 
-Official codebase for POYO+ from [ICLR 2025].  
-[[Paper Link]](https://proceedings.iclr.cc/paper_files/paper/2025/file/953390c834451505703c9da45de634d8-Paper-Conference.pdf)
+Official codebase for POYO+ from ICLR 2025 ([Paper Link](https://proceedings.iclr.cc/paper_files/paper/2025/file/953390c834451505703c9da45de634d8-Paper-Conference.pdf)).
 
 ---
 
 POYO+ is a multi-task version of POYO.
-This is an example training script for the model in [Azabou and Pan et al. 2025](https://proceedings.iclr.cc/paper_files/paper/2025/file/953390c834451505703c9da45de634d8-Paper-Conference.pdf), corresponding to the module `torch_brain.models.CalciumPOYOPlus`.
+This is an example training script for the Calcium POYO+ model in [Azabou and Pan et al. 2025](https://proceedings.iclr.cc/paper_files/paper/2025/file/953390c834451505703c9da45de634d8-Paper-Conference.pdf), corresponding to the module `torch_brain.models.CalciumPOYOPlus`.
 
 
 ## Training POYO+ on Calcium Traces
@@ -16,10 +15,11 @@ This is an example training script for the model in [Azabou and Pan et al. 2025]
 pip install torch_brain "lightning>=2.6.0" wandb brainsets
 ```
 
-> Note: `lightning>=2.6.0` is required because `train.py` passes the
+> [!Note]
+> `lightning>=2.6.0` is required because `train.py` passes the
 > `weights_only=False` argument to `Trainer.fit`, which was added in 2.6.0.
 
-**Data Preparation**  
+**Data Preparation**
 There are 1304 sessions in the full Calcium POYO+ model and 30 holdout drifting gratings sessions.
 The raw data for all sessions is ~360GB and processed data uses ~58GB.
 To prepare the data, run:
@@ -86,7 +86,8 @@ Held-out test metrics for this checkpoint, averaged across recordings (overall
 | pupil_location                       | MeanSquaredError (z-normalized)   | 0.2791 |
 | running_speed                        | MeanSquaredError (z-normalized)   | 0.4021 |
 
-> Note: numbers differ from those reported in the paper. In particular, our
+> [!Note]
+> Performnce numbers differ from those reported in the paper. In particular, our
 > `running_speed` prediction target was actually the monotonically-increasing
 > timestamps rather than the m/s running-speed value, so that row is not
 > directly comparable. The remaining differences are attributable to small
