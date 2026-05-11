@@ -25,8 +25,8 @@
 ### List of implemented models
 
 + [POYO: A Unified, Scalable Framework for Neural Population Decoding (Azabou et al. 2023)](examples/poyo)
++ [Multi-session, multi-task neural decoding from distinct cell-types and brain regions (Azabou et al. 2025)](examples/poyo_plus)
 + More coming soon...
-
 
 ## Installation
 torch_brain is available for Python >= 3.10 and can be installed via pip.
@@ -84,5 +84,12 @@ Please cite [our paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca11
     author={Mehdi Azabou and Vinam Arora and Venkataramana Ganesh and Ximeng Mao and Santosh Nachimuthu and Michael Mendelson and Blake Richards and Matthew Perich and Guillaume Lajoie and Eva L. Dyer},
     booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
     year={2023},
+}
+@inproceedings{
+    azabou2025multisession,
+    title={Multi-session, multi-task neural decoding from distinct cell-types and brain regions},
+    author={Mehdi Azabou and Krystal Pan and Vinam Arora and Ian Knight and Eva L. Dyer and Blake A. Richards},
+    booktitle={International Conference on Learning Representations},
+    year={2025},
 }
 ```
