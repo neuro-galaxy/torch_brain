@@ -85,9 +85,9 @@ Held-out test metrics for this checkpoint, averaged across recordings (overall
 | running_speed                        | MeanSquaredError (z-normalized)   | 0.4021 |
 
 > [!Note]
-> Performnce numbers differ from those reported in the paper. In particular, our
+> Performance numbers differ from those reported in the paper. In particular, our
 > `running_speed` prediction target was actually the monotonically-increasing
-> timestamps rather than the m/s running-speed value, so that row is not
+> timestamps rather than the m/s running-speed value so that row is not
 > directly comparable. The remaining differences are attributable to small
 > hyperparameter/implementation deltas and stochasticity in training.
 
