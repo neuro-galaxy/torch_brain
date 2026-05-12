@@ -5,7 +5,6 @@ from .infinite_vocab_embedding import InfiniteVocabEmbedding
 # rotary attention-based models
 from .position_embeddings import RotaryTimeEmbedding, SinusoidalTimeEmbedding
 from .rotary_attention import RotaryCrossAttention, RotarySelfAttention
-from .feedforward import FeedForward
 
 # loss
 from . import loss
@@ -24,7 +23,6 @@ __all__ = [
     "SinusoidalTimeEmbedding",
     "RotaryCrossAttention",
     "RotarySelfAttention",
-    "FeedForward",
     "Loss",
     "MSELoss",
     "CrossEntropyLoss",
@@ -49,7 +47,6 @@ __api_ref__ = {
         {
             "title": "Transformer related modules",
             "autosummary": [
-                "FeedForward",
                 "RotaryCrossAttention",
                 "RotarySelfAttention",
             ],
