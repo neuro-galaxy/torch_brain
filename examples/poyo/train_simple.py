@@ -85,7 +85,11 @@ def main(cfg: DictConfig):
         drop_last=True,
         **loader_args,  # type: ignore
     )
-    val_loader = torch.utils.data.DataLoader(val_ds, sampler=val_sampler, **loader_args)  # type: ignore
+    val_loader = torch.utils.data.DataLoader(
+        val_ds,
+        sampler=val_sampler,
+        **loader_args,  # type: ignore
+    )
 
     # Optimizer
     optim, scheduler = create_optim(model, len(train_loader), cfg)
