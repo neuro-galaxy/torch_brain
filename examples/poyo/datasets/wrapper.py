@@ -22,28 +22,16 @@ class PoyoReadoutConfig:
 class PoyoDatasetWrapper(torch.utils.data.Dataset):
     """Adapts a :class:`Dataset` for POYO training by producing ``(X, Y)`` pairs.
 
-    For each sample, ``X`` is built by running ``tokenizer`` on the raw
-    :obj:`Data` window (typically ``model.tokenize``), and ``Y`` is the
-    regression target extracted via a :class:`PoyoReadoutConfig` attached
-    to the sample as ``data.readout_config``.
-
-    ``Y`` is a dict containing:
-
-    - ``timestamps``, ``values`` — readout queries and normalized targets
-    - ``weights`` — per-timestep loss weights resolved from interval rules
-    - ``output_mask`` — valid (non-padding) positions
-    - ``eval_mask`` — positions to score at eval time (e.g. trial windows)
-    - ``session_id``, ``absolute_start`` — used by the eval stitcher to
-      reassemble overlapping windows into per-session predictions
-
-    All array fields are padded to multiples of 8.
-
-    The wrapper forwards attribute access to the underlying dataset, so it
-    behaves like a :class:`Dataset` to samplers and the rest of the pipeline.
-
     Requires the wrapped dataset to emit :obj:`Data` objects with a
     ``readout_config`` attribute of type :class:`PoyoReadoutConfig`
     (typically attached in ``get_recording_hook``).
+
+    For each sample, ``X`` is built by running ``tokenizer`` on the raw
+    :obj:`Data` window (typically ``model.tokenize``), and ``Y`` specifies
+    the (normalize) regression target.
+
+    The wrapper forwards attribute access to the underlying dataset, so it
+    behaves like a :class:`Dataset` to samplers and the rest of the pipeline.
     """
 
     def __init__(self, dataset: Dataset, tokenizer: Callable):
