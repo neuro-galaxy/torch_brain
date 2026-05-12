@@ -14,7 +14,6 @@ from omegaconf import DictConfig, OmegaConf
 from temporaldata import Data
 
 from torch_brain.registry import MODALITY_REGISTRY, ModalitySpec
-from torch_brain.optim import SparseLamb
 from torch_brain.models.poyo import POYO
 from torch_brain.utils import callbacks as tbrain_callbacks
 from torch_brain.utils import seed_everything
@@ -28,6 +27,8 @@ from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
 )
 from torch_brain.transforms import Compose
+
+from .optim import SparseLamb
 
 # higher speed on machines with tensor cores
 torch.set_float32_matmul_precision("medium")
