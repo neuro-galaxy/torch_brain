@@ -3,10 +3,6 @@ import math
 import torch
 from torch.optim.optimizer import Optimizer
 
-__all__ = [
-    "SparseLamb",
-]
-
 
 class SparseLamb(Optimizer):
     r"""Implements the sparse variant of the Lamb algorithm.
@@ -25,7 +21,7 @@ class SparseLamb(Optimizer):
         betas: coefficients used for computing
             running averages of gradient and its square (default: (0.9, 0.999))
         eps: term added to the denominator to improve
-            numerical stability (default: 1e-8)
+            numerical stability (default: 1e-6)
         weight_decay: weight decay (L2 penalty) (default: 0)
         clamp_value: clamp weight_norm in (0,clamp_value) (default: 10)
             set to a high value to avoid it (e.g 10e3)
