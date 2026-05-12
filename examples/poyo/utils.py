@@ -1,21 +1,19 @@
 import os
 import logging
 import random
+from omegaconf import DictConfig
 import numpy as np
 import torch
 from torch import Tensor
 
 from torch_brain.utils.stitcher import stitch
+from torch_brain.models import POYO
+from torch_brain.optim import SparseLamb
 
 log = logging.getLogger(__name__)
 
 
 def seed_everything(seed: int) -> None:
-    """Sets random seed for reproducibility.
-
-    Args:
-        seed (int): Random seed.
-    """
     if seed is not None:
         log.info(f"Global seed: {seed}")
 
@@ -71,3 +69,37 @@ class BehaviorStitcher:
         self.pred_cache = []
         self.target_cache = []
         self.timestamps_cache = []
+
+
+def create_optim(model: POYO, steps_per_epoch: int, cfg: DictConfig):
+    emb_params = [
+        p for n, p in model.named_parameters() if "unit_emb" in n or "session_emb" in n
+    ]
+    nonemb_params = [
+        p
+        for n, p in model.named_parameters()
+        if "unit_emb" not in n and "session_emb" not in n
+    ]
+
+    max_lr = cfg.optim.base_lr * cfg.batch_size
+    optim = SparseLamb(
+        [
+            {"params": emb_params, "sparse": True},
+            {"params": nonemb_params},
+        ],
+        lr=max_lr,  # linear scaling rule
+        weight_decay=cfg.optim.weight_decay,
+    )
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optim,
+        max_lr,
+        steps_per_epoch * cfg.epochs,
+        pct_start=cfg.optim.lr_decay_start,
+        div_factor=1,
+    )
+    log.info(
+        f"Optim: max_lr={max_lr}, "
+        f"# Embedding params={sum(p.numel() for p in emb_params):,}, "
+        f"# Non-Embedding params={sum(p.numel()for p in nonemb_params):,}"
+    )
+    return optim, scheduler

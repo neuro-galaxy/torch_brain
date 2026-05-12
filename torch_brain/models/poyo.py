@@ -306,18 +306,18 @@ class POYO(nn.Module):
         # create session index for output
         session_index = self.session_emb.tokenizer(data.session.id)
 
-        data_dict = {
+        data_dict = dict(
             # input sequence (keys/values for the encoder)
-            "input_unit_index": pad8(spike_unit_index),
-            "input_timestamps": pad8(spike_timestamps),
-            "input_token_type": pad8(spike_token_type_index),
-            "input_mask": track_mask8(spike_unit_index),
+            input_unit_index=pad8(spike_unit_index),
+            input_timestamps=pad8(spike_timestamps),
+            input_token_type=pad8(spike_token_type_index),
+            input_mask=track_mask8(spike_unit_index),
             # latent sequence
-            "latent_index": latent_index,
-            "latent_timestamps": latent_timestamps,
+            latent_index=latent_index,
+            latent_timestamps=latent_timestamps,
             # metadata needed for decoder queries
-            "session_index": session_index,
-        }
+            session_index=session_index,
+        )
 
         return data_dict
 

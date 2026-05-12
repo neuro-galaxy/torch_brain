@@ -1,6 +1,5 @@
 from typing import Callable
 from copy import deepcopy
-import torchmetrics
 from temporaldata import Data
 
 from brainsets.datasets import (
@@ -15,11 +14,11 @@ from datasets.poyo_mp import PoyoMPDataset
 class Poyo1Dataset(SpikingDatasetMixin, NestedDataset):
     dim_target = 2
 
-    def __init__(self, data_root, transform: Callable | None):
-        ds_mp = PoyoMPDataset(data_root)
-        ds_flint = PoyoFlintDataset(data_root)
-        ds_odoherty = PoyoOdohertyDataset(data_root)
-        ds_churchland = PoyoChurchlandDataset(data_root)
+    def __init__(self, root, transform: Callable | None):
+        ds_mp = PoyoMPDataset(root)
+        ds_flint = PoyoFlintDataset(root)
+        ds_odoherty = PoyoOdohertyDataset(root)
+        ds_churchland = PoyoChurchlandDataset(root)
         super().__init__(
             datasets={
                 "mp": ds_mp,
@@ -36,7 +35,8 @@ class PoyoChurchlandDataset(ChurchlandShenoyNeural2012):
 
     READOUT_CONFIG = {
         "readout": {
-            "readout_id": "cursor_velocity_2d",
+            "value_key": "cursor.vel",
+            "timestamp_key": "cursor.timestamps",
             "normalize_mean": 0.0,
             "normalize_std": 800.0,
             "weights": {
@@ -45,7 +45,6 @@ class PoyoChurchlandDataset(ChurchlandShenoyNeural2012):
                 "movement_phases.return_period": 1.0,
                 "cursor_outlier_segments": 1.0,
             },
-            "metrics": [{"metric": torchmetrics.R2Score()}],
         }
     }
 
@@ -59,10 +58,10 @@ class PoyoOdohertyDataset(OdohertySabesNonhuman2017):
 
     READOUT_CONFIG = {
         "readout": {
-            "readout_id": "cursor_velocity_2d",
+            "value_key": "cursor.vel",
+            "timestamp_key": "cursor.timestamps",
             "normalize_mean": 0.0,
             "normalize_std": 200.0,
-            "metrics": [{"metric": torchmetrics.R2Score()}],
         }
     }
 
@@ -76,13 +75,11 @@ class PoyoFlintDataset(FlintSlutzkyAccurate2012):
 
     READOUT_CONFIG = {
         "readout": {
-            "readout_id": "cursor_velocity_2d",
             # we will use the hand velocity for this dataset
             "timestamp_key": "hand.timestamps",
             "value_key": "hand.vel",
             "normalize_mean": 0.0,
             "normalize_std": 0.4,
-            "metrics": [{"metric": torchmetrics.R2Score()}],
         }
     }
 

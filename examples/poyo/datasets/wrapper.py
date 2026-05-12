@@ -1,4 +1,5 @@
 from typing import Callable
+from dataclasses import dataclass
 import numpy as np
 import torch
 
@@ -8,7 +9,24 @@ from torch_brain.utils import isin_interval
 from torch_brain.dataset import DatasetIndex, Dataset
 
 
-class POYODatasetWrapper(torch.utils.data.Dataset):
+@dataclass(frozen=True)
+class PoyoReadoutConfig:
+    timestamp_key: str
+    value_key: str
+    eval_interval: str | None = None
+    normalize_mean: float = 0.0
+    normalize_std: float = 1.0
+    weights: dict[str, float] | None = None
+
+
+class PoyoDatasetWrapper(torch.utils.data.Dataset):
+    """...
+
+    Requires wrapped dataset to emit :obj:`Data` objects
+    that have "config" attribute set to :class:`PoyoReadoutConfig`
+
+    """
+
     def __init__(self, dataset: Dataset, tokenizer: Callable):
         self.dataset = dataset
         self.tokenizer = tokenizer
@@ -19,12 +37,31 @@ class POYODatasetWrapper(torch.utils.data.Dataset):
     def __getitem__(self, index: DatasetIndex):
         data = self.dataset[index]
 
+        # Prepare encoder input
         X = self.tokenizer(data)
 
-        timestamps, values, weights, eval_mask = prepare_for_readout(data)
+        # Prepare target (also part of decoder query)
+        cfg = data.readout_config
+        assert isinstance(cfg, PoyoReadoutConfig)
+
+        timestamps = data.get_nested_attribute(cfg.timestamp_key)
+        values = data.get_nested_attribute(cfg.value_key)
+
+        mean = cfg.normalize_mean
+        std = cfg.normalize_std
+        values = (values - mean) / std
+
+        weights = _resolve_weights(timestamps, data, weight_cfg=cfg.weights)
+
+        # resolve eval mask
+        eval_mask = np.ones(len(timestamps), dtype=bool)
+        if cfg.eval_interval is not None:
+            eval_interval = data.get_nested_attribute(cfg.eval_interval)
+            eval_mask = isin_interval(timestamps, eval_interval)
+
         Y = dict(
-            timestamps=pad8(timestamps),
-            values=pad8(values),
+            timestamps=pad8(timestamps.astype(np.float32)),
+            values=pad8(values.astype(np.float32)),
             weights=pad8(weights),
             output_mask=pad8(np.ones(len(timestamps), dtype=bool)),
             eval_mask=pad8(eval_mask),
@@ -35,37 +72,7 @@ class POYODatasetWrapper(torch.utils.data.Dataset):
         return X, Y
 
 
-def prepare_for_readout(data: Data):
-    readout_config = data.config["readout"]
-
-    value_key = readout_config["value_key"]
-    timestamp_key = readout_config["timestamp_key"]
-
-    timestamps = data.get_nested_attribute(timestamp_key)
-    values = data.get_nested_attribute(value_key)
-
-    mean = readout_config["normalize_mean"]
-    std = readout_config["normalize_std"]
-    values = (values - mean) / std
-
-    if values.dtype == np.float64:
-        values = values.astype(np.float32)
-
-    # resolve weights based on interval membership
-    weight_cfg = readout_config.get("weights", None)
-    weights = resolve_weights(timestamps, data, weight_cfg=weight_cfg)
-
-    # resolve eval mask
-    eval_mask = np.ones(len(timestamps), dtype=np.bool_)
-    eval_interval_key = readout_config.get("eval_interval", None)
-    if eval_interval_key is not None:
-        eval_interval = data.get_nested_attribute(eval_interval_key)
-        eval_mask = isin_interval(timestamps, eval_interval)
-
-    return timestamps, values, weights, eval_mask
-
-
-def resolve_weights(timestamps, data, weight_cfg):
+def _resolve_weights(timestamps, data, weight_cfg):
     weights = np.ones_like(timestamps, dtype=np.float32)
     if weight_cfg is None:
         return weights

@@ -1,5 +1,4 @@
 import rich
-import torchmetrics
 import logging
 from tqdm import tqdm
 from omegaconf import DictConfig
@@ -7,33 +6,20 @@ import hydra
 from hydra.utils import instantiate
 
 import torch
-from torch.utils.data import DataLoader
+import torchmetrics
 
 import torch_brain
 from torch_brain.data import collate
-from torch_brain.dataset import Dataset
-from torch_brain.transforms import Compose
-from torch_brain.registry import ModalitySpec, DataType
 from torch_brain.models import POYO
 from torch_brain.data.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )
-from torch_brain.optim import SparseLamb
 
-from utils import seed_everything, move_to_device, BehaviorStitcher
-from datasets.wrapper import POYODatasetWrapper
+from utils import seed_everything, move_to_device, BehaviorStitcher, create_optim
+from datasets.wrapper import PoyoDatasetWrapper
 
 log = logging.getLogger(__name__)
-
-READOUT_SPEC = ModalitySpec(
-    id=0,
-    dim=2,
-    type=DataType.CONTINUOUS,
-    timestamp_key="cursor.timestamps",
-    value_key="cursor.vel",
-    loss_fn=torch_brain.nn.loss.MSELoss(),
-)
 
 device = torch.device("cuda")
 
@@ -47,40 +33,6 @@ def loss_fn(pred, target, weights):
 
 
 metric_fn = torchmetrics.functional.r2_score
-
-
-def create_optim(model: POYO, steps_per_epoch: int, cfg: DictConfig):
-    emb_params = [
-        p for n, p in model.named_parameters() if "unit_emb" in n or "session_emb" in n
-    ]
-    nonemb_params = [
-        p
-        for n, p in model.named_parameters()
-        if "unit_emb" not in n and "session_emb" not in n
-    ]
-
-    max_lr = cfg.optim.base_lr * cfg.batch_size
-    optim = SparseLamb(
-        [
-            {"params": emb_params, "sparse": True},
-            {"params": nonemb_params},
-        ],
-        lr=max_lr,  # linear scaling rule
-        weight_decay=cfg.optim.weight_decay,
-    )
-    scheduler = torch.optim.lr_scheduler.OneCycleLR(
-        optim,
-        max_lr,
-        steps_per_epoch * cfg.epochs,
-        pct_start=cfg.optim.lr_decay_start,
-        div_factor=1,
-    )
-    log.info(
-        f"Optim: max_lr={max_lr}, "
-        f"# Embedding params={sum(p.numel() for p in emb_params):,}, "
-        f"# Non-Embedding params={sum(p.numel()for p in nonemb_params):,}"
-    )
-    return optim, scheduler
 
 
 @hydra.main(version_base="1.3", config_path="./configs")
@@ -103,8 +55,8 @@ def main(cfg: DictConfig):
     model: POYO = instantiate(cfg.model, dim_out=train_ds.dim_target)
     model.init_vocabs(train_ds)
     model = model.to(device)
-    train_ds = POYODatasetWrapper(train_ds, model.tokenize)
-    eval_ds = POYODatasetWrapper(eval_ds, model.tokenize)
+    train_ds = PoyoDatasetWrapper(train_ds, model.tokenize)
+    eval_ds = PoyoDatasetWrapper(eval_ds, model.tokenize)
 
     # Samplers
     train_sampler = RandomFixedWindowSampler(
@@ -125,13 +77,13 @@ def main(cfg: DictConfig):
         persistent_workers=True,
         collate_fn=collate,
     )
-    train_loader = DataLoader(
+    train_loader = torch.utils.data.DataLoader(
         train_ds,
         sampler=train_sampler,
         drop_last=True,
         **loader_args,  # type: ignore
     )
-    val_loader = DataLoader(eval_ds, sampler=val_sampler, **loader_args)  # type: ignore
+    val_loader = torch.utils.data.DataLoader(eval_ds, sampler=val_sampler, **loader_args)  # type: ignore
 
     # Optimizer
     optim, scheduler = create_optim(model, len(train_loader), cfg)
@@ -179,7 +131,7 @@ def eval_epoch(loader, model):
             stitchers[_rid].update(
                 preds=pred[i][_mask],
                 targets=Y["values"][i][_mask],
-                timestamps=Y["timestamps"][i][_mask] + Y["absolute_start"],
+                timestamps=Y["timestamps"][i][_mask] + Y["absolute_start"][i],
             )
 
     metrics = {}
