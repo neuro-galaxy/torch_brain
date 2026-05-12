@@ -68,4 +68,4 @@ def test_regular_scaling():
     data_prime = rts(data)
 
     assert data_prime.lfps.domain.start == 0
-    assert data_prime.lfps.domain.end == 19.8
+    assert data_prime.lfps.domain.end == 20.0

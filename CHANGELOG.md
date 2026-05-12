@@ -11,10 +11,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added per-task average metric logging in `MultiTaskDecodingStitchEvaluator` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
 
 ### Removed
+- Removed `torch_brain.nn.FeedForwad` (too inflexible) ([#204](https://github.com/neuro-galaxy/torch_brain/pull/204))
+- Removed `torch_brain.optim` / `SparseLamb` from the public package API ([#203](https://github.com/neuro-galaxy/torch_brain/pull/203))
 - Remove `utils/gradient_rescale.py` (legacy) ([#201](https://github.com/neuro-galaxy/torch_brain/pull/201))
 - Removed `utils.get_sinusoidal_encoding` (legacy) ([#200](https://github.com/neuro-galaxy/torch_brain/pull/200))
 
 ### Changed
+- Changed minimum `temporaldata` version to `v0.1.4` ([#209](https://github.com/neuro-galaxy/torch_brain/pull/209))
 - Moved `DecodingStitchEvaluator` and `MultiTaskDecodingStitchEvaluator` to `utils/callbacks.py` ([#183](https://github.com/neuro-galaxy/torch_brain/pull/183))
 - Replaced `torch_brain.data.dataset.DatasetIndex` with `torch_brain.dataset.DatasetIndex` ([#186](https://github.com/neuro-galaxy/torch_brain/pull/186))
 - `bin_spikes` output shape changed from `(N, T)` to `(T, N)` and default `dtype` changed from `np.float32` to `np.int32` ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))

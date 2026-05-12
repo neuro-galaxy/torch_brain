@@ -11,7 +11,6 @@ from temporaldata import Data
 from torch_brain.data import chain, pad8, track_mask8
 from torch_brain.nn import (
     Embedding,
-    FeedForward,
     InfiniteVocabEmbedding,
     MultitaskReadout,
     RotaryCrossAttention,
@@ -20,6 +19,7 @@ from torch_brain.nn import (
     prepare_for_multitask_readout,
 )
 from torch_brain.registry import ModalitySpec, MODALITY_REGISTRY
+from torch_brain.models.poyo_plus import FeedForward
 
 from torch_brain.utils import (
     create_linspace_latent_tokens,
