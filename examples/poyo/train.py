@@ -28,7 +28,7 @@ from torch_brain.data.sampler import (
 )
 from torch_brain.transforms import Compose
 
-from .optim import SparseLamb
+from optim import SparseLamb
 
 # higher speed on machines with tensor cores
 torch.set_float32_matmul_precision("medium")
