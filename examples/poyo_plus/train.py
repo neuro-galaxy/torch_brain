@@ -21,7 +21,6 @@ from torch_brain.data.sampler import (
     DistributedStitchingFixedWindowSampler,
     RandomFixedWindowSampler,
 )
-from torch_brain.optim import SparseLamb
 from torch_brain.models import POYOPlus
 from torch_brain.registry import MODALITY_REGISTRY
 from torch_brain.transforms import Compose
@@ -31,6 +30,8 @@ from torch_brain.utils.callbacks import (
     MultiTaskDecodingStitchEvaluator,
     DataForMultiTaskDecodingStitchEvaluator,
 )
+
+from optim import SparseLamb
 
 # higher speed on machines with tensor cores
 torch.set_float32_matmul_precision("medium")
