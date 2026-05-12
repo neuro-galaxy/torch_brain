@@ -1,3 +1,4 @@
+from typing import Callable
 from copy import deepcopy
 import torchmetrics
 from temporaldata import Data
@@ -7,29 +8,32 @@ from brainsets.datasets import (
     FlintSlutzkyAccurate2012,
     OdohertySabesNonhuman2017,
 )
-from torch_brain.dataset import NestedSpikingDataset
+from torch_brain.dataset import SpikingDatasetMixin, NestedDataset
 from datasets.poyo_mp import PoyoMPDataset
 
 
-def Poyo1Dataset(root, transform=None):
-    ds_mp = PoyoMPDataset(root)
-    ds_flint = PoyoFlintDataset(root)
-    ds_odoherty = PoyoOdohertyDataset(root)
-    ds_churchland = PoyoChurchlandDataset(root)
+class Poyo1Dataset(SpikingDatasetMixin, NestedDataset):
+    dim_target = 2
 
-    ds = NestedSpikingDataset(
-        datasets={
-            "mp": ds_mp,
-            "flint": ds_flint,
-            "odoherty": ds_odoherty,
-            "churchland": ds_churchland,
-        },
-        transform=transform,
-    )
-    return ds
+    def __init__(self, data_root, transform: Callable | None):
+        ds_mp = PoyoMPDataset(data_root)
+        ds_flint = PoyoFlintDataset(data_root)
+        ds_odoherty = PoyoOdohertyDataset(data_root)
+        ds_churchland = PoyoChurchlandDataset(data_root)
+        super().__init__(
+            datasets={
+                "mp": ds_mp,
+                "flint": ds_flint,
+                "odoherty": ds_odoherty,
+                "churchland": ds_churchland,
+            },
+            transform=transform,
+        )
 
 
 class PoyoChurchlandDataset(ChurchlandShenoyNeural2012):
+    dim_target = 2
+
     READOUT_CONFIG = {
         "readout": {
             "readout_id": "cursor_velocity_2d",
@@ -51,6 +55,8 @@ class PoyoChurchlandDataset(ChurchlandShenoyNeural2012):
 
 
 class PoyoOdohertyDataset(OdohertySabesNonhuman2017):
+    dim_target = 2
+
     READOUT_CONFIG = {
         "readout": {
             "readout_id": "cursor_velocity_2d",
@@ -66,6 +72,8 @@ class PoyoOdohertyDataset(OdohertySabesNonhuman2017):
 
 
 class PoyoFlintDataset(FlintSlutzkyAccurate2012):
+    dim_target = 2
+
     READOUT_CONFIG = {
         "readout": {
             "readout_id": "cursor_velocity_2d",

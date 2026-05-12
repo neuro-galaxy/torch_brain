@@ -5,6 +5,8 @@ from temporaldata import Data
 
 
 class PoyoMPDataset(PerichMillerPopulation2018):
+    dim_target = 2
+
     CO_READOUT_CONFIG = {
         "readout": {
             "readout_id": "cursor_velocity_2d",

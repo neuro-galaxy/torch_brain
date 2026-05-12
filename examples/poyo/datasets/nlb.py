@@ -5,6 +5,8 @@ from temporaldata import Data
 
 
 class PoyoNLBDataset(PeiPandarinathNLB2021):
+    dim_target = 2
+
     READOUT_CONFIG = {
         "readout": {
             "readout_id": "cursor_velocity_2d",

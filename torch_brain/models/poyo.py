@@ -48,7 +48,6 @@ class POYO(nn.Module):
 
     Args:
         sequence_length: Maximum duration of the input spike sequence (in seconds)
-        readout_spec: A :class:`torch_brain.registry.ModalitySpec` specifying readout properties
         latent_step: Timestep of the latent grid (in seconds)
         num_latents_per_step: Number of unique latent tokens (repeated at every latent step)
         dim: Hidden dimension of the model
@@ -68,7 +67,7 @@ class POYO(nn.Module):
         self,
         *,
         sequence_length: float,
-        readout_spec: ModalitySpec,
+        dim_out: int,
         latent_step: float,
         num_latents_per_step: int = 64,
         dim: int = 512,
@@ -90,7 +89,6 @@ class POYO(nn.Module):
         self.sequence_length = sequence_length
         self.latent_step = latent_step
         self.num_latents_per_step = num_latents_per_step
-        self.readout_spec = readout_spec
 
         # embeddings
         self.unit_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
@@ -152,7 +150,7 @@ class POYO(nn.Module):
         )
 
         # Output projections + loss
-        self.readout = nn.Linear(dim, readout_spec.dim)
+        self.readout = nn.Linear(dim, dim_out)
 
         self.dim = dim
 
@@ -167,8 +165,9 @@ class POYO(nn.Module):
         # latent sequence
         latent_index: TensorType["batch", "n_latent", int],
         latent_timestamps: TensorType["batch", "n_latent", float],
-        # output sequence
+        # Metadata for queries
         session_index: TensorType["batch", int],
+        # output sequence
         output_timestamps: TensorType["batch", "n_out", float],
         output_mask: Optional[TensorType["batch", "n_out", bool]] = None,
         unpack_output: bool = False,
@@ -316,7 +315,7 @@ class POYO(nn.Module):
             # latent sequence
             "latent_index": latent_index,
             "latent_timestamps": latent_timestamps,
-            # metadat for decoder queries
+            # metadata needed for decoder queries
             "session_index": session_index,
         }
 
@@ -359,81 +358,3 @@ class POYO(nn.Module):
             )
         self.unit_emb.initialize_vocab(dataset.get_unit_ids())
         self.session_emb.initialize_vocab(dataset.recording_ids)
-
-    @classmethod
-    def load_pretrained(
-        cls,
-        checkpoint_path: str | Path,
-        readout_spec: ModalitySpec,
-        skip_readout: bool = False,
-    ) -> "POYO":
-        """
-        Load a pretrained POYO model from a checkpoint file.
-
-        Args:
-            checkpoint_path (str or Path): Path to the checkpoint file containing model weights and hyperparameters.
-            readout_spec (ModalitySpec): Specification for the readout modality, used to initialize the model.
-            skip_readout (bool, optional): If True, the readout layer weights from the checkpoint are ignored and a new readout layer is initialized. Default is False.
-
-        Returns:
-            POYO: An instance of the POYO model with weights loaded from the checkpoint.
-
-        Usage:
-            model = POYO.load_pretrained("path/to/checkpoint.ckpt", readout_spec)
-
-        Notes:
-            - The checkpoint is expected to contain both model hyperparameters and weights.
-            - If `skip_readout` is True, the readout layer weights are not loaded from the checkpoint.
-        """
-        # Instantiate model object from checkpoint hyperparameters
-        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-        model_kwargs = checkpoint["hyper_parameters"]["model"]
-        model_kwargs.pop("_target_", None)
-        model = cls(**model_kwargs, readout_spec=readout_spec)
-
-        # Load model weights
-        # POYO is pretrained using lightning, so model weights are prefixed with "model."
-        state_dict = {
-            k.replace("model.", ""): v for k, v in checkpoint["state_dict"].items()
-        }
-
-        # Remove readout layer from checkpoint if we're using a new one
-        if skip_readout:
-            state_dict = {
-                k: v for k, v in state_dict.items() if not k.startswith("readout.")
-            }
-
-        missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-        if len(missing_keys) > 0:
-            logging.warning(
-                f"Missing keys when loading pretrained POYO: {missing_keys}"
-            )
-        if len(unexpected_keys) > 0:
-            logging.warning(
-                f"Unexpected keys when loading pretrained POYO: {unexpected_keys}"
-            )
-
-        return model
-
-
-def poyo_mp(readout_spec: ModalitySpec, ckpt_path=None):
-    if ckpt_path is not None:
-        raise NotImplementedError("Loading from checkpoint is not supported yet.")
-
-    return POYO(
-        sequence_length=1.0,
-        latent_step=1.0 / 8,
-        dim=64,
-        readout_spec=readout_spec,
-        dim_head=64,
-        num_latents_per_step=16,
-        depth=6,
-        cross_heads=2,
-        self_heads=8,
-        ffn_dropout=0.2,
-        lin_dropout=0.4,
-        atn_dropout=0.2,
-        emb_init_scale=0.02,
-        t_min=1e-4,
-        t_max=4.0,
-    )

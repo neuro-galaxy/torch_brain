@@ -87,7 +87,7 @@ def create_optim(model: POYO, steps_per_epoch: int, cfg: DictConfig):
 def main(cfg: DictConfig):
     seed_everything(cfg.seed)
 
-    # Setup dataset
+    # Datasets
     train_ds = instantiate(cfg.dataset, root=cfg.data_root)
     train_ds.transform = instantiate(cfg.train_transform)
 
@@ -99,10 +99,12 @@ def main(cfg: DictConfig):
         f"num_units={len(train_ds.get_unit_ids())}"
     )
 
-    # Setup model
-    model: POYO = instantiate(cfg.model, readout_spec=READOUT_SPEC)
+    # Model
+    model: POYO = instantiate(cfg.model, dim_out=train_ds.dim_target)
     model.init_vocabs(train_ds)
     model = model.to(device)
+    train_ds = POYODatasetWrapper(train_ds, model.tokenize)
+    eval_ds = POYODatasetWrapper(eval_ds, model.tokenize)
 
     # Samplers
     train_sampler = RandomFixedWindowSampler(
@@ -124,16 +126,12 @@ def main(cfg: DictConfig):
         collate_fn=collate,
     )
     train_loader = DataLoader(
-        POYODatasetWrapper(train_ds, tokenizer=model.tokenize),
+        train_ds,
         sampler=train_sampler,
         drop_last=True,
         **loader_args,  # type: ignore
     )
-    val_loader = DataLoader(
-        POYODatasetWrapper(eval_ds, tokenizer=model.tokenize),
-        sampler=val_sampler,
-        **loader_args,  # type: ignore
-    )
+    val_loader = DataLoader(eval_ds, sampler=val_sampler, **loader_args)  # type: ignore
 
     # Optimizer
     optim, scheduler = create_optim(model, len(train_loader), cfg)
@@ -177,13 +175,11 @@ def eval_epoch(loader, model):
 
         for i in range(len(pred)):
             _mask = Y["eval_mask"][i]
-            _abs_start = Y["absolute_start"][i]
             _rid = Y["session_id"][i]
-            _timestamps = Y["timestamps"][i][_mask]
             stitchers[_rid].update(
                 preds=pred[i][_mask],
                 targets=Y["values"][i][_mask],
-                timestamps=_timestamps + _abs_start,
+                timestamps=Y["timestamps"][i][_mask] + Y["absolute_start"],
             )
 
     metrics = {}
