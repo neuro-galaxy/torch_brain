@@ -103,3 +103,11 @@ def create_optim(model: POYO, steps_per_epoch: int, cfg: DictConfig):
         f"# Non-Embedding params={sum(p.numel()for p in nonemb_params):,}"
     )
     return optim, scheduler
+
+
+def weighted_mse_loss_fn(pred, target, weights):
+    """Simple sample-weighted MSE loss"""
+    loss = torch.nn.functional.mse_loss(pred, target, reduction="none")
+    loss = loss.flatten(1).mean(1) * weights
+    loss = loss.sum() / weights.sum()
+    return loss

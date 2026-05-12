@@ -19,19 +19,14 @@ from torch_brain.data.sampler import (
     SequentialFixedWindowSampler,
 )
 
-from utils import seed_everything, move_to_device, BehaviorStitcher, create_optim
+from utils import (
+    seed_everything,
+    move_to_device,
+    BehaviorStitcher,
+    create_optim,
+    weighted_mse_loss_fn,
+)
 from datasets.wrapper import PoyoDatasetWrapper
-
-
-def weighted_mse_loss_fn(pred, target, weights):
-    """Simple sample-weighted MSE loss"""
-    loss = torch.nn.functional.mse_loss(pred, target, reduction="none")
-    loss = loss.flatten(1).mean(1) * weights
-    loss = loss.sum() / weights.sum()
-    return loss
-
-
-metric_fn = torchmetrics.functional.r2_score
 
 
 @hydra.main(version_base="1.3", config_path="./configs")
@@ -125,6 +120,7 @@ def main(cfg: DictConfig):
 
         # Validation epoch
         model.eval()
+        metric_fn = torchmetrics.functional.r2_score
         with torch.no_grad():
             stitchers = {rid: BehaviorStitcher() for rid in val_ds.recording_ids}
 
