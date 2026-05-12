@@ -8,6 +8,7 @@ import torch.nn as nn
 from torchtyping import TensorType
 from temporaldata import Data
 
+from torch_brain.dataset import Dataset, SpikingDatasetMixin
 from torch_brain.data import chain, pad8, track_mask8
 from torch_brain.nn import (
     Embedding,
@@ -359,6 +360,20 @@ class POYO(nn.Module):
                 f"sequence_length ({sequence_length}) is not a multiple of latent_step "
                 f"({latent_step}). This is a simple warning, and this behavior is allowed."
             )
+
+    def init_vocabs(self, dataset: Dataset):
+        """Initializes model's unit_emb and sess_emb vocabularies.
+
+        Args:
+            dataset: A :class:`Dataset` with :class:`SpikingDatasetMixin`.
+        """
+        if not isinstance(dataset, SpikingDatasetMixin):
+            raise ValueError(
+                "POYO only works with spiking datasets and requires "
+                "`SpikingDatsetMixin` to be present in the input `Dataset`"
+            )
+        self.unit_emb.initialize_vocab(dataset.get_unit_ids())
+        self.session_emb.initialize_vocab(dataset.recording_ids)
 
     @classmethod
     def load_pretrained(

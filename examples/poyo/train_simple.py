@@ -1,0 +1,116 @@
+from omegaconf import DictConfig
+import hydra
+from hydra.utils import instantiate
+
+import torch
+from torch.utils.data import DataLoader
+
+import torch_brain
+from torch_brain.data import collate
+from torch_brain.dataset import Dataset
+from torch_brain.transforms import Compose
+from torch_brain.registry import ModalitySpec, DataType
+from torch_brain.models import POYO
+from torch_brain.data.sampler import (
+    RandomFixedWindowSampler,
+    SequentialFixedWindowSampler,
+)
+from torch_brain.optim import SparseLamb
+
+from utils import seed_everything
+
+READOUT_SPEC = ModalitySpec(
+    id=0,
+    dim=2,
+    type=DataType.CONTINUOUS,
+    timestamp_key="cursor.timestamps",
+    value_key="cursor.vel",
+    loss_fn=torch_brain.nn.loss.MSELoss(),
+)
+
+
+def create_optim(model: POYO, steps_per_epoch: int, cfg: DictConfig):
+    emb_params = list(model.unit_emb.parameters())
+    emb_params = emb_params + list(model.session_emb.parameters())
+
+    remaining_params = [
+        p
+        for n, p in model.named_parameters()
+        if "unit_emb" not in n and "session_emb" not in n
+    ]
+
+    max_lr = cfg.optim.base_lr * cfg.batch_size
+    optim = SparseLamb(
+        [
+            {"params": emb_params, "sparse": True},
+            {"params": remaining_params},
+        ],
+        lr=max_lr,  # linear scaling rule
+        weight_decay=cfg.optim.weight_decay,
+    )
+
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(
+        optim,
+        max_lr,
+        steps_per_epoch * cfg.num_epochs,
+        pct_start=cfg.optim.lr_decay_start,
+        div_factor=1,
+    )
+
+    return optim, scheduler
+
+
+@hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
+def main(cfg: DictConfig):
+    seed_everything(cfg.seed)
+
+    # Setup dataset
+    train_ds = instantiate(cfg.dataset, root=cfg.data_root)
+    train_ds.transform = Compose(instantiate(cfg.train_transforms))
+
+    eval_ds = instantiate(cfg.dataset, root=cfg.data_root)
+    eval_ds.transform = Compose(instantiate(cfg.eval_transforms))
+
+    # Setup model
+    model: POYO = instantiate(cfg.model, readout_spec=READOUT_SPEC)
+    model.init_vocabs(train_ds)
+    train_ds.transform.transforms.append(model.tokenize)
+    eval_ds.transform.transforms.append(model.tokenize)
+
+    # Samplers
+    train_sampler = RandomFixedWindowSampler(
+        sampling_intervals=train_ds.get_sampling_intervals("train"),
+        window_length=model.sequence_length,
+        generator=torch.Generator().manual_seed(cfg.seed + 1),
+    )
+    val_sampler = SequentialFixedWindowSampler(
+        sampling_intervals=eval_ds.get_sampling_intervals("valid"),
+        window_length=model.sequence_length,
+        step=model.sequence_length / 2.0,
+    )
+    test_sampler = SequentialFixedWindowSampler(
+        sampling_intervals=eval_ds.get_sampling_intervals("test"),
+        window_length=model.sequence_length,
+        step=model.sequence_length / 2.0,
+    )
+
+    # Loaders
+    loader_args = dict(
+        batch_size=cfg.batch_size,
+        num_workers=cfg.num_workers,
+        persistent_workers=True,
+        collate_fn=collate,
+    )
+    train_loader = DataLoader(
+        train_ds,
+        sampler=train_sampler,
+        drop_last=True,
+        **loader_args,  # type: ignore
+    )
+    val_loader = DataLoader(eval_ds, sampler=val_sampler, **loader_args)  # type: ignore
+    test_loader = DataLoader(eval_ds, sampler=test_sampler, **loader_args)  # type: ignore
+
+    # Optimizer
+    optim, scheduler = create_optim(model, len(train_loader), cfg)
+
+    # Train loop
