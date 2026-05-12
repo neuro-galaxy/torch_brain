@@ -85,12 +85,4 @@ Please cite [our paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca11
     booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
     year={2023},
 }
-@inproceedings{
-    azabou2025multisession,
-    title={Multi-session, multi-task neural decoding from distinct cell-types and brain regions},
-    author={Mehdi Azabou and Krystal Xuejing Pan and Vinam Arora and Ian Jarratt Knight and Eva L Dyer and Blake Aaron Richards},
-    booktitle={The Thirteenth International Conference on Learning Representations},
-    year={2025},
-    url={https://proceedings.iclr.cc/paper_files/paper/2025/file/953390c834451505703c9da45de634d8-Paper-Conference.pdf}
-}
 ```
