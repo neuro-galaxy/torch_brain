@@ -5,8 +5,11 @@ from omegaconf import DictConfig
 import hydra
 from hydra.utils import instantiate
 
+import pandas as pd
+import numpy as np
 import torch
 import torchmetrics
+import wandb
 
 import torch_brain
 from torch_brain.data import collate
@@ -19,12 +22,8 @@ from torch_brain.data.sampler import (
 from utils import seed_everything, move_to_device, BehaviorStitcher, create_optim
 from datasets.wrapper import PoyoDatasetWrapper
 
-log = logging.getLogger(__name__)
 
-device = torch.device("cuda")
-
-
-def loss_fn(pred, target, weights):
+def weighted_mse_loss_fn(pred, target, weights):
     """Simple sample-weighted MSE loss"""
     loss = torch.nn.functional.mse_loss(pred, target, reduction="none")
     loss = loss.flatten(1).mean(1) * weights
@@ -37,16 +36,19 @@ metric_fn = torchmetrics.functional.r2_score
 
 @hydra.main(version_base="1.3", config_path="./configs")
 def main(cfg: DictConfig):
+    device = torch.device("cuda")
+    logger = logging.getLogger(__name__)
+    run = wandb.init(**cfg.wandb)
     seed_everything(cfg.seed)
 
     # Datasets
     train_ds = instantiate(cfg.dataset, root=cfg.data_root)
     train_ds.transform = instantiate(cfg.train_transform)
 
-    eval_ds = instantiate(cfg.dataset, root=cfg.data_root)
-    eval_ds.transform = instantiate(cfg.eval_transform)
+    val_ds = instantiate(cfg.dataset, root=cfg.data_root)
+    val_ds.transform = instantiate(cfg.eval_transform)
 
-    log.info(
+    logger.info(
         f"Dataset: num_recordings={len(train_ds.recording_ids)}, "
         f"num_units={len(train_ds.get_unit_ids())}"
     )
@@ -56,7 +58,7 @@ def main(cfg: DictConfig):
     model.init_vocabs(train_ds)
     model = model.to(device)
     train_ds = PoyoDatasetWrapper(train_ds, model.tokenize)
-    eval_ds = PoyoDatasetWrapper(eval_ds, model.tokenize)
+    val_ds = PoyoDatasetWrapper(val_ds, model.tokenize)
 
     # Samplers
     train_sampler = RandomFixedWindowSampler(
@@ -65,7 +67,7 @@ def main(cfg: DictConfig):
         generator=torch.Generator().manual_seed(cfg.seed + 1),
     )
     val_sampler = SequentialFixedWindowSampler(
-        sampling_intervals=eval_ds.get_sampling_intervals("valid"),
+        sampling_intervals=val_ds.get_sampling_intervals("valid"),
         window_length=model.sequence_length,
         step=model.sequence_length / 2.0,
     )
@@ -74,7 +76,7 @@ def main(cfg: DictConfig):
     loader_args = dict(
         batch_size=cfg.batch_size,
         num_workers=cfg.num_workers,
-        persistent_workers=True,
+        persistent_workers=cfg.num_workers > 0,
         collate_fn=collate,
     )
     train_loader = torch.utils.data.DataLoader(
@@ -83,63 +85,66 @@ def main(cfg: DictConfig):
         drop_last=True,
         **loader_args,  # type: ignore
     )
-    val_loader = torch.utils.data.DataLoader(eval_ds, sampler=val_sampler, **loader_args)  # type: ignore
+    val_loader = torch.utils.data.DataLoader(val_ds, sampler=val_sampler, **loader_args)  # type: ignore
 
     # Optimizer
     optim, scheduler = create_optim(model, len(train_loader), cfg)
 
     # Train loop
+    step = 0
     for epoch in tqdm(range(cfg.epochs), desc="Epoch"):
-        train_epoch(train_loader, model, optim, scheduler)
-        eval_epoch(val_loader, model)
+        always_log = {"train/epoch": epoch, "train/step": step}
 
+        # Train epoch
+        model.train()
+        loader_pbar = tqdm(train_loader, leave=False)
+        for X, Y in loader_pbar:
+            X, Y = move_to_device((X, Y), device)
+            mask = Y["output_mask"]
+            pred = model(**X, output_timestamps=Y["timestamps"])[mask]
 
-def train_epoch(loader, model, optim, scheduler):
-    model.train()
+            target = Y["values"][mask]
+            loss_weights = Y["weights"][mask]
+            loss = weighted_mse_loss_fn(pred, target, loss_weights)
 
-    loader_pbar = tqdm(loader, leave=False)
-    for X, Y in loader_pbar:
-        X, Y = move_to_device((X, Y), device)
-        mask = Y["output_mask"]
-        pred = model(**X, output_timestamps=Y["timestamps"])[mask]
+            optim.zero_grad()
+            loss.backward()
+            optim.step()
+            scheduler.step()
 
-        target = Y["values"][mask]
-        loss_weights = Y["weights"][mask]
-        loss = loss_fn(pred, target, loss_weights)
+            loader_pbar.set_description(f"Loss: {loss.item():.3f}")
+            to_wandb = {"train/loss": loss.item(), **always_log}
+            for param_group in optim.param_groups:
+                to_wandb[f"lr/{param_group['name']}"] = param_group["lr"]
+            run.log(to_wandb)
+            step += 1
 
-        optim.zero_grad()
-        loss.backward()
-        optim.step()
-        scheduler.step()
+        # Validation epoch
+        model.eval()
+        with torch.no_grad():
+            stitchers = {rid: BehaviorStitcher() for rid in val_ds.recording_ids}
 
-        loader_pbar.set_description(f"Loss: {loss.item():.3f}")
+            for X, Y in tqdm(val_loader, leave=False):
+                X, Y = move_to_device((X, Y), device)
+                pred = model(**X, output_timestamps=Y["timestamps"])
 
+                for i in range(len(pred)):
+                    _mask = Y["eval_mask"][i]
+                    _rid = Y["session_id"][i]
+                    stitchers[_rid].update(
+                        preds=pred[i][_mask],
+                        targets=Y["values"][i][_mask],
+                        timestamps=Y["timestamps"][i][_mask] + Y["absolute_start"][i],
+                    )
 
-@torch.no_grad()
-def eval_epoch(loader, model):
-    model.eval()
+            metrics = {}
+            for rid, stitcher in stitchers.items():
+                pred, target = stitcher.compute()
+                metrics[f"val/{rid}"] = metric_fn(pred, target).item()
+            metrics["val/avg_metric"] = np.mean(list(metrics.values()))
 
-    stitchers = {rid: BehaviorStitcher() for rid in loader.dataset.recording_ids}
-
-    for X, Y in tqdm(loader, leave=False):
-        X, Y = move_to_device((X, Y), device)
-        pred = model(**X, output_timestamps=Y["timestamps"])
-
-        for i in range(len(pred)):
-            _mask = Y["eval_mask"][i]
-            _rid = Y["session_id"][i]
-            stitchers[_rid].update(
-                preds=pred[i][_mask],
-                targets=Y["values"][i][_mask],
-                timestamps=Y["timestamps"][i][_mask] + Y["absolute_start"][i],
-            )
-
-    metrics = {}
-    for rid, stitcher in stitchers.items():
-        pred, target = stitcher.compute()
-        metrics[rid] = metric_fn(pred, target).item()
-
-    rich.print(metrics)
+            print(pd.Series(metrics))
+            run.log({**metrics, **always_log})
 
 
 if __name__ == "__main__":

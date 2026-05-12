@@ -24,11 +24,9 @@ optim:
 
 # Logging
 wandb:
-  enable: true
+  mode: online  # disabled, offline, or online
   entity: null
   project: poyo
-  run_name: null
-  log_model: false
 
 # GPU and CPU
 precision: 32

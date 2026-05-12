@@ -84,8 +84,8 @@ def create_optim(model: POYO, steps_per_epoch: int, cfg: DictConfig):
     max_lr = cfg.optim.base_lr * cfg.batch_size
     optim = SparseLamb(
         [
-            {"params": emb_params, "sparse": True},
-            {"params": nonemb_params},
+            {"params": emb_params, "sparse": True, "name": "embeddings"},
+            {"params": nonemb_params, "name": "weights"},
         ],
         lr=max_lr,  # linear scaling rule
         weight_decay=cfg.optim.weight_decay,

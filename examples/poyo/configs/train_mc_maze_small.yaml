@@ -14,4 +14,4 @@ train_transform:
   peak: 4
 
 wandb:
-  run_name: poyo_nlb_mc_maze_small
+  name: poyo_nlb_mc_maze_small
