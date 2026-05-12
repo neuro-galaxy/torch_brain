@@ -3,15 +3,15 @@ defaults:
   - model: poyo_1.3M.yaml
   - _self_
 
-dataset: 
+dataset:
   _target_: datasets.nlb.PoyoNLBDataset
 
-train_transforms:
-  - _target_: torch_brain.transforms.UnitDropout
-    max_units: 1000
-    min_units: 60
-    mode_units: 300
-    peak: 4
+train_transform:
+  _target_: torch_brain.transforms.UnitDropout
+  max_units: 1000
+  min_units: 60
+  mode_units: 300
+  peak: 4
 
 wandb:
   run_name: poyo_nlb_mc_maze_small

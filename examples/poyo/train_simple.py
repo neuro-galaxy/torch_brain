@@ -22,6 +22,7 @@ from torch_brain.data.sampler import (
 from torch_brain.optim import SparseLamb
 
 from utils import seed_everything, move_to_device, BehaviorStitcher
+from datasets.wrapper import POYODatasetWrapper
 
 log = logging.getLogger(__name__)
 
@@ -88,10 +89,10 @@ def main(cfg: DictConfig):
 
     # Setup dataset
     train_ds = instantiate(cfg.dataset, root=cfg.data_root)
-    train_ds.transform = Compose(instantiate(cfg.train_transforms))
+    train_ds.transform = instantiate(cfg.train_transform)
 
     eval_ds = instantiate(cfg.dataset, root=cfg.data_root)
-    eval_ds.transform = Compose(instantiate(cfg.eval_transforms))
+    eval_ds.transform = instantiate(cfg.eval_transform)
 
     log.info(
         f"Dataset: num_recordings={len(train_ds.recording_ids)}, "
@@ -102,8 +103,6 @@ def main(cfg: DictConfig):
     model: POYO = instantiate(cfg.model, readout_spec=READOUT_SPEC)
     model.init_vocabs(train_ds)
     model = model.to(device)
-    train_ds.transform.transforms.append(model.tokenize)
-    eval_ds.transform.transforms.append(model.tokenize)
 
     # Samplers
     train_sampler = RandomFixedWindowSampler(
@@ -125,12 +124,16 @@ def main(cfg: DictConfig):
         collate_fn=collate,
     )
     train_loader = DataLoader(
-        train_ds,
+        POYODatasetWrapper(train_ds, tokenizer=model.tokenize),
         sampler=train_sampler,
         drop_last=True,
         **loader_args,  # type: ignore
     )
-    val_loader = DataLoader(eval_ds, sampler=val_sampler, **loader_args)  # type: ignore
+    val_loader = DataLoader(
+        POYODatasetWrapper(eval_ds, tokenizer=model.tokenize),
+        sampler=val_sampler,
+        **loader_args,  # type: ignore
+    )
 
     # Optimizer
     optim, scheduler = create_optim(model, len(train_loader), cfg)
@@ -145,13 +148,13 @@ def train_epoch(loader, model, optim, scheduler):
     model.train()
 
     loader_pbar = tqdm(loader, leave=False)
-    for batch in loader_pbar:
-        batch = move_to_device(batch, device)
-        mask = batch["model_inputs"]["output_mask"]
-        pred = model(**batch["model_inputs"])[mask]
+    for X, Y in loader_pbar:
+        X, Y = move_to_device((X, Y), device)
+        mask = Y["output_mask"]
+        pred = model(**X, output_timestamps=Y["timestamps"])[mask]
 
-        target = batch["target_values"][mask]
-        loss_weights = batch["target_weights"][mask]
+        target = Y["values"][mask]
+        loss_weights = Y["weights"][mask]
         loss = loss_fn(pred, target, loss_weights)
 
         optim.zero_grad()
@@ -168,25 +171,25 @@ def eval_epoch(loader, model):
 
     stitchers = {rid: BehaviorStitcher() for rid in loader.dataset.recording_ids}
 
-    for batch in tqdm(loader, leave=False):
-        batch = move_to_device(batch, device)
-        pred = model(**batch["model_inputs"])
+    for X, Y in tqdm(loader, leave=False):
+        X, Y = move_to_device((X, Y), device)
+        pred = model(**X, output_timestamps=Y["timestamps"])
 
         for i in range(len(pred)):
-            _mask = batch["model_inputs"]["output_mask"][i]
-            _abs_start = batch["absolute_start"][i]
-            _rid = batch["session_id"][i]
-            _timestamps = batch["model_inputs"]["output_timestamps"][i][_mask]
+            _mask = Y["eval_mask"][i]
+            _abs_start = Y["absolute_start"][i]
+            _rid = Y["session_id"][i]
+            _timestamps = Y["timestamps"][i][_mask]
             stitchers[_rid].update(
                 preds=pred[i][_mask],
-                targets=batch["target_values"][i][_mask],
+                targets=Y["values"][i][_mask],
                 timestamps=_timestamps + _abs_start,
             )
 
     metrics = {}
     for rid, stitcher in stitchers.items():
         pred, target = stitcher.compute()
-        metrics[rid] = metric_fn(pred, target)
+        metrics[rid] = metric_fn(pred, target).item()
 
     rich.print(metrics)
 

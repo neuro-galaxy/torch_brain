@@ -168,7 +168,7 @@ class POYO(nn.Module):
         latent_index: TensorType["batch", "n_latent", int],
         latent_timestamps: TensorType["batch", "n_latent", float],
         # output sequence
-        output_session_index: TensorType["batch", "n_out", int],
+        session_index: TensorType["batch", int],
         output_timestamps: TensorType["batch", "n_out", float],
         output_mask: Optional[TensorType["batch", "n_out", bool]] = None,
         unpack_output: bool = False,
@@ -188,7 +188,7 @@ class POYO(nn.Module):
             input_mask: Mask for input sequence
             latent_index: Indices for latent tokens
             latent_timestamps: Timestamps for latent tokens
-            output_session_index: Index of the recording session
+            session_index: Index of the recording session
             output_timestamps: Timestamps for output predictions
             output_mask: A mask of the same size as output_timestamps. True implies
                 that particular timestamp is a valid query for POYO. This is required
@@ -226,7 +226,8 @@ class POYO(nn.Module):
         latent_timestamp_emb = self.rotary_emb(latent_timestamps)
 
         # outputs
-        output_queries = self.session_emb(output_session_index)
+        output_queries = self.session_emb(session_index).unsqueeze(1)
+        output_queries = output_queries.expand(-1, output_timestamps.size(1), -1)
         output_timestamp_emb = self.rotary_emb(output_timestamps)
 
         # encode
@@ -303,36 +304,20 @@ class POYO(nn.Module):
             num_latents_per_step=self.num_latents_per_step,
         )
 
-        output_timestamps, output_values, output_weights, eval_mask = (
-            prepare_for_readout(data, self.readout_spec)
-        )
-
         # create session index for output
-        output_session_index = self.session_emb.tokenizer(data.session.id)
-        output_session_index = np.repeat(output_session_index, len(output_timestamps))
+        session_index = self.session_emb.tokenizer(data.session.id)
 
         data_dict = {
-            "model_inputs": {
-                # input sequence (keys/values for the encoder)
-                "input_unit_index": pad8(spike_unit_index),
-                "input_timestamps": pad8(spike_timestamps),
-                "input_token_type": pad8(spike_token_type_index),
-                "input_mask": track_mask8(spike_unit_index),
-                # latent sequence
-                "latent_index": latent_index,
-                "latent_timestamps": latent_timestamps,
-                # output query sequence (queries for the decoder)
-                "output_session_index": pad8(output_session_index),
-                "output_timestamps": pad8(output_timestamps),
-                "output_mask": track_mask8(output_session_index),
-            },
-            # ground truth targets
-            "target_values": pad8(output_values),
-            "target_weights": pad8(output_weights),
-            # extra data needed for evaluation
-            "session_id": data.session.id,
-            "absolute_start": data.absolute_start,
-            "eval_mask": pad8(eval_mask),
+            # input sequence (keys/values for the encoder)
+            "input_unit_index": pad8(spike_unit_index),
+            "input_timestamps": pad8(spike_timestamps),
+            "input_token_type": pad8(spike_token_type_index),
+            "input_mask": track_mask8(spike_unit_index),
+            # latent sequence
+            "latent_index": latent_index,
+            "latent_timestamps": latent_timestamps,
+            # metadat for decoder queries
+            "session_index": session_index,
         }
 
         return data_dict
