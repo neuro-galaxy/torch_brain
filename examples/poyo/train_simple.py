@@ -1,3 +1,5 @@
+import logging
+from tqdm import tqdm
 from omegaconf import DictConfig
 import hydra
 from hydra.utils import instantiate
@@ -17,7 +19,9 @@ from torch_brain.data.sampler import (
 )
 from torch_brain.optim import SparseLamb
 
-from utils import seed_everything
+from utils import seed_everything, move_to_device
+
+log = logging.getLogger(__name__)
 
 READOUT_SPEC = ModalitySpec(
     id=0,
@@ -28,12 +32,22 @@ READOUT_SPEC = ModalitySpec(
     loss_fn=torch_brain.nn.loss.MSELoss(),
 )
 
+device = torch.device("cuda")
+
+
+def loss_fn(pred, target, weights):
+    """Simple sample-weighted MSE loss"""
+    loss = torch.nn.functional.mse_loss(pred, target, reduction="none")
+    loss = loss.flatten(1).mean(1) * weights
+    loss = loss.sum() / weights.sum()
+    return loss
+
 
 def create_optim(model: POYO, steps_per_epoch: int, cfg: DictConfig):
-    emb_params = list(model.unit_emb.parameters())
-    emb_params = emb_params + list(model.session_emb.parameters())
-
-    remaining_params = [
+    emb_params = [
+        p for n, p in model.named_parameters() if "unit_emb" in n or "session_emb" in n
+    ]
+    nonemb_params = [
         p
         for n, p in model.named_parameters()
         if "unit_emb" not in n and "session_emb" not in n
@@ -43,24 +57,27 @@ def create_optim(model: POYO, steps_per_epoch: int, cfg: DictConfig):
     optim = SparseLamb(
         [
             {"params": emb_params, "sparse": True},
-            {"params": remaining_params},
+            {"params": nonemb_params},
         ],
         lr=max_lr,  # linear scaling rule
         weight_decay=cfg.optim.weight_decay,
     )
-
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
         optim,
         max_lr,
-        steps_per_epoch * cfg.num_epochs,
+        steps_per_epoch * cfg.epochs,
         pct_start=cfg.optim.lr_decay_start,
         div_factor=1,
     )
-
+    log.info(
+        f"Optim: max_lr={max_lr}, "
+        f"# Embedding params={sum(p.numel() for p in emb_params):,}, "
+        f"# Non-Embedding params={sum(p.numel()for p in nonemb_params):,}"
+    )
     return optim, scheduler
 
 
-@hydra.main(version_base="1.3", config_path="./configs", config_name="train.yaml")
+@hydra.main(version_base="1.3", config_path="./configs")
 def main(cfg: DictConfig):
     seed_everything(cfg.seed)
 
@@ -71,9 +88,15 @@ def main(cfg: DictConfig):
     eval_ds = instantiate(cfg.dataset, root=cfg.data_root)
     eval_ds.transform = Compose(instantiate(cfg.eval_transforms))
 
+    log.info(
+        f"Dataset: num_recordings={len(train_ds.recording_ids)}, "
+        f"num_units={len(train_ds.get_unit_ids())}"
+    )
+
     # Setup model
     model: POYO = instantiate(cfg.model, readout_spec=READOUT_SPEC)
     model.init_vocabs(train_ds)
+    model = model.to(device)
     train_ds.transform.transforms.append(model.tokenize)
     eval_ds.transform.transforms.append(model.tokenize)
 
@@ -114,3 +137,31 @@ def main(cfg: DictConfig):
     optim, scheduler = create_optim(model, len(train_loader), cfg)
 
     # Train loop
+    for epoch in tqdm(range(cfg.epochs), desc="Epoch"):
+        train_epoch(train_loader, model, optim, scheduler)
+
+
+def train_epoch(loader, model, optim, scheduler):
+    model.train()
+
+    loader_pbar = tqdm(loader, leave=False)
+    for batch in loader_pbar:
+        batch = move_to_device(batch, device)
+        pred = model(**batch["model_inputs"])
+        mask = batch["model_inputs"]["output_mask"]
+        pred = pred[mask]
+
+        target = batch["target_values"][mask]
+        loss_weights = batch["target_weights"][mask]
+        loss = loss_fn(pred, target, loss_weights)
+
+        optim.zero_grad()
+        loss.backward()
+        optim.step()
+        scheduler.step()
+
+        loader_pbar.set_description(f"Loss: {loss.item():.3f}")
+
+
+if __name__ == "__main__":
+    main()

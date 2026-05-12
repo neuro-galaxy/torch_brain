@@ -14,7 +14,7 @@ def seed_everything(seed: int) -> None:
         seed (int): Random seed.
     """
     if seed is not None:
-        log.info("Global seed set to {}.".format(seed))
+        log.info(f"Global seed: {seed}")
 
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
@@ -23,3 +23,19 @@ def seed_everything(seed: int) -> None:
         np.random.seed(seed)
         random.seed(seed)
         os.environ["PYTHONHASHSEED"] = str(seed)
+
+
+def move_to_device(data, device: torch.device):
+    if isinstance(data, torch.Tensor):
+        return data.to(device)
+    elif isinstance(data, dict):
+        return {k: move_to_device(v, device) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [move_to_device(v, device) for v in data]
+    elif isinstance(data, tuple):
+        return tuple(move_to_device(v, device) for v in data)
+    elif isinstance(data, (str, int, float, bool, type(None), np.ndarray)):
+        # Metadata/scalars do not need device transfer.
+        return data
+    else:
+        raise TypeError(f"Unknown data type {type(data)}")
