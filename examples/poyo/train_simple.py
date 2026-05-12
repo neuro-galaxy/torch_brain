@@ -68,22 +68,22 @@ def main(cfg: DictConfig):
     )
 
     # Loaders
-    loader_args = dict(
+    train_loader = torch.utils.data.DataLoader(
+        train_ds,
+        sampler=train_sampler,
+        drop_last=True,
         batch_size=cfg.batch_size,
         num_workers=cfg.num_workers,
         persistent_workers=cfg.num_workers > 0,
         collate_fn=collate,
     )
-    train_loader = torch.utils.data.DataLoader(
-        train_ds,
-        sampler=train_sampler,
-        drop_last=True,
-        **loader_args,  # type: ignore
-    )
     val_loader = torch.utils.data.DataLoader(
         val_ds,
         sampler=val_sampler,
-        **loader_args,  # type: ignore
+        batch_size=cfg.batch_size,
+        num_workers=cfg.num_workers,
+        persistent_workers=cfg.num_workers > 0,
+        collate_fn=collate,
     )
 
     # Optimizer
