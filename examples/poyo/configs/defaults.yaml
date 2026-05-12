@@ -10,12 +10,10 @@ train_transform: null
 eval_transform: null
 
 # Training
+seed: 42
 epochs: 1000
 batch_size: 128 # global batch size across all GPUs
-eval_epochs: 1  # frequency for doing validation
-eval_batch_size: null  # if null, will use batch_size
-seed: 42  # use to set random seed
-sanity_check_validation: false  # if true, will start the run with validation
+num_workers: 4
 
 optim:
   base_lr: 3.125e-5  # scaled linearly by batch size
@@ -27,12 +25,6 @@ wandb:
   mode: online  # disabled, offline, or online
   entity: null
   project: poyo
-
-# GPU and CPU
-precision: 32
-nodes: 1
-gpus: 1
-num_workers: 4
 
 # Checkpointing
 ckpt_path: null  # for resuming training, or loading a model during finetuning

@@ -28,7 +28,7 @@ class PoyoDatasetWrapper(torch.utils.data.Dataset):
 
     For each sample, ``X`` is built by running ``tokenizer`` on the raw
     :obj:`Data` window (typically ``model.tokenize``), and ``Y`` specifies
-    the (normalize) regression target.
+    the (normalized) regression target.
 
     The wrapper forwards attribute access to the underlying dataset, so it
     behaves like a :class:`Dataset` to samplers and the rest of the pipeline.
