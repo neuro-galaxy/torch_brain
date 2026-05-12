@@ -1,3 +1,5 @@
+import rich
+import torchmetrics
 import logging
 from tqdm import tqdm
 from omegaconf import DictConfig
@@ -19,7 +21,7 @@ from torch_brain.data.sampler import (
 )
 from torch_brain.optim import SparseLamb
 
-from utils import seed_everything, move_to_device
+from utils import seed_everything, move_to_device, BehaviorStitcher
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +43,9 @@ def loss_fn(pred, target, weights):
     loss = loss.flatten(1).mean(1) * weights
     loss = loss.sum() / weights.sum()
     return loss
+
+
+metric_fn = torchmetrics.functional.r2_score
 
 
 def create_optim(model: POYO, steps_per_epoch: int, cfg: DictConfig):
@@ -111,11 +116,6 @@ def main(cfg: DictConfig):
         window_length=model.sequence_length,
         step=model.sequence_length / 2.0,
     )
-    test_sampler = SequentialFixedWindowSampler(
-        sampling_intervals=eval_ds.get_sampling_intervals("test"),
-        window_length=model.sequence_length,
-        step=model.sequence_length / 2.0,
-    )
 
     # Loaders
     loader_args = dict(
@@ -131,7 +131,6 @@ def main(cfg: DictConfig):
         **loader_args,  # type: ignore
     )
     val_loader = DataLoader(eval_ds, sampler=val_sampler, **loader_args)  # type: ignore
-    test_loader = DataLoader(eval_ds, sampler=test_sampler, **loader_args)  # type: ignore
 
     # Optimizer
     optim, scheduler = create_optim(model, len(train_loader), cfg)
@@ -139,6 +138,7 @@ def main(cfg: DictConfig):
     # Train loop
     for epoch in tqdm(range(cfg.epochs), desc="Epoch"):
         train_epoch(train_loader, model, optim, scheduler)
+        eval_epoch(val_loader, model)
 
 
 def train_epoch(loader, model, optim, scheduler):
@@ -147,9 +147,8 @@ def train_epoch(loader, model, optim, scheduler):
     loader_pbar = tqdm(loader, leave=False)
     for batch in loader_pbar:
         batch = move_to_device(batch, device)
-        pred = model(**batch["model_inputs"])
         mask = batch["model_inputs"]["output_mask"]
-        pred = pred[mask]
+        pred = model(**batch["model_inputs"])[mask]
 
         target = batch["target_values"][mask]
         loss_weights = batch["target_weights"][mask]
@@ -161,6 +160,35 @@ def train_epoch(loader, model, optim, scheduler):
         scheduler.step()
 
         loader_pbar.set_description(f"Loss: {loss.item():.3f}")
+
+
+@torch.no_grad()
+def eval_epoch(loader, model):
+    model.eval()
+
+    stitchers = {rid: BehaviorStitcher() for rid in loader.dataset.recording_ids}
+
+    for batch in tqdm(loader, leave=False):
+        batch = move_to_device(batch, device)
+        pred = model(**batch["model_inputs"])
+
+        for i in range(len(pred)):
+            _mask = batch["model_inputs"]["output_mask"][i]
+            _abs_start = batch["absolute_start"][i]
+            _rid = batch["session_id"][i]
+            _timestamps = batch["model_inputs"]["output_timestamps"][i][_mask]
+            stitchers[_rid].update(
+                preds=pred[i][_mask],
+                targets=batch["target_values"][i][_mask],
+                timestamps=_timestamps + _abs_start,
+            )
+
+    metrics = {}
+    for rid, stitcher in stitchers.items():
+        pred, target = stitcher.compute()
+        metrics[rid] = metric_fn(pred, target)
+
+    rich.print(metrics)
 
 
 if __name__ == "__main__":

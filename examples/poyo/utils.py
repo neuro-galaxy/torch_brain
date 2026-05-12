@@ -3,6 +3,9 @@ import logging
 import random
 import numpy as np
 import torch
+from torch import Tensor
+
+from torch_brain.utils.stitcher import stitch
 
 log = logging.getLogger(__name__)
 
@@ -39,3 +42,32 @@ def move_to_device(data, device: torch.device):
         return data
     else:
         raise TypeError(f"Unknown data type {type(data)}")
+
+
+class BehaviorStitcher:
+    def __init__(self):
+        self.pred_cache = []
+        self.target_cache = []
+        self.timestamps_cache = []
+
+    @torch.no_grad
+    def update(self, preds: Tensor, targets: Tensor, timestamps: Tensor):
+        self.pred_cache.append(preds)
+        self.target_cache.append(targets)
+        self.timestamps_cache.append(timestamps)
+
+    @torch.no_grad
+    def compute(self) -> tuple[Tensor, Tensor]:
+        preds = torch.concat(self.pred_cache)
+        targets = torch.concat(self.target_cache)
+        timestamps = torch.concat(self.timestamps_cache)
+
+        t1, preds = stitch(timestamps, preds)
+        t2, targets = stitch(timestamps, targets)
+        assert torch.allclose(t1, t2)
+        return preds, targets
+
+    def reset(self):
+        self.pred_cache = []
+        self.target_cache = []
+        self.timestamps_cache = []
