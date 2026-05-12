@@ -1,5 +1,4 @@
 from typing import Callable
-from copy import deepcopy
 from temporaldata import Data
 
 from brainsets.datasets import (
@@ -9,6 +8,7 @@ from brainsets.datasets import (
 )
 from torch_brain.dataset import SpikingDatasetMixin, NestedDataset
 from datasets.poyo_mp import PoyoMPDataset
+from datasets.wrapper import PoyoReadoutConfig
 
 
 class Poyo1Dataset(SpikingDatasetMixin, NestedDataset):
@@ -33,56 +33,43 @@ class Poyo1Dataset(SpikingDatasetMixin, NestedDataset):
 class PoyoChurchlandDataset(ChurchlandShenoyNeural2012):
     dim_target = 2
 
-    READOUT_CONFIG = {
-        "readout": {
-            "value_key": "cursor.vel",
-            "timestamp_key": "cursor.timestamps",
-            "normalize_mean": 0.0,
-            "normalize_std": 800.0,
-            "weights": {
+    def get_recording_hook(self, data: Data):
+        super().get_recording_hook(data)
+        data.readout_config = PoyoReadoutConfig(
+            value_key="cursor.vel",
+            timestamp_key="cursor.timestamps",
+            normalize_mean=0.0,
+            normalize_std=800.0,
+            weights={
                 "movement_phases.hold_period": 0.1,
                 "movement_phases.reach_period": 5.0,
                 "movement_phases.return_period": 1.0,
                 "cursor_outlier_segments": 1.0,
             },
-        }
-    }
-
-    def get_recording_hook(self, data: Data):
-        data.config = deepcopy(self.READOUT_CONFIG)
-        return super().get_recording_hook(data)
+        )
 
 
 class PoyoOdohertyDataset(OdohertySabesNonhuman2017):
     dim_target = 2
 
-    READOUT_CONFIG = {
-        "readout": {
-            "value_key": "cursor.vel",
-            "timestamp_key": "cursor.timestamps",
-            "normalize_mean": 0.0,
-            "normalize_std": 200.0,
-        }
-    }
-
     def get_recording_hook(self, data: Data):
-        data.config = deepcopy(self.READOUT_CONFIG)
-        return super().get_recording_hook(data)
+        super().get_recording_hook(data)
+        data.readout_config = PoyoReadoutConfig(
+            value_key="cursor.vel",
+            timestamp_key="cursor.timestamps",
+            normalize_mean=0.0,
+            normalize_std=200.0,
+        )
 
 
 class PoyoFlintDataset(FlintSlutzkyAccurate2012):
     dim_target = 2
 
-    READOUT_CONFIG = {
-        "readout": {
-            # we will use the hand velocity for this dataset
-            "timestamp_key": "hand.timestamps",
-            "value_key": "hand.vel",
-            "normalize_mean": 0.0,
-            "normalize_std": 0.4,
-        }
-    }
-
     def get_recording_hook(self, data: Data):
-        data.config = deepcopy(self.READOUT_CONFIG)
-        return super().get_recording_hook(data)
+        super().get_recording_hook(data)
+        data.readout_config = PoyoReadoutConfig(
+            timestamp_key="hand.timestamps",
+            value_key="hand.vel",
+            normalize_mean=0.0,
+            normalize_std=0.4,
+        )
