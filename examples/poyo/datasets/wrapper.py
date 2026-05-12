@@ -1,12 +1,10 @@
-import torch
-from torch_brain.data import pad8
-from torch_brain.utils import (
-    resolve_weights_based_on_interval_membership,
-    isin_interval,
-)
 from typing import Callable
 import numpy as np
-from temporaldata import Data
+import torch
+
+from temporaldata import Data, Interval
+from torch_brain.data.collate import pad8
+from torch_brain.utils import isin_interval
 from torch_brain.dataset import DatasetIndex, Dataset
 
 
@@ -53,10 +51,9 @@ def prepare_for_readout(data: Data):
     if values.dtype == np.float64:
         values = values.astype(np.float32)
 
-    # resolve weights
-    weights = resolve_weights_based_on_interval_membership(
-        timestamps, data, config=readout_config.get("weights", None)
-    )
+    # resolve weights based on interval membership
+    weight_cfg = readout_config.get("weights", None)
+    weights = resolve_weights(timestamps, data, weight_cfg=weight_cfg)
 
     # resolve eval mask
     eval_mask = np.ones(len(timestamps), dtype=np.bool_)
@@ -66,3 +63,20 @@ def prepare_for_readout(data: Data):
         eval_mask = isin_interval(timestamps, eval_interval)
 
     return timestamps, values, weights, eval_mask
+
+
+def resolve_weights(timestamps, data, weight_cfg):
+    weights = np.ones_like(timestamps, dtype=np.float32)
+    if weight_cfg is None:
+        return weights
+
+    for weight_key, weight_value in weight_cfg.items():
+        # extract the interval from the weight key
+        weight = data.get_nested_attribute(weight_key)
+        if not isinstance(weight, Interval):
+            raise ValueError(
+                f"Weight {weight_key} is of type {type(weight)}. "
+                "Expected an Interval object."
+            )
+        weights[isin_interval(timestamps, weight)] *= weight_value
+    return weights

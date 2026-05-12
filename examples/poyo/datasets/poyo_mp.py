@@ -8,6 +8,8 @@ class PoyoMPDataset(PerichMillerPopulation2018):
     CO_READOUT_CONFIG = {
         "readout": {
             "readout_id": "cursor_velocity_2d",
+            "value_key": "cursor.vel",
+            "timestamp_key": "cursor.timestamps",
             "normalize_mean": 0.0,
             "normalize_std": 20.0,
             "weights": {
@@ -26,6 +28,8 @@ class PoyoMPDataset(PerichMillerPopulation2018):
     RT_READOUT_CONFIG = {
         "readout": {
             "readout_id": "cursor_velocity_2d",
+            "value_key": "cursor.vel",
+            "timestamp_key": "cursor.timestamps",
             "normalize_mean": 0.0,
             "normalize_std": 20.0,
             "weights": {
