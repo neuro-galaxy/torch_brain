@@ -109,13 +109,14 @@ def main(cfg: DictConfig):
             optim.zero_grad()
             loss.backward()
             optim.step()
-            scheduler.step()
 
             loader_pbar.set_description(f"Loss: {loss.item():.3f}")
             to_wandb = {"train/loss": loss.item(), **always_log}
             for param_group in optim.param_groups:
                 to_wandb[f"lr/{param_group['name']}"] = param_group["lr"]
             run.log(to_wandb)
+
+            scheduler.step()
             step += 1
 
         # Validation epoch
