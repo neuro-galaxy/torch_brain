@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added `BinSpikes` transform ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 - Added public weights for `CalciumPOYOPlus` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
 - Added per-task average metric logging in `MultiTaskDecodingStitchEvaluator` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
+- Added .gitattributes to merge CHANGELOG.md using union strategy ([#205](https://github.com/neuro-galaxy/torch_brain/pull/205))
 
 ### Removed
 - Removed `torch_brain.optim` / `SparseLamb` from the public package API ([#203](https://github.com/neuro-galaxy/torch_brain/pull/203))
