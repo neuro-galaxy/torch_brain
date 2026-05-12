@@ -23,7 +23,6 @@ from torch_brain.registry import ModalitySpec
 from torch_brain.utils import (
     create_linspace_latent_tokens,
     create_start_end_unit_tokens,
-    prepare_for_readout,
 )
 
 
