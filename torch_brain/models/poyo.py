@@ -360,8 +360,7 @@ class POYO(nn.Module):
 
     @classmethod
     def load_pretrained(cls, checkpoint_path: str | Path) -> "POYO":
-        """
-        Load a pretrained POYO model from a checkpoint file.
+        """Load a pretrained POYO model from a checkpoint file.
 
         Args:
             checkpoint_path: Path to the checkpoint file containing model weights and hyperparameters.
