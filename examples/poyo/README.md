@@ -10,7 +10,7 @@ pip install wandb brainsets
 ```
 
 ### Training POYO-MP
-To train POYO-MP you first need to download the [`perich_miller_population_2018`](https://brainsets.readthedocs.io/en/latest/glossary/brainsets.html#perich-miller-population-2018) data using [brainsets](https://github.com/neuro-galaxy/brainsets).
+To train POYO-MP you first need to download and preprocess the [`perich_miller_population_2018`](https://brainsets.readthedocs.io/en/latest/_generated/brainsets.datasets.PerichMillerPopulation2018.html#brainsets.datasets.PerichMillerPopulation2018) data using [brainsets](https://github.com/neuro-galaxy/brainsets).
 
 ```bash
 brainsets config --raw-dir data/raw --processed-dir data/processed
