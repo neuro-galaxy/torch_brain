@@ -359,9 +359,7 @@ class POYO(nn.Module):
         self.session_emb.initialize_vocab(dataset.recording_ids)
 
     @classmethod
-    def load_pretrained(
-        cls, checkpoint_path: str | Path, readout_spec, skip_readout=False
-    ) -> "POYO":
+    def load_pretrained(cls, checkpoint_path: str | Path) -> "POYO":
         """
         Load a pretrained POYO model from a checkpoint file.
 
