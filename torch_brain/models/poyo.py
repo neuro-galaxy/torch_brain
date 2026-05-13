@@ -371,14 +371,14 @@ class POYO(nn.Module):
         # For now, we are loading from the checkpoint generated using the official
         # Lightning trainer
         ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-        model_kwargs = ckpt["hyper_parameters"]["model"]
-        model_kwargs.pop("_target_", None)
+        hparams = ckpt["hyper_parameters"]["model"]
+        hparams.pop("_target_", None)
         state_dict = {k.replace("model.", ""): v for k, v in ckpt["state_dict"].items()}
 
         # Infer `dim_out` from shape of readout weights
         dim_out = state_dict["readout.weight"].size(0)
 
-        model = cls(**model_kwargs, dim_out=dim_out)
+        model = cls(**hparams, dim_out=dim_out)
         model.load_state_dict(state_dict)
         return model
 
