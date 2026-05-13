@@ -10,7 +10,6 @@ import torch
 import torchmetrics
 import wandb
 
-import torch_brain
 from torch_brain.data import collate
 from torch_brain.models import POYO
 from torch_brain.data.sampler import (

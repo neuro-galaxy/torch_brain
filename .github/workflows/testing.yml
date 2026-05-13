@@ -26,7 +26,7 @@ jobs:
     - name: Install dependencies
       run: |
         source venv/bin/activate
-        uv pip install --upgrade pip 
+        uv pip install --upgrade pip
         uv pip install -e ".[dev]"
         uv pip install lightning
     - name: Install plugin
@@ -59,7 +59,7 @@ jobs:
       run: |
         source venv/bin/activate
         uv pip install wandb
-        python examples/poyo/train_simple.py --config-name train_mc_maze_small.yaml data_root=data/processed wandb.mode=disabled epochs=2 eval_epochs=2 optim.lr_decay_start=0.
+        python examples/poyo/train_simple.py --config-name train_mc_maze_small.yaml data_root=data/processed wandb.mode=disabled epochs=2 optim.lr_decay_start=0.
     - name: Train a POYO+ model
       run: |
         source venv/bin/activate
