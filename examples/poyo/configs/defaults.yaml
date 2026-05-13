@@ -25,6 +25,3 @@ wandb:
   mode: online  # disabled, offline, or online
   entity: null
   project: poyo
-
-# Checkpointing
-ckpt_path: null  # for resuming training, or loading a model during finetuning
