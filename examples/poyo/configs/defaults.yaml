@@ -24,3 +24,4 @@ wandb:
   mode: online  # disabled, offline, or online
   entity: null
   project: poyo
+  name: null
