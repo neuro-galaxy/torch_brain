@@ -8,7 +8,7 @@ from torch import Tensor
 
 from torch_brain.utils.stitcher import stitch
 from torch_brain.models import POYO
-from torch_brain.optim import SparseLamb
+from optim import SparseLamb
 
 log = logging.getLogger(__name__)
 
