@@ -29,7 +29,7 @@ from datasets.wrapper import PoyoDatasetWrapper
 
 @hydra.main(version_base="1.3", config_path="./configs")
 def main(cfg: DictConfig):
-    device = torch.device("cuda")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger = logging.getLogger(__name__)
     run = wandb.init(**cfg.wandb)
     seed_everything(cfg.seed)
