@@ -345,7 +345,7 @@ class POYO(nn.Module):
             )
 
     def init_vocabs(self, dataset: Dataset):
-        """Initializes model's unit_emb and sess_emb vocabularies.
+        """Initializes model's unit_emb and session_emb vocabularies.
 
         Args:
             dataset: A :class:`Dataset` with :class:`SpikingDatasetMixin`.
