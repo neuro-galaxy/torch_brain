@@ -1,4 +1,3 @@
-import rich
 import logging
 from tqdm import tqdm
 from omegaconf import DictConfig
