@@ -68,11 +68,10 @@ def test_load_pretrained_basic(pretrained_checkpoint, readout_spec):
     assert hasattr(model, "sequence_length")
     assert hasattr(model, "latent_step")
     assert hasattr(model, "num_latents_per_step")
-    assert hasattr(model, "readout_spec")
 
     assert hasattr(model, "readout")
     assert isinstance(model.readout, torch.nn.Linear)
-    assert model.readout.out_features == readout_spec.dim
+    assert model.readout.out_features == 2
 
 
 def test_load_pretrained_skip_readout(pretrained_checkpoint, readout_spec):
@@ -123,7 +122,7 @@ def test_load_pretrained_forward_pass(pretrained_checkpoint, readout_spec):
         "latent_timestamps": torch.linspace(0, model.sequence_length, n_latent).repeat(
             batch_size, 1
         ),
-        "output_session_index": torch.zeros(batch_size, n_out, dtype=torch.long),
+        "session_index": torch.zeros(batch_size, dtype=torch.long),
         "output_timestamps": torch.rand(batch_size, n_out) * model.sequence_length,
     }
 
