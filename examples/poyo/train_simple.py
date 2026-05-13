@@ -110,6 +110,7 @@ def main(cfg: DictConfig):
             loss.backward()
             optim.step()
 
+            # Logging
             loader_pbar.set_description(f"Loss: {loss.item():.3f}")
             to_wandb = {"train/loss": loss.item(), **always_log}
             for param_group in optim.param_groups:
@@ -138,6 +139,7 @@ def main(cfg: DictConfig):
                         timestamps=Y["timestamps"][i][_mask] + Y["absolute_start"][i],
                     )
 
+            # Metric computation and logging
             metrics = {}
             for rid, stitcher in stitchers.items():
                 pred, target = stitcher.compute()

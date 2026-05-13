@@ -44,9 +44,7 @@ def move_to_device(data, device: torch.device):
 
 class BehaviorStitcher:
     def __init__(self):
-        self.pred_cache = []
-        self.target_cache = []
-        self.timestamps_cache = []
+        self.reset()
 
     @torch.no_grad
     def update(self, preds: Tensor, targets: Tensor, timestamps: Tensor):
