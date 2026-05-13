@@ -3,7 +3,6 @@
 
 # Paths
 data_root: ???
-log_dir: ./logs
 
 # Transforms
 train_transform: null
