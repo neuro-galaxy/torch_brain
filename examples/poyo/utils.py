@@ -58,9 +58,8 @@ class BehaviorStitcher:
         targets = torch.concat(self.target_cache)
         timestamps = torch.concat(self.timestamps_cache)
 
-        t1, preds = stitch(timestamps, preds)
-        t2, targets = stitch(timestamps, targets)
-        assert torch.allclose(t1, t2)
+        _, preds = stitch(timestamps, preds)
+        _, targets = stitch(timestamps, targets)
         return preds, targets
 
     def reset(self):
