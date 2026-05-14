@@ -112,7 +112,7 @@ def main(cfg: DictConfig):
             run.log(
                 {
                     "train/loss": loss.item(),
-                    "train/lr": optim.param_group[0]["lr"],
+                    "train/lr": optim.param_groups[0]["lr"],
                     "train/step": step,
                     "train/epoch": epoch,
                 }
