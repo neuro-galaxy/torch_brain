@@ -1,4 +1,3 @@
-from copy import deepcopy
 from brainsets.datasets import PeiPandarinathNLB2021
 from temporaldata import Data
 
