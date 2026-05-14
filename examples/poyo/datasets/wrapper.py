@@ -49,7 +49,12 @@ class PoyoDatasetWrapper(torch.utils.data.Dataset):
 
         # Prepare target (also part of decoder query)
         cfg = data.readout_config
-        assert isinstance(cfg, PoyoReadoutConfig)
+        if not isinstance(cfg, PoyoReadoutConfig):
+            raise TypeError(
+                "Expected data.readout_config to be a PoyoReadoutConfig, "
+                f"got {type(cfg).__name__}. Set data.readout_config on the "
+                "returned Data object, typically in get_recording_hook."
+            )
 
         timestamps = data.get_nested_attribute(cfg.timestamp_key)
         values = data.get_nested_attribute(cfg.value_key)
