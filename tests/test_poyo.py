@@ -8,6 +8,8 @@ from tqdm import tqdm
 
 from torch_brain.models.poyo import POYO
 
+# The checkpoints all have the same readout dimension
+# (since they were trained for hand-velocity decoding)
 READOUT_DIM = 2
 
 
