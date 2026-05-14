@@ -14,7 +14,7 @@ from datasets.wrapper import PoyoReadoutConfig
 class Poyo1Dataset(SpikingDatasetMixin, NestedDataset):
     dim_target = 2
 
-    def __init__(self, root, transform: Callable | None):
+    def __init__(self, root, transform: Callable | None = None):
         ds_mp = PoyoMPDataset(root)
         ds_flint = PoyoFlintDataset(root)
         ds_odoherty = PoyoOdohertyDataset(root)
