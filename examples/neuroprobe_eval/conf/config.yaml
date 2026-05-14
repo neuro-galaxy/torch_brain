@@ -1,0 +1,29 @@
+# Main configuration file for neuroprobe evaluation
+defaults:
+  - _self_
+  - paths: ???
+  - dataset: neuroprobe2025
+  - model: ???
+  - preprocessor: ???
+  - submitter: default
+  - runtime: default
+
+# Hydra configuration
+hydra:
+  job:
+    chdir: true  # Explicitly set working directory behavior to suppress warning
+
+# Runner settings
+runner:
+  num_workers: 0
+  pin_memory: true
+
+# Wandb (Weights & Biases) logging configuration
+wandb:
+  enabled: false  # Public default: disabled unless explicitly enabled
+  project: neuroprobe_eval  # Wandb project name
+  entity: null  # Wandb entity/team (null for personal account)
+  name: null  # Run name (null for auto-generated)
+  tags: null  # Tags as comma-separated string (e.g., "cnn,hp_sweep,onset") or list
+  notes: null  # Notes/description for this run
+  group: null  # Group runs together (e.g., by HP sweep)

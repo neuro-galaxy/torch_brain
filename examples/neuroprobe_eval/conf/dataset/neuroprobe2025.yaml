@@ -1,0 +1,17 @@
+# Preferred processed-mode dataset configuration.
+# All fields are consumed directly; no legacy fallback keys are supported.
+root: ${paths.dataset_root}
+dirname: ${paths.dataset_dirname}
+provider: neuroprobe2025
+subset_tier: lite  # full|lite|nano
+label_mode: binary  # binary|multiclass
+task: onset
+test_subject: 1
+test_session: 1
+regime: SS-SM  # SS-SM|SS-DM|DS-DM
+# Canonical source for brain-area metadata in variable-channel adapter.
+# Required for DS-DM; ignored by region-agnostic regimes.
+brain_area_key: localization_DesikanKilliany
+uniquify_channel_ids_with_subject: true
+uniquify_channel_ids_with_session: false
+merge_val_into_test: false
