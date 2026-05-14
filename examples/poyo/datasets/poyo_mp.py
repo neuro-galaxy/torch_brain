@@ -16,6 +16,11 @@ class PoyoMPDataset(PerichMillerPopulation2018):
         )
 
     def get_recording_hook(self, data: Data):
+        """Adds ``readout_config`` attribute to the data object.
+
+        This will be used by the ``PoyoDatasetWrapper`` to apply normalization
+        and extract loss weights.
+        """
         super().get_recording_hook(data)
 
         if data.session.id.endswith("center_out_reaching"):

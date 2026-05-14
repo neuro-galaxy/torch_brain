@@ -34,6 +34,11 @@ class PoyoChurchlandDataset(ChurchlandShenoyNeural2012):
     dim_target = 2
 
     def get_recording_hook(self, data: Data):
+        """Adds ``readout_config`` attribute to the data object.
+
+        This will be used by the ``PoyoDatasetWrapper`` to apply normalization
+        and extract loss weights.
+        """
         super().get_recording_hook(data)
         data.readout_config = PoyoReadoutConfig(
             value_key="cursor.vel",
@@ -53,6 +58,11 @@ class PoyoOdohertyDataset(OdohertySabesNonhuman2017):
     dim_target = 2
 
     def get_recording_hook(self, data: Data):
+        """Adds ``readout_config`` attribute to the data object.
+
+        This will be used by the ``PoyoDatasetWrapper`` to apply normalization
+        and extract loss weights.
+        """
         super().get_recording_hook(data)
         data.readout_config = PoyoReadoutConfig(
             value_key="cursor.vel",
@@ -66,6 +76,11 @@ class PoyoFlintDataset(FlintSlutzkyAccurate2012):
     dim_target = 2
 
     def get_recording_hook(self, data: Data):
+        """Adds ``readout_config`` attribute to the data object.
+
+        This will be used by the ``PoyoDatasetWrapper`` to apply normalization
+        and extract loss weights.
+        """
         super().get_recording_hook(data)
         data.readout_config = PoyoReadoutConfig(
             timestamp_key="hand.timestamps",
