@@ -1,5 +1,6 @@
 from .bin_spikes import BinSpikes
 from .container import Compose, ConditionalChoice, RandomChoice
+from .masking import TimeMasking, ChannelMasking, BlockMasking
 from .output_sampler import RandomOutputSampler
 from .random_crop import RandomCrop
 from .random_time_scaling import RandomTimeScaling
