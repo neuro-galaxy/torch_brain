@@ -34,6 +34,7 @@ dev = [
     "pytest<9",
     "black==24.2.0",
     "pre-commit>=3.5.0",
+    "omegaconf",
     "flake8",
     "boto3",
     "tqdm",
