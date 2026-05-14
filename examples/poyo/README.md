@@ -6,7 +6,7 @@ Official codebase for POYO published at NeurIPS 2023
 ### Installation
 
 ```bash
-pip install pytorch_brain lightning wandb brainsets
+pip install torch_brain lightning wandb brainsets hydra-core
 ```
 
 ### Training POYO-MP
