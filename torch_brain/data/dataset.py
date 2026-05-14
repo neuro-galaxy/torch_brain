@@ -111,9 +111,9 @@ class Dataset(torch.utils.data.Dataset):
             import omegaconf
         except:
             raise ImportError(
-                "Could not find `omegaconf` which is needed for the old Dataset.
-                "Please install using `pip intall omegaconf`."
-                "Alternately, it is recommended to switch to torch_brfain.dataset.Dataset."
+                "Could not find `omegaconf` which is needed for the old Dataset."
+                " Please install using `pip intall omegaconf`."
+                " Alternately, it is recommended to switch to torch_brfain.dataset.Dataset."
             )
 
         if config is not None:
@@ -166,7 +166,7 @@ class Dataset(torch.utils.data.Dataset):
     def __del__(self):
         self._close_open_files()
 
-    def _look_for_files(self, config: omegaconf.DictConfig) -> Dict[str, Dict]:
+    def _look_for_files(self, config) -> Dict[str, Dict]:
         recording_dict = {}
 
         for i, selection_list in enumerate(config):
