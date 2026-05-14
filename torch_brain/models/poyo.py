@@ -353,7 +353,7 @@ class POYO(nn.Module):
         if not isinstance(dataset, SpikingDatasetMixin):
             raise ValueError(
                 "POYO only works with spiking datasets and requires "
-                "`SpikingDatsetMixin` to be present in the input `Dataset`"
+                "`SpikingDatasetMixin` to be present in the input `Dataset`"
             )
         self.unit_emb.initialize_vocab(dataset.get_unit_ids())
         self.session_emb.initialize_vocab(dataset.recording_ids)
