@@ -33,17 +33,17 @@ class POYO(nn.Module):
     recordings.
 
     1. Input tokens are constructed by combining unit embeddings, token type embeddings,
-        and time embeddings for each spike in the sequence.
+    and time embeddings for each spike in the sequence.
     2. The input sequence is compressed using cross-attention, where learnable latent
-        tokens (each with an associated timestamp) attend to the input tokens.
+    tokens (each with an associated timestamp) attend to the input tokens.
     3. The compressed latent token representations undergo further refinement through
-        multiple self-attention processing layers.
+    multiple self-attention processing layers.
     4. Query tokens are constructed for the desired outputs by combining session
-        embeddings, and output timestamps.
+    embeddings, and output timestamps.
     5. These query tokens attend to the processed latent representations through
-        cross-attention, producing outputs in the model's dimensional space (dim).
+    cross-attention, producing outputs in the model's dimensional space (dim).
     6. Finally, a task-specific linear layer maps the outputs from the model dimension
-        to the appropriate output dimension.
+    to the appropriate output dimension.
 
     Args:
         sequence_length: Maximum duration of the input spike sequence (in seconds)
