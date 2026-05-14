@@ -90,7 +90,6 @@ def main(cfg: DictConfig):
     # Train loop
     step = 0
     for epoch in tqdm(range(cfg.epochs), desc="Epoch"):
-        always_log = {"train/epoch": epoch, "train/step": step}
 
         # Train epoch
         model.train()
@@ -110,10 +109,14 @@ def main(cfg: DictConfig):
 
             # Logging
             loader_pbar.set_description(f"Loss: {loss.item():.3f}")
-            to_wandb = {"train/loss": loss.item(), **always_log}
-            for param_group in optim.param_groups:
-                to_wandb[f"lr/{param_group['name']}"] = param_group["lr"]
-            run.log(to_wandb)
+            run.log(
+                {
+                    "train/loss": loss.item(),
+                    "train/lr": optim.param_group[0]["lr"],
+                    "train/step": step,
+                    "train/epoch": epoch,
+                }
+            )
 
             scheduler.step()
             step += 1
@@ -145,7 +148,13 @@ def main(cfg: DictConfig):
             metrics["val/avg_metric"] = np.mean(list(metrics.values()))
 
             print(pd.Series(metrics))
-            run.log({**metrics, **always_log})
+            run.log(
+                {
+                    **metrics,
+                    "train/step": step,
+                    "train/epoch": epoch,
+                }
+            )
 
 
 if __name__ == "__main__":
