@@ -1,3 +1,4 @@
+import inspect
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 import logging
 
@@ -9,7 +10,7 @@ import torch.nn.functional as F
 from torchtyping import TensorType
 from temporaldata import Data
 
-from torch_brain.dataset import Dataset, SpikingDatasetMixin
+from torch_brain.dataset import Dataset
 from torch_brain.data import chain, pad8, track_mask8
 from torch_brain.nn import (
     Embedding,
@@ -18,7 +19,6 @@ from torch_brain.nn import (
     RotarySelfAttention,
     RotaryTimeEmbedding,
 )
-from torch_brain.registry import ModalitySpec
 
 from torch_brain.utils import (
     create_linspace_latent_tokens,
@@ -350,12 +350,16 @@ class POYO(nn.Module):
         Args:
             dataset: A :class:`Dataset` with :class:`SpikingDatasetMixin`.
         """
-        if not isinstance(dataset, SpikingDatasetMixin):
+        if hasattr(dataset, "get_unit_ids") and inspect.ismethod(dataset.get_unit_ids):
+            unit_ids = dataset.get_unit_ids()
+        else:
             raise ValueError(
-                "POYO only works with spiking datasets and requires "
-                "`SpikingDatasetMixin` to be present in the input `Dataset`"
+                "Could not call method ``get_unit_ids()`` on input ``dataset``."
+                " Perhaps this is not a spiking dataset?"
+                " Consider adding ``SpikingDatasetMixin`` to your Dataset class, which would"
+                " provide this method."
             )
-        self.unit_emb.initialize_vocab(dataset.get_unit_ids())
+        self.unit_emb.initialize_vocab(unit_ids)
         self.session_emb.initialize_vocab(dataset.recording_ids)
 
     @classmethod
