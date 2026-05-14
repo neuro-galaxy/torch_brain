@@ -1,3 +1,5 @@
+from torch_brain.transforms import UnitDropout
+from argparse import ArgumentParser
 import logging
 from tqdm import tqdm
 from omegaconf import DictConfig
@@ -7,6 +9,7 @@ from hydra.utils import instantiate
 import pandas as pd
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torchmetrics
 import wandb
 
@@ -24,34 +27,52 @@ from utils import (
     create_optim,
     weighted_mse_loss_fn,
 )
-from datasets.wrapper import PoyoDatasetWrapper
+from datasets.nlb import PoyoNLBDataset
+from datasets.poyo_mp import PoyoMPDataset
 
 
-@hydra.main(version_base="1.3", config_path="./configs")
-def main(cfg: DictConfig):
+def main():
+    parser = ArgumentParser()
+    parser.add_argument("--data-root", type=str, required=True)
+    parser.add_argument("--batch-size", default=32, type=int)
+    parser.add_argument("--num-workers", default=4, type=int)
+    parser.add_argument("--epochs", default=100, type=int)
+    parser.add_argument("--lr", default=1e-4, type=float)
+    parser.add_argument("--seed", default=42, type=int)
+    cfg = parser.parse_args()
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger = logging.getLogger(__name__)
-    run = wandb.init(**cfg.wandb)
+    run = wandb.init()
     seed_everything(cfg.seed)
 
     # Datasets
-    train_ds = instantiate(cfg.dataset, root=cfg.data_root)
-    train_ds.transform = instantiate(cfg.train_transform)
-
-    val_ds = instantiate(cfg.dataset, root=cfg.data_root)
-    val_ds.transform = instantiate(cfg.eval_transform)
-
+    unit_dropout = UnitDropout(max_units=300, min_units=30, mode_units=100, peak=4)
+    train_ds = PoyoMPDataset(cfg.data_root, transform=unit_dropout)
+    eval_ds = PoyoMPDataset(root=cfg.data_root)
     logger.info(
         f"Dataset: num_recordings={len(train_ds.recording_ids)}, "
         f"num_units={len(train_ds.get_unit_ids())}"
     )
 
     # Model
-    model: POYO = instantiate(cfg.model, dim_out=train_ds.dim_target)
+    model = POYO(
+        sequence_length=1.0,
+        latent_step=0.125,
+        num_latents_per_step=32,
+        dim=128,
+        dim_out=train_ds.dim_target,
+        dim_head=64,
+        depth=24,
+        cross_heads=4,
+        self_heads=8,
+        ffn_dropout=0.2,
+        lin_dropout=0.4,
+        atn_dropout=0.2,
+    )
     model.init_vocabs(train_ds)
-    model = model.to(device)
-    train_ds = PoyoDatasetWrapper(train_ds, model.tokenize)
-    val_ds = PoyoDatasetWrapper(val_ds, model.tokenize)
+    train_ds.tokenizer = model.tokenize
+    eval_ds.tokenizer = model.tokenize
 
     # Samplers
     train_sampler = RandomFixedWindowSampler(
@@ -60,9 +81,8 @@ def main(cfg: DictConfig):
         generator=torch.Generator().manual_seed(cfg.seed + 1),
     )
     val_sampler = SequentialFixedWindowSampler(
-        sampling_intervals=val_ds.get_sampling_intervals("valid"),
+        sampling_intervals=eval_ds.get_sampling_intervals("valid"),
         window_length=model.sequence_length,
-        step=model.sequence_length / 2.0,
     )
 
     # Loaders
@@ -76,7 +96,7 @@ def main(cfg: DictConfig):
         collate_fn=collate,
     )
     val_loader = torch.utils.data.DataLoader(
-        val_ds,
+        eval_ds,
         sampler=val_sampler,
         batch_size=cfg.batch_size,
         num_workers=cfg.num_workers,
@@ -85,9 +105,10 @@ def main(cfg: DictConfig):
     )
 
     # Optimizer
-    optim, scheduler = create_optim(model, len(train_loader), cfg)
+    optim = torch.optim.AdamW(model.parameters(), lr=cfg.lr)
 
     # Train loop
+    model = model.to(device)
     step = 0
     for epoch in tqdm(range(cfg.epochs), desc="Epoch"):
 
@@ -100,8 +121,7 @@ def main(cfg: DictConfig):
             pred = model(**X, output_timestamps=Y["timestamps"])[mask]
 
             target = Y["values"][mask]
-            loss_weights = Y["weights"][mask]
-            loss = weighted_mse_loss_fn(pred, target, loss_weights)
+            loss = F.mse_loss(pred, target)
 
             optim.zero_grad()
             loss.backward()
@@ -110,20 +130,14 @@ def main(cfg: DictConfig):
             # Logging
             loader_pbar.set_description(f"Loss: {loss.item():.3f}")
             run.log(
-                {
-                    "train/loss": loss.item(),
-                    "train/lr": optim.param_group[0]["lr"],
-                    "train/step": step,
-                    "train/epoch": epoch,
-                }
+                {"train/loss": loss.item(), "train/step": step, "train/epoch": epoch}
             )
 
-            scheduler.step()
             step += 1
 
         # Validation epoch
-        model.eval()
         metric_fn = torchmetrics.functional.r2_score
+        model.eval()
         with torch.no_grad():
             stitchers = {rid: BehaviorStitcher() for rid in val_ds.recording_ids}
 

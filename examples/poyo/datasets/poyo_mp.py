@@ -1,57 +1,62 @@
-from brainsets.datasets import PerichMillerPopulation2018
+from typing import Literal, Callable
+import numpy as np
 from temporaldata import Data
-
-from .wrapper import PoyoReadoutConfig
+from torch_brain.dataset import DatasetIndex
+from torch_brain.data.collate import pad8
+from brainsets.datasets import PerichMillerPopulation2018
 
 
 class PoyoMPDataset(PerichMillerPopulation2018):
     dim_target = 2
+    tokenizer: Callable
 
-    def __init__(self, root, transform=None, **kwargs):
+    def __init__(self, root, transform=None):
         super().__init__(
             root,
             recording_ids=TRAIN_RECORDING_IDS,
             transform=transform,
-            **kwargs,
         )
 
-    def get_recording_hook(self, data: Data):
-        """Adds ``readout_config`` attribute to the data object.
+    def get_sampling_intervals(self, split: Literal["train", "valid", "test"]):
+        if split == "train":
+            ans = {}
+            for rid in self.recording_ids:
+                ans[rid] = self.get_recording(rid).train_domain
+            return ans
+        else:
+            eval_intervals = {}
+            for rid in self.recording_ids:
+                rec = self.get_recording(rid)
+                if rec.session.id.endswith("center_out_reaching"):
+                    intrvl = rec.movement_phases.reach_period
+                else:
+                    intrvl = rec.movement_phases.random_period
 
-        This will be used by the ``PoyoDatasetWrapper`` to apply normalization
-        and extract loss weights.
-        """
-        super().get_recording_hook(data)
+                if split == "valid":
+                    intrvl = intrvl & rec.valid_domain
+                else:
+                    intrvl = intrvl & rec.test_domain
 
-        if data.session.id.endswith("center_out_reaching"):
-            data.readout_config = PoyoReadoutConfig(
-                value_key="cursor.vel",
-                timestamp_key="cursor.timestamps",
-                normalize_mean=0.0,
-                normalize_std=20.0,
-                weights={
-                    "movement_phases.random_period": 1.0,
-                    "movement_phases.hold_period": 0.1,
-                    "movement_phases.reach_period": 5.0,
-                    "movement_phases.return_period": 1.0,
-                    "movement_phases.invalid": 0.1,
-                    "cursor_outlier_segments": 0.0,
-                },
-                eval_interval="movement_phases.reach_period",
-            )
-        elif data.session.id.endswith("random_target_reaching"):
-            data.readout_config = PoyoReadoutConfig(
-                value_key="cursor.vel",
-                timestamp_key="cursor.timestamps",
-                normalize_mean=0.0,
-                normalize_std=20.0,
-                weights={
-                    "movement_phases.random_period": 1.0,
-                    "movement_phases.hold_period": 0.1,
-                    "cursor_outlier_segments": 0.0,
-                },
-                eval_interval="movement_phases.random_period",
-            )
+                eval_intervals[rid] = intrvl
+
+    def __getitem__(self, index: DatasetIndex):
+        data = super().__getitem__(index)
+
+        # Prepare encoder input
+        X = self.tokenizer(data)
+
+        # Prepare target
+        timestamps = data.cursor.timestamps
+        values = data.cursor.vel / 20.0  # To keep values in [-1, +1] approx.
+
+        Y = dict(
+            timestamps=pad8(timestamps.astype(np.float32)),
+            values=pad8(values.astype(np.float32)),
+            output_mask=pad8(np.ones(len(timestamps), dtype=bool)),
+            session_id=data.session.id,
+        )
+
+        return X, Y
 
 
 TRAIN_RECORDING_IDS = [
