@@ -1,6 +1,8 @@
 # POYO Example
 
-A simple example training script for [POYO](https://poyo-brain.github.io/)
+A minimal training example for [POYO](https://poyo-brain.github.io/).
+
+Please check out [POYO's official code repository](https://github.com/nerdslab/poyo) for fully-featured and paper-reproducing code.
 
 ### Setup
 
@@ -44,14 +46,3 @@ python train_simple.py --config-name train_poyo_1 data_root=data/processed
 
 Checkout `configs/defaults.yaml` and `configs/train_poyo_1.yaml` for all configurations available.
 
-## Citation for POYO:
-
-```bibtex
-@inproceedings{
-    azabou2023unified,
-    title={A Unified, Scalable Framework for Neural Population Decoding},
-    author={Mehdi Azabou and Vinam Arora and Venkataramana Ganesh and Ximeng Mao and Santosh Nachimuthu and Michael Mendelson and Blake Richards and Matthew Perich and Guillaume Lajoie and Eva L. Dyer},
-    booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
-    year={2023},
-}
-```
