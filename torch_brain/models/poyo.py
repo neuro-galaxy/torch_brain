@@ -11,7 +11,7 @@ from torchtyping import TensorType
 from temporaldata import Data
 
 from torch_brain.dataset import Dataset
-from torch_brain.data import chain, pad8, track_mask8
+from torch_brain.data import pad8, track_mask8
 from torch_brain.nn import (
     Embedding,
     InfiniteVocabEmbedding,
