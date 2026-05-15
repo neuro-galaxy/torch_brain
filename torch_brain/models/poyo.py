@@ -50,6 +50,7 @@ class POYO(nn.Module):
         latent_step: Timestep of the latent grid (in seconds)
         num_latents_per_step: Number of unique latent tokens (repeated at every latent step)
         dim: Hidden dimension of the model
+        dim_out: Output dimension of the model
         depth: Number of processing layers (self-attentions in the latent space)
         dim_head: Dimension of each attention head
         cross_heads: Number of attention heads used in a cross-attention layer
@@ -66,9 +67,9 @@ class POYO(nn.Module):
         self,
         *,
         sequence_length: float,
-        dim_out: int,
         latent_step: float,
         num_latents_per_step: int = 64,
+        dim_out: int,
         dim: int = 512,
         depth: int = 2,
         dim_head: int = 64,
