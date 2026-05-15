@@ -23,7 +23,6 @@ dependencies = [
     "numpy",
     "torch~=2.0",
     "einops~=0.6.0",
-    "hydra-core~=1.3.2",
     "torchtyping~=0.1",
     "torchmetrics>=1.6.0",
     "pydantic~=2.0",
@@ -35,6 +34,7 @@ dev = [
     "pytest<9",
     "black==24.2.0",
     "pre-commit>=3.5.0",
+    "omegaconf",  # TODO: only needed for old Dataset, remove after cleanup
     "flake8",
     "boto3",
     "tqdm",
@@ -53,6 +53,7 @@ docs = [
     "sphinx-design",
     "sphinx-copybutton",
     "sphinxcontrib-sass",
+    "omegaconf",  # TODO: only needed for old Dataset, remove after cleanup
 ]
 
 [project.urls]

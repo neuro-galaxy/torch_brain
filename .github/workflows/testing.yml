@@ -58,7 +58,7 @@ jobs:
     - name: Train a POYO model
       run: |
         source venv/bin/activate
-        uv pip install wandb
+        uv pip install wandb hydra-core
         python examples/poyo/train_simple.py --config-name train_mc_maze_small.yaml data_root=data/processed wandb.mode=disabled epochs=2 optim.lr_decay_start=0.
     - name: Train a POYO+ model
       run: |
