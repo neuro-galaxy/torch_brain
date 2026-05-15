@@ -112,7 +112,7 @@ class Dataset(torch.utils.data.Dataset):
         except:
             raise ImportError(
                 "Could not find `omegaconf` which is needed for the old Dataset."
-                " Please install using `pip intall omegaconf`."
+                " Please install using `pip install omegaconf`."
                 " Alternately, it is recommended to switch to torch_brain.dataset.Dataset."
             )
 
