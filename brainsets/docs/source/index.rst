@@ -47,12 +47,6 @@ If you encounter any bugs or have feature requests, please submit them to our
 
 .. toctree::
    :maxdepth: 1
-   :caption: Glossary
-
-   glossary/brainsets
-
-.. toctree::
-   :maxdepth: 1
    :caption: CLI Reference
 
    Commands <cli/commands>
