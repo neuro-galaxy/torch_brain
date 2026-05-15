@@ -29,6 +29,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_design",
     "sphinxcontrib.sass",
+    "sphinx_exec_code",
     # see sphinxext/
     "autoshortsummary",
 ]

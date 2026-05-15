@@ -3,6 +3,10 @@
 Sampling
 ========
 
+.. exec_code::
+   :hide_output:
+   :filename: guides/sampling/data_download.py
+
 The advanced sampling capabilities in ``torch_brain`` enable flexible and customizable data
 loading by allowing users to define arbitrary sampling intervals and window lengths for
 their neural data. This design makes it easy to handle complex experimental protocols
@@ -102,27 +106,9 @@ We can visualize the validation and testing intervals as well.
 
 .. code-block:: python
 
-    >>> train_dataset = Dataset(
-    >>>     "./processed",
-    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
-    >>>     split="train"
-    >>> )
-    >>> train_sampling_intervals = train_dataset.get_sampling_intervals()
-
-    >>> valid_dataset = Dataset(
-    >>>     "./processed",
-    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
-    >>>     split="valid"
-    >>> )
-    >>> valid_sampling_intervals = valid_dataset.get_sampling_intervals()
-
-
-    >>> test_dataset = Dataset(
-    >>>     "./processed",
-    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
-    >>>     split="test"
-    >>> )
-    >>> test_sampling_intervals = test_dataset.get_sampling_intervals()
+    >>> train_sampling_intervals = dataset.get_sampling_intervals("train")
+    >>> valid_sampling_intervals = dataset.get_sampling_intervals("valid")
+    >>> test_sampling_intervals = dataset.get_sampling_intervals("test")
 
 
 .. bokeh-plot:: guides/sampling/plot_sampler_2.py

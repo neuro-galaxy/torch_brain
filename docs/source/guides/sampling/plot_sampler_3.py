@@ -6,40 +6,26 @@ from bokeh.models import ColumnDataSource, Button, Div
 from bokeh.models.callbacks import CustomJS
 from bokeh.layouts import layout
 
-from torch_brain.data import Dataset
 from torch_brain.data.sampler import RandomFixedWindowSampler
+from brainsets.datasets import PerichMillerPopulation2018
 
-from _utils import download_file_from_s3
+rid = "c_20131003_center_out_reaching"
 
-root_dir = os.path.dirname(__file__)
-download_file_from_s3(
-    "_ressources/c_20131003_center_out_reaching.h5",
-    os.path.join(
-        root_dir, "perich_miller_population_2018/c_20131003_center_out_reaching.h5"
-    ),
+dataset = PerichMillerPopulation2018(
+    root="build/data/processed",
+    recording_ids=[rid],
 )
 
-dataset = Dataset(
-    root_dir,
-    recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
-    split="train",
-)
+data = dataset.get_recording(rid)
 
+sampling_intervals = dataset.get_sampling_intervals("train")
 sampler = RandomFixedWindowSampler(
-    sampling_intervals=dataset.get_sampling_intervals(),
+    sampling_intervals=sampling_intervals,
     window_length=1.0,
     generator=None,
 )
 
-sampler = RandomFixedWindowSampler(
-    sampling_intervals=dataset.get_sampling_intervals(),
-    window_length=1.0,
-    generator=None,
-)
-
-sampling_intervals = dataset.get_sampling_intervals()[
-    "perich_miller_population_2018/c_20131003_center_out_reaching"
-]
+sampling_intervals = sampling_intervals[rid]
 # Create single figure
 p = figure(
     width=800,
@@ -149,36 +135,36 @@ auto_callback = CustomJS(
     code="""
     // Disable button while playing
     button.disabled = true;
-    
+
     // Clear existing windows
     source.data['left'] = [];
     source.data['right'] = [];
     source.data['top'] = [];
     source.data['bottom'] = [];
     source.change.emit();
-    
+
     // Initialize window set if not already set
     if (!button.window_set) {
         button.window_set = 1;
     }
-    
+
     function playNextWindow() {
         if (current_windows.length > 0) {
             var window = current_windows.shift();  // Remove and get first window
-            
+
             var data = source.data;
             data['left'].push(window.start);
             data['right'].push(window.end);
             data['top'].push(0.8);
             data['bottom'].push(0.5);
-            
+
             source.change.emit();
-            
+
             setTimeout(playNextWindow, 10);
         } else {
             // All windows played - prepare for next seed
             button.disabled = false;
-            
+
             if (button.window_set === 1) {
                 current_windows.push.apply(current_windows, windows_2);
                 button.window_set = 2;
@@ -194,7 +180,7 @@ auto_callback = CustomJS(
             }
         }
     }
-    
+
     // Start playing windows
     playNextWindow();
 """,

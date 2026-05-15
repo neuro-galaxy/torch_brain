@@ -1,29 +1,20 @@
 import os
+from pathlib import Path
 
 import numpy as np
 from bokeh.plotting import figure, show
 
-from torch_brain.data import Dataset
+from brainsets.datasets import PerichMillerPopulation2018
 
-from _utils import download_file_from_s3
+rid = "c_20131003_center_out_reaching"
 
-root_dir = os.path.dirname(__file__)
-download_file_from_s3(
-    "_ressources/c_20131003_center_out_reaching.h5",
-    os.path.join(
-        root_dir, "perich_miller_population_2018/c_20131003_center_out_reaching.h5"
-    ),
+dataset = PerichMillerPopulation2018(
+    root="build/data/processed/",
+    recording_ids=[rid],
 )
 
-dataset = Dataset(
-    root_dir,
-    recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
-    split="train",
-)
-
-sampling_intervals = dataset.get_sampling_intervals()[
-    "perich_miller_population_2018/c_20131003_center_out_reaching"
-]
+sampling_intervals = dataset.get_sampling_intervals("train")
+sampling_intervals = sampling_intervals[rid]
 
 # Create figure
 p = figure(
