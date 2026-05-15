@@ -48,8 +48,8 @@ def main():
 
     # Datasets
     unit_dropout = UnitDropout(max_units=300, min_units=30, mode_units=100, peak=4)
-    train_ds = PoyoMPDataset(cfg.data_root, transform=unit_dropout)
-    eval_ds = PoyoMPDataset(root=cfg.data_root)
+    train_ds = PoyoNLBDataset(cfg.data_root, transform=unit_dropout)
+    eval_ds = PoyoNLBDataset(root=cfg.data_root)
     logger.info(
         f"Dataset: num_recordings={len(train_ds.recording_ids)}, "
         f"num_units={len(train_ds.get_unit_ids())}"
@@ -139,7 +139,7 @@ def main():
         metric_fn = torchmetrics.functional.r2_score
         model.eval()
         with torch.no_grad():
-            stitchers = {rid: BehaviorStitcher() for rid in val_ds.recording_ids}
+            stitchers = {rid: BehaviorStitcher() for rid in eval_ds.recording_ids}
 
             for X, Y in tqdm(val_loader, leave=False):
                 X, Y = move_to_device((X, Y), device)
