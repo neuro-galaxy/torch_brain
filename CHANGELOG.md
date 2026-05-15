@@ -23,9 +23,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `bin_spikes` output shape changed from `(N, T)` to `(T, N)` and default `dtype` changed from `np.float32` to `np.int32` ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 - Renamed `torch_brain.models.CaPOYO` to `torch_brain.models.CalciumPOYOPlus` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
 - POYO API changes ([#206](https://github.com/neuro-galaxy/torch_brain/pull/206)):
-    - Constructor argument `readout_spec` replaced with `dim_out`.
+    - Constructor argument `readout_spec` replaced with `dim_out`
     - Tokenizer no longer produces query tokens. This can be produced by the dataset (see examples/poyo)
     - `POYO.load_pretrained` now requires just providing the checkpoint path.
+    - Removed `poyo_mp()` function
 
 ### Fixed
 - Fixed `MultiTaskDecodingStitchEvaluator` caching predictions under the wrong sequence index when batch samples have non-overlapping readout types. ([#175](https://github.com/neuro-galaxy/torch_brain/pull/175))
