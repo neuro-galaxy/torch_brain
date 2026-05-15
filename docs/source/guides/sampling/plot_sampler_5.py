@@ -5,12 +5,9 @@ from bokeh.plotting import figure, show
 from bokeh.models import ColumnDataSource, Button, Div
 from bokeh.models.callbacks import CustomJS
 from bokeh.layouts import layout
-from omegaconf import OmegaConf
 
 from torch_brain.data.sampler import RandomFixedWindowSampler
 from brainsets.datasets import PerichMillerPopulation2018
-
-from _utils import download_file_from_s3
 
 rids = [
     "c_20131003_center_out_reaching",

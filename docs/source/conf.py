@@ -83,6 +83,7 @@ intersphinx_mapping = {
     "numpy": ("http://docs.scipy.org/doc/numpy", None),
     "h5py": ("http://docs.h5py.org/en/latest/", None),
     "temporaldata": ("https://temporaldata.readthedocs.io/en/latest/", None),
+    "brainsets": ("https://brainsets.readthedocs.io/en/latest/", None),
     "torch": ("https://pytorch.org/docs/stable", None),
 }
 
