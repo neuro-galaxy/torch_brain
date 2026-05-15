@@ -4,6 +4,7 @@ Sampling
 ========
 
 .. exec_code::
+   :hide:
    :hide_output:
    :filename: guides/sampling/data_download.py
 

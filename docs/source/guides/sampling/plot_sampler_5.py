@@ -36,7 +36,7 @@ sampling_intervals_3 = sampling_intervals[rids[2]]
 
 # Create single figure
 p = figure(
-    width=800,
+    width=700,
     height=300,
     x_axis_label="Time (s)",
     y_range=(-0.1, 0.9),

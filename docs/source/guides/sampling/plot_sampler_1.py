@@ -18,7 +18,7 @@ sampling_intervals = sampling_intervals[rid]
 
 # Create figure
 p = figure(
-    width=800, height=200, x_axis_label="Time (s)", y_range=(-0.2, 1.2), tools="hover"
+    width=700, height=200, x_axis_label="Time (s)", y_range=(-0.2, 1.2), tools="hover"
 )
 # Add hover tooltip
 p.hover.tooltips = [("start", "@left{0.2f} s"), ("end", "@right{0.2f} s")]

@@ -28,7 +28,7 @@ sampler = RandomFixedWindowSampler(
 sampling_intervals = sampling_intervals[rid]
 # Create single figure
 p = figure(
-    width=800,
+    width=700,
     height=300,
     x_axis_label="Time (s)",
     y_range=(0.0, 1.0),

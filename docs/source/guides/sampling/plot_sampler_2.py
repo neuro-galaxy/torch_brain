@@ -19,7 +19,7 @@ valid_sampling_intervals = data.valid_domain
 test_sampling_intervals = data.test_domain
 # Create figure
 p = figure(
-    width=800, height=250, x_axis_label="Time (s)", y_range=(-0.2, 1.2), tools="hover"
+    width=700, height=250, x_axis_label="Time (s)", y_range=(-0.2, 1.2), tools="hover"
 )
 # Add hover tooltip
 p.hover.tooltips = [
