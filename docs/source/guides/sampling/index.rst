@@ -3,7 +3,7 @@
 Sampling
 ========
 
-The advanced sampling capabilities in **torch_brain** enable flexible and customizable data
+The advanced sampling capabilities in ``torch_brain`` enable flexible and customizable data
 loading by allowing users to define arbitrary sampling intervals and window lengths for
 their neural data. This design makes it easy to handle complex experimental protocols
 with non-contiguous recording periods, while providing a simple interface that
@@ -13,55 +13,84 @@ automatically handles the complexities of sampling from multiple intervals or se
 Sampling intervals
 ------------------
 
-Sampling intervals are the intervals from which a data sampler is allowed to sample data.
-The sampling intervals do not have to be contiguous, and can be of any length.
-They are defined as :obj:`Interval` objects with start and end times.
+*Sampling intervals* are the intervals from which a data sampler is allowed to sample data.
 
-In **brainsets**, each recording has a `default` split, defined in the brainset's pipeline.
-Non-overlapping training, validation and testing :obj:`Interval` objects
-are stored in :obj:`data.train_domain`, :obj:`data.valid_domain` and :obj:`data.test_domain`
-respectively. These intervals can be used as the sampling intervals.
+Datasets in ``torch_brain`` typically contain multiple recordings, and so the sampling intervals
+are dictionaries keyed by the recording IDs and contain :obj:`temporaldata.Interval`
+values that specify the valid start and end sampling times to the samplers.
+These intervals do not have to be contiguous, and can be of any length.
 
-When using :obj:`brainsets.data.Dataset`, the sampling intervals can be easily accessed using the :obj:`get_sampling_intervals` method.
+The typical code-pattern for creating custom sampling intervals and using them
+with a sampler is shown below:
+
+.. code-block:: python
+
+   from typing import Literal
+   from torch_brain.dataset import Dataset
+   from torch_brain.data.sampler import SequentialFixedWindowSampler
+
+   class MyDataset(Dataset):
+       ...
+
+       def get_sampling_intervals(self, split: Literal["train", "val", "test"]):
+           samp_intervals = {}
+           for rid in self.recording_ids:
+               recording = self.get_recording(rid)
+               samp_intervals[rid] = ... # create or load an Interval that makes sense
+           return samp_intervals
+
+
+   dataset = MyDataset()
+
+   sampler = SequentialFixedWindowSampler(
+       sampling_intervals=dataset.get_sampling_interval(),
+       window_length=1.0,
+   )
+
+
+Many **brainsets** provide default train/validation/test intervals which
+are stored in :obj:`data.train_domain`, :obj:`data.valid_domain`, :obj:`data.test_domain`
+respectively.
+
 For example, let's load a recording from the :obj:`perich_miller_population_2018` dataset.
 
 .. note ::
 
-    To follow this tutorial, you can run the pipeline for the :obj:`perich_miller_population_2018` dataset,
-    following the instructions in the :obj:`brainsets` documentation.
+    To follow this tutorial, you can run the following brainset pipeline:
+
+    .. code-block:: shell
+
+        brainsets prepare perich_miller_population_2018 --raw-dir ./data/raw --processed-dir ./data/processed
 
 .. code-block:: python
 
-    >>> from torch_brain.data import Dataset
-
-    >>> dataset = Dataset(
-    >>>     "./processed",
-    >>>     recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
-    >>>     split="train"
-    >>> )
-
-    >>> sampling_intervals = dataset.get_sampling_intervals()
-
+    >>> from brainsets.datasets import PerichMillerPopulation2018
+    >>> dataset = PerichMillerPopulation2018(root="./data/processed")
+    >>> sampling_intervals = dataset.get_sampling_intervals("train")
     >>> print(sampling_intervals)
-    {'perich_miller_population_2018/c_20131003_center_out_reaching': LazyInterval(
-        end=<HDF5 dataset "end": shape (23,), type "<f8">,
-        start=<HDF5 dataset "start": shape (23,), type "<f8">
-    )}
+    {'c_20131003_center_out_reaching': LazyInterval(
+      end=<HDF5 dataset "end": shape (38,), type "<f8">,
+      start=<HDF5 dataset "start": shape (38,), type "<f8">
+    ), 'c_20131009_random_target_reaching': LazyInterval(
+      end=<HDF5 dataset "end": shape (30,), type "<f8">,
+      start=<HDF5 dataset "start": shape (30,), type "<f8">
+    ), 'c_20131010_random_target_reaching': LazyInterval(
+    ...
 
-:obj:`dataset.get_sampling_intervals()` returns a dictionary where the keys are the recording ids and the values are :obj:`Interval` objects corresponding to the sampling intervals for that split.
-Here, we have a single recording, hence only one element in the dictionary. We note that there are a total of 23 sampling intervals for :obj:`split="train"`.
-We can print the first 5 sampling intervals as follows:
+
+We note that there are a total of 38 sampling intervals for the train part of the
+``'c_20131003_center_out_reaching'`` recording. We can print the first 5 sampling intervals as follows:
 
 .. code-block:: python
 
     >>> for recording_id in sampling_intervals:
     >>>     for start, end in zip(sampling_intervals[recording_id].start[:5], sampling_intervals[recording_id].end[:5]):
     >>>         print(f"start: {start:.2f}, end: {end:.2f}")
-    start: 0.00, end: 21.83
-    start: 32.12, end: 34.44
-    start: 43.96, end: 53.30
-    start: 68.51, end: 70.91
-    start: 80.57, end: 89.47
+    start: 0.00, end: 38.51
+    start: 44.02, end: 49.32
+    start: 55.78, end: 60.20
+    start: 65.15, end: 71.30
+    start: 77.15, end: 83.56
 
 
 The intervals are of different lengths. We visualize the intervals below.
