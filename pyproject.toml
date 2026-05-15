@@ -53,7 +53,7 @@ docs = [
     "sphinx-design",
     "sphinx-copybutton",
     "sphinxcontrib-sass",
-    "omegaconf",  # TODO: only needed for old Dataset, remove after cleanup
+    "sphinx-exec-code",
 ]
 
 [project.urls]

@@ -29,6 +29,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_design",
     "sphinxcontrib.sass",
+    "sphinx_exec_code",
     # see sphinxext/
     "autoshortsummary",
 ]
@@ -82,6 +83,7 @@ intersphinx_mapping = {
     "numpy": ("http://docs.scipy.org/doc/numpy", None),
     "h5py": ("http://docs.h5py.org/en/latest/", None),
     "temporaldata": ("https://temporaldata.readthedocs.io/en/latest/", None),
+    "brainsets": ("https://brainsets.readthedocs.io/en/latest/", None),
     "torch": ("https://pytorch.org/docs/stable", None),
 }
 

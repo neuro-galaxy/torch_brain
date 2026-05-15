@@ -5,77 +5,35 @@ from bokeh.plotting import figure, show
 from bokeh.models import ColumnDataSource, Button, Div
 from bokeh.models.callbacks import CustomJS
 from bokeh.layouts import layout
-from omegaconf import OmegaConf
 
-from torch_brain.data import Dataset
 from torch_brain.data.sampler import RandomFixedWindowSampler
+from brainsets.datasets import PerichMillerPopulation2018
 
-from _utils import download_file_from_s3
-
-config_str = """
-- selection:
-  - brainset: perich_miller_population_2018
-    sessions:
-      - c_20131003_center_out_reaching
-      - c_20131022_center_out_reaching
-      - c_20131023_center_out_reaching
-"""
-
-config = OmegaConf.create(config_str)
-
-root_dir = os.path.dirname(__file__)
-download_file_from_s3(
-    "_ressources/c_20131003_center_out_reaching.h5",
-    os.path.join(
-        root_dir, "perich_miller_population_2018/c_20131003_center_out_reaching.h5"
-    ),
-)
-download_file_from_s3(
-    "_ressources/c_20131022_center_out_reaching.h5",
-    os.path.join(
-        root_dir, "perich_miller_population_2018/c_20131022_center_out_reaching.h5"
-    ),
-)
-download_file_from_s3(
-    "_ressources/c_20131023_center_out_reaching.h5",
-    os.path.join(
-        root_dir, "perich_miller_population_2018/c_20131023_center_out_reaching.h5"
-    ),
+rids = [
+    "c_20131003_center_out_reaching",
+    "c_20131022_center_out_reaching",
+    "c_20131023_center_out_reaching",
+]
+dataset = PerichMillerPopulation2018(
+    root="build/data/processed",
+    recording_ids=rids,
 )
 
-dataset = Dataset(
-    root_dir,
-    recording_id="perich_miller_population_2018/c_20131003_center_out_reaching",
-    split=None,
-)
-dataset = Dataset(
-    root_dir,
-    config=config,
-    split="train",
-)
-
+sampling_intervals = dataset.get_sampling_intervals("train")
 sampler = RandomFixedWindowSampler(
-    sampling_intervals=dataset.get_sampling_intervals(),
+    sampling_intervals=sampling_intervals,
     window_length=1.0,
     generator=None,
 )
 
 
-sampling_intervals = dataset.get_sampling_intervals()
-
-sampling_intervals_1 = sampling_intervals[
-    "perich_miller_population_2018/c_20131003_center_out_reaching"
-]
-sampling_intervals_2 = sampling_intervals[
-    "perich_miller_population_2018/c_20131022_center_out_reaching"
-]
-sampling_intervals_3 = sampling_intervals[
-    "perich_miller_population_2018/c_20131023_center_out_reaching"
-]
+sampling_intervals_1 = sampling_intervals[rids[0]]
+sampling_intervals_2 = sampling_intervals[rids[1]]
+sampling_intervals_3 = sampling_intervals[rids[2]]
 
 # Create single figure
 p = figure(
-    width=800,
+    width=700,
     height=300,
     x_axis_label="Time (s)",
     y_range=(-0.1, 0.9),
@@ -250,20 +208,20 @@ auto_callback = CustomJS(
     code="""
     // Disable button while playing
     button.disabled = true;
-    
+
     // Clear existing windows
     source.data['left'] = [];
     source.data['right'] = [];
     source.data['top'] = [];
     source.data['bottom'] = [];
     source.change.emit();
-    
+
     let current_window_idx = 0;
-    
+
     function playNextWindow() {
         if (current_window_idx < sampled_windows.length) {
             var window = sampled_windows[current_window_idx];
-            
+
             // Get the y position based on recording_id
             var top, bottom;
             if (window.recording_id.includes('20131003')) {
@@ -276,24 +234,24 @@ auto_callback = CustomJS(
                 top = 0.2;
                 bottom = 0.0;
             }
-            
+
             var data = source.data;
             data['left'].push(window.start);
             data['right'].push(window.end);
             data['top'].push(top);
             data['bottom'].push(bottom);
-            
+
             source.change.emit();
             current_window_idx++;
-            
-            setTimeout(playNextWindow, 10);  
+
+            setTimeout(playNextWindow, 10);
         } else {
             // All windows played
             button.disabled = false;
             button.label = 'Generate samples for epoch 1';
         }
     }
-    
+
     // Start playing windows
     playNextWindow();
 """,
