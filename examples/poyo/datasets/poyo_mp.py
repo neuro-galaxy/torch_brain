@@ -1,60 +1,83 @@
-from copy import deepcopy
-import torchmetrics
-from brainsets.datasets import PerichMillerPopulation2018
+from numpy.matlib import record
+from typing import Literal, Callable
+import numpy as np
 from temporaldata import Data
+from torch_brain.dataset import DatasetIndex, NestedDataset, SpikingDatasetMixin
+from torch_brain.data.collate import pad8
+from brainsets.datasets import PerichMillerPopulation2018
 
 
-class PoyoMPDataset(PerichMillerPopulation2018):
-    CO_READOUT_CONFIG = {
-        "readout": {
-            "readout_id": "cursor_velocity_2d",
-            "normalize_mean": 0.0,
-            "normalize_std": 20.0,
-            "weights": {
-                "movement_phases.random_period": 1.0,
-                "movement_phases.hold_period": 0.1,
-                "movement_phases.reach_period": 5.0,
-                "movement_phases.return_period": 1.0,
-                "movement_phases.invalid": 0.1,
-                "cursor_outlier_segments": 0.0,
-            },
-            "metrics": [{"metric": torchmetrics.R2Score()}],
-            "eval_interval": "movement_phases.reach_period",
-        }
-    }
+class PoyoMPDataset(SpikingDatasetMixin, NestedDataset):
+    dim_target = 2
+    tokenizer: Callable
 
-    RT_READOUT_CONFIG = {
-        "readout": {
-            "readout_id": "cursor_velocity_2d",
-            "normalize_mean": 0.0,
-            "normalize_std": 20.0,
-            "weights": {
-                "movement_phases.random_period": 1.0,
-                "movement_phases.hold_period": 0.1,
-                "cursor_outlier_segments": 0.0,
-            },
-            "metrics": [{"metric": torchmetrics.R2Score()}],
-            "eval_interval": "movement_phases.random_period",
-        }
-    }
-
-    def __init__(self, root, transform=None, **kwargs):
+    def __init__(self, root, transform=None):
+        ds_co = _CODataset(root)
+        ds_rt = _RTDataset(root)
         super().__init__(
-            root,
-            recording_ids=TRAIN_RECORDING_IDS,
+            datasets={"co": ds_co, "rt": ds_rt},
             transform=transform,
-            **kwargs,
         )
 
-    def get_recording_hook(self, data: Data):
-        if data.session.id.endswith("center_out_reaching"):
-            data.config = deepcopy(self.CO_READOUT_CONFIG)
-        elif data.session.id.endswith("random_target_reaching"):
-            data.config = deepcopy(self.RT_READOUT_CONFIG)
-        super().get_recording_hook(data)
+    def __getitem__(self, index: DatasetIndex):
+        data = super().__getitem__(index)
+
+        # Prepare encoder input
+        X = self.tokenizer(data)
+
+        # Prepare target
+        timestamps = data.cursor.timestamps
+        values = data.cursor.vel / 20.0  # To keep values in [-1, +1] approx.
+
+        Y = dict(
+            timestamps=pad8(timestamps.astype(np.float32)),
+            values=pad8(values.astype(np.float32)),
+            output_mask=pad8(np.ones(len(timestamps), dtype=bool)),
+            session_id=data.session.id,
+        )
+
+        return X, Y
 
 
-TRAIN_RECORDING_IDS = [
+class _CODataset(PerichMillerPopulation2018):
+    def __init__(self, root):
+        super().__init__(root, recording_ids=CO_RECORDING_IDS)
+
+    def get_sampling_intervals(self, split=None):
+        if split == None or split == "train":
+            return super().get_sampling_intervals()
+
+        ans = {}
+        for rid in self.recording_ids:
+            rec = self.get_recording(rid)
+            ans[rid] = rec.movement_phases.reach_period
+            if split == "valid":
+                ans[rid] = ans[rid] & rec.valid_domain
+            else:
+                ans[rid] = ans[rid] & rec.test_domain
+        return ans
+
+
+class _RTDataset(PerichMillerPopulation2018):
+    def __init__(self, root):
+        super().__init__(root, recording_ids=RT_RECORDING_IDS)
+
+    def get_sampling_intervals(self, split=None):
+        if split == None or split == "train":
+            return super().get_sampling_intervals()
+
+        ans = {}
+        for rid in self.recording_ids:
+            rec = self.get_recording(rid)
+            ans[rid] = rec.movement_phases.random_period
+            if split == "valid":
+                ans[rid] = ans[rid] & rec.valid_domain
+            else:
+                ans[rid] = ans[rid] & rec.test_domain
+        return ans
+
+
+CO_RECORDING_IDS = [
     "c_20131003_center_out_reaching",
     "c_20131022_center_out_reaching",
     "c_20131023_center_out_reaching",
@@ -133,6 +156,9 @@ TRAIN_RECORDING_IDS = [
     "m_20150623_center_out_reaching",
     "m_20150625_center_out_reaching",
     "m_20150626_center_out_reaching",
+]
+
+RT_RECORDING_IDS = [
     "c_20131009_random_target_reaching",
     "c_20131010_random_target_reaching",
     "c_20131011_random_target_reaching",

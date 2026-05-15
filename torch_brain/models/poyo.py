@@ -1,3 +1,4 @@
+import inspect
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 import logging
 
@@ -9,6 +10,7 @@ import torch.nn.functional as F
 from torchtyping import TensorType
 from temporaldata import Data
 
+from torch_brain.dataset import Dataset
 from torch_brain.data import chain, pad8, track_mask8
 from torch_brain.nn import (
     Embedding,
@@ -17,12 +19,10 @@ from torch_brain.nn import (
     RotarySelfAttention,
     RotaryTimeEmbedding,
 )
-from torch_brain.registry import ModalitySpec
 
 from torch_brain.utils import (
     create_linspace_latent_tokens,
     create_start_end_unit_tokens,
-    prepare_for_readout,
 )
 
 
@@ -33,21 +33,20 @@ class POYO(nn.Module):
     recordings.
 
     1. Input tokens are constructed by combining unit embeddings, token type embeddings,
-        and time embeddings for each spike in the sequence.
+    and time embeddings for each spike in the sequence.
     2. The input sequence is compressed using cross-attention, where learnable latent
-        tokens (each with an associated timestamp) attend to the input tokens.
+    tokens (each with an associated timestamp) attend to the input tokens.
     3. The compressed latent token representations undergo further refinement through
-        multiple self-attention processing layers.
+    multiple self-attention processing layers.
     4. Query tokens are constructed for the desired outputs by combining session
-        embeddings, and output timestamps.
+    embeddings, and output timestamps.
     5. These query tokens attend to the processed latent representations through
-        cross-attention, producing outputs in the model's dimensional space (dim).
+    cross-attention, producing outputs in the model's dimensional space (dim).
     6. Finally, a task-specific linear layer maps the outputs from the model dimension
-        to the appropriate output dimension.
+    to the appropriate output dimension.
 
     Args:
         sequence_length: Maximum duration of the input spike sequence (in seconds)
-        readout_spec: A :class:`torch_brain.registry.ModalitySpec` specifying readout properties
         latent_step: Timestep of the latent grid (in seconds)
         num_latents_per_step: Number of unique latent tokens (repeated at every latent step)
         dim: Hidden dimension of the model
@@ -67,7 +66,7 @@ class POYO(nn.Module):
         self,
         *,
         sequence_length: float,
-        readout_spec: ModalitySpec,
+        dim_out: int,
         latent_step: float,
         num_latents_per_step: int = 64,
         dim: int = 512,
@@ -89,7 +88,6 @@ class POYO(nn.Module):
         self.sequence_length = sequence_length
         self.latent_step = latent_step
         self.num_latents_per_step = num_latents_per_step
-        self.readout_spec = readout_spec
 
         # embeddings
         self.unit_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
@@ -151,7 +149,7 @@ class POYO(nn.Module):
         )
 
         # Output projections + loss
-        self.readout = nn.Linear(dim, readout_spec.dim)
+        self.readout = nn.Linear(dim, dim_out)
 
         self.dim = dim
 
@@ -166,8 +164,9 @@ class POYO(nn.Module):
         # latent sequence
         latent_index: TensorType["batch", "n_latent", int],
         latent_timestamps: TensorType["batch", "n_latent", float],
+        # Metadata for queries
+        session_index: TensorType["batch", int],
         # output sequence
-        output_session_index: TensorType["batch", "n_out", int],
         output_timestamps: TensorType["batch", "n_out", float],
         output_mask: Optional[TensorType["batch", "n_out", bool]] = None,
         unpack_output: bool = False,
@@ -187,7 +186,7 @@ class POYO(nn.Module):
             input_mask: Mask for input sequence
             latent_index: Indices for latent tokens
             latent_timestamps: Timestamps for latent tokens
-            output_session_index: Index of the recording session
+            session_index: Index of the recording session
             output_timestamps: Timestamps for output predictions
             output_mask: A mask of the same size as output_timestamps. True implies
                 that particular timestamp is a valid query for POYO. This is required
@@ -225,7 +224,8 @@ class POYO(nn.Module):
         latent_timestamp_emb = self.rotary_emb(latent_timestamps)
 
         # outputs
-        output_queries = self.session_emb(output_session_index)
+        output_queries = self.session_emb(session_index).unsqueeze(1)
+        output_queries = output_queries.expand(-1, output_timestamps.size(1), -1)
         output_timestamp_emb = self.rotary_emb(output_timestamps)
 
         # encode
@@ -302,37 +302,21 @@ class POYO(nn.Module):
             num_latents_per_step=self.num_latents_per_step,
         )
 
-        output_timestamps, output_values, output_weights, eval_mask = (
-            prepare_for_readout(data, self.readout_spec)
-        )
-
         # create session index for output
-        output_session_index = self.session_emb.tokenizer(data.session.id)
-        output_session_index = np.repeat(output_session_index, len(output_timestamps))
+        session_index = self.session_emb.tokenizer(data.session.id)
 
-        data_dict = {
-            "model_inputs": {
-                # input sequence (keys/values for the encoder)
-                "input_unit_index": pad8(spike_unit_index),
-                "input_timestamps": pad8(spike_timestamps),
-                "input_token_type": pad8(spike_token_type_index),
-                "input_mask": track_mask8(spike_unit_index),
-                # latent sequence
-                "latent_index": latent_index,
-                "latent_timestamps": latent_timestamps,
-                # output query sequence (queries for the decoder)
-                "output_session_index": pad8(output_session_index),
-                "output_timestamps": pad8(output_timestamps),
-                "output_mask": track_mask8(output_session_index),
-            },
-            # ground truth targets
-            "target_values": pad8(output_values),
-            "target_weights": pad8(output_weights),
-            # extra data needed for evaluation
-            "session_id": data.session.id,
-            "absolute_start": data.absolute_start,
-            "eval_mask": pad8(eval_mask),
-        }
+        data_dict = dict(
+            # input sequence (keys/values for the encoder)
+            input_unit_index=pad8(spike_unit_index),
+            input_timestamps=pad8(spike_timestamps),
+            input_token_type=pad8(spike_token_type_index),
+            input_mask=track_mask8(spike_unit_index),
+            # latent sequence
+            latent_index=latent_index,
+            latent_timestamps=latent_timestamps,
+            # metadata needed for decoder queries
+            session_index=session_index,
+        )
 
         return data_dict
 
@@ -360,83 +344,47 @@ class POYO(nn.Module):
                 f"({latent_step}). This is a simple warning, and this behavior is allowed."
             )
 
-    @classmethod
-    def load_pretrained(
-        cls,
-        checkpoint_path: str | Path,
-        readout_spec: ModalitySpec,
-        skip_readout: bool = False,
-    ) -> "POYO":
-        """
-        Load a pretrained POYO model from a checkpoint file.
+    def init_vocabs(self, dataset: Dataset):
+        """Initializes model's unit_emb and session_emb vocabularies.
 
         Args:
-            checkpoint_path (str or Path): Path to the checkpoint file containing model weights and hyperparameters.
-            readout_spec (ModalitySpec): Specification for the readout modality, used to initialize the model.
-            skip_readout (bool, optional): If True, the readout layer weights from the checkpoint are ignored and a new readout layer is initialized. Default is False.
+            dataset: A :class:`Dataset` with :class:`SpikingDatasetMixin`.
+        """
+        if hasattr(dataset, "get_unit_ids") and inspect.ismethod(dataset.get_unit_ids):
+            unit_ids = dataset.get_unit_ids()
+        else:
+            raise ValueError(
+                "Could not call method ``get_unit_ids()`` on input ``dataset``."
+                " Perhaps this is not a spiking dataset?"
+                " Consider adding ``SpikingDatasetMixin`` to your Dataset class, which would"
+                " provide this method."
+            )
+        self.unit_emb.initialize_vocab(unit_ids)
+        self.session_emb.initialize_vocab(dataset.recording_ids)
+
+    @classmethod
+    def load_pretrained(cls, checkpoint_path: str | Path) -> "POYO":
+        """Load a pretrained POYO model from a checkpoint file.
+
+        Args:
+            checkpoint_path: Path to the checkpoint file containing model weights and hyperparameters.
 
         Returns:
-            POYO: An instance of the POYO model with weights loaded from the checkpoint.
-
-        Usage:
-            model = POYO.load_pretrained("path/to/checkpoint.ckpt", readout_spec)
-
-        Notes:
-            - The checkpoint is expected to contain both model hyperparameters and weights.
-            - If `skip_readout` is True, the readout layer weights are not loaded from the checkpoint.
+            An instance of the POYO model with weights loaded from the checkpoint.
         """
-        # Instantiate model object from checkpoint hyperparameters
-        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-        model_kwargs = checkpoint["hyper_parameters"]["model"]
-        model_kwargs.pop("_target_", None)
-        model = cls(**model_kwargs, readout_spec=readout_spec)
+        # For now, we are loading from the checkpoint generated using the official
+        # Lightning trainer
+        ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+        hparams = ckpt["hyper_parameters"]["model"]
+        hparams.pop("_target_", None)
+        state_dict = {k.replace("model.", ""): v for k, v in ckpt["state_dict"].items()}
 
-        # Load model weights
-        # POYO is pretrained using lightning, so model weights are prefixed with "model."
-        state_dict = {
-            k.replace("model.", ""): v for k, v in checkpoint["state_dict"].items()
-        }
+        # Infer `dim_out` from shape of readout weights
+        dim_out = state_dict["readout.weight"].size(0)
 
-        # Remove readout layer from checkpoint if we're using a new one
-        if skip_readout:
-            state_dict = {
-                k: v for k, v in state_dict.items() if not k.startswith("readout.")
-            }
-
-        missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-        if len(missing_keys) > 0:
-            logging.warning(
-                f"Missing keys when loading pretrained POYO: {missing_keys}"
-            )
-        if len(unexpected_keys) > 0:
-            logging.warning(
-                f"Unexpected keys when loading pretrained POYO: {unexpected_keys}"
-            )
-
+        model = cls(**hparams, dim_out=dim_out)
+        model.load_state_dict(state_dict)
         return model
-
-
-def poyo_mp(readout_spec: ModalitySpec, ckpt_path=None):
-    if ckpt_path is not None:
-        raise NotImplementedError("Loading from checkpoint is not supported yet.")
-
-    return POYO(
-        sequence_length=1.0,
-        latent_step=1.0 / 8,
-        dim=64,
-        readout_spec=readout_spec,
-        dim_head=64,
-        num_latents_per_step=16,
-        depth=6,
-        cross_heads=2,
-        self_heads=8,
-        ffn_dropout=0.2,
-        lin_dropout=0.4,
-        atn_dropout=0.2,
-        emb_init_scale=0.02,
-        t_min=1e-4,
-        t_max=4.0,
-    )
 
 
 class _GEGLU(nn.Module):
