@@ -50,11 +50,13 @@ class RegularTimeSeries(ArrayDict):
         )
     """
 
+    _domain: Interval
+
     def __init__(
         self,
         *,
         sampling_rate: float,  # in Hz
-        domain: Interval | Literal["auto"] | None = None,
+        domain: Interval | Literal["auto"] = "auto",
         domain_start=0.0,
         **kwargs: np.ndarray,
     ):

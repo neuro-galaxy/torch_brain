@@ -74,8 +74,10 @@ class Interval(ArrayDict):
 
     """
 
-    _sorted = None
-    _timekeys = None
+    _sorted: bool | None = None
+    _timekeys: list[str]
+    start: np.ndarray
+    end: np.ndarray
 
     def __init__(
         self,
@@ -285,28 +287,27 @@ class Interval(ArrayDict):
             # empty interval, nothing to dilate
             return out
 
-        dilation_size = size
-        size = np.full_like(out.start, dilation_size)
-        if max_len is not None:
-            interval_len = out.end - out.start
-            size = np.minimum(size, (max_len - interval_len) / 2)
-            size = np.clip(size, 0, None)
-
         half_way = (self.end[:-1] + self.start[1:]) / 2
 
-        # TODO(mehdi) should check that this does not violate domain
-        out.start[0] = out.start[0] - size[0]
-        out.start[1:] = np.maximum(out.start[1:] - size[1:], half_way)
-
-        # update size
-        size = np.full_like(out.start, dilation_size)
+        # adjust starts
+        dilation = np.full_like(out.start, size)
         if max_len is not None:
             interval_len = out.end - out.start
-            size = np.minimum(size, (max_len - interval_len))
-            size = np.clip(size, 0, None)
+            dilation = np.minimum(dilation, (max_len - interval_len) / 2)
+            dilation = np.clip(dilation, 0, None)
 
-        out.end[:-1] = np.minimum(self.end[:-1] + size[:-1], half_way)
-        out.end[-1] = out.end[-1] + size[-1]
+        out.start[0] = out.start[0] - dilation[0]
+        out.start[1:] = np.maximum(out.start[1:] - dilation[1:], half_way)
+
+        # adjust ends
+        dilation = np.full_like(out.start, size)
+        if max_len is not None:
+            interval_len = out.end - out.start
+            dilation = np.minimum(dilation, (max_len - interval_len))
+            dilation = np.clip(dilation, 0, None)
+
+        out.end[:-1] = np.minimum(self.end[:-1] + dilation[:-1], half_way)
+        out.end[-1] = out.end[-1] + dilation[-1]
         return out
 
     def coalesce(self, eps: float = 1e-6):

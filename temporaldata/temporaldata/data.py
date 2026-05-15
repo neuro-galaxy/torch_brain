@@ -173,6 +173,9 @@ class Data(object):
             )
         super().__setattr__(name, value)
 
+    def __getattr__(self, name) -> Any:
+        raise AttributeError(f"Attribute {name} not found.")
+
     @property
     def domain(self):
         r"""Returns the domain of the data object."""

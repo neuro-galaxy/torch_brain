@@ -9,8 +9,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 - Fixed `RegularTimeSeries.slice` and `LazyRegularTimeSeries.slice` returning incorrect domain when slicing entirely outside the data domain. With `reset_origin=False`, the returned empty slice now has its domain clamped to the nearest boundary of the original domain (i.e., `[domain.start, domain.start]` when slicing before the data, or `[domain.end, domain.end]` when slicing after). With `reset_origin=True`, the domain is shifted relative to the slice start, yielding `[0, 0]` in both cases.
+- Fixed "unresolved-attribute" type-checking errors ([#120](https://github.com/neuro-galaxy/temporaldata/pull/120))
 
 ### Changed
+- Default `domain` argument in `RegularTimeSeries` constructor changed from `None` to `"auto"` ([#120](https://github.com/neuro-galaxy/temporaldata/pull/120)).
 
 ### Removed
 

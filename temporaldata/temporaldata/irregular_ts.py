@@ -70,9 +70,9 @@ class IrregularTimeSeries(ArrayDict):
         array([0. , 0.1, 0.2])
     """
 
-    _sorted = None
-    _timekeys = None
-    _domain = None
+    _sorted: bool | None = None
+    _timekeys: list[str]
+    _domain: Interval
 
     def __init__(
         self,

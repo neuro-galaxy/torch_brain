@@ -86,6 +86,9 @@ class ArrayDict(object):
                 )
         super(ArrayDict, self).__setattr__(name, value)
 
+    def __getattr__(self, name) -> np.ndarray:
+        raise AttributeError(f"Attribute {name} not found.")
+
     def __contains__(self, key: str) -> bool:
         r"""Returns :obj:`True` if the attribute :obj:`key` is present in the data."""
         return key in self.keys()
