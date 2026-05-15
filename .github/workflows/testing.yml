@@ -26,7 +26,7 @@ jobs:
     - name: Install dependencies
       run: |
         source venv/bin/activate
-        uv pip install --upgrade pip 
+        uv pip install --upgrade pip
         uv pip install -e ".[dev]"
         uv pip install lightning
     - name: Install plugin
@@ -58,7 +58,7 @@ jobs:
     - name: Train a POYO model
       run: |
         source venv/bin/activate
-        uv pip install torch-optimizer==0.3.0
+        uv pip install torch-optimizer==0.3.0 hydra-core
         python examples/poyo/train.py --config-name train_mc_maze_small.yaml data_root=data/processed wandb.enable=false epochs=2 eval_epochs=2 optim.lr_decay_start=0.
     - name: Train a POYO+ model
       run: |

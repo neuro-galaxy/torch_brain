@@ -8,7 +8,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import h5py
 import numpy as np
-import omegaconf
 import torch
 from temporaldata import Data, Interval
 from torch_brain.dataset import DatasetIndex
@@ -108,6 +107,15 @@ class Dataset(torch.utils.data.Dataset):
         self.subject_id_prefix_fn = subject_id_prefix_fn
         self.keep_files_open = keep_files_open
 
+        try:
+            import omegaconf
+        except ImportError:
+            raise ImportError(
+                "Could not find `omegaconf` which is needed for the old Dataset."
+                " Please install using `pip install omegaconf`."
+                " Alternately, it is recommended to switch to torch_brain.dataset.Dataset."
+            )
+
         if config is not None:
             assert (
                 recording_id is None
@@ -158,7 +166,7 @@ class Dataset(torch.utils.data.Dataset):
     def __del__(self):
         self._close_open_files()
 
-    def _look_for_files(self, config: omegaconf.DictConfig) -> Dict[str, Dict]:
+    def _look_for_files(self, config) -> Dict[str, Dict]:
         recording_dict = {}
 
         for i, selection_list in enumerate(config):

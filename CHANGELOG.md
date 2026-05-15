@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Replaced `torch_brain.data.dataset.DatasetIndex` with `torch_brain.dataset.DatasetIndex` ([#186](https://github.com/neuro-galaxy/torch_brain/pull/186))
 - `bin_spikes` output shape changed from `(N, T)` to `(T, N)` and default `dtype` changed from `np.float32` to `np.int32` ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 - Renamed `torch_brain.models.CaPOYO` to `torch_brain.models.CalciumPOYOPlus` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
+- Removed `hydra-core` as a core dependency ([#211](https://github.com/neuro-galaxy/torch_brain/pull/211))
 
 ### Fixed
 - Fixed `MultiTaskDecodingStitchEvaluator` caching predictions under the wrong sequence index when batch samples have non-overlapping readout types. ([#175](https://github.com/neuro-galaxy/torch_brain/pull/175))
