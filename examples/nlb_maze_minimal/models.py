@@ -2,14 +2,16 @@ from torch import nn, Tensor
 
 
 class Linear(nn.Module):
-    def __init__(self, in_units, in_bins, out_dim, out_samples):
+    def __init__(self, in_units, in_bins, out_dim, out_samples, dropout=0.2):
         super().__init__()
         self.out_dim = out_dim
         self.out_samples = out_samples
 
         input_size = in_units * in_bins
         output_size = out_dim * out_samples
-        self.net = nn.Linear(input_size, output_size)
+        self.net = nn.Sequential(
+            nn.Dropout(dropout), nn.Linear(input_size, output_size)
+        )
 
     def forward(self, x: Tensor) -> Tensor:
         batch_size = x.size(0)
@@ -28,6 +30,7 @@ class GRU(nn.Module):
         hidden_dim=64,
         num_layers=4,
         bidirectional=True,
+        dropout=0.2,
     ):
         super().__init__()
         self.out_dim = out_dim
@@ -39,6 +42,7 @@ class GRU(nn.Module):
             num_layers=num_layers,
             batch_first=True,
             bidirectional=bidirectional,
+            dropout=dropout,
         )
         self.readout = nn.Linear(
             in_features=2 * hidden_dim if bidirectional else hidden_dim,
@@ -65,6 +69,7 @@ class TCN(nn.Module):
         hidden_dim=64,
         num_layers=4,
         kernel_size=3,
+        dropout=0.2,
     ):
         super().__init__()
         self.out_dim = out_dim
@@ -75,6 +80,7 @@ class TCN(nn.Module):
         for i in range(num_layers):
             dilation = 2**i
             padding = (kernel_size - 1) * dilation // 2
+            layers.append(nn.Dropout(dropout))
             layers.append(
                 nn.Conv1d(
                     in_channels,

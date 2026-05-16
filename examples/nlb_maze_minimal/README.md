@@ -1,6 +1,6 @@
 # Minimal Training Example on NLB Maze
 
-## Setup
+## Running the example
 
 Install some packages:
 ```bash
@@ -18,5 +18,10 @@ brainsets prepare pei_pandarinath_nlb_2021 --raw-dir data/raw --processed-dir da
 
 Run:
 ```bash
-python train.py
+python train.py --model Linear
+python train.py --model GRU
+python train.py --model TCN
+
+# To see other configuration options
+python train.py --help
 ```

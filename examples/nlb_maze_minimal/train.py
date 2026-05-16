@@ -1,6 +1,6 @@
 from typing import Literal
 import math
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from tqdm import tqdm
 import torch
 from torch import nn, Tensor
@@ -15,13 +15,13 @@ from brainsets.datasets import PeiPandarinathNLB2021
 
 import models
 
-parser = ArgumentParser()
-parser.add_argument("--model", default="Linear", type=str)
-parser.add_argument("--data-root", default="data/processed", type=str)
-parser.add_argument("--bin-size", default=0.05, type=float)
-parser.add_argument("--epochs", default=50, type=int)
-parser.add_argument("--batch-size", default=8, type=int)
-parser.add_argument("--lr", default=1e-3, type=float)
+parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+parser.add_argument("--model", default="GRU", choices=["Linear", "GRU", "TCN"])
+parser.add_argument("--data-root", default="data/processed", help="Root data directory")
+parser.add_argument("--bin-size", default=0.05, type=float, help="Bin size")
+parser.add_argument("--epochs", default=100, type=int, help="Number of epochs")
+parser.add_argument("--batch-size", default=8, type=int, help="Batch size")
+parser.add_argument("--lr", default=1e-3, type=float, help="Learning rate")
 args = parser.parse_args()
 
 
