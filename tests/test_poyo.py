@@ -8,6 +8,10 @@ from tqdm import tqdm
 
 from torch_brain.models.poyo import POYO
 
+# The checkpoints all have the same readout dimension
+# (since they were trained for hand-velocity decoding)
+READOUT_DIM = 2
+
 
 @pytest.fixture(scope="session")
 def pretrained_checkpoint():
@@ -46,58 +50,27 @@ def pretrained_checkpoint():
         checkpoint_path.unlink()
 
 
-@pytest.fixture
-def readout_spec():
-    """Create a readout spec for testing"""
-    from torch_brain.registry import MODALITY_REGISTRY
-
-    return MODALITY_REGISTRY["cursor_velocity_2d"]
-
-
-def test_load_pretrained_basic(pretrained_checkpoint, readout_spec):
+def test_load_pretrained_basic(pretrained_checkpoint):
     """Test loading a pretrained POYO model with default settings"""
 
     # Load the pretrained model
-    model = POYO.load_pretrained(
-        checkpoint_path=pretrained_checkpoint,
-        readout_spec=readout_spec,
-    )
+    model = POYO.load_pretrained(checkpoint_path=pretrained_checkpoint)
 
     assert isinstance(model, POYO)
 
     assert hasattr(model, "sequence_length")
     assert hasattr(model, "latent_step")
     assert hasattr(model, "num_latents_per_step")
-    assert hasattr(model, "readout_spec")
 
     assert hasattr(model, "readout")
     assert isinstance(model.readout, torch.nn.Linear)
-    assert model.readout.out_features == readout_spec.dim
+    assert model.readout.out_features == READOUT_DIM
 
 
-def test_load_pretrained_skip_readout(pretrained_checkpoint, readout_spec):
-    """Test loading a pretrained POYO model with skip_readout=True"""
-
-    # Load the pretrained model with skip_readout
-    model = POYO.load_pretrained(
-        checkpoint_path=pretrained_checkpoint,
-        readout_spec=readout_spec,
-        skip_readout=True,
-    )
-
-    # The readout layer should still exist but be newly initialized
-    assert hasattr(model, "readout")
-    assert isinstance(model.readout, torch.nn.Linear)
-    assert model.readout.out_features == readout_spec.dim
-
-
-def test_load_pretrained_forward_pass(pretrained_checkpoint, readout_spec):
+def test_load_pretrained_forward_pass(pretrained_checkpoint):
     """Test that the loaded model can perform a forward pass"""
 
-    model = POYO.load_pretrained(
-        checkpoint_path=pretrained_checkpoint,
-        readout_spec=readout_spec,
-    )
+    model = POYO.load_pretrained(checkpoint_path=pretrained_checkpoint)
 
     # Reinitialize the vocabs for the new units and sessions
     model.unit_emb.extend_vocab([f"unit_{i}" for i in range(100)])
@@ -123,7 +96,7 @@ def test_load_pretrained_forward_pass(pretrained_checkpoint, readout_spec):
         "latent_timestamps": torch.linspace(0, model.sequence_length, n_latent).repeat(
             batch_size, 1
         ),
-        "output_session_index": torch.zeros(batch_size, n_out, dtype=torch.long),
+        "session_index": torch.zeros(batch_size, dtype=torch.long),
         "output_timestamps": torch.rand(batch_size, n_out) * model.sequence_length,
     }
 
@@ -132,4 +105,4 @@ def test_load_pretrained_forward_pass(pretrained_checkpoint, readout_spec):
         outputs = model(**inputs)
 
     # Verify output shape
-    assert outputs.shape == (batch_size, n_out, readout_spec.dim)
+    assert outputs.shape == (batch_size, n_out, READOUT_DIM)
