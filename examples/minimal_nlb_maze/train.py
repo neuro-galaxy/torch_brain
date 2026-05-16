@@ -13,7 +13,10 @@ from torch_brain.data.sampler import TrialSampler
 from torch_brain.dataset import Dataset, DatasetIndex
 from brainsets.datasets import PeiPandarinathNLB2021
 
+import models
+
 parser = ArgumentParser()
+parser.add_argument("--model", default="Linear", type=str)
 parser.add_argument("--data-root", default="data/processed", type=str)
 parser.add_argument("--bin-size", default=0.05, type=float)
 parser.add_argument("--epochs", default=50, type=int)
@@ -68,23 +71,6 @@ class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
         return X, Y
 
 
-class Linear(nn.Module):
-    def __init__(self, in_units, in_bins, out_dim, out_samples):
-        super().__init__()
-        self.out_dim = out_dim
-        self.out_samples = out_samples
-
-        input_size = in_units * in_bins
-        output_size = out_dim * out_samples
-        self.net = nn.Linear(input_size, output_size)
-
-    def forward(self, x: Tensor):
-        batch_size = x.size(0)
-        y = self.net(x.flatten(start_dim=1))
-        y = y.view(batch_size, self.out_samples, self.out_dim)
-        return y
-
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Create train dataset
@@ -94,26 +80,27 @@ train_sampler = TrialSampler(
     shuffle=True,
 )
 train_loader = DataLoader(train_ds, batch_size=args.batch_size, sampler=train_sampler)
+print(f"Number of units: {train_ds.num_units}")
+print(f"Number of training samples: {len(train_sampler)}")
 
 val_ds = SimpleNLBMazeDataset(args.data_root, split="val", bin_size=args.bin_size)
 val_sampler = TrialSampler(sampling_intervals=val_ds.get_sampling_intervals())
 val_loader = DataLoader(val_ds, batch_size=args.batch_size, sampler=val_sampler)
-
-print(f"Number of units: {train_ds.num_units}")
-print(f"Number of bins/per-sampler: {train_ds.num_bins}")
-print(f"Number of training samples: {len(train_sampler)}")
 print(f"Number of validation samples: {len(val_sampler)}")
 
-num_units = len(train_ds.get_unit_ids())
-model = Linear(
-    in_units=num_units,
+model_class = models.__dict__[args.model]
+model = model_class(
+    in_units=train_ds.num_units,
     in_bins=train_ds.num_bins,
     out_dim=train_ds.out_dim,
     out_samples=train_ds.out_samples,
 )
 model = model.to(device)
-optim = torch.optim.AdamW(model.parameters(), lr=args.lr)
+num_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+print(f"Model: {model}")
+print(f"Number of parameters {num_parameters:,}")
 
+optim = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
 for epoch in (epoch_pbar := tqdm(range(args.epochs))):
     model.train()
