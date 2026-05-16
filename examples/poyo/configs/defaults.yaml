@@ -2,20 +2,17 @@
 # this file needs to be combined with a model config and a dataset config
 
 # Paths
-data_root: ./data/processed/
-log_dir: ./logs
+data_root: ???
 
 # Transforms
-train_transforms: []
-eval_transforms: []
+train_transform: null
+eval_transform: null
 
 # Training
+seed: 42
 epochs: 1000
 batch_size: 128 # global batch size across all GPUs
-eval_epochs: 1  # frequency for doing validation
-eval_batch_size: null  # if null, will use batch_size
-seed: 42  # use to set random seed
-sanity_check_validation: false  # if true, will start the run with validation 
+num_workers: 4
 
 optim:
   base_lr: 3.125e-5  # scaled linearly by batch size
@@ -24,17 +21,7 @@ optim:
 
 # Logging
 wandb:
-  enable: true
+  mode: online  # disabled, offline, or online
   entity: null
   project: poyo
-  run_name: null
-  log_model: false
-
-# GPU and CPU
-precision: 32
-nodes: 1
-gpus: 1
-num_workers: 4
-
-# Checkpointing
-ckpt_path: null  # for resuming training, or loading a model during finetuning
+  name: null

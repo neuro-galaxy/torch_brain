@@ -1,8 +1,8 @@
-from .poyo import POYO, poyo_mp
+from .poyo import POYO
 from .poyo_plus import POYOPlus
 from .calcium_poyo_plus import CalciumPOYOPlus
 
-__all__ = ["POYO", "POYOPlus", "CalciumPOYOPlus", "poyo_mp"]
+__all__ = ["POYO", "POYOPlus", "CalciumPOYOPlus"]
 
 # see docs/source/api_reference.py
 __api_ref__ = {

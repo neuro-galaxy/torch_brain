@@ -1,21 +1,11 @@
-from copy import deepcopy
-import torchmetrics
 from brainsets.datasets import PeiPandarinathNLB2021
 from temporaldata import Data
 
+from .wrapper import PoyoReadoutConfig
+
 
 class PoyoNLBDataset(PeiPandarinathNLB2021):
-    READOUT_CONFIG = {
-        "readout": {
-            "readout_id": "cursor_velocity_2d",
-            "timestamp_key": "hand.timestamps",
-            "value_key": "hand.vel",
-            "normalize_mean": 0.0,
-            "normalize_std": 100.0,
-            "metrics": [{"metric": torchmetrics.R2Score()}],
-            "eval_interval": "nlb_eval_intervals",
-        }
-    }
+    dim_target = 2
 
     def __init__(self, root, transform=None, **kwargs):
         super().__init__(
@@ -26,5 +16,17 @@ class PoyoNLBDataset(PeiPandarinathNLB2021):
         )
 
     def get_recording_hook(self, data: Data):
-        data.config = deepcopy(self.READOUT_CONFIG)
+        """Adds ``readout_config`` attribute to the data object.
+
+        This will be used by the ``PoyoDatasetWrapper`` to apply normalization
+        and extract loss weights.
+        """
         super().get_recording_hook(data)
+
+        data.readout_config = PoyoReadoutConfig(
+            timestamp_key="hand.timestamps",
+            value_key="hand.vel",
+            normalize_mean=0.0,
+            normalize_std=100.0,
+            eval_interval="nlb_eval_intervals",
+        )
