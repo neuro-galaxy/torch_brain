@@ -6,9 +6,10 @@
 from argparse import ArgumentParser
 import datetime
 
+import numpy as np
 import h5py
 from pynwb import NWBHDF5IO
-from temporaldata import Data, IrregularTimeSeries, Interval
+from temporaldata import Data, IrregularTimeSeries, Interval, RegularTimeSeries
 import pandas as pd
 
 from brainsets.descriptions import (
@@ -66,7 +67,7 @@ class Pipeline(BrainsetPipeline):
         brainset_description = BrainsetDescription(
             id=self.brainset_id,
             origin_version="dandi/000140/0.220113.0408",
-            derived_version="1.0.0",
+            derived_version="2.0.0",
             source="https://dandiarchive.org/dandiset/000140",
             description="This dataset contains sorted unit spiking times and behavioral"
             " data from a macaque performing a delayed reaching task. The experimental task"
@@ -203,22 +204,45 @@ def extract_behavior(nwbfile, trials):
         depending on the sequence. # todo investigate more
     """
     # cursor, hand and eye share the same timestamps (verified)
-    timestamps = nwbfile.processing["behavior"]["hand_vel"].timestamps[:]
-    hand_pos = nwbfile.processing["behavior"]["hand_pos"].data[:]
-    hand_vel = nwbfile.processing["behavior"]["hand_vel"].data[:]
-    eye_pos = nwbfile.processing["behavior"]["eye_pos"].data[:]
+    raw_timestamps = nwbfile.processing["behavior"]["hand_vel"].timestamps[:]
+    raw_hand_pos = nwbfile.processing["behavior"]["hand_pos"].data[:]
+    raw_hand_vel = nwbfile.processing["behavior"]["hand_vel"].data[:]
+    raw_eye_pos = nwbfile.processing["behavior"]["eye_pos"].data[:]
 
-    hand = IrregularTimeSeries(
-        timestamps=timestamps,
+    # These samples are mostly uniformly sampled at 1000Hz,
+    # but have some missing points. Here we insert NaNs at
+    # the missing timesteps to regularize the timeseries
+    samp_rate = 1e3
+    start_time, end_time = raw_timestamps[0], raw_timestamps[-1]
+    num_timesteps = round((end_time - start_time) * samp_rate) + 1
+    raw_time_idx = np.round((raw_timestamps - start_time) * samp_rate).astype(int)
+    assert (np.diff(raw_time_idx) > 0).all()
+    # ^ this confirms there are no repeated timestamps
+    assert np.isclose(raw_time_idx / samp_rate, raw_timestamps - start_time).all()
+    # ^ this confirms that the raw_timestamps are indeed regular relative to start_time
+
+    hand_pos = np.full((num_timesteps, raw_hand_pos.shape[-1]), fill_value=np.nan)
+    hand_pos[raw_time_idx] = raw_hand_pos
+
+    hand_vel = np.full((num_timesteps, raw_hand_vel.shape[-1]), fill_value=np.nan)
+    hand_vel[raw_time_idx] = raw_hand_vel
+
+    eye_pos = np.full((num_timesteps, raw_eye_pos.shape[-1]), fill_value=np.nan)
+    eye_pos[raw_time_idx] = raw_eye_pos
+
+    hand = RegularTimeSeries(
+        sampling_rate=samp_rate,
         pos=hand_pos,
         vel=hand_vel,
         domain="auto",
+        domain_start=start_time,
     )
 
-    eye = IrregularTimeSeries(
-        timestamps=timestamps,
+    eye = RegularTimeSeries(
+        sampling_rate=samp_rate,
         pos=eye_pos,
         domain="auto",
+        domain_start=start_time,
     )
 
     return hand, eye

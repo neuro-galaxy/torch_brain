@@ -33,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `churchland_shenoy_neural_2012` pipeline: corrected session task metadata—the experiment is maze reaching, not center-out reaching (`derived_version` bumped to 2.0.0). ([#131](https://github.com/neuro-galaxy/brainsets/pull/131))
 - Replaced deprecated `data.set_*_domain()` calls with direct attribute assignment in all pipelines ([#111](https://github.com/neuro-galaxy/brainsets/issues/109)).
 - `odoherty_sabes_nonhuman_2017` pipeline: uses RegularTimeSeries for storing behavioral data (`derived_version` bumped to 2.0.0). ([#138](https://github.com/neuro-galaxy/brainsets/pull/138))
+- `pei_pandarinath_nlb_2021` pipeline: regularize behavior signals; insert NaNs into missing timesteps (`derived_version` bumped to 2.0.0) ([#140](https://github.com/neuro-galaxy/brainsets/pull/140))
 
 
 ## [0.2.0] - 2025-12-24
