@@ -21,7 +21,7 @@ args = parser.parse_args()
 
 
 class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
-    sample_length = 0.7
+    sample_length = 0.5
     bin_size = 0.02
     out_sampling_rate = 1000.0
     out_dim = 2
@@ -33,13 +33,17 @@ class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
     def get_sampling_intervals(self, *_args, **_kwargs):
         rid = self.recording_ids[0]
         recording = self.get_recording(rid)
-        trials = recording.nlb_eval_intervals
+
+        move_onset_times = recording.trials.move_onset_time
+        trial_split_indicator = recording.trials.split_indicator.astype(str)
+        trials = Interval(move_onset_times - 0.05, move_onset_times + 0.45)
+
+        train_trials = trials.select_by_mask(trial_split_indicator == "train")
+        val_trials = trials.select_by_mask(trial_split_indicator == "val")
 
         if self.split == "train":
-            train_trials = Interval(trials.start[:80], trials.end[:80])
             return {rid: train_trials}
         elif self.split == "val":
-            val_trials = Interval(trials.start[80:], trials.end[80:])
             return {rid: val_trials}
 
     def __getitem__(self, index: DatasetIndex):
