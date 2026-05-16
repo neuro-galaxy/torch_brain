@@ -53,3 +53,47 @@ class GRU(nn.Module):
         y = self.out_pool(y)
         y = y.permute(0, 2, 1)  # (B, D, T) -> (B, T, D)
         return y
+
+
+class TCN(nn.Module):
+    def __init__(
+        self,
+        in_units,
+        in_bins,
+        out_dim,
+        out_samples,
+        hidden_dim=64,
+        num_layers=4,
+        kernel_size=3,
+    ):
+        super().__init__()
+        self.out_dim = out_dim
+        self.out_samples = out_samples
+
+        layers = []
+        in_channels = in_units
+        for i in range(num_layers):
+            dilation = 2**i
+            padding = (kernel_size - 1) * dilation // 2
+            layers.append(
+                nn.Conv1d(
+                    in_channels,
+                    hidden_dim,
+                    kernel_size,
+                    padding=padding,
+                    dilation=dilation,
+                )
+            )
+            layers.append(nn.ReLU())
+            in_channels = hidden_dim
+        self.net = nn.Sequential(*layers)
+        self.readout = nn.Linear(hidden_dim, out_dim)
+        self.out_pool = nn.AdaptiveAvgPool1d(out_samples)
+
+    def forward(self, x: Tensor) -> Tensor:
+        z = x.permute(0, 2, 1)  # (B, T, C) -> (B, C, T)
+        z = self.net(z)
+        y = self.out_pool(z)
+        y = y.permute(0, 2, 1)  # (B, D, T) -> (B, T, D)
+        y = self.readout(y)
+        return y
