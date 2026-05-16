@@ -68,8 +68,6 @@ class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
 
 Then, we lay out the logic for creating our sampling intervals:
 ```python
-class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
-    ...
     def get_sampling_intervals(self, *_args, **_kwargs):
         rid = self.recording_ids[0]  # since we only have 1 recording
         recording = self.get_recording(rid)

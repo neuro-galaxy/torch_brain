@@ -28,7 +28,7 @@ class GRU(nn.Module):
         out_dim,
         out_samples,
         hidden_dim=64,
-        num_layers=4,
+        num_layers=2,
         bidirectional=True,
         dropout=0.2,
     ):
@@ -48,13 +48,12 @@ class GRU(nn.Module):
             in_features=2 * hidden_dim if bidirectional else hidden_dim,
             out_features=out_dim,
         )
-        self.out_pool = nn.AdaptiveAvgPool1d(out_samples)
 
     def forward(self, x: Tensor) -> Tensor:
         z, _ = self.gru(x)
         y = self.readout(z)
         y = y.permute(0, 2, 1)  # (B, T, D) ->  (B, D, T)
-        y = self.out_pool(y)
+        y = nn.functional.interpolate(y, self.out_samples, mode="linear")
         y = y.permute(0, 2, 1)  # (B, D, T) -> (B, T, D)
         return y
 
@@ -67,7 +66,7 @@ class TCN(nn.Module):
         out_dim,
         out_samples,
         hidden_dim=64,
-        num_layers=4,
+        num_layers=8,
         kernel_size=3,
         dropout=0.2,
     ):
@@ -94,12 +93,11 @@ class TCN(nn.Module):
             in_channels = hidden_dim
         self.net = nn.Sequential(*layers)
         self.readout = nn.Linear(hidden_dim, out_dim)
-        self.out_pool = nn.AdaptiveAvgPool1d(out_samples)
 
     def forward(self, x: Tensor) -> Tensor:
         z = x.permute(0, 2, 1)  # (B, T, C) -> (B, C, T)
         z = self.net(z)
-        y = self.out_pool(z)
-        y = y.permute(0, 2, 1)  # (B, D, T) -> (B, T, D)
-        y = self.readout(y)
+        z = nn.functional.interpolate(z, self.out_samples, mode="linear")
+        z = z.permute(0, 2, 1)  # (B, C, T) -> (B, T, C)
+        y = self.readout(z)
         return y
