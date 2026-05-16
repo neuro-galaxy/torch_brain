@@ -21,14 +21,17 @@ args = parser.parse_args()
 
 
 class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
-    sample_length = 0.5
-    bin_size = 0.02
-    out_sampling_rate = 1000.0
-    out_dim = 2
 
     def __init__(self, root, split: Literal["train", "val"]):
         super().__init__(root=root, recording_ids=["jenkins_maze_train"])
         self.split = split
+
+        self.sample_length = 0.7
+        self.bin_size = 0.02
+        self.out_sampling_rate = 1000.0
+        self.out_dim = 2
+        self.out_samples = int(self.sample_length * self.out_sampling_rate)
+        self.num_bins = int(self.sample_length / self.bin_size)
 
     def get_sampling_intervals(self, *_args, **_kwargs):
         rid = self.recording_ids[0]
@@ -36,7 +39,7 @@ class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
 
         move_onset_times = recording.trials.move_onset_time
         trial_split_indicator = recording.trials.split_indicator.astype(str)
-        trials = Interval(move_onset_times - 0.05, move_onset_times + 0.45)
+        trials = Interval(move_onset_times - 0.25, move_onset_times + 0.45)
 
         train_trials = trials.select_by_mask(trial_split_indicator == "train")
         val_trials = trials.select_by_mask(trial_split_indicator == "val")
@@ -50,21 +53,28 @@ class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
         data = super().__getitem__(index)
 
         X = bin_spikes(data.spikes, num_units=len(data.units), bin_size=self.bin_size)
-        X = torch.from_numpy(X).flatten().float()
+        X = torch.from_numpy(X).float()
 
         Y = data.hand.vel / 100.0
-        Y = torch.from_numpy(Y).flatten().float()
+        Y = torch.from_numpy(Y).float()
         return X, Y
 
 
-def make_linear(ds: SimpleNLBMazeDataset):
-    num_units = len(ds.get_unit_ids())
-    num_bins = int(ds.sample_length / ds.bin_size)
-    input_size = num_units * num_bins
-    output_size = int(ds.sample_length * ds.out_sampling_rate * ds.out_dim)
+class Linear(nn.Module):
+    def __init__(self, in_units, in_bins, out_dim, out_samples):
+        super().__init__()
+        self.out_dim = out_dim
+        self.out_samples = out_samples
 
-    model = nn.Linear(input_size, output_size)
-    return model
+        input_size = in_units * in_bins
+        output_size = out_dim * out_samples
+        self.net = nn.Linear(input_size, output_size)
+
+    def forward(self, x: Tensor):
+        batch_size = x.size(0)
+        y = self.net(x.flatten(start_dim=1))
+        y = y.view(batch_size, self.out_samples, self.out_dim)
+        return y
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -80,7 +90,14 @@ val_ds = SimpleNLBMazeDataset(args.data_root, split="val")
 val_sampler = TrialSampler(sampling_intervals=val_ds.get_sampling_intervals())
 val_loader = DataLoader(val_ds, batch_size=8, sampler=val_sampler, num_workers=0)
 
-model = make_linear(train_ds).to(device)
+num_units = len(train_ds.get_unit_ids())
+model = Linear(
+    in_units=num_units,
+    in_bins=train_ds.num_bins,
+    out_dim=train_ds.out_dim,
+    out_samples=train_ds.out_samples,
+)
+model = model.to(device)
 optim = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
 
@@ -103,7 +120,7 @@ for epoch in (epoch_pbar := tqdm(range(args.epochs))):
             pred = model(X)
             preds.append(pred)
             targets.append(Y)
-        pred = torch.cat(preds).flatten().cpu()
-        target = torch.cat(targets).flatten().cpu()
+        pred = torch.cat(preds).flatten(0, 1).cpu()
+        target = torch.cat(targets).flatten(0, 1).cpu()
         r2 = r2_score(target, pred)
         epoch_pbar.set_description(f"R2: {r2:.3f}")
