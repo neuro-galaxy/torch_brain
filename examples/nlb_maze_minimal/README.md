@@ -1,13 +1,19 @@
 # Minimal Training Example on NLB Maze
 
-This example walks through a minimal training script for decoding 2D hand
-velocity from motor cortex spiking activity, using the `jenkins_maze_train`
-recording from the [Neural Latents Benchmark (NLB)](https://neurallatents.github.io/)
-MC_Maze dataset. It is intended as a starting point for new users of
-`torch_brain` and `brainsets`, and shows how to: (1) build a custom `Dataset`
-on top of a `brainsets` recording, (2) sample fixed-length trials around a
-behavioral event, and (3) train one of three small decoders (a linear readout,
-a bidirectional GRU, or a dilated TCN).
+This example walks through a minimal training script for decoding hand
+velocity from motor cortex spiking activity in the `jenkins_maze_train`
+recording, originally from the [Neural Latents Benchmark (NLB)](https://neurallatents.github.io/)
+MC_Maze dataset.
+
+This example is meant for new users of `torch_brain` and `brainsets`,
+and shows how to:
+
+1. Build a custom simple `Dataset` on top of an existing `brainset.dataset`.
+2. Create sampling intervals around behavioral events.
+3. Transform and shape the data samples.
+4. Set up a minimal train loop.
+
+We demonstrate this by implementing three simple decoders (Linear, GRU, TCN).
 
 ## Running the example
 
