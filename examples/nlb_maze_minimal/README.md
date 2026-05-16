@@ -17,7 +17,7 @@ We demonstrate this by implementing three simple decoders (Linear, GRU, TCN).
 
 ## Running the example
 
-Install some packages:
+1. Install some packages:
 ```bash
 pip install sklearn
 pip install git+https://github.com/neuro-galaxy/brainsets@94fb240
@@ -26,12 +26,12 @@ pip install git+https://github.com/neuro-galaxy/brainsets@94fb240
 # needed for this example to work.
 ```
 
-Preprocess dataset:
+2. Preprocess the dataset:
 ```bash
 brainsets prepare pei_pandarinath_nlb_2021 --raw-dir data/raw --processed-dir data/processed
 ```
 
-Run:
+3. Train!
 ```bash
 python train.py --model Linear
 python train.py --model GRU
