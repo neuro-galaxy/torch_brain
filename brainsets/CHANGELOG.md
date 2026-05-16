@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added the `Neuroprobe2025` dataset class and the `neuroprobe_2025` brainset pipeline ([#79](https://github.com/neuro-galaxy/brainsets/pull/79)).
 - Added new brainset `vollan_moser_alternating_2025`, a hippocampus/MEC dataset from the paper [Left–right-alternating theta sweeps in entorhinal–hippocampal maps of space](https://www.nature.com/articles/s41586-024-08527-1). See [#127](https://github.com/neuro-galaxy/brainsets/pull/127).
 - Add `--list`, `-s`/`--single` to `brainsets prepare` ([#137](https://github.com/neuro-galaxy/brainsets/pull/137)).
+- Added `calculate_sampling_rate` function in utils.
 
 ### Removed
 - Remove `brainsets.utils.dir_utils` (legacy code) ([#120](https://github.com/neuro-galaxy/brainsets/pull/120)).
@@ -31,6 +32,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `BrainsetPipeline` runner automatically creates `raw_dir` and `processed_dir` ([#125](https://github.com/neuro-galaxy/brainsets/pull/125))
 - `churchland_shenoy_neural_2012` pipeline: corrected session task metadata—the experiment is maze reaching, not center-out reaching (`derived_version` bumped to 2.0.0). ([#131](https://github.com/neuro-galaxy/brainsets/pull/131))
 - Replaced deprecated `data.set_*_domain()` calls with direct attribute assignment in all pipelines ([#111](https://github.com/neuro-galaxy/brainsets/issues/109)).
+- `odoherty_sabes_nonhuman_2017` pipeline: uses RegularTimeSeries for storing behavioral data (`derived_version` bumped to 2.0.0). ([#138](https://github.com/neuro-galaxy/brainsets/pull/138))
+
 
 ## [0.2.0] - 2025-12-24
 ### Added

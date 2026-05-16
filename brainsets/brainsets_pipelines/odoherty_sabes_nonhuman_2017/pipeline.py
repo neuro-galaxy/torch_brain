@@ -14,7 +14,13 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pandas as pd
-from temporaldata import ArrayDict, Data, Interval, IrregularTimeSeries
+from temporaldata import (
+    ArrayDict,
+    Data,
+    Interval,
+    IrregularTimeSeries,
+    RegularTimeSeries,
+)
 
 from brainsets import serialize_fn_map
 from brainsets.descriptions import (
@@ -25,6 +31,7 @@ from brainsets.descriptions import (
 )
 from brainsets.pipeline import BrainsetPipeline
 from brainsets.taxonomy import RecordingTech, Species, Task
+from brainsets.utils.misc_utils import calculate_sampling_rate
 
 logging.basicConfig(level=logging.INFO)
 
@@ -121,7 +128,7 @@ class Pipeline(BrainsetPipeline):
         brainset_description = BrainsetDescription(
             id="odoherty_sabes_nonhuman_2017",
             origin_version="583331",  # Zenodo version
-            derived_version="1.0.0",
+            derived_version="2.0.0",
             source="https://zenodo.org/record/583331",
             description="The behavioral task was to make self-paced reaches to targets "
             "arranged in a grid (e.g. 8x8) without gaps or pre-movement delay intervals. "
@@ -231,8 +238,10 @@ def extract_behavior(h5file):
     cursor_acc = np.gradient(cursor_vel, timestamps, edge_order=1, axis=0)
     finger_vel = np.gradient(finger_pos, timestamps, edge_order=1, axis=0)
 
-    cursor = IrregularTimeSeries(
-        timestamps=timestamps,
+    sampling_rate = calculate_sampling_rate(timestamps)
+    cursor = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        domain_start=timestamps[0],
         pos=cursor_pos,
         vel=cursor_vel,
         acc=cursor_acc,
@@ -242,8 +251,9 @@ def extract_behavior(h5file):
     # The position of the working fingertip in Cartesian coordinates (z, -x, -y), as
     # reported by the hand tracker in cm. Thus the cursor position is an affine
     # transformation of fingertip position.
-    finger = IrregularTimeSeries(
-        timestamps=timestamps,
+    finger = RegularTimeSeries(
+        sampling_rate=sampling_rate,
+        domain_start=timestamps[0],
         pos_3d=finger_pos[:, :3],
         vel_3d=finger_vel[:, :3],
         domain="auto",
@@ -251,9 +261,6 @@ def extract_behavior(h5file):
     if finger_pos.shape[1] == 6:
         finger.orientation = finger_pos[:, 3:]
         finger.angular_vel = finger_vel[:, 3:]
-
-    assert cursor.is_sorted()
-    assert finger.is_sorted()
 
     return cursor, finger
 
