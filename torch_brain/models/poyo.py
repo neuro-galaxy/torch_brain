@@ -5,9 +5,8 @@ import logging
 from pathlib import Path
 import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn, Tensor
 import torch.nn.functional as F
-from torchtyping import TensorType
 from temporaldata import Data
 
 from torch_brain.dataset import Dataset
@@ -163,50 +162,59 @@ class POYO(nn.Module):
         self,
         *,
         # input sequence
-        input_unit_index: TensorType["batch", "n_in", int],
-        input_timestamps: TensorType["batch", "n_in", float],
-        input_token_type: TensorType["batch", "n_in", int],
-        input_mask: Optional[TensorType["batch", "n_in", bool]] = None,
+        input_unit_index: Tensor,
+        input_timestamps: Tensor,
+        input_token_type: Tensor,
+        input_mask: Tensor | None = None,
         # latent sequence
-        latent_index: TensorType["batch", "n_latent", int],
-        latent_timestamps: TensorType["batch", "n_latent", float],
+        latent_index: Tensor,
+        latent_timestamps: Tensor,
         # Metadata for queries
-        session_index: TensorType["batch", int],
+        session_index: Tensor,
         # output sequence
-        output_timestamps: TensorType["batch", "n_out", float],
-        output_mask: Optional[TensorType["batch", "n_out", bool]] = None,
+        output_timestamps: Tensor,
+        output_mask: Tensor | None = None,
         unpack_output: bool = False,
-    ) -> Union[
-        TensorType["batch", "n_out", "dim_out", float],
-        List[TensorType[..., "dim_out", float]],
-    ]:
+    ) -> Tensor | list[Tensor]:
         """Forward pass of the POYO model.
 
         The model processes input spike sequences through its encoder-processor-decoder
         architecture to generate task-specific predictions.
 
         Args:
-            input_unit_index: Indices of input units
-            input_timestamps: Timestamps of input spikes
-            input_token_type: Type of input tokens
-            input_mask: Mask for input sequence
-            latent_index: Indices for latent tokens
-            latent_timestamps: Timestamps for latent tokens
-            session_index: Index of the recording session
-            output_timestamps: Timestamps for output predictions
-            output_mask: A mask of the same size as output_timestamps. True implies
-                that particular timestamp is a valid query for POYO. This is required
-                iff `unpack_output` is set to True.
+            input_unit_index: Indices of input units; shape :math:`(B, N_{in})`; dtype ``long``.
+            input_timestamps: Timestamps of input spikes :math:`(B, N_{in})`; dtype ``float``.
+            input_token_type: Type of input tokens; shape :math:`(B, N_{in})`; dtype ``long``.
+            input_mask: Mask for input sequence; shape :math:`(B, N_{in})`; dtype ``bool``.
+            latent_index: Indices for latent tokens; shape :math:`(B, N_{latent})`; dtype: ``long``.
+            latent_timestamps: Timestamps for latent tokens; shape :math:`(B, N_{latent})`; dtype ``float``.
+            session_index: Index of the recording session; shape :math:`(B,)`; dtype ``long``.
+            output_timestamps: Timestamps for output predictions; shape :math:`(B, N_{out})`; dtype ``float``.
+            output_mask: A mask of the same size as output_timestamps; shape :math:`(B, N_{out})`; dtype ``bool``.
+                True implies that particular timestamp is a valid query for POYO.
+                This is *required* iff `unpack_output` is set to True.
             unpack_output: If False, this function will return a padded tensor of
-                shape (batch size, num of max output queries in batch, `dim_out`).
-                In this case you have to use `output_mask` externally to only look
-                at valid outputs. If True, this will return a list of Tensors:
-                the length of the list is equal to batch size, the shape of
-                i^th Tensor is (num of valid output queries for i^th sample, `d_out`).
+                shape :math:`(B, N_{out}, D_{out})`. In this case you have to use
+                ``output_mask`` externally to only look at valid outputs.
+                If True, this will return a list of Tensors: the length of the
+                list is equal to :math:`B`, the shape of :math:`i^{th}` Tensor is
+                :math:`(N_{out,i}, D_{out})`
+                (num of valid output queries for i^th sample, `d_out`).
 
         Returns:
-            A :class:`torch.Tensor` of shape `(batch, n_out, dim_out)`
-            containing the predicted outputs corresponding to `output_timestamps`.
+            Predicted outputs corresponding to ``output_timestamps``;
+            :obj:`Tensor` of shape :math:`(B, N_{out}, D_{out})` if
+            ``unpack_ouptut`` is False, else list of length :math:`B`
+            with :math:`i^{th}` element of shape :math:`(N_{out,i}, D_{out})`
+
+        **Shape legend:**
+
+        - :math:`B`: Batch size
+        - :math:`N_{in}`: Number of input tokens (maximum in batch)
+        - :math:`N_{latent}`: Number of latent tokens
+        - :math:`N_{out}`: Number of decoder queries (maximum in batch)
+        - :math:`N_{out,i}`: Number of decoder queries in :math:`i^{th}` sample after accounting for ``output_mask``.
+        - :math:`D_{out}`: Output dimension (set as ``dim_out`` in constructor)
         """
 
         if self.unit_emb.is_lazy():
