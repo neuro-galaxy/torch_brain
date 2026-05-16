@@ -1,4 +1,5 @@
 from typing import Literal
+import math
 from argparse import ArgumentParser
 from tqdm import tqdm
 import torch
@@ -14,6 +15,7 @@ from brainsets.datasets import PeiPandarinathNLB2021
 
 parser = ArgumentParser()
 parser.add_argument("--data-root", default="data/processed", type=str)
+parser.add_argument("--bin-size", default=0.05, type=float)
 parser.add_argument("--epochs", default=50, type=int)
 parser.add_argument("--batch-size", default=8, type=int)
 parser.add_argument("--lr", default=1e-3, type=float)
@@ -21,26 +23,32 @@ args = parser.parse_args()
 
 
 class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
+    sample_length = 0.7
+    out_dim = 2
+    out_sampling_rate = 1000.0
 
-    def __init__(self, root, split: Literal["train", "val"]):
+    def __init__(self, root, split: Literal["train", "val"], bin_size: float):
         super().__init__(root=root, recording_ids=["jenkins_maze_train"])
         self.split = split
+        self.bin_size = bin_size
 
-        self.sample_length = 0.7
-        self.bin_size = 0.02
-        self.out_sampling_rate = 1000.0
-        self.out_dim = 2
-        self.out_samples = int(self.sample_length * self.out_sampling_rate)
-        self.num_bins = int(self.sample_length / self.bin_size)
+        self.out_samples = round(self.sample_length * self.out_sampling_rate)
+        self.num_bins = round(self.sample_length / self.bin_size)
+        self.num_units = len(self.get_unit_ids())
 
     def get_sampling_intervals(self, *_args, **_kwargs):
-        rid = self.recording_ids[0]
+        rid = self.recording_ids[0]  # since we only have 1 recording
         recording = self.get_recording(rid)
 
+        # Taking trials to be relative to the movement onset time
+        # from 250ms before onset to 450ms after onset
+        # (as stated in the NLB paper Appendix A.5.1)
         move_onset_times = recording.trials.move_onset_time
-        trial_split_indicator = recording.trials.split_indicator.astype(str)
         trials = Interval(move_onset_times - 0.25, move_onset_times + 0.45)
 
+        # The NLB dataset also provided us a default assignment of
+        # training and validation trials
+        trial_split_indicator = recording.trials.split_indicator.astype(str)
         train_trials = trials.select_by_mask(trial_split_indicator == "train")
         val_trials = trials.select_by_mask(trial_split_indicator == "val")
 
@@ -53,10 +61,10 @@ class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
         data = super().__getitem__(index)
 
         X = bin_spikes(data.spikes, num_units=len(data.units), bin_size=self.bin_size)
-        X = torch.from_numpy(X).float()
+        X = torch.from_numpy(X).float()  # shape: (num_bins, num_units)
 
-        Y = data.hand.vel / 100.0
-        Y = torch.from_numpy(Y).float()
+        Y = data.hand.vel / 200.0  # appoximate z-score normalization
+        Y = torch.from_numpy(Y).float()  # shape: (out_samples, out_dim)
         return X, Y
 
 
@@ -79,16 +87,22 @@ class Linear(nn.Module):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-train_ds = SimpleNLBMazeDataset(args.data_root, split="train")
+# Create train dataset
+train_ds = SimpleNLBMazeDataset(args.data_root, split="train", bin_size=args.bin_size)
 train_sampler = TrialSampler(
     sampling_intervals=train_ds.get_sampling_intervals(),
     shuffle=True,
 )
-train_loader = DataLoader(train_ds, batch_size=8, sampler=train_sampler, num_workers=0)
+train_loader = DataLoader(train_ds, batch_size=args.batch_size, sampler=train_sampler)
 
-val_ds = SimpleNLBMazeDataset(args.data_root, split="val")
+val_ds = SimpleNLBMazeDataset(args.data_root, split="val", bin_size=args.bin_size)
 val_sampler = TrialSampler(sampling_intervals=val_ds.get_sampling_intervals())
-val_loader = DataLoader(val_ds, batch_size=8, sampler=val_sampler, num_workers=0)
+val_loader = DataLoader(val_ds, batch_size=args.batch_size, sampler=val_sampler)
+
+print(f"Number of units: {train_ds.num_units}")
+print(f"Number of bins/per-sampler: {train_ds.num_bins}")
+print(f"Number of training samples: {len(train_sampler)}")
+print(f"Number of validation samples: {len(val_sampler)}")
 
 num_units = len(train_ds.get_unit_ids())
 model = Linear(
