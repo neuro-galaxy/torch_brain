@@ -73,7 +73,7 @@ class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Create train dataset
+# Training Dataset, Sampler, and DataLoader
 train_ds = SimpleNLBMazeDataset(args.data_root, split="train", bin_size=args.bin_size)
 train_sampler = TrialSampler(
     sampling_intervals=train_ds.get_sampling_intervals(),
@@ -83,11 +83,13 @@ train_loader = DataLoader(train_ds, batch_size=args.batch_size, sampler=train_sa
 print(f"Number of units: {train_ds.num_units}")
 print(f"Number of training samples: {len(train_sampler)}")
 
+# Validation Dataset, Sampler, and DataLoader
 val_ds = SimpleNLBMazeDataset(args.data_root, split="val", bin_size=args.bin_size)
 val_sampler = TrialSampler(sampling_intervals=val_ds.get_sampling_intervals())
 val_loader = DataLoader(val_ds, batch_size=args.batch_size, sampler=val_sampler)
 print(f"Number of validation samples: {len(val_sampler)}")
 
+# Setup Model and Optimizer
 model_class = models.__dict__[args.model]
 model = model_class(
     in_units=train_ds.num_units,
@@ -102,6 +104,7 @@ print(f"Number of parameters {num_parameters:,}")
 
 optim = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
+# Train Loop
 for epoch in (epoch_pbar := tqdm(range(args.epochs))):
     model.train()
     for X, Y in (step_pbar := tqdm(train_loader, leave=False)):
