@@ -4,6 +4,7 @@ from tqdm import tqdm
 import torch
 from torch import nn, Tensor
 from torch.utils.data import DataLoader
+from sklearn.metrics import r2_score
 
 from temporaldata import Interval
 from torch_brain.utils import bin_spikes
@@ -15,6 +16,7 @@ parser = ArgumentParser()
 parser.add_argument("--data-root", default="data/processed", type=str)
 parser.add_argument("--epochs", default=50, type=int)
 parser.add_argument("--batch-size", default=8, type=int)
+parser.add_argument("--lr", default=1e-3, type=float)
 args = parser.parse_args()
 
 
@@ -75,13 +77,7 @@ val_sampler = TrialSampler(sampling_intervals=val_ds.get_sampling_intervals())
 val_loader = DataLoader(val_ds, batch_size=8, sampler=val_sampler, num_workers=0)
 
 model = make_linear(train_ds).to(device)
-optim = torch.optim.AdamW(model.parameters())
-
-
-def r2_score(pred: Tensor, target: Tensor) -> Tensor:
-    residual = (pred - target).square().sum()
-    variance = (target - target.mean(0, keepdim=True)).square().sum()
-    return 1 - (residual / variance)
+optim = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
 
 for epoch in (epoch_pbar := tqdm(range(args.epochs))):
@@ -103,7 +99,7 @@ for epoch in (epoch_pbar := tqdm(range(args.epochs))):
             pred = model(X)
             preds.append(pred)
             targets.append(Y)
-        pred = torch.cat(preds)
-        target = torch.cat(targets)
-        r2 = r2_score(pred, target)
-        epoch_pbar.set_description(f"R2: {r2.item():.3f}")
+        pred = torch.cat(preds).flatten().cpu()
+        target = torch.cat(targets).flatten().cpu()
+        r2 = r2_score(target, pred)
+        epoch_pbar.set_description(f"R2: {r2:.3f}")
