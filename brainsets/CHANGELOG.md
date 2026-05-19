@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
+
+### Removed
+
+### Changed
+
+
+## [0.2.1] - 2026-05-18
+### Added
 - Added `config show`/`config set` subcommands and default dataset `root` to configured `processed_dir` ([#122](https://github.com/neuro-galaxy/brainsets/pull/122)).
 - Added normalization schemes for sex, age, and species in `SubjectDescription` ([#78](https://github.com/neuro-galaxy/brainsets/pull/78)).
 - Added generic data extraction helpers in `mne_utils` to handle MNE Raw objects ([#78](https://github.com/neuro-galaxy/brainsets/pull/78)).
