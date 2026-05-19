@@ -8,7 +8,7 @@ from temporaldata import Data, IrregularTimeSeries, Interval, ArrayDict
 import torch_brain
 from torch_brain.data import collate
 from torch_brain.registry import DataType, register_modality
-from torch_brain.models.poyo_plus import POYOPlus
+from torch_brain.models.poyo_plus.poyo_plus import POYOPlus
 
 
 def setup_module():

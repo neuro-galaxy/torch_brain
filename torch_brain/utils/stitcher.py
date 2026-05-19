@@ -82,10 +82,10 @@ def stitch(
         )
 
 
-def _deprecated_import_error(name):
+def _deprecated_import_error(name, dest="models.poyo_plus.callbacks"):
     raise ImportError(
-        f"`{name}` has been moved to `torch_brain.utils.callbacks`. "
-        f"Please update your import to: `from torch_brain.utils.callbacks import {name}`"
+        f"`{name}` has been moved to `torch_brain.{dest}`. "
+        f"Please update your import to: `from torch_brain.{dest} import {name}`"
     )
 
 

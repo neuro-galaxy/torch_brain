@@ -1,5 +1,5 @@
 from .poyo import POYO
-from .poyo_plus import POYOPlus
+from .poyo_plus.poyo_plus import POYOPlus
 from .calcium_poyo_plus import CalciumPOYOPlus
 
 __all__ = ["POYO", "POYOPlus", "CalciumPOYOPlus"]

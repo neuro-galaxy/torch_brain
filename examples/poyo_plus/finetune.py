@@ -13,7 +13,11 @@ from lightning.pytorch.callbacks import (
 from omegaconf import DictConfig
 
 from torch_brain.registry import MODALITY_REGISTRY
-from torch_brain.utils import callbacks as tbrain_callbacks
+from torch_brain.models.poyo_plus.callbacks import (
+    MemInfo,
+    EpochTimeLogger,
+    ModelWeightStatsLogger,
+)
 from torch_brain.utils import seed_everything
 from torch_brain.utils.datamodules import DataModule
 from torch_brain.utils.stitcher import StitchEvaluator
@@ -178,9 +182,9 @@ def main(cfg: DictConfig):
         LearningRateMonitor(
             logging_interval="step"
         ),  # Create a callback to log the learning rate.
-        tbrain_callbacks.MemInfo(),
-        tbrain_callbacks.EpochTimeLogger(),
-        tbrain_callbacks.ModelWeightStatsLogger(),
+        MemInfo(),
+        EpochTimeLogger(),
+        ModelWeightStatsLogger(),
         GradualUnfreezing(cfg.freeze_perceiver_until_epoch),
     ]
 

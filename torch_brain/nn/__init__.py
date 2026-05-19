@@ -27,6 +27,7 @@ __all__ = [
     "MSELoss",
     "CrossEntropyLoss",
     "MallowDistanceLoss",
+    # deprecated
     "MultitaskReadout",
     "prepare_for_multitask_readout",
 ]
@@ -49,13 +50,6 @@ __api_ref__ = {
             "autosummary": [
                 "RotaryCrossAttention",
                 "RotarySelfAttention",
-            ],
-        },
-        {
-            "title": "Readout",
-            "autosummary": [
-                "MultitaskReadout",
-                "prepare_for_multitask_readout",
             ],
         },
         {

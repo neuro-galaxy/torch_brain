@@ -24,9 +24,13 @@ from torch_brain.data.sampler import (
 from torch_brain.models import POYOPlus
 from torch_brain.registry import MODALITY_REGISTRY
 from torch_brain.transforms import Compose
-from torch_brain.utils import callbacks as tbrain_callbacks
+from torch_brain.models.poyo_plus.callbacks import (
+    MemInfo,
+    EpochTimeLogger,
+    ModelWeightStatsLogger,
+)
 from torch_brain.utils import seed_everything
-from torch_brain.utils.callbacks import (
+from torch_brain.models.poyo_plus.callbacks import (
     MultiTaskDecodingStitchEvaluator,
     DataForMultiTaskDecodingStitchEvaluator,
 )
@@ -391,9 +395,9 @@ def main(cfg: DictConfig):
         LearningRateMonitor(
             logging_interval="step"
         ),  # Create a callback to log the learning rate.
-        tbrain_callbacks.MemInfo(),
-        tbrain_callbacks.EpochTimeLogger(),
-        tbrain_callbacks.ModelWeightStatsLogger(),
+        MemInfo(),
+        EpochTimeLogger(),
+        ModelWeightStatsLogger(),
     ]
 
     trainer = L.Trainer(
