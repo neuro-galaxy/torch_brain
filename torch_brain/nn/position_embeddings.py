@@ -1,7 +1,6 @@
 from typing import Union
 import torch
 from torch import nn, Tensor
-from einops import repeat, rearrange
 
 
 class SinusoidalTimeEmbedding(nn.Module):
@@ -88,16 +87,16 @@ class RotaryTimeEmbedding(nn.Module):
             timestamps (torch.Tensor): timestamps tensor.
         """
         angles = torch.einsum("..., f -> ... f", timestamps, self.omega)
-        angles = repeat(angles, "... n -> ... (n r)", r=2)
+        angles = angles.repeat_interleave(2, dim=-1)  # (..., F) -> (..., F*2)
         rotary_emb = torch.cat((angles.cos(), angles.sin()), dim=-1)
         return rotary_emb
 
     @staticmethod
     def _rotate_half(x: Tensor) -> Tensor:
-        x = rearrange(x, "... (d r) -> ... d r", r=2)
+        x = x.unflatten(-1, sizes=(-1, 2))  # (..., D*R) -> (..., D, R) R=2
         x1, x2 = x.unbind(dim=-1)
         x = torch.stack((-x2, x1), dim=-1)
-        return rearrange(x, "... d r -> ... (d r)")
+        return x.flatten(start_dim=-2)  # (..., D, R) -> (..., D*R)
 
     @staticmethod
     def rotate(

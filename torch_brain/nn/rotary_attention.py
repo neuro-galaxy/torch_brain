@@ -3,7 +3,6 @@ from typing import Optional
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-from einops import rearrange, repeat
 
 try:
     import xformers.ops as xops
@@ -378,9 +377,10 @@ def rotary_attn_pytorch_func(
     """
 
     # default attention expects shape b h n d
-    query = rearrange(query, "b n (h d) -> b h n d", h=num_heads)
-    key = rearrange(key, "b n (h d) -> b h n d", h=num_heads)
-    value = rearrange(value, "b n (h d) -> b h n d", h=num_heads)
+    # (b, n, h*d) -> (b, n, h, d) -> (b, h, n, d)
+    query = query.unflatten(-1, (num_heads, -1)).permute(0, 2, 1, 3)
+    key = key.unflatten(-1, (num_heads, -1)).permute(0, 2, 1, 3)
+    value = value.unflatten(-1, (num_heads, -1)).permute(0, 2, 1, 3)
 
     # apply rotary embeddings
     query = RotaryTimeEmbedding.rotate(x=query, rotary_emb=q_pos_emb, unsqueeze_dim=1)
@@ -392,7 +392,7 @@ def rotary_attn_pytorch_func(
 
     # attention mask
     if attn_mask is not None:
-        attn_mask = rearrange(attn_mask, "b n -> b () () n")
+        attn_mask = attn_mask[:, None, None, :]  # (b, n) -> (b, 1, 1, n)
 
     # perform attention, by default will use the optimal attention implementation
     out = F.scaled_dot_product_attention(
@@ -410,8 +410,8 @@ def rotary_attn_pytorch_func(
             unsqueeze_dim=1,
         )
 
-    # return (b, n, (h d), )
-    out = rearrange(out, "b h n d -> b n (h d)")
+    # (b, h, n, d) -> (b, n, h, d) -> (b, n, h*d)
+    out = out.permute(0, 2, 1, 3).flatten(-2)
     return out
 
 
@@ -445,10 +445,10 @@ def rotary_attn_xformers_func(
     Returns:
         The output tensor, with shape (b n (h d))
     """
-    # xformers attention expects shape (1, n, h, d)
-    query = rearrange(query, "b n (h d) -> b n h d", h=num_heads)
-    key = rearrange(key, "b n (h d) -> b n h d", h=num_heads)
-    value = rearrange(value, "b n (h d) -> b n h d", h=num_heads)
+    # xformers attention expects shape (b, n, h, d)
+    query = query.unflatten(-1, (num_heads, -1))  # (b, n, h*d) -> (b, n, h, d)
+    key = key.unflatten(-1, (num_heads, -1))
+    value = value.unflatten(-1, (num_heads, -1))
 
     query = RotaryTimeEmbedding.rotate(x=query, rotary_emb=q_pos_emb, unsqueeze_dim=2)
     key = RotaryTimeEmbedding.rotate(x=key, rotary_emb=kv_pos_emb, unsqueeze_dim=2)
@@ -461,7 +461,9 @@ def rotary_attn_xformers_func(
     # WARNING: this is very slow, avoid using attn_mask if possible, refer to xformers
     # documentation
     attn_mask = (
-        repeat(attn_mask, "b m -> b h n m", h=num_heads, n=query.size(1))
+        attn_mask[:, None, None, :].expand(
+            -1, num_heads, query.size(1), -1
+        )  # (b, m) -> (b, h, n, m)
         if attn_mask is not None
         else None
     )
@@ -486,7 +488,7 @@ def rotary_attn_xformers_func(
             unsqueeze_dim=2,
         )
 
-    out = rearrange(out, "b n h d -> b n (h d)")
+    out = out.flatten(-2)  # (b, n, h, d) -> (b, n, h*d)
     return out
 
 
@@ -522,9 +524,11 @@ def rotary_attn_xformers_varlen_func(
         The output tensor, with shape (n, (h d))
     """
     # xformers attention expects shape (1, n, h, d)
-    query = rearrange(query, "n (h d) -> () n h d", h=num_heads)
-    key = rearrange(key, "n (h d) -> () n h d", h=num_heads)
-    value = rearrange(value, "n (h d) -> () n h d", h=num_heads)
+    query = query.unflatten(-1, (num_heads, -1)).unsqueeze(
+        0
+    )  # (n, h*d) -> (1, n, h, d)
+    key = key.unflatten(-1, (num_heads, -1)).unsqueeze(0)
+    value = value.unflatten(-1, (num_heads, -1)).unsqueeze(0)
 
     # TODO check rotation works
     query = RotaryTimeEmbedding.rotate(x=query, rotary_emb=q_pos_emb.unsqueeze(0))
@@ -559,5 +563,5 @@ def rotary_attn_xformers_varlen_func(
             rotary_emb=RotaryTimeEmbedding.invert(q_pos_emb).unsqueeze(0),
         )
 
-    out = rearrange(out, "() n h d -> n (h d)")
+    out = out.squeeze(0).flatten(-2)  # (1, n, h, d) -> (n, h*d)
     return out

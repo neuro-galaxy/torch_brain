@@ -22,7 +22,6 @@ dependencies = [
     "temporaldata>=0.1.4",
     "numpy",
     "torch~=2.0",
-    "einops~=0.6.0",
     "torchtyping~=0.1",
     "torchmetrics>=1.6.0",
     "pydantic~=2.0",

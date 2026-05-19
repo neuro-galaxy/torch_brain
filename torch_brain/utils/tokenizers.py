@@ -1,5 +1,4 @@
 import numpy as np
-from einops import repeat
 from enum import Enum
 
 
@@ -22,13 +21,13 @@ def create_start_end_unit_tokens(unit_ids, start, end):
         [TokenType.START_OF_SEQUENCE.value, TokenType.END_OF_SEQUENCE.value],
         dtype=np.int64,
     )
-    token_type_index = repeat(token_type_index, "u -> (t u)", t=len(unit_ids))
+    token_type_index = np.tile(token_type_index, len(unit_ids))  # (u,) -> (t*u,)
 
     unit_index = np.arange(len(unit_ids))
-    unit_index = repeat(unit_index, "u -> (u t)", t=2)
+    unit_index = np.repeat(unit_index, 2)  # (u,) -> (u*t,)
 
     timestamps = np.array([start, end], dtype=np.float64)
-    timestamps = repeat(timestamps, "u -> (t u)", t=len(unit_ids))
+    timestamps = np.tile(timestamps, len(unit_ids))  # (u,) -> (t*u,)
     return token_type_index, unit_index, timestamps
 
 
@@ -49,7 +48,9 @@ def create_linspace_latent_tokens(start, end, step, num_latents_per_step):
     latent_index = np.arange(num_latents_per_step, dtype=np.int64)
 
     num_timestamps = len(latent_timestamps)
-    latent_timestamps = repeat(latent_timestamps, "t -> (t u)", u=len(latent_index))
+    latent_timestamps = np.repeat(
+        latent_timestamps, len(latent_index)
+    )  # (t,) -> (t*u,)
 
-    latent_index = repeat(latent_index, "u -> (t u)", t=num_timestamps)
+    latent_index = np.tile(latent_index, num_timestamps)  # (u,) -> (t*u,)
     return latent_index, latent_timestamps
