@@ -19,6 +19,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 - Changed minimum `temporaldata` version to `v0.1.4` ([#209](https://github.com/neuro-galaxy/torch_brain/pull/209))
 - Moved `DecodingStitchEvaluator` and `MultiTaskDecodingStitchEvaluator` to `utils/callbacks.py` ([#183](https://github.com/neuro-galaxy/torch_brain/pull/183))
+- Reorganized `POYOPlus`-related code into a dedicated `torch_brain.models.poyo_plus` package ([#215](https://github.com/neuro-galaxy/torch_brain/pull/215)):
+    - `POYOPlus` and `FeedForward` moved to `torch_brain.models.poyo_plus.poyo_plus`
+    - `MultitaskReadout` and `prepare_for_multitask_readout` moved from `torch_brain.nn` to `torch_brain.models.poyo_plus.multitask_readout`
+    - `MemInfo`, `EpochTimeLogger`, `ModelWeightStatsLogger`, `MultiTaskDecodingStitchEvaluator`, `DataForMultiTaskDecodingStitchEvaluator` moved from `torch_brain.utils.callbacks` to `torch_brain.models.poyo_plus.callbacks`
+
+### Deprecated
+- `from torch_brain.nn import MultitaskReadout` and `prepare_for_multitask_readout` — old locations now raise `ImportError` with migration instructions ([#215](https://github.com/neuro-galaxy/torch_brain/pull/215))
+- `from torch_brain.utils.callbacks import MemInfo`, `EpochTimeLogger`, `ModelWeightStatsLogger`, `MultiTaskDecodingStitchEvaluator`, `DataForMultiTaskDecodingStitchEvaluator` — old locations now raise `ImportError` with migration instructions ([#215](https://github.com/neuro-galaxy/torch_brain/pull/215))
 - Replaced `torch_brain.data.dataset.DatasetIndex` with `torch_brain.dataset.DatasetIndex` ([#186](https://github.com/neuro-galaxy/torch_brain/pull/186))
 - `bin_spikes` output shape changed from `(N, T)` to `(T, N)` and default `dtype` changed from `np.float32` to `np.int32` ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 - Renamed `torch_brain.models.CaPOYO` to `torch_brain.models.CalciumPOYOPlus` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
