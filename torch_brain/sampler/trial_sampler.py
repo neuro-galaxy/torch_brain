@@ -29,10 +29,11 @@ class TrialSampler(torch.utils.data.Sampler):
     Example::
 
         >>> from temporaldata import Interval
+        >>> import numpy as np
         >>> from torch_brain.sampler import TrialSampler
 
         >>> sampling_intervals = {
-        ...     "session_1": Interval([0.0, 5.0, 10.0], [2.0, 8.0, 15.0]),
+        ...     "session_1": Interval(np.array([0.0, 5.0, 10.0]), np.array([2.0, 8.0, 15.0])),
         ... }
         >>> sampler = TrialSampler(
         ...     sampling_intervals=sampling_intervals,
