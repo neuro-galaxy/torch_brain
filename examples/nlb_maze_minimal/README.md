@@ -5,17 +5,17 @@ velocity from motor cortex spiking activity in the `jenkins_maze_train`
 recording, originally from the [Neural Latents Benchmark (NLB)](https://neurallatents.github.io/)
 MC_Maze dataset.
 
-This example is meant for new users of `torch_brain` and `brainsets`,
-and shows how to:
+The training script, `train.py`, is short (~150 lines) and annotated with
+comments explaining important concepts. We encourage new users to read through
+the file end-to-end!
+
+This example shows how to:
 
 1. Build a custom simple `Dataset` on top of an existing `brainset.dataset`.
 2. Create sampling intervals around behavioral events.
 3. Transform and shape the data samples.
 4. Set up a minimal train loop.
 
-The training script `train.py` is short (~150 lines) and annotated with
-comments explaining important concepts. We encourage new users to read through
-the file end-to-end!
 
 ## Running the example
 
