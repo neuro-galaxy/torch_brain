@@ -5,9 +5,9 @@ velocity from motor cortex spiking activity in the `jenkins_maze_train`
 recording, originally from the [Neural Latents Benchmark (NLB)](https://neurallatents.github.io/)
 MC_Maze dataset.
 
-The training script, `train.py`, is short (~150 lines) and annotated with
-comments explaining important concepts. We encourage new users to read through
-the file end-to-end!
+The training script is short (~150 lines) and annotated with comments explaining
+fundamental concepts. **We encourage new users to read through the `train.py`
+file end-to-end!**
 
 This example shows how to:
 
