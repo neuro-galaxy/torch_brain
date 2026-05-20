@@ -22,7 +22,7 @@ This example shows how to:
 1. Install some packages:
 ```bash
 pip install sklearn
-pip install git+https://github.com/neuro-galaxy/brainsets@94fb240
+pip install git+https://github.com/neuro-galaxy/brainsets
 # ^ Needed since the latest brainsets has not been released yet.
 # The latest version has some fixes for the NLB dataset which are
 # needed for this example to work.
