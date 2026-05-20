@@ -1,6 +1,6 @@
 import math
 import logging
-from typing import Dict, Optional
+from typing import Dict
 from functools import cached_property
 
 import torch
@@ -10,26 +10,54 @@ from torch_brain.dataset import DatasetIndex
 
 
 class RandomFixedWindowSampler(torch.utils.data.Sampler):
-    r"""Samples fixed-length windows randomly, given intervals defined in the
-    :obj:`sampling_intervals` parameter. :obj:`sampling_intervals` is a dictionary where the keys
-    are the session ids and the values are lists of tuples representing the
-    start and end of the intervals from which to sample. The samples are shuffled, and
-    random temporal jitter is applied.
+    r"""Samples fixed-length windows randomly from a collection of time intervals.
 
+    Given the :obj:`sampling_intervals` dictionary mapping session IDs to
+    :class:`temporaldata.Interval` objects, this sampler produces
+    :class:`~torch_brain.dataset.DatasetIndex` objects for indexing a
+    :class:`~torch_brain.dataset.Dataset`. Each call to :meth:`__iter__` applies a
+    fresh random temporal jitter and re-shuffles the windows, so every epoch explores
+    slightly different positions within each interval.
 
-    In one epoch, the number of samples that is generated from a given sampling interval
-    is given by:
+    In one epoch, the number of samples generated from a single contiguous interval
+    of length :math:`L` is:
 
     .. math::
-        N = \left\lfloor\frac{\text{interval_length}}{\text{window_length}}\right\rfloor
+        N = \left\lfloor\frac{L}{\text{window\_length}}\right\rfloor
 
     Args:
-        sampling_intervals (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
-            session in the dataset.
-        window_length (float): Length of the window to sample.
-        generator (Optional[torch.Generator], optional): Generator for shuffling.
-            Defaults to None.
-        drop_short (bool, optional): Whether to drop short intervals. Defaults to True.
+        sampling_intervals (Dict[str, Interval]): Sampling intervals for each session.
+            Typically obtained from
+            :meth:`~torch_brain.dataset.Dataset.get_sampling_intervals`.
+        window_length: Duration of each sampled window in seconds.
+        generator: Optional RNG used for jitter and
+            shuffling. If ``None`` (default), uses the default global PyTorch generator.
+        drop_short: If ``True`` (default), intervals shorter than
+            :obj:`window_length` are silently skipped with a warning logged. If
+            ``False``, a :exc:`ValueError` is raised for any short interval.
+
+    Example::
+
+        >>> import numpy as np
+        >>> from temporaldata import Interval
+        >>> from torch_brain.sampler import RandomFixedWindowSampler
+
+        >>> sampling_intervals = {
+        ...     "session_1": Interval(
+        ...         start=np.array([0.0]),
+        ...         end=np.array([100.0]),
+        ...     ),
+        ...     "session_2": Interval(
+        ...         start=np.array([0.0]),
+        ...         end=np.array([200.0]),
+        ...     ),
+        ... }
+        >>> sampler = RandomFixedWindowSampler(
+        ...     sampling_intervals=sampling_intervals,
+        ...     window_length=1.0,
+        ... )
+        >>> len(sampler)
+        300
     """
 
     def __init__(
@@ -37,21 +65,24 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
         *,
         sampling_intervals: Dict[str, Interval],
         window_length: float,
-        generator: Optional[torch.Generator] = None,
+        generator: torch.Generator | None = None,
         drop_short: bool = True,
     ):
+        if window_length <= 0:
+            raise ValueError("window_length must be greater than 0.")
+
         self.sampling_intervals = sampling_intervals
         self.window_length = window_length
         self.generator = generator
         self.drop_short = drop_short
 
     @cached_property
-    def _estimated_len(self):
+    def _estimated_len(self) -> int:
         num_samples = 0
         total_short_dropped = 0.0
 
-        for session_name, sampling_intervals in self.sampling_intervals.items():
-            for start, end in zip(sampling_intervals.start, sampling_intervals.end):
+        for intervals in self.sampling_intervals.values():
+            for start, end in intervals:
                 interval_length = end - start
                 if interval_length < self.window_length:
                     if self.drop_short:
@@ -75,15 +106,17 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
         return num_samples
 
     def __len__(self):
+        r"""Returns the estimated number of samples per epoch across all sessions."""
         return self._estimated_len
 
     def __iter__(self):
+        r"""Yields shuffled :class:`~torch_brain.dataset.DatasetIndex` objects with random temporal jitter."""
         if len(self) == 0.0:
             raise ValueError("All intervals are too short to sample from.")
 
         indices = []
         for session_name, sampling_intervals in self.sampling_intervals.items():
-            for start, end in zip(sampling_intervals.start, sampling_intervals.end):
+            for start, end in sampling_intervals:
                 interval_length = end - start
                 if interval_length < self.window_length:
                     if self.drop_short:

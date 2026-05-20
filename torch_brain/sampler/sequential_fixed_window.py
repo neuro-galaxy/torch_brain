@@ -1,40 +1,69 @@
 import logging
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict
 from functools import cached_property
 
 import torch
-
+from temporaldata import Interval
 
 from torch_brain.dataset import DatasetIndex
 
 
 class SequentialFixedWindowSampler(torch.utils.data.Sampler):
-    r"""Samples fixed-length windows sequentially, always in the same order. The
-    sampling intervals are defined in the :obj:`sampling_intervals` parameter.
-    :obj:`sampling_intervals` is a dictionary where the keys are the session ids and the
-    values are lists of tuples representing the start and end of the intervals
-    from which to sample.
+    r"""Samples fixed-length windows sequentially in a deterministic, reproducible order.
 
-    If the length of a sequence is not evenly divisible by the step, the last
-    window will be added with an overlap with the previous window. This is to ensure
-    that the entire sequence is covered.
+    Given the :obj:`sampling_intervals` dictionary mapping session IDs to
+    :class:`temporaldata.Interval` objects, this sampler produces
+    :class:`~torch_brain.dataset.DatasetIndex` objects in a fixed order. Windows are
+    stepped through each interval using a configurable :obj:`step` size, making this
+    sampler well-suited for evaluation where full coverage and reproducibility are
+    required.
+
+    If an interval's length is not an exact multiple of :obj:`step`, a final overlapping
+    window is appended to ensure the entire interval is covered.
 
     Args:
-        sampling_intervals (Dict[str, List[Tuple[float, float]]]): Sampling intervals for each
-            session in the dataset.
-        window_length (float): Length of the window to sample.
-        step (float, optional): Step size between windows. If None, it
-            defaults to ``window_length``.
-        drop_short (bool, optional): Whether to drop windows smaller than ``window_length``.
-            Defaults to False.
+        sampling_intervals: Sampling intervals for each session.
+            Typically obtained from
+            :meth:`~torch_brain.dataset.Dataset.get_sampling_intervals`.
+        window_length: Duration of each sampled window in seconds.
+        step: Step size between the start of consecutive windows in
+            seconds. If ``None`` (default), sets :obj:`step` to :obj:`window_length` (non-overlapping
+            windows).
+        drop_short: If ``False`` (default), a :exc:`ValueError` is raised for any short interval.
+            If ``True``, intervals shorter than :obj:`window_length` are
+            silently skipped with a warning logged.
+
+    Example::
+
+        >>> import numpy as np
+        >>> from temporaldata import Interval
+        >>> from torch_brain.sampler import SequentialFixedWindowSampler
+
+        >>> sampling_intervals = {
+        ...     "session_1": Interval(
+        ...         start=np.array([0.0]),
+        ...         end=np.array([100.0]),
+        ...     ),
+        ...     "session_2": Interval(
+        ...         start=np.array([0.0]),
+        ...         end=np.array([100.0]),
+        ...     ),
+        ... }
+        >>> sampler = SequentialFixedWindowSampler(
+        ...     sampling_intervals=sampling_intervals,
+        ...     window_length=10.0,
+        ...     step=5.0,
+        ... )
+        >>> len(sampler)
+        38
     """
 
     def __init__(
         self,
         *,
-        sampling_intervals: Dict[str, List[Tuple[float, float]]],
+        sampling_intervals: Dict[str, Interval],
         window_length: float,
-        step: Optional[float] = None,
+        step: float | None = None,
         drop_short=False,
     ):
         self.sampling_intervals = sampling_intervals
@@ -51,7 +80,7 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
         total_short_dropped = 0.0
 
         for session_name, sampling_intervals in self.sampling_intervals.items():
-            for start, end in zip(sampling_intervals.start, sampling_intervals.end):
+            for start, end in sampling_intervals:
                 interval_length = end - start
                 if interval_length < self.window_length:
                     if self.drop_short:
@@ -91,7 +120,9 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler):
         return indices
 
     def __len__(self):
+        r"""Returns the total number of windows across all sessions."""
         return len(self._indices)
 
     def __iter__(self):
+        r"""Yields :class:`~torch_brain.dataset.DatasetIndex` objects in sequential order."""
         yield from self._indices

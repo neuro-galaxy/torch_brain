@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict
 
 import torch
 from torch_brain.dataset import DatasetIndex
@@ -33,7 +33,10 @@ class TrialSampler(torch.utils.data.Sampler):
         >>> from torch_brain.sampler import TrialSampler
 
         >>> sampling_intervals = {
-        ...     "session_1": Interval(np.array([0.0, 5.0, 10.0]), np.array([2.0, 8.0, 15.0])),
+        ...     "session_1": Interval(
+        ...         start=np.array([0.0, 5.0, 10.0]),
+        ...         end=np.array([2.0, 8.0, 15.0]),
+        ...     ),
         ... }
         >>> sampler = TrialSampler(
         ...     sampling_intervals=sampling_intervals,
