@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added per-task average metric logging in `MultiTaskDecodingStitchEvaluator` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
 
 ### Removed
-- Removed `torch_brain.utils.prepare_for_readout` (unused)
+- Removed `torch_brain.utils.prepare_for_readout` (unused) ([#218](https://github.com/neuro-galaxy/torch_brain/pull/218))
 - Removed `torch_brain.nn.FeedForwad` (too inflexible) ([#204](https://github.com/neuro-galaxy/torch_brain/pull/204))
 - Removed `torch_brain.optim` / `SparseLamb` from the public package API ([#203](https://github.com/neuro-galaxy/torch_brain/pull/203))
 - Remove `utils/gradient_rescale.py` (legacy) ([#201](https://github.com/neuro-galaxy/torch_brain/pull/201))
