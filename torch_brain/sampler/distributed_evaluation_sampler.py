@@ -75,9 +75,14 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
 
     def rank_len(self):
         r"""Returns the number of samples assigned to the current process."""
+        if self.num_replicas is None or self.rank is None:
+            raise RuntimeError(
+                "num_replicas and rank must be set before calling rank_len(). "
+                "Call set_params() first."
+            )
         total_len = len(self.sampler)
         evenly_split = total_len // self.num_replicas
-        extra = int((total_len % self.num_replicas) < self.rank)
+        extra = int(self.rank < (total_len % self.num_replicas))
         return evenly_split + extra
 
     def __len__(self):

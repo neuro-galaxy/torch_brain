@@ -38,7 +38,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
             ``None`` (default), sets :obj:`step` to :obj:`window_length` (non-overlapping windows).
         num_replicas: Total number of processes. If ``None`` (default),
             resolved from :func:`torch.distributed.get_world_size`.
-        ranks: Rank of the current process. If ``None`` (default), resolved from
+        rank: Rank of the current process. If ``None`` (default), resolved from
             :func:`torch.distributed.get_rank`.
 
     Attributes:
