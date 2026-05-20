@@ -12,7 +12,7 @@ import wandb
 
 from torch_brain.data import collate
 from torch_brain.models import POYO
-from torch_brain.data.sampler import (
+from torch_brain.sampler import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )

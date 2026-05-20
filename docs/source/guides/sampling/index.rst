@@ -106,7 +106,7 @@ Samplers in action
 **torch_brain** provides a number of samplers that can be used to generate samples for training, or evaluation.
 
 
-.. currentmodule:: torch_brain.data.sampler
+.. currentmodule:: torch_brain.sampler
 
 .. list-table::
    :widths: 25 125
@@ -125,7 +125,7 @@ restrict where the sampler can sample from.
 
 .. code-block:: python
 
-    >>> from torch_brain.data.sampler import RandomFixedWindowSampler
+    >>> from torch_brain.sampler import RandomFixedWindowSampler
 
     >>> sampler = RandomFixedWindowSampler(
     >>>     sampling_intervals=dataset.get_sampling_intervals(),

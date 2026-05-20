@@ -7,7 +7,7 @@ from bokeh.models.callbacks import CustomJS
 from bokeh.layouts import layout
 
 from torch_brain.data import Dataset
-from torch_brain.data.sampler import RandomFixedWindowSampler
+from torch_brain.sampler import RandomFixedWindowSampler
 
 from _utils import download_file_from_s3
 

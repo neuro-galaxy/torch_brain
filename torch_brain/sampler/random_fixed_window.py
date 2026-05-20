@@ -1,10 +1,9 @@
 import math
 import logging
-from typing import List, Dict, Tuple, Optional, TypeVar, Iterator
+from typing import Dict, Optional
 from functools import cached_property
 
 import torch
-import torch.distributed as dist
 
 from temporaldata import Interval
 from torch_brain.dataset import DatasetIndex

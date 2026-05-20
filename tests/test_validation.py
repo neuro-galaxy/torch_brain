@@ -7,7 +7,7 @@
 # from torch.utils.data import DataLoader
 
 # from torch_brain.data import Dataset
-# from torch_brain.data.sampler import SequentialFixedWindowSampler
+# from torch_brain.sampler import SequentialFixedWindowSampler
 # from torch_brain.data.collate import collate
 # from torch_brain.models import POYOPlus, POYOPlusTokenizer
 # from torch_brain.taxonomy import decoder_registry
