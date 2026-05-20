@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import torch
 import torch.distributed as dist
@@ -31,14 +31,14 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         sampling_intervals: Sampling intervals for each session.
             Typically obtained from
             :meth:`~torch_brain.dataset.Dataset.get_sampling_intervals`.
-        window_length: Duration of each sliding window in seconds.
-        step: Stride between consecutive windows in seconds. If
-            ``None``, defaults to :obj:`window_length` (non-overlapping windows).
         batch_size: Number of windows per batch, used by the stitcher to track
             sequence boundaries within a batch.
-        num_replicas: Total number of processes. If ``None``,
+        window_length: Duration of each sliding window in seconds.
+        step: Stride between consecutive windows in seconds. If
+            ``None`` (default), sets :obj:`step` to :obj:`window_length` (non-overlapping windows).
+        num_replicas: Total number of processes. If ``None`` (default),
             resolved from :func:`torch.distributed.get_world_size`.
-        ranks: Rank of the current process. If ``None``, resolved from
+        ranks: Rank of the current process. If ``None`` (default), resolved from
             :func:`torch.distributed.get_rank`.
 
     Attributes:
@@ -58,9 +58,9 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         ... }
         >>> sampler = DistributedStitchingFixedWindowSampler(
         ...     sampling_intervals=sampling_intervals,
+        ...     batch_size=8,
         ...     window_length=2.0,
         ...     step=1.0,
-        ...     batch_size=8,
         ...     num_replicas=1,
         ...     rank=0,
         ... )
@@ -72,9 +72,9 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         self,
         *,
         sampling_intervals: Dict[str, Interval],
+        batch_size: int,
         window_length: float,
         step: float | None = None,
-        batch_size: int,
         num_replicas: int | None = None,
         rank: int | None = None,
     ):
@@ -92,9 +92,9 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
             )
 
         self.sampling_intervals = sampling_intervals
+        self.batch_size = batch_size
         self.window_length = window_length
         self.step = step or window_length
-        self.batch_size = batch_size
         self.num_replicas = num_replicas
         self.rank = rank
         self.epoch = 0
@@ -108,7 +108,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         self.indices, self.sequence_index = self._generate_indices()
         self.num_samples = len(self.indices)
 
-    def _generate_indices(self) -> List[DatasetIndex]:
+    def _generate_indices(self) -> Tuple[List[DatasetIndex], torch.Tensor]:
         """Build window indices for this rank using a greedy load-balancing assignment.
 
         Intervals are sorted by window count (largest first) and assigned to the rank

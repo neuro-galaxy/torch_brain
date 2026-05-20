@@ -20,9 +20,9 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
             Each individual interval within the session's :class:`temporaldata.Interval`
             object is treated as one trial. Typically obtained from
             :meth:`~torch_brain.dataset.Dataset.get_sampling_intervals`.
-        shuffle: If ``True``, trials are yielded in a randomly shuffled order.
-            If ``False`` (default), trials are yielded in the order they appear in
+        shuffle: If ``False`` (default), trials are yielded in the order they appear in
             :obj:`sampling_intervals`.
+            If ``True``, trials are yielded in a randomly shuffled order.
         generator (Optional[torch.Generator]): Optional RNG used when
             :obj:`shuffle=True`. If ``None`` (default), uses the default global PyTorch generator.
 
