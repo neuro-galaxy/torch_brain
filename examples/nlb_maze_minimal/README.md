@@ -13,7 +13,7 @@ This example shows how to:
 
 1. Build a custom simple `Dataset` on top of an existing `brainset.dataset`.
 2. Create sampling intervals around behavioral events.
-3. Transform and shape the data samples.
+3. Bin spike trains and align targets.
 4. Set up a minimal train loop.
 
 
@@ -21,14 +21,14 @@ This example shows how to:
 
 1. Install some packages:
 ```bash
-pip install sklearn
+pip install scikit-learn
 pip install git+https://github.com/neuro-galaxy/brainsets
 # ^ Needed since the latest brainsets has not been released yet.
 # The latest version has some fixes for the NLB dataset which are
 # needed for this example to work.
 ```
 
-2. Preprocess the dataset:
+2. Preprocess the dataset (takes ~1 minute and ~50MB of disk):
 ```bash
 brainsets prepare pei_pandarinath_nlb_2021 --raw-dir data/raw --processed-dir data/processed
 ```
