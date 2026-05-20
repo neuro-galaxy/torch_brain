@@ -78,6 +78,9 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         num_replicas: int | None = None,
         rank: int | None = None,
     ):
+        if window_length <= 0:
+            raise ValueError("window_length must be greater than 0.")
+
         if num_replicas is None:
             if not dist.is_available():
                 raise RuntimeError("Requires distributed package to be available")
@@ -94,7 +97,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         self.sampling_intervals = sampling_intervals
         self.batch_size = batch_size
         self.window_length = window_length
-        self.step = step or window_length
+        self.step = window_length if step is None else step
         self.num_replicas = num_replicas
         self.rank = rank
         self.epoch = 0
@@ -102,7 +105,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         if self.step <= 0:
             raise ValueError("Step must be greater than 0.")
         if self.step > self.window_length:
-            raise ValueError("Step must be less than window length.")
+            raise ValueError("Step must be less than or equal to window_length.")
 
         # Generate indices for this rank
         self.indices, self.sequence_index = self._generate_indices()
