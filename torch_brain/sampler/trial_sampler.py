@@ -2,13 +2,14 @@ from typing import List, Dict, Tuple, Optional
 
 import torch
 from torch_brain.dataset import DatasetIndex
+from temporaldata import Interval
 
 
 class TrialSampler(torch.utils.data.Sampler):
     r"""Randomly samples a single trial interval from the given intervals.
 
     Args:
-        sampling_intervals (Dict[str, List[Tuple[int, int]]]): Sampling intervals for each
+        sampling_intervals (Dict[str, Interval): Sampling intervals for each
             session in the dataset.
         generator (Optional[torch.Generator], optional): Generator for shuffling.
             Defaults to None.
@@ -18,7 +19,7 @@ class TrialSampler(torch.utils.data.Sampler):
     def __init__(
         self,
         *,
-        sampling_intervals: Dict[str, List[Tuple[float, float]]],
+        sampling_intervals: Dict[str, Interval],
         generator: Optional[torch.Generator] = None,
         shuffle: bool = False,
     ):
@@ -30,16 +31,10 @@ class TrialSampler(torch.utils.data.Sampler):
         return sum(len(intervals) for intervals in self.sampling_intervals.values())
 
     def __iter__(self):
-        # Flatten the intervals from all sessions into a single list
-        all_intervals = [
-            (session_id, start, end)
-            for session_id, intervals in self.sampling_intervals.items()
-            for start, end in zip(intervals.start, intervals.end)
-        ]
-
         indices = [
             DatasetIndex(session_id, start, end)
-            for session_id, start, end in all_intervals
+            for session_id, intervals in self.sampling_intervals.items()
+            for start, end in intervals
         ]
 
         if self.shuffle:
