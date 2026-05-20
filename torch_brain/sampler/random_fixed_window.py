@@ -9,7 +9,7 @@ from temporaldata import Interval
 from torch_brain.dataset import DatasetIndex
 
 
-class RandomFixedWindowSampler(torch.utils.data.Sampler):
+class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
     r"""Samples fixed-length windows randomly from a collection of time intervals.
 
     Given the :obj:`sampling_intervals` dictionary mapping session IDs to
@@ -23,7 +23,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler):
     of length :math:`L` is:
 
     .. math::
-        N = \left\lfloor\frac{L}{\text{window\_length}}\right\rfloor
+        N = \left\lfloor\frac{L}{\text{window_length}}\right\rfloor
 
     Args:
         sampling_intervals (Dict[str, Interval]): Sampling intervals for each session.

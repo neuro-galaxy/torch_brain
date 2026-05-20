@@ -8,7 +8,7 @@ from temporaldata import Interval
 from torch_brain.dataset import DatasetIndex
 
 
-class SequentialFixedWindowSampler(torch.utils.data.Sampler):
+class SequentialFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
     r"""Samples fixed-length windows sequentially in a deterministic, reproducible order.
 
     Given the :obj:`sampling_intervals` dictionary mapping session IDs to

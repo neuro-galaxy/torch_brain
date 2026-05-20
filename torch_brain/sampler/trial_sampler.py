@@ -5,7 +5,7 @@ from torch_brain.dataset import DatasetIndex
 from temporaldata import Interval
 
 
-class TrialSampler(torch.utils.data.Sampler):
+class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
     r"""Samples complete trial intervals without windowing.
 
     Unlike :class:`RandomFixedWindowSampler` and :class:`SequentialFixedWindowSampler`,

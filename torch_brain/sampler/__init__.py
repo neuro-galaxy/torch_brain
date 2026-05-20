@@ -1,10 +1,8 @@
 from .random_fixed_window import RandomFixedWindowSampler
 from .sequential_fixed_window import SequentialFixedWindowSampler
 from .trial_sampler import TrialSampler
-from .distributed_sampler import (
-    DistributedEvaluationSamplerWrapper,
-    DistributedStitchingFixedWindowSampler,
-)
+from .distributed_evaluation_sampler import DistributedEvaluationSamplerWrapper
+from .distributed_stitching_fixed_window import DistributedStitchingFixedWindowSampler
 
 __all__ = [
     "RandomFixedWindowSampler",
