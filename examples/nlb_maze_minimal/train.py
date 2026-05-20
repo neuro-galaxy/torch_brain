@@ -49,10 +49,10 @@ class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
         # get_unit_ids returns the list of neurons recorded in this session.
         self.num_units = len(self.get_unit_ids())
 
-    # Contract between get_sampling_intervals and TrialSampler:
-    # ge_sampling_intervals() returns {recording_id: Interval} listing
+    # Contract between Datasets and Samplers:
+    # get_sampling_intervals() returns {recording_id: Interval} listing
     # the windows the sampler may draw from.
-    # TrialSampler will emit one DatasetIndex per interval.
+    # Sampler will emit one DatasetIndex per sample.
     def get_sampling_intervals(self, *_args, **_kwargs):
         rid = self.recording_ids[0]  # since we only have 1 recording
         recording = self.get_recording(rid)
