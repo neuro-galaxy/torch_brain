@@ -89,7 +89,7 @@ class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
         X = torch.from_numpy(X).float()  # shape: (num_bins, num_units)
 
         # Hand velocity is already a regularly-sampled signal, so we just rescale.
-        Y = data.hand.vel / 200.0  # appoximate z-score normalization
+        Y = data.hand.vel / 200.0  # approximate z-score normalization
         Y = torch.from_numpy(Y).float()  # shape: (out_samples, out_dim)
         return X, Y
 
