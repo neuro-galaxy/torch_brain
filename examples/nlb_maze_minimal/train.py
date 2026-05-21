@@ -1,16 +1,15 @@
 from typing import Literal
-import math
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from tqdm import tqdm
 import torch
-from torch import nn, Tensor
+from torch import nn
 from torch.utils.data import DataLoader
 from sklearn.metrics import r2_score
 
 from temporaldata import Interval
 from torch_brain.utils import bin_spikes
 from torch_brain.data.sampler import TrialSampler
-from torch_brain.dataset import Dataset, DatasetIndex
+from torch_brain.dataset import DatasetIndex
 from brainsets.datasets import PeiPandarinathNLB2021
 
 import models
