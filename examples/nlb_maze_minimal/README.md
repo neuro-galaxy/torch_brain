@@ -17,10 +17,9 @@ file end-to-end!**
 
 This example shows how to:
 
-1. Build a custom simple `Dataset` on top of an existing `brainset.dataset`.
-2. Create sampling intervals around behavioral events.
-3. Bin spike trains and align targets.
-4. Set up a minimal train loop.
+1. Build a custom `Dataset` on top of a `brainsets` recording.
+2. Sample fixed-length trials around behavior events using `TrialSampler`
+4. Set up a minimal training loop.
 
 
 ## Running the example
