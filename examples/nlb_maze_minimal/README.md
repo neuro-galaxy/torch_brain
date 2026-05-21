@@ -2,6 +2,7 @@
 
 > [!TIP]
 > [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1r1vbxmqccgHz-6det9Bxk3Ld6xU8RZdk?usp=sharing)
+> <br/>
 > Follow along this tutorial in a notebook on Google Collab.
 > The notebook includes visualizations of the data and model predictions.
 
