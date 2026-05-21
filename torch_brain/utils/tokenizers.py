@@ -23,13 +23,13 @@ def create_start_end_unit_tokens(unit_ids: np.ndarray, start: float, end: float)
         [TokenType.START_OF_SEQUENCE.value, TokenType.END_OF_SEQUENCE.value],
         dtype=np.int64,
     )
-    token_type_index = np.tile(token_type_index, U)  # (2,) -> (2*U,)
+    token_type_index = np.tile(token_type_index, U)  # (2,) -> (U*2,)
 
     unit_index = np.arange(U)
     unit_index = np.repeat(unit_index, 2)  # (U,) -> (U*2,)
 
     timestamps = np.array([start, end], dtype=np.float64)
-    timestamps = np.tile(timestamps, U)  # (U,) -> (2*U,)
+    timestamps = np.tile(timestamps, U)  # (2,) -> (U*2,)
     return token_type_index, unit_index, timestamps
 
 
