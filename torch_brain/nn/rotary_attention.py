@@ -12,6 +12,8 @@ except ImportError:
 
 from torch_brain.nn import RotaryTimeEmbedding
 
+# TODO unformize the notation in the shapes with Pytorch convention (Maj)
+
 
 class RotaryCrossAttention(nn.Module):
     """Cross-attention layer with rotary positional embeddings.
@@ -524,9 +526,8 @@ def rotary_attn_xformers_varlen_func(
         The output tensor, with shape (n, (h d))
     """
     # xformers attention expects shape (1, n, h, d)
-    query = query.unflatten(-1, (num_heads, -1)).unsqueeze(
-        0
-    )  # (n, h*d) -> (1, n, h, d)
+    # (n, h*d) -> (1, n, h, d)
+    query = query.unflatten(-1, (num_heads, -1)).unsqueeze(0)
     key = key.unflatten(-1, (num_heads, -1)).unsqueeze(0)
     value = value.unflatten(-1, (num_heads, -1)).unsqueeze(0)
 
