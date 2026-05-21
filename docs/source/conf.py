@@ -14,6 +14,7 @@ project = "torch_brain"
 version = torch_brain.__version__
 copyright = f"{datetime.datetime.now().year}, {author}"
 
+import nlb_maze_notebook
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -22,7 +23,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    "myst_parser",
+    "myst_nb",
     "sphinx_autodoc_typehints",
     "sphinx_inline_tabs",
     "bokeh.sphinxext.bokeh_plot",
@@ -90,6 +91,8 @@ myst_enable_extensions = [
     "html_image",
 ]
 
+nb_execution_mode = "off"
+
 pygments_style = "default"
 
 bokeh_plot_pyfile_include_dirs = [
@@ -111,6 +114,7 @@ Path("generated/css/").mkdir(exist_ok=True, parents=True)
 from api_reference import build_api_rst
 
 build_api_rst()
+nlb_maze_notebook.fetch_notebook()
 
 
 def add_js_css_files(app, pagename, templatename, context, doctree):

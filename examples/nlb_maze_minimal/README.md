@@ -1,5 +1,8 @@
 # Minimal Training Example on NLB Maze
 
+Follow along this tutorial in our Google Colab Notebook!
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1r1vbxmqccgHz-6det9Bxk3Ld6xU8RZdk?usp=sharing)
+
 This example walks through a minimal training script for decoding hand
 velocity from motor cortex spiking activity in the `jenkins_maze_train`
 recording, originally from the [Neural Latents Benchmark (NLB)](https://neurallatents.github.io/)
