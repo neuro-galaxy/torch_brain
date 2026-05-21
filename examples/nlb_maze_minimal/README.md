@@ -19,7 +19,7 @@ This example shows how to:
 
 1. Build a custom `Dataset` on top of a `brainsets` recording.
 2. Sample fixed-length trials around behavior events using `TrialSampler`
-4. Set up a minimal training loop.
+3. Set up a minimal training loop.
 
 
 ## Running the example
