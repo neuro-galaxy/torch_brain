@@ -261,10 +261,8 @@ class CalciumPOYOPlus(nn.Module):
 
         ### prepare calcium values
         T, N = calcium_traces.df_over_f.shape
-        # (T,) -> (T*N,)
-        input_timestamps = calcium_traces.timestamps.repeat_interleave(N)
-        # (T, N) -> (T*N,) -> (T*N, 1)
-        input_values = calcium_traces.df_over_f.flatten().unsqueeze(-1)
+        input_timestamps = np.repeat(calcium_traces.timestamps, N)  # (T,) -> (T*N,)
+        input_values = calcium_traces.df_over_f.flatten()[:, None]  # (T, N) -> (T*N, 1)
 
         # input unit indices
         local_to_global_map = np.array(self.unit_emb.tokenizer(unit_ids))
