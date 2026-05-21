@@ -49,5 +49,6 @@ def fetch_notebook():
             if tag not in tags:
                 tags.append(tag)
 
+    # Add links to google collab at the start and end
     notebook["cells"] = [collab_link] + notebook.get("cells", []) + [collab_link]
     dest.write_text(json.dumps(notebook))
