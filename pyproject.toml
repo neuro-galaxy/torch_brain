@@ -7,10 +7,7 @@ name = "torch_brain"
 dynamic = ["version"]
 description = "A package for deep learning models for neuroscience"
 readme = "README.md"
-authors = [
-    { name = "Mehdi Azabou", email = "mehdiazabou@gmail.com" },
-    { name = "Vinam Arora", email = "vinam@seas.upenn.edu" },
-]
+authors = [{ name = "TorchBrain Team", email = "torch-brain-team@googlegroups.com" }]
 license = { text = "Apache-2.0" }
 classifiers = [
     "Programming Language :: Python :: 3",
