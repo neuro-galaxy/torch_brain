@@ -7,7 +7,7 @@ name = "temporaldata"
 dynamic = ["version"]
 description = "A utility package for complex temporal data manipulation"
 readme = "README.md"
-authors = [{ name = "Mehdi Azabou", email = "mehdiazabou@gmail.com" }]
+authors = [{ name = "TorchBrain Team", email = "contact@torchbrain.org" }]
 license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
