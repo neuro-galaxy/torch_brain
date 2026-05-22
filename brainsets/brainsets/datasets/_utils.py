@@ -1,6 +1,9 @@
 from pathlib import Path
 
+import numpy as np
+
 from brainsets.config import CONFIG_FILE, load_config
+from temporaldata import Interval
 
 
 def get_processed_dir(path: Path = CONFIG_FILE) -> str:

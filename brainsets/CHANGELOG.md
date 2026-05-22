@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added new `bids_utils` helpers to fetch and group recordings, validate their availability, and load participants .tsv and .json sidecar files for BIDS-compliant datasets ([#107](https://github.com/neuro-galaxy/brainsets/pull/107)).
 - Added shell completion for brainsets CLI tools ([#116](https://github.com/neuro-galaxy/brainsets/pull/116)).
 - Added the `Neuroprobe2025` dataset class and the `neuroprobe_2025` brainset pipeline ([#79](https://github.com/neuro-galaxy/brainsets/pull/79)).
+- Added the `OpenNeuroDataset` and the `OpenNeuroPipeline` base classes ([#128](https://github.com/neuro-galaxy/brainsets/pull/128)).
 - Added new brainset `vollan_moser_alternating_2025`, a hippocampus/MEC dataset from the paper [Left–right-alternating theta sweeps in entorhinal–hippocampal maps of space](https://www.nature.com/articles/s41586-024-08527-1). See [#127](https://github.com/neuro-galaxy/brainsets/pull/127).
 - Add `--list`, `-s`/`--single` to `brainsets prepare` ([#137](https://github.com/neuro-galaxy/brainsets/pull/137)).
 - Added `calculate_sampling_rate` function in utils.

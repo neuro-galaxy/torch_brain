@@ -297,3 +297,11 @@ Supported keys:
     The ``brainsets`` package itself is automatically added to the environment
     if not explicitly listed in ``dependencies``. Not adding ``brainsets`` to the
     dependencies list is the recommended practice.
+
+
+Specialized Pipeline Base Classes
+----------------------------------
+
+For common data sources, brainsets provides specialized base classes:
+
+* :doc:`Creating an OpenNeuro Pipeline <openneuro_pipeline>` – Build pipelines for publicly available datasets on `OpenNeuro <https://openneuro.org/>`_.

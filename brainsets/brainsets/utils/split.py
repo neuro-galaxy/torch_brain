@@ -6,7 +6,6 @@ _functions = [
 __all__ = _functions
 
 import hashlib
-import logging
 import numpy as np
 from typing import List
 from temporaldata import Interval, Data
@@ -168,9 +167,7 @@ def generate_string_kfold_assignment(
         raise ValueError(f"val_ratio must be between 0 and 1, got {val_ratio}")
 
     base_str = f"{string_id}_{seed}"
-    base_bytes = base_str.encode("utf-8")
-    hash_obj = hashlib.md5(base_bytes)
-    hash_int = int(hash_obj.hexdigest(), 16)
+    hash_int = _get_integer_hash_from_string(base_str)
     bucket = hash_int % n_folds
 
     assignments: List[str] = []
@@ -179,12 +176,35 @@ def generate_string_kfold_assignment(
             assignments.append("test")
         else:
             fold_str = f"{base_str}_{k}"
-            fold_bytes = fold_str.encode("utf-8")
-            fold_hash_obj = hashlib.md5(fold_bytes)
-            fold_hash_int = int(fold_hash_obj.hexdigest(), 16)
+            fold_hash_int = _get_integer_hash_from_string(fold_str)
             normalized_hash = (fold_hash_int % 10000) / 10000.0
             if normalized_hash < val_ratio:
                 assignments.append("valid")
             else:
                 assignments.append("train")
     return assignments
+
+
+def _get_integer_hash_from_string(string: str) -> int:
+    """
+    Compute a deterministicinteger hash from a string using MD5.
+
+    Parameters
+    ----------
+    string : str
+        The string to hash.
+
+    Returns
+    -------
+    int
+        The integer representation of the MD5 hash of the input string.
+
+    Examples
+    --------
+    >>> _get_integer_hash_from_string("example")
+    179178336145155420120232100153404146889
+    """
+    base_bytes = string.encode("utf-8")
+    hash_obj = hashlib.md5(base_bytes)
+    hash_int = int(hash_obj.hexdigest(), 16)
+    return hash_int
