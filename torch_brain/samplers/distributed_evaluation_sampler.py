@@ -32,7 +32,7 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
 
         >>> import numpy as np
         >>> from temporaldata import Interval
-        >>> from torch_brain.sampler import SequentialFixedWindowSampler, DistributedEvaluationSamplerWrapper
+        >>> from torch_brain.samplers import SequentialFixedWindowSampler, DistributedEvaluationSamplerWrapper
 
         >>> sampling_intervals = {
         ...     "session_1": Interval(0.0, 100.0),
