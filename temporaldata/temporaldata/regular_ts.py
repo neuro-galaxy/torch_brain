@@ -86,6 +86,14 @@ class RegularTimeSeries(ArrayDict):
         return self._domain
 
     def select_by_mask(self, mask: np.ndarray):
+        """Raises a NotImplementedError as this method is not supported
+        for :obj:`RegularTimeSeries`.
+
+        Raises:
+            NotImplementedError: Always, because this method cannot
+                be implemented for this class.
+        """
+        # TODO: Implement once we support "gappy" regular timeseries
         raise NotImplementedError("Not implemented for RegularTimeSeries.")
 
     def _time_to_idx(
@@ -270,7 +278,12 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         array as well as apply any outstanding masks.
     """
 
-    _lazy_ops = dict()
+    _lazy_ops: dict
+
+    def __init__(self, **kwargs):
+        raise NotImplementedError(
+            f"{self.__class__.__name__} cannot be constructed directly; use from_hdf5."
+        )
 
     def _maybe_first_dim(self):
         if len(self.keys()) == 0:

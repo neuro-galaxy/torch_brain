@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, List, Union
+from typing import List, Union, Literal
 import logging
+import copy
 
 import h5py
 import numpy as np
@@ -9,6 +10,7 @@ import pandas as pd
 
 from .arraydict import ArrayDict
 from .interval import Interval
+from .utils import _validate_select_by_mask_input
 
 
 class IrregularTimeSeries(ArrayDict):
@@ -79,7 +81,7 @@ class IrregularTimeSeries(ArrayDict):
         timestamps: np.ndarray,
         *,
         timekeys: List[str] | None = None,
-        domain: Union[Interval, str],
+        domain: Interval | Literal["auto"],
         **kwargs: np.ndarray,
     ):
         super().__init__(timestamps=timestamps, **kwargs)
@@ -234,15 +236,20 @@ class IrregularTimeSeries(ArrayDict):
         return out
 
     def select_by_mask(self, mask: np.ndarray):
-        r"""Return a new :obj:`IrregularTimeSeries` object where all array attributes
-        are indexed using the boolean mask.
+        r"""Index all arrays with a boolean mask and return a copy.
 
-        Note that this will not update the domain, as it is unclear how to resolve the
-        domain when the mask is applied. If you wish to update the domain, you should
-        do so manually.
+        Args:
+            mask: Boolean array used for masking. The mask needs to be 1-dimensional,
+                and of equal length as the object itself.
+
+        Note:
+            This will not update the domain, as it is unclear how to resolve the
+            domain when the mask is applied. If you wish to update the domain, you
+            should do so manually.
         """
-        out = super().select_by_mask(mask, timekeys=self._timekeys, domain=self.domain)
-        out._sorted = self._sorted
+        out = super().select_by_mask(mask)
+        # Un-sorted arrays can become sorted after masking
+        out._sorted = True if self._sorted is True else None
         return out
 
     def select_by_interval(self, interval: Interval):
@@ -422,8 +429,13 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         array as well as apply any outstanding masks.
     """
 
-    _lazy_ops = dict()
-    _unicode_keys = []
+    _lazy_ops: dict
+    _unicode_keys: list[str]
+
+    def __init__(self, **kwargs):
+        raise NotImplementedError(
+            f"{self.__class__.__name__} cannot be constructed directly; use from_hdf5."
+        )
 
     def _maybe_first_dim(self):
         if len(self.keys()) == 0:
@@ -509,42 +521,42 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         return super(LazyIrregularTimeSeries, self).__getattribute__(name)
 
     def select_by_mask(self, mask: np.ndarray):
-        assert mask.ndim == 1, f"mask must be 1D, got {mask.ndim}D mask"
-        assert mask.dtype == bool, f"mask must be boolean, got {mask.dtype}"
+        r"""Index all arrays with a boolean mask and return a copy.
 
-        first_dim = self._maybe_first_dim()
-        if mask.shape[0] != first_dim:
-            raise ValueError(
-                f"mask length {mask.shape[0]} does not match first dimension of arrays "
-                f"({first_dim})."
-            )
+        Lazy attributes will remain lazy, and masking will be applied
+        to them upon access.
 
-        # make a copy
+        Args:
+            mask: Boolean array used for masking. The mask needs to be 1-dimensional,
+                and of equal length as the object itself.
+        """
+
+        _validate_select_by_mask_input(mask, len(self))
+
         out = self.__class__.__new__(self.__class__)
-        out._unicode_keys = self._unicode_keys
-        out._timekeys = self._timekeys
-        out._domain = self._domain
-        out._lazy_ops = {}
-
-        for key in self.keys():
-            value = self.__dict__[key]
-            if isinstance(value, h5py.Dataset):
+        for key, value in self.__dict__.items():
+            if key.startswith("_"):
+                out.__dict__[key] = copy.deepcopy(value)
+            elif isinstance(value, h5py.Dataset):
+                # mask will be applied lazily on attribute access via _lazy_ops
                 out.__dict__[key] = value
-            else:
+            elif isinstance(value, np.ndarray):
                 out.__dict__[key] = value[mask].copy()
+            else:
+                raise RuntimeError(  # pragma: no cover
+                    "Unknown state! Object has a non-private attribute that is neither "
+                    "a np.ndarray, nor an h5py.Dataset"
+                )
 
-        # store the mask operation in _lazy_ops for differed execution of attributes
-        # that are not yet loaded
-        if "mask" not in self._lazy_ops:
-            out._lazy_ops["mask"] = mask
+        # combine mask with any pre-existing lazy mask
+        if "mask" not in out._lazy_ops:
+            out._lazy_ops["mask"] = mask.copy()
         else:
-            # if a mask already exists, it is easy to combine the masks
-            out._lazy_ops["mask"] = self._lazy_ops["mask"].copy()
+            out._lazy_ops["mask"] = out._lazy_ops["mask"].copy()
             out._lazy_ops["mask"][out._lazy_ops["mask"]] = mask
 
-        if "slice" in self._lazy_ops:
-            out._lazy_ops["slice"] = self._lazy_ops["slice"]
-
+        # Masking an un-sorted array can make it sorted
+        out._sorted = True if self._sorted is True else None
         return out
 
     def _resolve_timestamps_after_slice(self):

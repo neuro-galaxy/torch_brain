@@ -8,7 +8,7 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from .utils import _size_repr
+from .utils import _size_repr, _validate_select_by_mask_input
 
 
 class ArrayDict(object):
@@ -99,15 +99,12 @@ class ArrayDict(object):
         info = ",\n".join(info)
         return f"{cls}(\n{info}\n)"
 
-    def select_by_mask(self, mask: np.ndarray, **kwargs):
-        r"""Return a new :obj:`ArrayDict` object where all array attributes are indexed
-        using the boolean mask.
+    def select_by_mask(self, mask: np.ndarray):
+        r"""Index all arrays with a boolean mask and return a copy.
 
         Args:
             mask: Boolean array used for masking. The mask needs to be 1-dimensional,
-                and of equal length as the first dimension of the :obj:`ArrayDict`.
-            **kwargs: Private attributes that will not be masked will need to be passed
-                as arguments.
+                and of equal length as the object itself.
 
         Example ::
 
@@ -129,21 +126,16 @@ class ArrayDict(object):
             )
 
         """
-        assert mask.ndim == 1, f"mask must be 1D, got {mask.ndim}D mask"
-        assert mask.dtype == bool, f"mask must be boolean, got {mask.dtype}"
+        _validate_select_by_mask_input(mask, len(self))
 
-        first_dim = self._maybe_first_dim()
-        if mask.shape[0] != first_dim:
-            raise ValueError(
-                f"mask length {mask.shape[0]} does not match first dimension of arrays "
-                f"({first_dim})."
-            )
+        out = self.__class__.__new__(self.__class__)
+        for key, value in self.__dict__.items():
+            if key.startswith("_"):
+                out.__dict__[key] = copy.deepcopy(value)
+            else:
+                out.__dict__[key] = value[mask].copy()
 
-        # kwargs are other private attributes
-        # TODO automatically add private attributes
-        return self.__class__(
-            **{k: getattr(self, k)[mask].copy() for k in self.keys()}, **kwargs
-        )
+        return out
 
     @classmethod
     def from_dataframe(cls, df, unsigned_to_long=True, **kwargs):
@@ -340,8 +332,13 @@ class LazyArrayDict(ArrayDict):
         array as well as apply any outstanding masks.
     """
 
-    _lazy_ops = dict()
-    _unicode_keys = []
+    _lazy_ops: dict
+    _unicode_keys: list[str]
+
+    def __init__(self, **kwargs):
+        raise NotImplementedError(
+            f"{self.__class__.__name__} cannot be constructed directly; use from_hdf5."
+        )
 
     def _maybe_first_dim(self):
         if len(self.keys()) == 0:
@@ -394,39 +391,38 @@ class LazyArrayDict(ArrayDict):
         return super(LazyArrayDict, self).__getattribute__(name)
 
     def select_by_mask(self, mask: np.ndarray):
-        assert mask.ndim == 1, f"mask must be 1D, got {mask.ndim}D mask"
-        assert mask.dtype == bool, f"mask must be boolean, got {mask.dtype}"
+        r"""Index all arrays with a boolean mask and return a copy.
 
-        first_dim = self._maybe_first_dim()
-        if mask.shape[0] != first_dim:
-            raise ValueError(
-                f"mask length {mask.shape[0]} does not match first dimension of arrays "
-                f"({first_dim})."
-            )
+        Lazy attributes will remain lazy, and masking will be applied
+        to them upon access.
 
-        # make a copy
+        Args:
+            mask: Boolean array used for masking. The mask needs to be 1-dimensional,
+                and of equal length as the object itself.
+        """
+
+        _validate_select_by_mask_input(mask, len(self))
+
         out = self.__class__.__new__(self.__class__)
-        # private attributes
-        out._unicode_keys = self._unicode_keys
-        out._lazy_ops = {}
-
-        # array attributes
-        for key in self.keys():
-            value = self.__dict__[key]
-            if isinstance(value, h5py.Dataset):
-                # the mask will be applied when the getattr is called for this key
-                # the details of the mask operation are stored in _lazy_ops
+        for key, value in self.__dict__.items():
+            if key.startswith("_"):
+                out.__dict__[key] = copy.deepcopy(value)
+            elif isinstance(value, h5py.Dataset):
+                # mask will be applied lazily on attribute access via _lazy_ops
                 out.__dict__[key] = value
-            else:
-                # this is a numpy array that is already loaded in memory, apply the mask
+            elif isinstance(value, np.ndarray):
                 out.__dict__[key] = value[mask].copy()
+            else:
+                raise RuntimeError(  # pragma: no cover
+                    "Unknown state! Object has a non-private attribute that is neither "
+                    "a np.ndarray, nor an h5py.Dataset"
+                )
 
-        # store the mask operation in _lazy_ops for differed execution
-        if "mask" not in self._lazy_ops:
-            out._lazy_ops["mask"] = mask
+        # combine mask with any pre-existing lazy mask
+        if "mask" not in out._lazy_ops:
+            out._lazy_ops["mask"] = mask.copy()
         else:
-            # if a mask was already applied, we need to combine the masks
-            out._lazy_ops["mask"] = self._lazy_ops["mask"].copy()
+            out._lazy_ops["mask"] = out._lazy_ops["mask"].copy()
             out._lazy_ops["mask"][out._lazy_ops["mask"]] = mask
 
         return out

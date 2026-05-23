@@ -247,6 +247,45 @@ def test_lazy_interval(test_filepath):
         assert np.allclose(data.start, np.array([0, 3]))
 
 
+def test_interval_select_by_mask_preserves_private_attrs():
+    data = Interval(
+        start=np.array([0.0, 1.0, 2.0]),
+        end=np.array([1.0, 2.0, 3.0]),
+        go_cue_time=np.array([0.5, 1.5, 2.5]),
+        timekeys=["start", "end", "go_cue_time"],
+    )
+    assert data.is_sorted()
+
+    result = data.select_by_mask(np.array([True, False, True]))
+
+    assert result.timekeys() == ["start", "end", "go_cue_time"]
+    assert result._sorted is True
+
+
+def test_lazy_interval_select_by_mask_preserves_private_attrs(test_filepath):
+    # `select_by_mask` on a Lazy object must auto-propagate private attrs set
+    # by from_hdf5 (e.g. `_sorted`), not just the hand-listed ones.
+    data = Interval(
+        start=np.array([0.0, 1.0, 2.0]),
+        end=np.array([1.0, 2.0, 3.0]),
+        go_cue_time=np.array([0.5, 1.5, 2.5]),
+        timekeys=["start", "end", "go_cue_time"],
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyInterval.from_hdf5(f)
+        assert data._sorted is True
+
+        mask = np.array([True, False, True])
+        result = data.select_by_mask(mask)
+
+        assert result._sorted is True
+        assert result.timekeys() == ["start", "end", "go_cue_time"]
+
+
 def test_interval_select_by_interval():
     data = Interval(
         start=np.array([0.0, 1, 2]),

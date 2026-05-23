@@ -324,6 +324,51 @@ def test_lazy_irregular_timeseries(test_filepath):
         assert np.allclose(data.values, np.array([1, 3]))
 
 
+def test_irregular_select_by_mask_preserves_private_attrs():
+    data = IrregularTimeSeries(
+        unit_index=np.array([0, 0, 1, 0, 1, 2]),
+        timestamps=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        go_cue_time=np.array([0.15, 0.25, 0.35, 0.45, 0.55, 0.65]),
+        timekeys=["timestamps", "go_cue_time"],
+        domain=Interval(0, 1),
+    )
+    assert data.is_sorted()
+
+    result = data.select_by_mask(data.unit_index != 1)
+
+    assert result.timekeys() == ["timestamps", "go_cue_time"]
+    assert result._sorted is True
+    assert np.array_equal(result.domain.start, data.domain.start)
+    assert np.array_equal(result.domain.end, data.domain.end)
+
+
+def test_lazy_irregular_select_by_mask_preserves_private_attrs(test_filepath):
+    # `select_by_mask` on a Lazy object must auto-propagate private attrs set
+    # by from_hdf5 (e.g. `_sorted`), not just the hand-listed ones.
+    data = IrregularTimeSeries(
+        unit_index=np.array([0, 0, 1, 0, 1, 2]),
+        timestamps=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        go_cue_time=np.array([0.15, 0.25, 0.35, 0.45, 0.55, 0.65]),
+        timekeys=["timestamps", "go_cue_time"],
+        domain=Interval(0, 1),
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyIrregularTimeSeries.from_hdf5(f)
+        assert data._sorted is True
+
+        mask = data.unit_index != 1
+        result = data.select_by_mask(mask)
+
+        assert result._sorted is True
+        assert result.timekeys() == ["timestamps", "go_cue_time"]
+        assert np.array_equal(result.domain.start, data.domain.start)
+        assert np.array_equal(result.domain.end, data.domain.end)
+
+
 def test_irregular_set_domain():
     data = IrregularTimeSeries(
         unit_index=np.array([0, 0, 1, 0, 1, 2]),

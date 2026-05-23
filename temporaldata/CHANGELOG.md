@@ -8,10 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 ### Fixed
+- Fixed `LazyInterval.select_by_mask()` and `LazyIrregularTimeSeries.select_by_mask()` dropping non-hardcoded private attributes (e.g. `_sorted`) from the result ([#121](https://github.com/neuro-galaxy/temporaldata/pull/121))
 
 ### Changed
+- `select_by_mask()` now raises `ValueError` instead of `AssertionError` on invalid mask shape/dtype/length ([#121](https://github.com/neuro-galaxy/temporaldata/pull/121))
 
 ### Removed
+- `ArrayDict.select_by_mask()`: removed `**kwargs` input parameter (was meant for internal use) ([#121](https://github.com/neuro-galaxy/temporaldata/pull/121))
 
 
 ## [0.1.5] - 2026-05-23
