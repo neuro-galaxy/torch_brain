@@ -5,6 +5,7 @@ from . import models
 from . import utils
 from . import transforms
 from . import registry
+from . import samplers
 
 from .registry import register_modality, get_modality_by_id, MODALITY_REGISTRY
 

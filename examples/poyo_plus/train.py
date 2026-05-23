@@ -17,7 +17,7 @@ from temporaldata import Data
 from torch.utils.data import DataLoader
 
 from torch_brain.data import Dataset, collate
-from torch_brain.data.sampler import (
+from torch_brain.samplers import (
     DistributedStitchingFixedWindowSampler,
     RandomFixedWindowSampler,
 )

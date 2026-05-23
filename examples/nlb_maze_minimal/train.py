@@ -8,7 +8,7 @@ from sklearn.metrics import r2_score
 
 from temporaldata import Interval
 from torch_brain.utils import bin_spikes
-from torch_brain.data.sampler import TrialSampler
+from torch_brain.samplers import TrialSampler
 from torch_brain.dataset import DatasetIndex
 from brainsets.datasets import PeiPandarinathNLB2021
 

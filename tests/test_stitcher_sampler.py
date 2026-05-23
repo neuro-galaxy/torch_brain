@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from temporaldata import Interval
 
-from torch_brain.data.sampler import DistributedStitchingFixedWindowSampler
+from torch_brain.samplers import DistributedStitchingFixedWindowSampler
 
 
 def test_distributed_stitching_sampler():
