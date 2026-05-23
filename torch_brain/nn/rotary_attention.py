@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
@@ -11,8 +9,6 @@ except ImportError:
 
 
 from torch_brain.nn import RotaryTimeEmbedding
-
-# TODO unformize the notation in the shapes with Pytorch convention (Maj)
 
 
 class RotaryCrossAttention(nn.Module):
@@ -33,20 +29,20 @@ class RotaryCrossAttention(nn.Module):
       padding, but requires the sequences to be concatenated rather than stacked.
 
     Args:
-        dim (int): Dimension of input query embeddings
-        context_dim (Optional[int]): Dimension of input context embeddings. If None, uses same as dim
-        heads (int): Number of attention heads
-        dim_head (int): Dimension of each attention head
-        dropout (float): Dropout probability
-        rotate_value (bool): Whether to apply rotary embeddings to values as well as queries/keys
-        use_xformers (bool): Whether to use xformers for attention. Defaults to True.
+        dim: Dimension of input query embeddings
+        context_dim: Dimension of input context embeddings. If None, uses same as dim
+        heads: Number of attention heads
+        dim_head: Dimension of each attention head
+        dropout: Dropout probability
+        rotate_value: Whether to apply rotary embeddings to values as well as queries/keys
+        use_xformers: Whether to use xformers for attention. Defaults to True.
     """
 
     def __init__(
         self,
         *,
         dim: int,
-        context_dim: Optional[int] = None,
+        context_dim: int | None = None,
         heads: int = 8,
         dim_head: int = 64,
         dropout: float = 0.0,
@@ -71,11 +67,11 @@ class RotaryCrossAttention(nn.Module):
 
     def forward(
         self,
-        x_query,
-        x_context,
-        query_pos_emb,
-        context_pos_emb,
-        context_mask=None,
+        x_query: torch.Tensor,
+        x_context: torch.Tensor,
+        query_pos_emb: torch.Tensor,
+        context_pos_emb: torch.Tensor,
+        context_mask: torch.Tensor | None = None,
     ):
         """Forward pass for regular or padded sequences.
 
@@ -131,12 +127,12 @@ class RotaryCrossAttention(nn.Module):
 
     def forward_varlen(
         self,
-        x_query,
-        x_context,
-        query_pos_emb,
-        context_pos_emb,
-        query_seqlen,
-        context_seqlen,
+        x_query: torch.Tensor,
+        x_context: torch.Tensor,
+        query_pos_emb: torch.Tensor,
+        context_pos_emb: torch.Tensor,
+        query_seqlen: torch.Tensor,
+        context_seqlen: torch.Tensor,
     ):
         """Forward pass for variable length sequences.
 
@@ -214,12 +210,12 @@ class RotarySelfAttention(nn.Module):
       padding, but requires the sequences to be concatenated rather than stacked.
 
     Args:
-        dim (int): Dimension of input embeddings
-        heads (int): Number of attention heads
-        dim_head (int): Dimension of each attention head
-        dropout (float): Dropout probability
-        rotate_value (bool): Whether to apply rotary embeddings to values as well as queries/keys
-        use_xformers (bool): Whether to use xformers for attention. Defaults to True.
+        dim: Dimension of input embeddings
+        heads: Number of attention heads
+        dim_head: Dimension of each attention head
+        dropout: Dropout probability
+        rotate_value: Whether to apply rotary embeddings to values as well as queries/keys
+        use_xformers: Whether to use xformers for attention. Defaults to True.
     """
 
     def __init__(
@@ -247,9 +243,9 @@ class RotarySelfAttention(nn.Module):
 
     def forward(
         self,
-        x,
-        rotary_time_emb,
-        x_mask=None,
+        x: torch.Tensor,
+        rotary_time_emb: torch.Tensor,
+        x_mask: torch.Tensor | None = None,
     ):
         """Forward pass for fixed-length sequences.
 
@@ -293,9 +289,9 @@ class RotarySelfAttention(nn.Module):
 
     def forward_varlen(
         self,
-        x,
-        rotary_time_emb,
-        x_seqlen,
+        x: torch.Tensor,
+        rotary_time_emb: torch.Tensor,
+        x_seqlen: torch.Tensor,
     ):
         """Forward pass for variable-length sequences.
 
@@ -346,12 +342,12 @@ class RotarySelfAttention(nn.Module):
 
 def rotary_attn_pytorch_func(
     *,
-    query,
-    key,
-    value,
-    q_pos_emb,
-    kv_pos_emb,
-    attn_mask=None,
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    q_pos_emb: torch.Tensor,
+    kv_pos_emb: torch.Tensor,
+    attn_mask: torch.Tensor | None = None,
     num_heads: int,
     dropout_p: float,
     rotate_value: bool,
@@ -364,22 +360,22 @@ def rotary_attn_pytorch_func(
     r"""Wraps the default attention implementation with rotary embedding application.
 
     Args:
-        query: The query tensor, with shape (b, n_q, (h d))
-        key: The key tensor, with shape (b, n_kv, (h d))
-        value: The value tensor, with shape (b, n_kv, (h d))
-        q_pos_emb: The query rotary position embedding, with shape (b, n_q, d)
-        kv_pos_emb: The key rotary position embedding, with shape (b, n_kv, d)
+        query: The query tensor, with shape (B, N_q, (H D))
+        key: The key tensor, with shape (B, N_kv, (H D))
+        value: The value tensor, with shape (B, N_kv, (H D))
+        q_pos_emb: The query rotary position embedding, with shape (B, N_q, D)
+        kv_pos_emb: The key rotary position embedding, with shape (B, N_kv, D)
         num_heads: The number of attention heads
         dropout_p: The dropout probability
         rotate_value: Whether to rotate the value in addition to the query and key
-        attn_mask: The attention mask, with shape (b, n_kv)
+        attn_mask: The attention mask, with shape (B, N_kv)
 
     Returns:
-        The output tensor, with shape (b, n_q, (h d))
+        The output tensor, with shape (B, N_q, (H D))
     """
 
-    # default attention expects shape b h n d
-    # (b, n, h*d) -> (b, n, h, d) -> (b, h, n, d)
+    # default attention expects shape B H N D
+    # (B, N, H*D) -> (B, N, H, D) -> (B, H, N, D)
     query = query.unflatten(-1, (num_heads, -1)).permute(0, 2, 1, 3)
     key = key.unflatten(-1, (num_heads, -1)).permute(0, 2, 1, 3)
     value = value.unflatten(-1, (num_heads, -1)).permute(0, 2, 1, 3)
@@ -394,7 +390,7 @@ def rotary_attn_pytorch_func(
 
     # attention mask
     if attn_mask is not None:
-        attn_mask = attn_mask[:, None, None, :]  # (b, n) -> (b, 1, 1, n)
+        attn_mask = attn_mask[:, None, None, :]  # (B, N) -> (B, 1, 1, N)
 
     # perform attention, by default will use the optimal attention implementation
     out = F.scaled_dot_product_attention(
@@ -412,19 +408,19 @@ def rotary_attn_pytorch_func(
             unsqueeze_dim=1,
         )
 
-    # (b, h, n, d) -> (b, n, h, d) -> (b, n, h*d)
+    # (B, H, N, D) -> (B, N, H, D) -> (B, N, H*D)
     out = out.permute(0, 2, 1, 3).flatten(-2)
     return out
 
 
 def rotary_attn_xformers_func(
     *,
-    query,
-    key,
-    value,
-    q_pos_emb,
-    kv_pos_emb,
-    attn_mask=None,
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    q_pos_emb: torch.Tensor,
+    kv_pos_emb: torch.Tensor,
+    attn_mask: torch.Tensor | None = None,
     num_heads: int,
     dropout_p: float,
     rotate_value: bool,
@@ -433,22 +429,22 @@ def rotary_attn_xformers_func(
     application.
 
     Args:
-        query: The query tensor, with shape (b n (h d))
-        key: The key tensor, with shape (b n (h d))
-        value: The value tensor, with shape (b n (h d))
-        q_pos_emb: The query rotary position embedding, with shape (b n d)
-        kv_pos_emb: The key rotary position embedding, with shape (b n d)
-        attn_mask: The attention mask, with shape (b, n_kv). A value of True indicates
+        query: The query tensor, with shape (B N (H D))
+        key: The key tensor, with shape (B N (H D))
+        value: The value tensor, with shape (B N (H D))
+        q_pos_emb: The query rotary position embedding, with shape (B N D)
+        kv_pos_emb: The key rotary position embedding, with shape (B N D)
+        attn_mask: The attention mask, with shape B, N_kv). A value of True indicates
             that the element should take part in attention.
         num_heads: The number of attention heads
         dropout_p: The dropout probability
         rotate_value: Whether to rotate the value in addition to the query and key
 
     Returns:
-        The output tensor, with shape (b n (h d))
+        The output tensor, with shape (B N (H D))
     """
-    # xformers attention expects shape (b, n, h, d)
-    query = query.unflatten(-1, (num_heads, -1))  # (b, n, h*d) -> (b, n, h, d)
+    # xformers attention expects shape (B, N, H, D)
+    query = query.unflatten(-1, (num_heads, -1))  # (B, N, H*D) -> (B, N, H, D)
     key = key.unflatten(-1, (num_heads, -1))
     value = value.unflatten(-1, (num_heads, -1))
 
@@ -465,7 +461,7 @@ def rotary_attn_xformers_func(
     attn_mask = (
         attn_mask[:, None, None, :].expand(
             -1, num_heads, query.size(1), -1
-        )  # (b, m) -> (b, h, n, m)
+        )  # (B, M) -> (B, H, N, M)
         if attn_mask is not None
         else None
     )
@@ -490,19 +486,19 @@ def rotary_attn_xformers_func(
             unsqueeze_dim=2,
         )
 
-    out = out.flatten(-2)  # (b, n, h, d) -> (b, n, h*d)
+    out = out.flatten(-2)  # (B, N, H, D) -> (B, N, H*D)
     return out
 
 
 def rotary_attn_xformers_varlen_func(
     *,
-    query,
-    key,
-    value,
-    q_pos_emb,
-    kv_pos_emb,
-    q_seqlen,
-    kv_seqlen,
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    q_pos_emb: torch.Tensor,
+    kv_pos_emb: torch.Tensor,
+    q_seqlen: torch.Tensor,
+    kv_seqlen: torch.Tensor | None,
     num_heads: int,
     dropout_p: float,
     rotate_value: bool,
@@ -511,11 +507,11 @@ def rotary_attn_xformers_varlen_func(
     application.
 
     Args:
-        query: The query tensor, with shape (n, (h d))
-        key: The key tensor, with shape (n, (h d))
-        value: The value tensor, with shape (n, (h d))
-        query_pos_emb: The query rotary position embedding, with shape (n, d)
-        key_pos_emb: The key rotary position embedding, with shape (n, d)
+        query: The query tensor, with shape (N, (H D))
+        key: The key tensor, with shape (N, (H D))
+        value: The value tensor, with shape (N, (H D))
+        query_pos_emb: The query rotary position embedding, with shape (N, D)
+        key_pos_emb: The key rotary position embedding, with shape (N, D)
         num_heads: The number of attention heads
         dropout_p: The dropout probability
         rotate_value: Whether to rotate the value in addition to the query and key
@@ -523,10 +519,10 @@ def rotary_attn_xformers_varlen_func(
         kv_seqlen: The sequence length of the key and value tensors
 
     Returns:
-        The output tensor, with shape (n, (h d))
+        The output tensor, with shape (N, (H D))
     """
-    # xformers attention expects shape (1, n, h, d)
-    # (n, h*d) -> (1, n, h, d)
+    # xformers attention expects shape (1, N, H, D)
+    # (N, H*D) -> (1, N, H, D)
     query = query.unflatten(-1, (num_heads, -1)).unsqueeze(0)
     key = key.unflatten(-1, (num_heads, -1)).unsqueeze(0)
     value = value.unflatten(-1, (num_heads, -1)).unsqueeze(0)
@@ -564,5 +560,5 @@ def rotary_attn_xformers_varlen_func(
             rotary_emb=RotaryTimeEmbedding.invert(q_pos_emb).unsqueeze(0),
         )
 
-    out = out.squeeze(0).flatten(-2)  # (1, n, h, d) -> (n, h*d)
+    out = out.squeeze(0).flatten(-2)  # (1, N, H, D) -> (N, H*D)
     return out
