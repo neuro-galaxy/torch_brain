@@ -158,7 +158,7 @@ class DecodingStitchEvaluator(L.Callback):
     Since the stitching is done only on tensors on the same GPU, sequences that are
     split across multiple GPUs will not be stitched together. In this case, it is
     recommended to use a stitching-aware sampler like
-    :class:`~torch_brain.sampler.DistributedStitchingFixedWindowSampler`
+    :class:`~torch_brain.samplers.DistributedStitchingFixedWindowSampler`
     which ensures that the sequences are split across GPUs in a way that allows for
     correct stitching.
 
