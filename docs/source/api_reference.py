@@ -60,7 +60,7 @@ is not a particular submodule does the hook become useful.
 API_MODS = [
     "torch_brain.dataset",
     "torch_brain.data",
-    "torch_brain.sampler",
+    "torch_brain.samplers",
     "torch_brain.transforms",
     "torch_brain.nn",
     "torch_brain.models",

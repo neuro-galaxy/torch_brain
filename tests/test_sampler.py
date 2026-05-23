@@ -5,7 +5,7 @@ import torch
 
 from temporaldata import Interval
 
-from torch_brain.sampler import (
+from torch_brain.samplers import (
     SequentialFixedWindowSampler,
     RandomFixedWindowSampler,
     TrialSampler,

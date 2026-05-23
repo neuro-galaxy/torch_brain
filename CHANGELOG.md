@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added `BinSpikes` transform ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 - Added public weights for `CalciumPOYOPlus` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
 - Added per-task average metric logging in `MultiTaskDecodingStitchEvaluator` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
-- Added `torch_brain.sampler` module with dedicated sampler classes moved out of `torch_brain.data.sampler`: `RandomFixedWindowSampler`,`SequentialFixedWindowSampler`, `TrialSampler`, `DistributedEvaluationSamplerWrapper`, and  `DistributedStitchingFixedWindowSampler` ([#217](https://github.com/neuro-galaxy/torch_brain/pull/217))
+- Added `torch_brain.samplers` module with dedicated sampler classes moved out of `torch_brain.data.sampler`: `RandomFixedWindowSampler`,`SequentialFixedWindowSampler`, `TrialSampler`, `DistributedEvaluationSamplerWrapper`, and  `DistributedStitchingFixedWindowSampler` ([#217](https://github.com/neuro-galaxy/torch_brain/pull/217))
 
 ### Removed
 - Removed `torch_brain.utils.prepare_for_readout` (unused) ([#218](https://github.com/neuro-galaxy/torch_brain/pull/218))

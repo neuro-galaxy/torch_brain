@@ -51,7 +51,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
 
         >>> import numpy as np
         >>> from temporaldata import Interval
-        >>> from torch_brain.sampler import DistributedStitchingFixedWindowSampler
+        >>> from torch_brain.samplers import DistributedStitchingFixedWindowSampler
 
         >>> sampling_intervals = {
         ...     "session_1": Interval(start=np.array([0.0]), end=np.array([100.0])),

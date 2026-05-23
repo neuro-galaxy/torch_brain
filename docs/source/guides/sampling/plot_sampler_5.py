@@ -8,7 +8,7 @@ from bokeh.layouts import layout
 from omegaconf import OmegaConf
 
 from torch_brain.data import Dataset
-from torch_brain.sampler import RandomFixedWindowSampler
+from torch_brain.samplers import RandomFixedWindowSampler
 
 from _utils import download_file_from_s3
 

@@ -30,7 +30,7 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
 
         >>> from temporaldata import Interval
         >>> import numpy as np
-        >>> from torch_brain.sampler import TrialSampler
+        >>> from torch_brain.samplers import TrialSampler
 
         >>> sampling_intervals = {
         ...     "session_1": Interval(
