@@ -42,6 +42,7 @@ docs = [
     "sphinx",
     "pydata-sphinx-theme",
     "myst-parser",
+    "myst-nb",
     "sphinx-autodoc-typehints",
     "sphinx-inline-tabs",
     "sphinx-rtd-theme",
