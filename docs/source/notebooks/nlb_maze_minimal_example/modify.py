@@ -12,7 +12,7 @@ def main():
     dest.parent.mkdir(parents=True, exist_ok=True)
 
     colab_path = (
-        "https://colab.research.google.com/github/neuro-galaxy/torch_brain/tree/main/"
+        "https://colab.research.google.com/github/neuro-galaxy/torch_brain/blob/main/"
         "docs/source/notebooks/nlb_maze_minimal_example/nlb_maze_minimal_example.ipynb"
     )
 
