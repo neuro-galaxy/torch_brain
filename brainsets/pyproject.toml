@@ -7,7 +7,7 @@ name = "brainsets"
 dynamic = ["version"]
 description = "A package for processing neural datasets"
 readme = "README.md"
-authors = [{ name = "Mehdi Azabou", email = "mehdiazabou@gmail.com" }]
+authors = [{ name = "TorchBrain Team", email = "contact@torchbrain.org" }]
 license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
