@@ -1,7 +1,7 @@
 # Minimal Training Example on NLB Maze
 
 > [!TIP]
-> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/neuro-galaxy/torch_brain/tree/main/docs/source/notebooks/nlb_maze_minimal_example/nlb_maze_minimal_example.ipynb)
+> [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/neuro-galaxy/torch_brain/blob/main/docs/source/notebooks/nlb_maze_minimal_example/nlb_maze_minimal_example.ipynb)
 > <br/>
 > Follow along this tutorial in a notebook on Google Colab.
 > The notebook includes visualizations of the data and model predictions.
