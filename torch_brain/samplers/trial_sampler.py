@@ -23,7 +23,7 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
         shuffle: If ``False`` (default), trials are yielded in the order they appear in
             :obj:`sampling_intervals`.
             If ``True``, trials are yielded in a randomly shuffled order.
-        generator (Optional[torch.Generator]): Optional RNG used when
+        generator: Optional RNG used when
             :obj:`shuffle=True`. If ``None`` (default), uses the default global PyTorch generator.
 
     Example::

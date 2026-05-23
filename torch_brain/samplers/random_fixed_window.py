@@ -26,7 +26,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
         N = \left\lfloor\frac{L}{\text{window_length}}\right\rfloor
 
     Args:
-        sampling_intervals (Dict[str, Interval]): Sampling intervals for each session.
+        sampling_intervals: Sampling intervals for each session.
             Typically obtained from
             :meth:`~torch_brain.dataset.Dataset.get_sampling_intervals`.
         window_length: Duration of each sampled window in seconds.

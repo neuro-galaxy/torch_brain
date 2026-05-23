@@ -58,7 +58,7 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
         sampling_intervals: Dict[str, Interval],
         window_length: float,
         step: float | None = None,
-        drop_short=False,
+        drop_short: bool = False,
     ):
         self.sampling_intervals = sampling_intervals
         self.window_length = window_length
