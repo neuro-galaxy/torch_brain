@@ -55,6 +55,11 @@ jobs:
         source venv/bin/activate
         brainsets config --raw-dir data/raw --processed-dir data/processed
         brainsets prepare pei_pandarinath_nlb_2021
+    - name: Test NLB minimal example
+      run: |
+        source venv/bin/activate
+        uv pip install scikit-learn
+        python examples/nlb_maze_minimal/train.py --model Linear --epochs 1
     - name: Train a POYO model
       run: |
         source venv/bin/activate

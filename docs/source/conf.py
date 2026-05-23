@@ -14,7 +14,6 @@ project = "torch_brain"
 version = torch_brain.__version__
 copyright = f"{datetime.datetime.now().year}, {author}"
 
-import nlb_maze_notebook
 
 extensions = [
     "sphinx.ext.autodoc",
@@ -112,9 +111,10 @@ Path("generated/css/").mkdir(exist_ok=True, parents=True)
 
 
 from api_reference import build_api_rst
+import notebooks.nlb_maze_minimal_example.modify
 
 build_api_rst()
-nlb_maze_notebook.fetch_notebook()
+notebooks.nlb_maze_minimal_example.modify.main()
 
 
 def add_js_css_files(app, pagename, templatename, context, doctree):

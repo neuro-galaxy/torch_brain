@@ -4,4 +4,4 @@ Examples
 .. toctree::
    :maxdepth: 1
 
-   ../../generated/nlb_maze_train
+   ../../generated/notebooks/nlb_maze_minimal_example.ipynb

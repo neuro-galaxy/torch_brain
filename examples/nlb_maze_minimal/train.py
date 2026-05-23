@@ -40,6 +40,10 @@ class SimpleNLBMazeDataset(PeiPandarinathNLB2021):
         # We just want to load the maze_train session
         super().__init__(root=root, recording_ids=["jenkins_maze_train"])
 
+        # This recording only specificies train and validation set
+        # and the test set is kept hidden for online evaluation
+        assert split in ("train", "val")
+
         # store some attributes that are useful later
         self.split = split
         self.bin_size = bin_size
