@@ -6,3 +6,4 @@ User Guide
 
    installation
    sampling/index
+   examples/index
