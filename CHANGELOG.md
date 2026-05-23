@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added `BinSpikes` transform ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 - Added public weights for `CalciumPOYOPlus` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
 - Added per-task average metric logging in `MultiTaskDecodingStitchEvaluator` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
+- Added `torch_brain.samplers` module with dedicated sampler classes moved out of `torch_brain.data.sampler`: `RandomFixedWindowSampler`,`SequentialFixedWindowSampler`, `TrialSampler`, `DistributedEvaluationSamplerWrapper`, and  `DistributedStitchingFixedWindowSampler` ([#217](https://github.com/neuro-galaxy/torch_brain/pull/217))
 
 ### Removed
 - Removed `torch_brain.utils.prepare_for_readout` (unused) ([#218](https://github.com/neuro-galaxy/torch_brain/pull/218))
@@ -32,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Fixed
 - Fixed `MultiTaskDecodingStitchEvaluator` caching predictions under the wrong sequence index when batch samples have non-overlapping readout types. ([#175](https://github.com/neuro-galaxy/torch_brain/pull/175))
+- Fixed `DistributedEvaluationSamplerWrapper.rank_len()` returning the wrong count when the total number of samples is not evenly divisible by the number of replicas. The condition `(total % num_replicas) < rank` was inverted; it is now correctly `rank < (total % num_replicas)`, matching the strided interleaving used in `__iter__`. ([#217](https://github.com/neuro-galaxy/torch_brain/pull/217))
 
 
 ## [0.1.1] - 2026-03-01

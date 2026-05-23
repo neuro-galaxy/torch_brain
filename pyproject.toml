@@ -67,5 +67,6 @@ packages = [
     "torch_brain.nn",
     "torch_brain.models",
     "torch_brain.utils",
+    "torch_brain.samplers",
     "torch_brain.transforms",
 ]
