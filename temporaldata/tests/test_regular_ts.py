@@ -352,3 +352,250 @@ def test_slice_outside_domain(test_filepath):
     with h5py.File(test_filepath, "r") as f:
         lazy_ts = LazyRegularTimeSeries.from_hdf5(f)
         _assert_slice_outside_domain(lazy_ts)
+
+
+class TestFromGappyTimeseries:
+    def test_basic(self):
+        # 5 grid points at 100Hz, the 0.02s sample is missing.
+        ts = np.array([0.0, 0.01, 0.03, 0.04])
+        raw = np.array([1.0, 2.0, 3.0, 4.0])
+
+        rts = RegularTimeSeries.from_gappy_timeseries(ts, sampling_rate=100.0, raw=raw)
+
+        assert isinstance(rts, RegularTimeSeries)
+        assert rts.sampling_rate == 100.0
+        assert len(rts) == 5
+        np.testing.assert_array_equal(
+            np.isnan(rts.raw), [False, False, True, False, False]
+        )
+        np.testing.assert_array_equal(rts.raw[~np.isnan(rts.raw)], raw)
+        assert rts.domain.start[0] == 0.0
+        assert rts.domain.end[0] == pytest.approx(0.05)
+
+    def test_multiple_arrays_and_multidim(self):
+        ts = np.array([10.0, 10.5, 11.5])  # missing 11.0 at sr=2Hz
+        a = np.array([1.0, 2.0, 3.0])
+        b = np.arange(12).reshape(3, 4).astype(float)
+
+        rts = RegularTimeSeries.from_gappy_timeseries(ts, sampling_rate=2.0, a=a, b=b)
+
+        assert len(rts) == 4
+        np.testing.assert_array_equal(np.isnan(rts.a), [False, False, True, False])
+        assert rts.b.shape == (4, 4)
+        assert np.isnan(rts.b[2]).all()
+        np.testing.assert_array_equal(rts.b[[0, 1, 3]], b)
+        # Domain starts at timestamps[0].
+        assert rts.domain.start[0] == 10.0
+        assert rts.domain.end[0] == pytest.approx(10.0 + 4 / 2.0)
+
+    def test_integer_gap_preserves_dtype(self):
+        ts = np.array([0.0, 0.1, 0.3])  # missing 0.2 at sr=10Hz
+        vals = np.array([7, 8, 9], dtype=np.int32)
+
+        rts = RegularTimeSeries.from_gappy_timeseries(
+            ts, sampling_rate=10.0, gap_value=-1, raw=vals
+        )
+
+        assert rts.raw.dtype == np.int32
+        np.testing.assert_array_equal(rts.raw, [7, 8, -1, 9])
+
+    def test_validation(self):
+        ts = np.array([0.0, 0.1, 0.2])
+        raw = np.array([1.0, 2.0, 3.0])
+
+        with pytest.raises(ValueError, match="numpy array"):
+            RegularTimeSeries.from_gappy_timeseries(
+                [0, 1, 2],  # ty:ignore[invalid-argument-type]
+                sampling_rate=10.0,
+                raw=raw,
+            )
+
+        with pytest.raises(ValueError, match="1-D"):
+            RegularTimeSeries.from_gappy_timeseries(
+                ts.reshape(-1, 1), sampling_rate=10.0, raw=raw
+            )
+
+        with pytest.raises(ValueError, match="at least 2"):
+            RegularTimeSeries.from_gappy_timeseries(
+                np.array([0.0]), sampling_rate=10.0, raw=np.array([1.0])
+            )
+
+        with pytest.raises(ValueError, match="strictly increasing"):
+            RegularTimeSeries.from_gappy_timeseries(
+                np.array([0.0, 0.0, 0.1]),
+                sampling_rate=10.0,
+                raw=np.array([1.0, 2.0, 3.0]),
+            )
+
+        # timestamps off the grid beyond rtol.
+        with pytest.raises(ValueError, match="deviate from a regular grid"):
+            RegularTimeSeries.from_gappy_timeseries(
+                np.array([0.0, 0.1, 0.205]),
+                sampling_rate=10.0,
+                raw=raw,
+            )
+
+        # sub-sample-spaced (two timestamps round to the same grid index).
+        # rtol relaxed so the off-grid check doesn't fire first.
+        with pytest.raises(ValueError, match="duplicate or sub-sample-spaced"):
+            RegularTimeSeries.from_gappy_timeseries(
+                np.array([0.0, 0.04, 0.1]),
+                sampling_rate=10.0,
+                rtol=0.5,
+                raw=raw,
+            )
+
+        # mismatched length.
+        with pytest.raises(ValueError, match="length"):
+            RegularTimeSeries.from_gappy_timeseries(
+                ts, sampling_rate=10.0, raw=np.array([1.0, 2.0])
+            )
+
+        # sampling_rate too high: every gap is multiple grid steps wide.
+        # Data is truly at 10 Hz but caller passes 20 Hz.
+        with pytest.raises(ValueError, match="appears too high"):
+            RegularTimeSeries.from_gappy_timeseries(
+                np.array([0.0, 0.1, 0.2, 0.3]),
+                sampling_rate=20.0,
+                raw=np.array([1.0, 2.0, 3.0, 4.0]),
+            )
+
+    def test_default_gap_value_per_kind(self):
+        # ts has one gap (at the 0.2s grid point).
+        ts = np.array([0.0, 0.1, 0.3])
+
+        rts = RegularTimeSeries.from_gappy_timeseries(
+            ts,
+            sampling_rate=10.0,
+            f=np.array([1.0, 2.0, 3.0], dtype=np.float64),
+            i=np.array([1, 2, 3], dtype=np.int32),
+            u=np.array([1, 2, 3], dtype=np.uint8),
+            b=np.array([True, False, True], dtype=np.bool_),
+        )
+
+        # float default: nan
+        assert rts.f.dtype == np.float64
+        np.testing.assert_array_equal(np.isnan(rts.f), [False, False, True, False])
+        np.testing.assert_array_equal(rts.f[[0, 1, 3]], [1.0, 2.0, 3.0])
+
+        # signed int default: -1
+        assert rts.i.dtype == np.int32
+        np.testing.assert_array_equal(rts.i, [1, 2, -1, 3])
+
+        # unsigned int default: 0
+        assert rts.u.dtype == np.uint8
+        np.testing.assert_array_equal(rts.u, [1, 2, 0, 3])
+
+        # bool default: False
+        assert rts.b.dtype == np.bool_
+        np.testing.assert_array_equal(rts.b, [True, False, False, True])
+
+    def test_gap_value_dict_by_kind(self):
+        ts = np.array([0.0, 0.1, 0.3])
+
+        # Per-kind sentinels: signed -> -99, unsigned -> 255, float -> -1.0.
+        rts = RegularTimeSeries.from_gappy_timeseries(
+            ts,
+            sampling_rate=10.0,
+            gap_value={"i": -99, "u": 255, "f": -1.0},
+            i=np.array([1, 2, 3], dtype=np.int32),
+            u=np.array([1, 2, 3], dtype=np.uint8),
+            f=np.array([1.0, 2.0, 3.0], dtype=np.float64),
+        )
+
+        np.testing.assert_array_equal(rts.i, [1, 2, -99, 3])
+        np.testing.assert_array_equal(rts.u, [1, 2, 255, 3])
+        np.testing.assert_array_equal(rts.f, [1.0, 2.0, -1.0, 3.0])
+
+    def test_gap_value_dict_missing_kind_raises(self):
+        # Float array given, but dict only has signed/unsigned kinds.
+        with pytest.raises(KeyError, match="kind 'f'"):
+            RegularTimeSeries.from_gappy_timeseries(
+                np.array([0.0, 0.1, 0.3]),
+                sampling_rate=10.0,
+                gap_value={"i": -1, "u": 0},
+                raw=np.array([1.0, 2.0, 3.0], dtype=np.float64),
+            )
+
+    def test_default_gap_value_passes_validation(self):
+        from temporaldata.regular_ts import _DEFAULT_GAP_VALUE, _validate_gap_value_dict
+
+        _validate_gap_value_dict(_DEFAULT_GAP_VALUE)
+
+    def test_single_gap_value_validation(self):
+        ts = np.array([0.0, 0.1, 0.3])
+
+        with pytest.raises(ValueError, match="cannot be losslessly stored"):
+            RegularTimeSeries.from_gappy_timeseries(
+                ts,
+                sampling_rate=10.0,
+                gap_value=np.nan,
+                raw=np.array([1, 2, 3], dtype=int),
+            )
+
+        with pytest.raises(ValueError, match="cannot be losslessly stored"):
+            RegularTimeSeries.from_gappy_timeseries(
+                ts,
+                sampling_rate=10.0,
+                gap_value=3,
+                raw=np.array([True, False, True]),
+            )
+
+    def test_gap_value_dict_validation(self):
+        ts = np.array([0.0, 0.1, 0.3])
+        raw = np.array([1.0, 2.0, 3.0])
+
+        # Unknown key.
+        with pytest.raises(ValueError, match="unsupported key"):
+            RegularTimeSeries.from_gappy_timeseries(
+                ts, sampling_rate=10.0, gap_value={"int": -1}, raw=raw
+            )
+
+        # 'i' must be an integer, not a float.
+        with pytest.raises(ValueError, match=r"gap_value\['i'\] must be an integer"):
+            RegularTimeSeries.from_gappy_timeseries(
+                ts, sampling_rate=10.0, gap_value={"i": 2.5}, raw=raw
+            )
+
+        # 'b' must be a bool, not an int.
+        with pytest.raises(ValueError, match=r"gap_value\['b'\] must be a bool"):
+            RegularTimeSeries.from_gappy_timeseries(
+                ts, sampling_rate=10.0, gap_value={"b": 1}, raw=raw
+            )
+
+        # 'u' must be non-negative.
+        with pytest.raises(ValueError, match=r"gap_value\['u'\] must be non-negative"):
+            RegularTimeSeries.from_gappy_timeseries(
+                ts, sampling_rate=10.0, gap_value={"u": -1}, raw=raw
+            )
+
+        # 'u' must be an integer, not a float.
+        with pytest.raises(ValueError, match=r"gap_value\['u'\] must be an integer"):
+            RegularTimeSeries.from_gappy_timeseries(
+                ts, sampling_rate=10.0, gap_value={"u": 1.5}, raw=raw
+            )
+
+        # 'f' must be a number, not a bool.
+        with pytest.raises(ValueError, match=r"gap_value\['f'\] must be a number"):
+            RegularTimeSeries.from_gappy_timeseries(
+                ts, sampling_rate=10.0, gap_value={"f": True}, raw=raw
+            )
+
+        # Numpy scalars should be accepted.
+        rts = RegularTimeSeries.from_gappy_timeseries(
+            ts,
+            sampling_rate=10.0,
+            gap_value={"i": np.int32(-7), "f": np.float64(-1.5)},
+            i=np.array([1, 2, 3], dtype=np.int32),
+            f=np.array([1.0, 2.0, 3.0], dtype=np.float64),
+        )
+        np.testing.assert_array_equal(rts.i, [1, 2, -7, 3])
+        np.testing.assert_array_equal(rts.f, [1.0, 2.0, -1.5, 3.0])
+
+    def test_lazy_raises(self):
+        with pytest.raises(NotImplementedError, match="not available"):
+            LazyRegularTimeSeries.from_gappy_timeseries(
+                np.array([0.0, 0.1, 0.3]),
+                sampling_rate=10.0,
+                raw=np.array([1.0, 2.0, 3.0]),
+            )

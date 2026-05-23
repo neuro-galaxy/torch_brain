@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### Added
+- Added `RegularTimeSeries.from_gappy_timeseries()` method to construct a regular time series from approximately-regular but gappy timestamps, snapping samples to a regular grid and filling missing samples with a configurable `gap_value`. ([#122](https://github.com/neuro-galaxy/temporaldata/pull/122))
 
 ### Fixed
 - Fixed `LazyInterval.select_by_mask()` and `LazyIrregularTimeSeries.select_by_mask()` dropping non-hardcoded private attributes (e.g. `_sorted`) from the result ([#121](https://github.com/neuro-galaxy/temporaldata/pull/121))

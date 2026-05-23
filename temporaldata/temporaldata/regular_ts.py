@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import math
-from typing import Literal
+from typing import Literal, Any
+import warnings
 
 import h5py
 import numpy as np
@@ -9,6 +10,71 @@ import numpy as np
 from .arraydict import ArrayDict
 from .interval import Interval
 from .irregular_ts import IrregularTimeSeries
+
+_NP_DTYPE_KINDS = {"b", "i", "u", "f", "c", "m", "M", "O", "S", "U", "V"}
+# ^ From https://numpy.org/doc/2.2/reference/generated/numpy.dtype.kind.html
+
+_DEFAULT_GAP_VALUE = {
+    "b": False,  # boolean
+    "i": -1,  # signed integers
+    "u": 0,  # unsigned integers
+    "f": np.nan,  # floating
+}
+
+
+def _validate_gap_value_dict(gap_value):
+    for k, v in gap_value.items():
+        if k not in _NP_DTYPE_KINDS:
+            raise ValueError(
+                f"gap_value dict has unsupported key {k!r}; valid keys "
+                f"are {sorted(_NP_DTYPE_KINDS)} "
+            )
+        # bool is a subclass of int in Python, so check it explicitly first.
+        is_bool = isinstance(v, (bool, np.bool_))
+        is_int = isinstance(v, (int, np.integer)) and not is_bool
+        is_float = isinstance(v, (float, np.floating))
+        if k == "b" and not is_bool:
+            raise ValueError(f"gap_value['b'] must be a bool, got {v!r}")
+        if k == "i" and not is_int:
+            raise ValueError(f"gap_value['i'] must be an integer, got {v!r}")
+        if k == "u":
+            if not is_int:
+                raise ValueError(f"gap_value['u'] must be an integer, got {v!r}")
+            if v < 0:
+                raise ValueError(f"gap_value['u'] must be non-negative, got {v}")
+        if k == "f" and not (is_int or is_float):
+            raise ValueError(f"gap_value['f'] must be a number, got {v!r}")
+
+
+def _validate_gap_value_matches_array_dtype(v, array: np.ndarray, name: str):
+    """Validate that `v` is legal to be used with all input array dtypes
+
+    Logic: cast gap value into target dtype. If:
+        1. cast changes the value, we raise
+        2. the cast emits a warning, we raise
+    """
+
+    src = np.array(v)
+
+    # doing the cast here:
+    # Numpy sometimes emits RuntmeWarning when doing a risky cast
+    # and we want to catch that
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+
+        try:
+            dst = src.astype(array.dtype)
+        except RuntimeWarning as _:
+            raise ValueError(
+                f"gap_value={v} cannot be losslessly stored in {name!r}; "
+                f"cannot cast {src.dtype!r} into {array.dtype!r}"
+            )
+
+    if not np.array_equal(src, dst, equal_nan=True):
+        raise ValueError(
+            f"gap_value={v} cannot be losslessly stored in {name!r}; "
+            f"numpy would silently cast it from {src.item()!r} to {dst.item()!r}"
+        )
 
 
 class RegularTimeSeries(ArrayDict):
@@ -265,6 +331,154 @@ class RegularTimeSeries(ArrayDict):
 
         return obj
 
+    @classmethod
+    def from_gappy_timeseries(
+        cls,
+        timestamps: np.ndarray,
+        sampling_rate: float,
+        gap_value: Any | dict[str, Any] | None = None,
+        rtol: float = 1e-3,
+        **kwargs: np.ndarray,
+    ) -> RegularTimeSeries:
+        r"""Regularize an approximately-regular but gappy timeseries.
+
+        Construct a :obj:`RegularTimeSeries` from approximately-regular but
+        gappy timestamps and value arrays by snapping each sample to a regular
+        grid at :obj:`sampling_rate` and filling missing samples with
+        :obj:`gap_value`.
+
+        Useful for signals that are nominally regular (e.g. behavioral streams
+        at a fixed sampling rate) but contain missing samples, which would
+        otherwise have to be carried as an :obj:`IrregularTimeSeries` and would
+        suffer numerical-precision issues during slicing.
+
+        Args:
+            timestamps: 1-D array of timestamps, strictly increasing. Each
+                entry must lie within :obj:`rtol` samples of a regular grid
+                at :obj:`sampling_rate`, anchored at :obj:`timestamps[0]`.
+            sampling_rate: Sampling rate in Hz.
+            gap_value: Value used to fill missing samples. May be:
+
+                * :obj:`None` (default) — uses per-kind defaults: ``-1`` for
+                  signed integers, ``0`` for unsigned integers,
+                  :obj:`numpy.nan` for floats, ``False`` for bools.
+                * A scalar (``int``, ``float``, or ``bool``) — used for every
+                  kwarg array regardless of dtype.
+                * A ``dict`` mapping :obj:`numpy.dtype.kind` codes to fill
+                  values. Recognized kinds: ``'b'`` (bool), ``'i'`` (signed
+                  int), ``'u'`` (unsigned int), ``'f'`` (float). Example:
+                  ``{'i': -1, 'u': 0, 'f': np.nan}``. Raises :obj:`KeyError`
+                  if a kwarg's dtype kind is not in the dict.
+            rtol: Maximum allowed deviation, in samples, of any input timestamp
+                from the regular grid.
+            **kwargs: Named value arrays whose first dimension equals
+                ``len(timestamps)``.
+
+        Returns:
+            RegularTimeSeries: A regular time series with the same named
+            arrays, gaps filled with :obj:`gap_value`.
+
+        Raises:
+            ValueError: If timestamps deviate from the regular grid by more than :obj:`rtol`
+        Example ::
+
+            >>> import numpy as np
+            >>> from temporaldata import RegularTimeSeries
+
+            >>> # 4 samples at 100 Hz, the 0.02s sample is missing.
+            >>> ts = np.array([0.0, 0.01, 0.03, 0.04])
+            >>> raw = np.array([1.0, 2.0, 3.0, 4.0])
+            >>> rts = RegularTimeSeries.from_gappy_timeseries(
+            ...     ts, sampling_rate=100.0, raw=raw,
+            ... )
+            >>> rts.raw
+            array([ 1.,  2., nan,  3.,  4.])
+        """
+        if not isinstance(timestamps, np.ndarray):
+            raise ValueError(
+                f"timestamps must be a numpy array, got {type(timestamps)}"
+            )
+        if timestamps.ndim != 1:
+            raise ValueError(f"timestamps must be 1-D, got shape {timestamps.shape}")
+        if len(timestamps) < 2:
+            raise ValueError(
+                f"timestamps must have at least 2 entries, got {len(timestamps)}"
+            )
+        if not (np.diff(timestamps) > 0).all():
+            raise ValueError("timestamps must be strictly increasing")
+
+        if gap_value is None:
+            gap_value = _DEFAULT_GAP_VALUE
+
+        if isinstance(gap_value, dict):
+            _validate_gap_value_dict(gap_value)
+
+        start_time = float(timestamps[0])
+        rel_idx = (timestamps - start_time) * sampling_rate
+        grid_idx = np.round(rel_idx).astype(np.int64)
+
+        max_dev = float(np.max(np.abs(rel_idx - grid_idx)))
+        if max_dev > rtol:
+            raise ValueError(
+                f"timestamps deviate from a regular grid at sampling_rate="
+                f"{sampling_rate} Hz by up to {max_dev:.3g} samples, "
+                f"exceeding rtol={rtol}. Pick a different sampling_rate, "
+                f"increase rtol, or use IrregularTimeSeries if this signal "
+                f"is inherently irregular."
+            )
+
+        min_idx_gap = int(np.min(np.diff(grid_idx)))
+        if min_idx_gap < 1:
+            raise ValueError(
+                f"timestamps contain duplicate or sub-sample-spaced entries "
+                f"at sampling_rate={sampling_rate} Hz"
+            )
+        if min_idx_gap > 1:
+            raise ValueError(
+                f"sampling_rate={sampling_rate} appears too high: the smallest "
+                f"gap between consecutive timestamps is {min_idx_gap} grid "
+                f"steps (expected 1). The true sampling rate may be closer to "
+                f"{sampling_rate / min_idx_gap}."
+            )
+
+        num_timesteps = int(grid_idx[-1]) + 1
+
+        filled: dict[str, np.ndarray] = {}
+        for key, arr in kwargs.items():
+            if not isinstance(arr, np.ndarray):
+                raise ValueError(
+                    f"{key!r} must be an ndarray, got {type(arr).__name__}"
+                )
+            if len(arr) != len(timestamps):
+                raise ValueError(
+                    f"{key!r} has length {len(arr)}, expected "
+                    f"{len(timestamps)} to match timestamps"
+                )
+
+            if isinstance(gap_value, dict):
+                kind = arr.dtype.kind
+                if kind not in gap_value:
+                    raise KeyError(
+                        f"{key!r} has dtype {arr.dtype} (kind {kind!r}) which is "
+                        f"not in gap_value dict (keys: {list(gap_value)})"
+                    )
+                _gap_value = gap_value[kind]
+            else:
+                _gap_value = gap_value
+
+            _validate_gap_value_matches_array_dtype(_gap_value, array=arr, name=key)
+
+            out = np.full((num_timesteps, *arr.shape[1:]), _gap_value, dtype=arr.dtype)
+            out[grid_idx] = arr
+            filled[key] = out
+
+        return cls(
+            sampling_rate=sampling_rate,
+            domain="auto",
+            domain_start=start_time,
+            **filled,
+        )
+
 
 class LazyRegularTimeSeries(RegularTimeSeries):
     r"""Lazy variant of :obj:`RegularTimeSeries`. The data is not loaded until it is
@@ -395,6 +609,17 @@ class LazyRegularTimeSeries(RegularTimeSeries):
 
     def to_hdf5(self, file):
         raise NotImplementedError("Cannot save a lazy array dict to hdf5.")
+
+    @classmethod
+    def from_gappy_timeseries(cls, *_args, **_kwargs):
+        r"""Not implemented for :obj:`LazyRegularTimeSeries`.
+
+        Use :meth:`RegularTimeSeries.from_gappy_timeseries` instead.
+        """
+        raise NotImplementedError(
+            "from_gappy_timeseries is not available on LazyRegularTimeSeries; "
+            "use RegularTimeSeries.from_gappy_timeseries instead."
+        )
 
     @classmethod
     def from_hdf5(cls, file):
