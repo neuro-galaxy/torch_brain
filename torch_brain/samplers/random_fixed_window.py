@@ -43,14 +43,8 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
         >>> from torch_brain.samplers import RandomFixedWindowSampler
 
         >>> sampling_intervals = {
-        ...     "session_1": Interval(
-        ...         start=np.array([0.0]),
-        ...         end=np.array([100.0]),
-        ...     ),
-        ...     "session_2": Interval(
-        ...         start=np.array([0.0]),
-        ...         end=np.array([200.0]),
-        ...     ),
+        ...     "session_1": Interval(0.0, 100.0),
+        ...     "session_2": Interval(0.0, 200.0),
         ... }
         >>> sampler = RandomFixedWindowSampler(
         ...     sampling_intervals=sampling_intervals,
@@ -82,7 +76,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
         total_short_dropped = 0.0
 
         for intervals in self.sampling_intervals.values():
-            for start, end in intervals:
+            for start, end in zip(intervals.start, intervals.end):
                 interval_length = end - start
                 if interval_length < self.window_length:
                     if self.drop_short:

@@ -35,8 +35,8 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
         >>> from torch_brain.sampler import SequentialFixedWindowSampler, DistributedEvaluationSamplerWrapper
 
         >>> sampling_intervals = {
-        ...     "session_1": Interval(start=np.array([0.0]), end=np.array([100.0])),
-        ...     "session_2": Interval(start=np.array([0.0]), end=np.array([100.0])),
+        ...     "session_1": Interval(0.0, 100.0),
+        ...     "session_2": Interval(0.0, 100.0),
         ... }
         >>> sampler = SequentialFixedWindowSampler(
         ...     sampling_intervals=sampling_intervals,
