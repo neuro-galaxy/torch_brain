@@ -3,7 +3,6 @@ import logging
 
 import numpy as np
 from torch import cat, tensor, int64
-from einops import rearrange, repeat
 import torch.nn as nn
 from torchtyping import TensorType
 from temporaldata import Data
@@ -260,18 +259,16 @@ class CalciumPOYOPlus(nn.Module):
         calcium_traces = data.calcium_traces
         unit_ids = data.units.id
 
-        T, N = calcium_traces.df_over_f.shape
-        input_timestamps = repeat(calcium_traces.timestamps, "T -> (T N)", T=T, N=N)
-
         ### prepare calcium values
         T, N = calcium_traces.df_over_f.shape
-        input_values = rearrange(calcium_traces.df_over_f, "T N -> (T N) 1", T=T, N=N)
+        input_timestamps = np.repeat(calcium_traces.timestamps, N)  # (T,) -> (T*N,)
+        input_values = calcium_traces.df_over_f.flatten()[:, None]  # (T, N) -> (T*N, 1)
 
         # input unit indices
         local_to_global_map = np.array(self.unit_emb.tokenizer(unit_ids))
         input_unit_index = [local_to_global_map[i] for i in range(len(unit_ids))]
         input_unit_index = tensor(input_unit_index, dtype=int64)
-        input_unit_index = repeat(input_unit_index, "N -> (T N)", T=T, N=N)
+        input_unit_index = input_unit_index.repeat(T)  # (N,) -> (T*N,)
 
         ### prepare latents
         latent_index, latent_timestamps = create_linspace_latent_tokens(
