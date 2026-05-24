@@ -434,7 +434,7 @@ def rotary_attn_xformers_func(
         value: The value tensor, with shape (B N (H D))
         q_pos_emb: The query rotary position embedding, with shape (B N D)
         kv_pos_emb: The key rotary position embedding, with shape (B N D)
-        attn_mask: The attention mask, with shape B, N_kv). A value of True indicates
+        attn_mask: The attention mask, with shape (B, N_kv). A value of True indicates
             that the element should take part in attention.
         num_heads: The number of attention heads
         dropout_p: The dropout probability
