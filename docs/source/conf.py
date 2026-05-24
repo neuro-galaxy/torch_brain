@@ -63,6 +63,8 @@ html_theme_options = {
     "navbar_start": ["navbar-logo"],
     "navbar_center": ["navbar-nav"],
     "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    "pygments_light_style": "default",
+    "pygments_dark_style": "lightbulb",
 }
 
 html_static_path = ["_static", "generated/css", "js"]
@@ -91,8 +93,6 @@ myst_enable_extensions = [
 ]
 
 nb_execution_mode = "off"
-
-pygments_style = "default"
 
 bokeh_plot_pyfile_include_dirs = [
     "concepts/examples",
