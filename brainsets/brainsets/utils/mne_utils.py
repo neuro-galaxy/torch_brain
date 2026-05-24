@@ -35,24 +35,23 @@ def _check_mne_available(func_name: str) -> None:
 
 def extract_measurement_date(
     recording_data: "mne.io.BaseRaw",
-) -> datetime.datetime:
+) -> datetime.datetime | None:
     """Extract the measurement date from MNE Raw recording data.
 
     Args:
         recording_data: The MNE Raw object containing recording data and metadata.
 
     Returns:
-        The measurement date as a datetime object if present, otherwise
-        the Unix epoch (1970-01-01 UTC) as a placeholder.
+        The measurement date as a datetime object if present, otherwise None
 
     Raises:
         ImportError: If MNE is not installed.
     """
     _check_mne_available("extract_measurement_date")
-    if recording_data.info["meas_date"] is not None:
-        return recording_data.info["meas_date"]
-    warnings.warn("No measurement date found, using Unix epoch as placeholder")
-    return datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+    ans = recording_data.info["meas_date"]
+    if ans is None:
+        warnings.warn("No measurement date found, using None")
+    return ans
 
 
 def concatenate_recordings(
@@ -628,7 +627,7 @@ def _validate_channel_pos_mapping(
 
 
 def _transpose_type_channels_mapping(
-    type_channels_mapping: dict[str, list[str]] | None
+    type_channels_mapping: dict[str, list[str]] | None,
 ) -> dict[str, str] | None:
     """
     Convert a mapping of channel types to channel name lists into a mapping of channel names to types.

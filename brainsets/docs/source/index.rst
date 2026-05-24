@@ -58,7 +58,6 @@ If you encounter any bugs or have feature requests, please submit them to our
 
    package/brainsetpipeline
    package/descriptions
-   package/taxonomy
    package/utils
    package/core
    package/processing

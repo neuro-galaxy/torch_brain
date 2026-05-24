@@ -77,13 +77,6 @@ class StringIntEnum(Enum, metaclass=NestedEnumType):
 
         Args:
             string: The string to convert to an enum member.
-
-        Examples:
-            >>> from brainsets.taxonomy import Sex
-            >>> Sex.from_string("Male")
-            <Sex.MALE: 1>
-            >>> Sex.from_string("M")
-            <Sex.MALE: 1>
         """
         nested_string = string.split(".", maxsplit=1)
         if len(nested_string) > 1:

@@ -4,6 +4,7 @@ import pytest
 import numpy as np
 import pandas as pd
 import mne
+import datetime
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch, Mock, PropertyMock
@@ -14,8 +15,6 @@ from temporaldata import Data, Interval
 from brainsets.utils.openneuro.pipeline import (
     OpenNeuroPipeline,
 )
-
-from brainsets.taxonomy import Species
 
 # ============================================================================
 # Fixtures
@@ -478,12 +477,12 @@ class TestNormalizeSpecies:
     )
     def test_returns_homo_sapiens_for_supported_aliases(self, species):
         """Supported aliases normalize to canonical homo sapiens."""
-        assert OpenNeuroPipeline._normalize_species(species) == "homo sapiens"
+        assert OpenNeuroPipeline._normalize_species(species) == "HOMO_SAPIENS"
 
     @pytest.mark.parametrize("species", ["mus musculus", "canis lupus", "", None, 42])
-    def test_returns_unknown_for_non_human_or_invalid_values(self, species):
-        """Non-human or invalid values normalize to unknown."""
-        assert OpenNeuroPipeline._normalize_species(species) == "unknown"
+    def test_returns_none_for_non_human_or_invalid_values(self, species):
+        """Non-human or invalid values normalize to None."""
+        assert OpenNeuroPipeline._normalize_species(species) is None
 
 
 class TestGetManifest:
@@ -562,7 +561,7 @@ class TestGetManifest:
             recording_id, subject_id, sub_dir, rec_id = rec
             assert recording_id in result.index
             assert result.loc[recording_id, "subject_id"] == subject_id
-            assert result.loc[recording_id, "species"] == "homo sapiens"
+            assert result.loc[recording_id, "species"] == "HOMO_SAPIENS"
             assert result.loc[recording_id, "age"] == 25
             assert result.loc[recording_id, "sex"] == "M"
             assert result.loc[recording_id, "latest_snapshot_tag"] == "1.0.0"
@@ -642,7 +641,7 @@ class TestGetManifest:
             recording_id, subject_id, sub_dir, rec_id = rec
             assert recording_id in result.index
             assert result.loc[recording_id, "subject_id"] == subject_id
-            assert result.loc[recording_id, "species"] == "homo sapiens"
+            assert result.loc[recording_id, "species"] == "HOMO_SAPIENS"
             assert result.loc[recording_id, "age"] == 25
             assert result.loc[recording_id, "sex"] == "M"
             assert result.loc[recording_id, "latest_snapshot_tag"] == "1.0.0"
@@ -1035,7 +1034,7 @@ class TestProcessCommon:
 
         mock_bids_path.return_value = "path/to/bids"
         mock_read_raw.return_value = mock_raw
-        mock_meas_date.return_value = "2023-01-01"
+        mock_meas_date.return_value = datetime.datetime.now()
         mock_extract_signal.return_value = MagicMock(
             domain=Interval(start=np.array([0.0]), end=np.array([100.0]))
         )
@@ -1099,7 +1098,7 @@ class TestProcessCommon:
 
         mock_bids_path.return_value = "path/to/bids_path"
         mock_read_raw.return_value = mock_raw
-        mock_meas_date.return_value = "2023-01-01"
+        mock_meas_date.return_value = datetime.datetime.now()
         mock_extract_signal.return_value = MagicMock(
             domain=Interval(start=np.array([0.0]), end=np.array([100.0]))
         )

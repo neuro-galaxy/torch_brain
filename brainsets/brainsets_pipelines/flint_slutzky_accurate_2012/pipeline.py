@@ -6,6 +6,7 @@
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 
 import h5py
 import numpy as np
@@ -22,7 +23,6 @@ from brainsets.descriptions import (
     SubjectDescription,
 )
 from brainsets.pipeline import BrainsetPipeline
-from brainsets.taxonomy import RecordingTech, Sex, Species, Task
 
 parser = ArgumentParser()
 parser.add_argument("--redownload", action="store_true")
@@ -109,8 +109,7 @@ class Pipeline(BrainsetPipeline):
 
         subject = SubjectDescription(
             id="monkey_c",
-            species=Species.MACACA_MULATTA,
-            sex=Sex.UNKNOWN,
+            species="MACACA_MULATTA",
         )
 
         session_tag = str(fpath).split("_")[-1].split(".mat")[0]  # e1, e2, e3...
@@ -125,13 +124,13 @@ class Pipeline(BrainsetPipeline):
         # register session
         session = SessionDescription(
             id=session_id,
-            recording_date="20130530",  # using .mat file creation date
-            task=Task.REACHING,
+            recording_date=datetime(2013, 5, 30),  # using .mat file creation date
+            task="REACHING",
         )
 
         device = DeviceDescription(
             id=device_id,
-            recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
+            recording_tech="UTAH_ARRAY_SPIKES",
         )
 
         units = extract_units(mat)  # Data obj

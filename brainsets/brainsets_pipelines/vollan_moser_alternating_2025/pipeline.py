@@ -3,7 +3,6 @@
 # dependencies = ["scipy==1.10.1"]
 # ///
 
-import datetime
 import logging
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -24,7 +23,6 @@ from brainsets.descriptions import (
     SubjectDescription,
 )
 from brainsets.pipeline import BrainsetPipeline
-from brainsets.taxonomy import RecordingTech, Sex, Species, Task
 
 parser = ArgumentParser()
 parser.add_argument("--redownload", action="store_true")
@@ -90,12 +88,12 @@ MANIFEST_FILES = [
 ]
 
 SESSION_TYPE_TO_TASK = {
-    "of": Task.NAVIGATION_OPEN_FIELD,
-    "mmaze": Task.NAVIGATION_MMAZE,
-    "lt": Task.NAVIGATION_LINEAR_TRACK,
-    "ww": Task.NAVIGATION_WAGON_WHEEL,
-    "of_novel": Task.NAVIGATION_OPEN_FIELD_NOVEL,
-    "sleep": Task.SLEEP,
+    "of": "NAVIGATION_OPEN_FIELD",
+    "mmaze": "NAVIGATION_MMAZE",
+    "lt": "NAVIGATION_LINEAR_TRACK",
+    "ww": "NAVIGATION_WAGON_WHEEL",
+    "of_novel": "NAVIGATION_OPEN_FIELD_NOVEL",
+    "sleep": "SLEEP",
 }
 
 BRAINSET_DESCRIPTION = BrainsetDescription(
@@ -246,23 +244,19 @@ class Pipeline(BrainsetPipeline):
 
         subject = SubjectDescription(
             id=animal_id,
-            species=Species.RATTUS_NORVEGICUS,
-            sex=Sex.UNKNOWN,
+            species="RATTUS_NORVEGICUS",
         )
 
         task = SESSION_TYPE_TO_TASK[session_type]
 
         session_description = SessionDescription(
             id=session_id,
-            recording_date=datetime.datetime(
-                1970, 1, 1, tzinfo=datetime.timezone.utc
-            ),  # placeholder date since actual recording dates are not provided
             task=task,
         )
 
         device_description = DeviceDescription(
             id=f"{animal_id}_neuropixels",
-            recording_tech=RecordingTech.NEUROPIXELS_SPIKES,
+            recording_tech="NEUROPIXELS_SPIKES",
         )
 
         # Build domain from contiguous segments of the speed-filtered timeseries
@@ -349,21 +343,17 @@ class Pipeline(BrainsetPipeline):
 
         subject = SubjectDescription(
             id=animal_id,
-            species=Species.RATTUS_NORVEGICUS,
-            sex=Sex.UNKNOWN,
+            species="RATTUS_NORVEGICUS",
         )
 
         session_description = SessionDescription(
             id=session_id,
-            recording_date=datetime.datetime(
-                1970, 1, 1, tzinfo=datetime.timezone.utc
-            ),  # placeholder date since actual recording dates are not provided
-            task=Task.SLEEP,
+            task="SLEEP",
         )
 
         device_description = DeviceDescription(
             id=f"{animal_id}_neuropixels",
-            recording_tech=RecordingTech.NEUROPIXELS_SPIKES,
+            recording_tech="NEUROPIXELS_SPIKES",
         )
 
         # Domain: union of SWS and REM epochs

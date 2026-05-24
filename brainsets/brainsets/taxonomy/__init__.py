@@ -1,4 +1,6 @@
-_classes = [
+# pragma: no cover: start
+
+_MOVED = [
     "Species",
     "Sex",
     "Task",
@@ -9,23 +11,14 @@ _classes = [
     "Hemisphere",
 ]
 
-__all__ = _classes
+
+def __getattr__(name):
+    if name in _MOVED:
+        raise ImportError(
+            f"`brainsets.taxonomy.{name}` has been deprecated."
+            f" Please directly encode the metadata."
+        )
+    raise AttributeError(f"module 'brainsets.taxonomy' has no attribute {name!r}")
 
 
-from .subject import (
-    Species,
-    Sex,
-)
-
-from .task import (
-    Task,
-)
-
-from .drifting_gratings import Orientation_8_Classes
-from .macaque import Macaque
-from .mice import Cre_line
-
-from .recording_tech import (
-    RecordingTech,
-    Hemisphere,
-)
+# pragma: no cover: stop

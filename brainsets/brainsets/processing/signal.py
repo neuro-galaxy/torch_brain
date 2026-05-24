@@ -18,7 +18,6 @@ import tqdm
 from scipy import signal
 
 from temporaldata import Data, IrregularTimeSeries, ArrayDict
-from brainsets.taxonomy import RecordingTech
 
 
 def downsample_wideband(
@@ -156,8 +155,6 @@ def cube_to_long(
             IrregularTimeSeries(
                 timestamps=ts_,
                 unit_index=channels_,
-                types=np.ones(len(ts_))
-                * int(RecordingTech.UTAH_ARRAY_THRESHOLD_CROSSINGS),
                 domain="auto",
             )
         )
@@ -171,7 +168,6 @@ def cube_to_long(
         unit_number=np.zeros(cube.shape[2]),
         id=np.array([f"{channel_prefix}{c}" for c in range(cube.shape[2])]),
         channel_number=np.arange(cube.shape[2]),
-        type=np.ones(cube.shape[2]) * int(RecordingTech.UTAH_ARRAY_THRESHOLD_CROSSINGS),
     )
 
     return trials, units

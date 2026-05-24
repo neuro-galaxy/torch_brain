@@ -23,7 +23,6 @@ from brainsets.descriptions import (
     SessionDescription,
 )
 from brainsets.pipeline import BrainsetPipeline
-from brainsets.taxonomy import RecordingTech, Task
 from brainsets.utils.dandi_utils import (
     download_file,
     extract_subject_from_nwb,
@@ -107,12 +106,12 @@ class Pipeline(BrainsetPipeline):
         session_description = SessionDescription(
             id=session_id,
             recording_date=datetime.datetime.strptime(recording_date, "%Y%m%d"),
-            task=Task.REACHING,
+            task="REACHING",
         )
 
         device_description = DeviceDescription(
             id=device_id,
-            recording_tech=RecordingTech.UTAH_ARRAY_THRESHOLD_CROSSINGS,
+            recording_tech="UTAH_ARRAY_THRESHOLD_CROSSINGS",
         )
 
         # extract data about trial structure
@@ -570,7 +569,6 @@ def extract_spikes(nwbfile, trials, artifact_dict):
                 "id": unit_id,
                 "unit_number": unit_ctr,
                 "count": len(spikes_times),
-                "type": int(RecordingTech.UTAH_ARRAY_THRESHOLD_CROSSINGS),
             }
         )
 

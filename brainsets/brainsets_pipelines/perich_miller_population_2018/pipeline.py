@@ -31,7 +31,6 @@ from brainsets.utils.dandi_utils import (
     download_file,
     get_nwb_asset_list,
 )
-from brainsets.taxonomy import RecordingTech, Task
 from brainsets import serialize_fn_map
 
 from brainsets.pipeline import BrainsetPipeline
@@ -132,20 +131,20 @@ class Pipeline(BrainsetPipeline):
         session_description = SessionDescription(
             id=session_id,
             recording_date=datetime.datetime.strptime(recording_date, "%Y%m%d"),
-            task=Task.REACHING,
+            task="REACHING",
         )
 
         # register device
         device_description = DeviceDescription(
             id=device_id,
-            recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
+            recording_tech="UTAH_ARRAY_SPIKES",
         )
 
         self.update_status("Extracting Spikes")
         # extract spiking activity
         # this data is from dandi, we can use our helper function
         spikes, units = extract_spikes_from_nwbfile(
-            nwbfile, recording_tech=RecordingTech.UTAH_ARRAY_SPIKES
+            nwbfile, recording_tech="UTAH_ARRAY_SPIKES"
         )
 
         self.update_status("Extracting Behavior")

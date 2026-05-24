@@ -71,12 +71,11 @@ class TestExtractMeasurementDate:
         result = extract_measurement_date(mock_raw)
         assert result == expected_date
 
-    def test_returns_unix_epoch_when_meas_date_none(self):
-        """Test that Unix epoch is returned when measurement date is missing."""
+    def test_returns_none_when_meas_date_none(self):
         mock_raw = create_mock_raw(meas_date=None)
         with pytest.warns(UserWarning, match="No measurement date found"):
             result = extract_measurement_date(mock_raw)
-        expected = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+        expected = None
         assert result == expected
 
     def test_preserves_timezone_info(self):

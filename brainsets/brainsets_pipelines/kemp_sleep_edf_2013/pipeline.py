@@ -25,7 +25,6 @@ from brainsets.descriptions import (
     SessionDescription,
     DeviceDescription,
 )
-from brainsets.taxonomy import RecordingTech, Species, Sex
 from brainsets.pipeline import BrainsetPipeline
 from brainsets.utils.split import (
     generate_stratified_folds,
@@ -38,7 +37,6 @@ from brainsets.utils.mne_utils import (
     extract_channels,
 )
 from temporaldata import Data, Interval
-
 
 logging.basicConfig(level=logging.INFO)
 
@@ -206,7 +204,7 @@ class Pipeline(BrainsetPipeline):
 
         subject = SubjectDescription(
             id=f"{study_type}_{subject_id}",
-            species=Species.HOMO_SAPIENS,
+            species="HOMO_SAPIENS",
             age=age,
             sex=sex,
         )
@@ -220,7 +218,7 @@ class Pipeline(BrainsetPipeline):
 
         device_description = DeviceDescription(
             id=base_name,
-            recording_tech=RecordingTech.POLYSOMNOGRAPHY,
+            recording_tech="POLYSOMNOGRAPHY",
         )
 
         self.update_status("Extracting Signals")
@@ -264,7 +262,7 @@ class Pipeline(BrainsetPipeline):
         logging.info(f"Saved processed data to: {output_path}")
 
 
-def parse_subject_metadata(raw: mne.io.Raw) -> Tuple[Optional[int], Sex]:
+def parse_subject_metadata(raw: mne.io.Raw) -> tuple[int | None, str | None]:
     """Extract subject metadata from EDF header."""
     info = raw.info
     subject_info = info.get("subject_info", {})
@@ -279,6 +277,13 @@ def parse_subject_metadata(raw: mne.io.Raw) -> Tuple[Optional[int], Sex]:
         age = 0
 
     sex = subject_info.get("sex")
+
+    if sex == 1:
+        sex = "MALE"
+    elif sex == 2:
+        sex = "FEMALE"
+    else:
+        raise ValueError(f"Unknown {sex=}")
 
     return age, sex
 

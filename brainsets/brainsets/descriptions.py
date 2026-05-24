@@ -8,37 +8,40 @@ _classes = [
 __all__ = _classes
 
 import datetime
-from typing import Dict, List, Tuple, Optional, Union
 
-from pydantic import field_validator
-from pydantic.dataclasses import dataclass
 import temporaldata
+from temporaldata import Data
 
 import brainsets
-from brainsets.taxonomy import *
-from brainsets.taxonomy.mice import *
 
 
-@dataclass
-class BrainsetDescription(temporaldata.Data):
-    r"""A class for describing a brainset.
+def _validate_string_type(v, name: str, allow_none: bool = False):
+    if v is None:
+        if allow_none:
+            return v
+        else:
+            raise ValueError(f"{name} must be a string, got {v!r}")
 
-    Parameters
-    ----------
-    id : str
-        Unique identifier for the brainset
-    origin_version : str
-        Version identifier for the original data source
-    derived_version : str
-        Version identifier for the derived/processed data
-    source : str
-        Original data source (usually a URL, or a short description otherwise)
-    description : str
-        Text description of the brainset
-    brainsets_version : str, optional
-        Version of brainsets package used, defaults to current version
-    temporaldata_version : str, optional
-        Version of temporaldata package used, defaults to current version
+    if not isinstance(v, str):
+        if allow_none:
+            raise ValueError(f"{name} must be a string or None, got {v!r}")
+        else:
+            raise ValueError(f"{name} must be a string, got {v!r}")
+
+    if len(v) == 0:
+        raise ValueError(f"{name} cannot be an empty string, got {v!r}")
+
+
+class BrainsetDescription(Data):
+    r"""A container for storing brainset metadata.
+
+    Args:
+        id: Unique identifier for the brainset
+        origin_version: Version identifier for the original data source
+        derived_version: Version identifier for the derived/processed data
+        source: Original data source (usually a URL, or a short description otherwise)
+        description: Text description of the brainset
+        **kwargs: Any additional metadata
     """
 
     id: str
@@ -46,203 +49,164 @@ class BrainsetDescription(temporaldata.Data):
     derived_version: str
     source: str
     description: str
-    brainsets_version: str = brainsets.__version__
-    temporaldata_version: str = temporaldata.__version__
+    brainsets_version: str
+    temporaldata_version: str
+
+    def __init__(
+        self,
+        id: str,
+        origin_version: str,
+        derived_version: str,
+        source: str,
+        description: str,
+        **kwargs,
+    ):
+        _validate_string_type(id, "id")
+        _validate_string_type(origin_version, "origin_version")
+        _validate_string_type(derived_version, "derived_version")
+        _validate_string_type(source, "source")
+        _validate_string_type(description, "description")
+
+        # brainsets_version, temporaldata_version need to set by us
+        if "brainsets_version" in kwargs:
+            raise ValueError("Cannot set brainsets_version manually")
+
+        if "temporaldata_version" in kwargs:
+            raise ValueError("Cannot set temporaldata_version manually")
+
+        super().__init__(
+            id=id,
+            origin_version=origin_version,
+            derived_version=derived_version,
+            source=source,
+            description=description,
+            brainsets_version=brainsets.__version__,
+            temporaldata_version=temporaldata.__version__,
+            **kwargs,
+        )
 
 
-@dataclass
-class SubjectDescription(temporaldata.Data):
-    r"""A class for describing a subject.
+class SubjectDescription(Data):
+    r"""A container for storing subject related metadata.
 
-    Fields are automatically normalized during construction:
-    - ``species`` accepts a Species enum, string, int, or None (defaults to Species.UNKNOWN)
-    - ``age`` accepts a float, int, numeric string, or None (defaults to 0.0)
-    - ``sex`` accepts a Sex enum, string, int, or None (defaults to Sex.UNKNOWN)
-
-    Parameters
-    ----------
-    id : str
-        Unique identifier for the subject
-    species : Species
-        Species of the subject
-    age : float, optional
-        Age of the subject in days, defaults to 0.0
-    sex : Sex, optional
-        Sex of the subject, defaults to UNKNOWN
-    genotype : str, optional
-        Genotype of the subject, defaults to "unknown"
-    cre_line : Cre_line, optional
-        Cre line of the subject, defaults to None
+    Args:
+        id: Unique identifier for the subject
+        species: Species of the subject, defaults to None
+        age: Age of the subject (in days).
+            It will be converted to float if not None. defaults to None
+        sex: Sex of the subject, defaults to None
     """
 
     id: str
-    species: Species = Species.UNKNOWN
-    age: float = 0.0  # in days
-    sex: Sex = Sex.UNKNOWN
-    genotype: str = "unknown"  # no idea how many there will be for now.
-    cre_line: Optional[Cre_line] = None
+    species: str | None
+    age: float | None
+    sex: str | None
 
-    @field_validator("age", mode="before")
-    @classmethod
-    def normalize_age(cls, age: Union[float, int, str, None] = None) -> float:
-        """Normalize an age value to a float in days.
+    def __init__(
+        self,
+        id: str,
+        species: str | None = None,
+        age: int | str | float | None = None,
+        sex: str | None = None,
+        **kwargs,
+    ):
 
-        Args:
-            age: Age of the subject. Can be a float, int, numeric string, or None.
+        _validate_string_type(id, "id")
+        _validate_string_type(species, "species", allow_none=True)
+        _validate_string_type(sex, "sex", allow_none=True)
+        age = self._normalize_age(age)
 
-        Returns:
-            Normalized age as a float. Defaults to 0.0 if None or unparseable.
+        super().__init__(
+            id=id,
+            species=species,
+            age=age,
+            sex=sex,
+            **kwargs,
+        )
 
-        Raises:
-            ValueError: If the age is negative.
-            TypeError: If the age is not a float, int, numeric string, or None.
-        """
+    def _normalize_age(self, age) -> float | None:
+        """Normalize and validate age value to a float in days."""
+
         if age is None:
-            return 0.0
-        elif isinstance(age, (int, float)):
+            return None
+
+        if isinstance(age, (int, float)):
             age_normalized = float(age)
             if age_normalized < 0:
-                raise ValueError(f"Age cannot be negative, got {age_normalized}")
+                raise ValueError(f"age cannot be negative, got {age_normalized}")
             return age_normalized
-        elif isinstance(age, str):
-            try:
-                age_normalized = float(age)
-            except (ValueError, TypeError):
-                return 0.0
-            else:
-                if age_normalized < 0:
-                    raise ValueError(f"Age cannot be negative, got {age_normalized}")
-                return age_normalized
-        else:
-            raise TypeError(
-                f"Age must be a float, int, numeric string, or None, got {type(age).__name__}"
-            )
 
-    @field_validator("sex", mode="before")
-    @classmethod
-    def normalize_sex(cls, sex: Union[str, int, Sex, None] = None) -> Sex:
-        """Normalize a sex value to a Sex enum member.
+        if isinstance(age, str):
+            age_normalized = float(age)
 
-        Args:
-            sex: Sex of the subject. Can be a string (e.g. "M", "MALE"), an int
-                (0=UNKNOWN, 1=MALE, 2=FEMALE, 3=OTHER), a Sex enum member, or None.
+            if age_normalized < 0:
+                raise ValueError(f"age cannot be negative, got {age_normalized}")
+            return age_normalized
 
-        Returns:
-            Normalized Sex enum member. Defaults to Sex.UNKNOWN if None or unrecognized.
-
-        Raises:
-            TypeError: If the sex is not a Sex enum, string, int, or None.
-        """
-        if sex is None:
-            return Sex.UNKNOWN
-        elif isinstance(sex, Sex):
-            return sex
-        elif isinstance(sex, bool):
-            raise TypeError(f"Sex must be a Sex enum, string, int, or None, got bool")
-        elif isinstance(sex, str):
-            try:
-                return Sex.from_string(sex)
-            except ValueError:
-                return Sex.UNKNOWN
-        elif isinstance(sex, int):
-            try:
-                return Sex(sex)
-            except ValueError:
-                return Sex.UNKNOWN
-        else:
-            raise TypeError(
-                f"Sex must be a Sex enum, string, int, or None, got {type(sex).__name__}"
-            )
-
-    @field_validator("species", mode="before")
-    @classmethod
-    def normalize_species(
-        cls, species: Union[str, int, Species, None] = None
-    ) -> Species:
-        """Normalize a species value to a Species enum member.
-
-        Args:
-            species: Species of the subject. Can be a string, an int, a Species
-                enum member, or None.
-
-        Returns:
-            Normalized Species enum member. Defaults to Species.UNKNOWN if None or
-            unrecognized.
-
-        Raises:
-            TypeError: If the species is not a Species enum, string, int, or None.
-        """
-        if species is None:
-            return Species.UNKNOWN
-        elif isinstance(species, Species):
-            return species
-        elif isinstance(species, str):
-            try:
-                return Species.from_string(species)
-            except ValueError:
-                return Species.UNKNOWN
-        elif isinstance(species, int):
-            try:
-                return Species(species)
-            except ValueError:
-                return Species.UNKNOWN
-        else:
-            raise TypeError(
-                f"Species must be a Species enum, string, int, or None, got {type(species).__name__}"
-            )
+        raise TypeError(
+            f"age must be a float, int, numeric string, or None, got {type(age).__name__}"
+        )
 
 
-@dataclass
-class SessionDescription(temporaldata.Data):
-    r"""A class for describing an experimental session.
+class SessionDescription(Data):
+    r"""A container to store experimental session related metadata.
 
-    Parameters
-    ----------
-    id : str
-        Unique identifier for the session
-    recording_date : datetime.datetime
-        Date and time when the recording was made
-    task : Task
-        Task performed during the session
+    Args:
+        id: Unique identifier for the session
+        recording_date: Date and time when the recording was made, defaults to None
+        **kwargs: Any additional metadata
     """
 
     id: str
-    recording_date: datetime.datetime
-    task: Optional[Task] = None
+    recording_date: datetime.datetime | None
+
+    def __init__(
+        self,
+        id: str,
+        recording_date: datetime.datetime | None = None,
+        **kwargs,
+    ):
+
+        _validate_string_type(id, "id")
+
+        if recording_date is not None:
+            if not isinstance(recording_date, datetime.datetime):
+                raise ValueError(
+                    "recording_date must be None or a datetime.datetime object"
+                    f", got {recording_date!r}"
+                )
+
+        super().__init__(
+            id=id,
+            recording_date=recording_date,
+            **kwargs,
+        )
 
 
-@dataclass
-class DeviceDescription(temporaldata.Data):
-    r"""A class for describing a recording device.
+class DeviceDescription(Data):
+    r"""A container for storing recording device metadata.
 
-    Parameters
-    ----------
-    id : str
-        Unique identifier for the device
-    recording_tech : RecordingTech or List[RecordingTech], optional
-        Recording technology used, defaults to None
-    processing : str, optional
-        Processing applied to the recording, defaults to None
-    chronic : bool, optional
-        Whether the device was chronically implanted, defaults to False
-    start_date : datetime.datetime, optional
-        Date when device was implanted/first used, defaults to None
-    end_date : datetime.datetime, optional
-        Date when device was removed/last used, defaults to None
-    imaging_depth : float, optional
-        Depth of imaging in micrometers, defaults to None
-    target_area : BrainRegion, optional
-        Target brain region for recording, defaults to None
+    Args:
+        id: Identifier for the device
+        recording_tech: A string description of the device tech, default None
+        **kwargs: Any additional metadata
     """
 
     id: str
-    # units: List[str]
-    # areas: Union[List[StringIntEnum], List[Macaque]]
-    recording_tech: Union[RecordingTech, List[RecordingTech]] = None
-    processing: Optional[str] = None
-    chronic: bool = False
-    start_date: Optional[datetime.datetime] = None
-    end_date: Optional[datetime.datetime] = None
-    # Ophys
-    imaging_depth: Optional[float] = None  # in um
-    target_area: Optional[BrainRegion] = None
+    recording_tech: str | None
+
+    def __init__(
+        self,
+        id: str,
+        recording_tech: str | None = None,
+        **kwargs,
+    ):
+
+        _validate_string_type(id, "id")
+        _validate_string_type(recording_tech, "recording_tech", allow_none=True)
+
+        super().__init__(
+            id=id,
+            recording_tech=recording_tech,
+            **kwargs,
+        )

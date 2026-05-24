@@ -28,7 +28,6 @@ from brainsets.descriptions import (
     SubjectDescription,
 )
 from brainsets.pipeline import BrainsetPipeline
-from brainsets.taxonomy import Species
 from brainsets.utils.bids_utils import (
     build_bids_path,
     fetch_eeg_recordings,
@@ -152,7 +151,7 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
     IGNORE_CHANNELS: Optional[list[str]] = None
     """Optional list of channel names to ignore.
 
-    Channel names should be specified as they appear in the original namespace of 
+    Channel names should be specified as they appear in the original namespace of
     the raw object (i.e., prior to any remapping or type changes).
     """
 
@@ -261,18 +260,17 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
             )
 
     @staticmethod
-    def _normalize_species(species: str | None) -> str:
-        """Normalize species names to ``"homo sapiens"`` or ``"unknown"``.
+    def _normalize_species(species: str | None) -> str | None:
+        """Normalize species names to ``"HOMO_SAPIENS"`` or None.
 
         Args:
             species: The input species name (string or None).
 
         Returns:
-            ``"homo sapiens"`` for recognized human aliases, otherwise
-            ``"unknown"``.
+            ``"HOMO_SAPIENS"`` for recognized human aliases, otherwise None.
         """
         if not isinstance(species, str):
-            return "unknown"
+            return None
 
         normalized_species = species.strip().lower()
         homo_sapiens_aliases = {
@@ -283,8 +281,8 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
             "h. sapiens",
         }
         if normalized_species in homo_sapiens_aliases:
-            return "homo sapiens"
-        return "unknown"
+            return "HOMO_SAPIENS"
+        return None
 
     @classmethod
     def get_manifest(cls, raw_dir: Path, args: Optional[Namespace]) -> pd.DataFrame:
@@ -469,9 +467,7 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
 
         subject_description = SubjectDescription(
             id=subject_id,
-            species=(
-                Species.HOMO_SAPIENS if species == "homo sapiens" else Species.UNKNOWN
-            ),
+            species=species,
             age=age,
             sex=sex,
         )

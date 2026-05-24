@@ -1,7 +1,7 @@
 Preparing a new Dataset
 =======================
 
-This tutorial walks through how to prepare a new neural dataset using **brainsets**. 
+This tutorial walks through how to prepare a new neural dataset using **brainsets**.
 
 
 **1. Pick a `brainset_id`**
@@ -23,7 +23,7 @@ The following is an example ``prepare_data.py`` script that can serve as a templ
 
 .. code-block:: python
     :emphasize-lines: 15, 16, 18, 19, 21, 22, 23, 24
-    
+
     import argparse
     import os
     import h5py
@@ -37,10 +37,10 @@ The following is an example ``prepare_data.py`` script that can serve as a templ
         parser.add_argument("--output_dir", type=str, default="./processed")
 
         args = parser.parse_args()
-        
+
         # load data, extract metadata and process any relevant variables
         ...
-        
+
         # create data object
         data = Data(...)
 
@@ -67,7 +67,7 @@ First, create a :obj:`BrainsetDescription <brainsets.descriptions.BrainsetDescri
 
     brainset_description = BrainsetDescription(
         id="my_dataset_2024",
-        origin_version="1.0.0", 
+        origin_version="1.0.0",
         derived_version="1.0.0",
         source="https://example.com/dataset",
         description="Description of your dataset..."
@@ -104,7 +104,7 @@ Based on the file format for you raw data, use the necessary imports and code to
     .. code-block:: python
 
         from scipy.io import loadmat
-        
+
         # Load .mat file
         mat_data = loadmat("path/to/file.mat")
 
@@ -113,7 +113,7 @@ Based on the file format for you raw data, use the necessary imports and code to
     .. code-block:: python
 
         import numpy as np
-        
+
         # Load .npy files
         neural_data = np.load("path/to/spikes.npy")
         behavior = np.load("path/to/behavior.npy")
@@ -126,12 +126,11 @@ Create a :class:`~brainsets.descriptions.SubjectDescription` object to store met
 .. code-block:: python
 
     from brainsets.descriptions import SubjectDescription
-    from brainsets.taxonomy import Species, Sex
 
     subject = SubjectDescription(
         id="subject_1",
-        species=Species.MACACA_MULATTA,  # or other species from taxonomy
-        sex=Sex.MALE,  # or Sex.FEMALE, Sex.OTHER, Sex.UNKNOWN
+        species="MACACA_MULATTA",
+        sex="MALE",
     )
 
 This metadata can be extracted from your raw data file, or you can create it manually.
@@ -141,7 +140,7 @@ Note that if you are using NWB files from the DANDI archive, you can use the hel
 .. code-block:: python
 
     from brainsets.utils.dandi_utils import extract_subject_from_nwb
-    
+
     subject = extract_subject_from_nwb(nwbfile)
 
 **7. Extract Session metadata**
@@ -164,16 +163,15 @@ Create a :class:`~brainsets.descriptions.DeviceDescription` object to store meta
 .. code-block:: python
 
     from brainsets.descriptions import DeviceDescription
-    from brainsets.taxonomy import RecordingTech
 
     device = DeviceDescription(
         id="device_1",
-        recording_tech=RecordingTech.UTAH_ARRAY_SPIKES
+        recording_tech="UTAH_ARRAY_SPIKES",
     )
 
 **9. Extract Neural Data**
 
-Extract and process the neural data. If you are working with spiking data, 
+Extract and process the neural data. If you are working with spiking data,
 the expected outputs are ``spikes``and ``units``.
 
 .. tab:: Numpy File
@@ -203,21 +201,20 @@ the expected outputs are ``spikes``and ``units``.
 
     .. code-block:: python
 
-        from brainsets.dandi_utils import extract_spikes_from_nwbfile
-        from brainsets.taxonomy import RecordingTech
-        
+        from brainsets.utils.dandi_utils import extract_spikes_from_nwbfile
+
         spikes, units = extract_spikes_from_nwbfile(
-            nwbfile, 
-            recording_tech=RecordingTech.UTAH_ARRAY_SPIKES
+            nwbfile,
+            recording_tech="UTAH_ARRAY_SPIKES",
         )
 
 **10. Extract Behavioral Data**
 
-Extract and process the behavioral data. If you are working with reaching task data, 
+Extract and process the behavioral data. If you are working with reaching task data,
 the expected outputs are ``cursor``.
 
 .. code-block:: python
-    
+
     from temporaldata import IrregularTimeSeries
 
     cursor = IrregularTimeSeries(
@@ -279,7 +276,7 @@ Split the data into train, validation and test sets, you can do this in any way 
         # Split trials into train/valid/test sets
         successful_trials = trials.select_by_mask(trials.is_valid)
         train_trials, valid_trials, test_trials = successful_trials.split(
-            [0.7, 0.1, 0.2],  # proportions for train/valid/test 
+            [0.7, 0.1, 0.2],  # proportions for train/valid/test
             shuffle=True,      # randomly shuffle trials
             random_seed=42     # for reproducibility
         )
