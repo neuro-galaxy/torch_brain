@@ -248,15 +248,6 @@ def test_lazy_regular_timeseries(test_filepath):
         assert np.allclose(data.timestamps, np.arange(1.0, 3.0, 1 / 250.0))
 
 
-def test_regular_to_irregular_timeseries():
-    a = RegularTimeSeries(
-        lfp=np.random.random((100, 48)), sampling_rate=10, domain="auto"
-    )
-    b = a.to_irregular()
-    assert np.allclose(b.timestamps, np.arange(0, 10, 0.1))
-    assert np.allclose(b.lfp, a.lfp)
-
-
 def test_slice_numerical_instability():
     ts = RegularTimeSeries(value=np.zeros((40)), sampling_rate=4, domain="auto")
     # Expected timestamps: [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, ...]
@@ -373,6 +364,7 @@ class TestFromGappyTimeseries:
 
         rts = RegularTimeSeries.from_gappy_timeseries(ts, sampling_rate=100.0, raw=raw)
 
+        assert rts.is_gappy()
         assert isinstance(rts, RegularTimeSeries)
         assert rts.sampling_rate == 100.0
         assert len(rts) == 5
@@ -390,6 +382,7 @@ class TestFromGappyTimeseries:
 
         rts = RegularTimeSeries.from_gappy_timeseries(ts, sampling_rate=2.0, a=a, b=b)
 
+        assert rts.is_gappy()
         assert len(rts) == 4
         np.testing.assert_array_equal(np.isnan(rts.a), [False, False, True, False])
         assert rts.b.shape == (4, 4)
@@ -656,6 +649,7 @@ class TestSliceGappy:
     def test_slice_trims_leading_gap(self, rts):
         # Window starts inside the gap, so data[0] would otherwise be nan.
         s = rts.slice(0.018, 0.05, reset_origin=False)
+        assert not s.is_gappy()
         np.testing.assert_array_equal(s.raw, [3.0, 4.0])
         np.testing.assert_allclose(s.domain.start, [0.03])
         np.testing.assert_allclose(s.domain.end, [0.05])
@@ -663,6 +657,7 @@ class TestSliceGappy:
     def test_slice_trims_trailing_gap(self, rts):
         # Window ends inside the gap, so data[-1] would otherwise be nan.
         s = rts.slice(0.0, 0.03, reset_origin=False)
+        assert not s.is_gappy()
         np.testing.assert_array_equal(s.raw, [1.0, 2.0])
         np.testing.assert_allclose(s.domain.start, [0.0])
         np.testing.assert_allclose(s.domain.end, [0.02])
@@ -670,6 +665,7 @@ class TestSliceGappy:
     def test_slice_preserves_internal_gap(self, rts):
         # Window spans the gap; the interior nan must be kept.
         s = rts.slice(0.0, 0.05, reset_origin=False)
+        assert s.is_gappy()
         np.testing.assert_array_equal(
             np.isnan(s.raw), [False, False, True, False, False]
         )
@@ -678,11 +674,13 @@ class TestSliceGappy:
 
     def test_slice_inside_gap_is_empty(self, rts):
         s = rts.slice(0.022, 0.028, reset_origin=False)
+        assert not s.is_gappy()
         assert len(s) == 0
         assert s.domain.start[0] == s.domain.end[-1] == 0.03
 
     def test_slice_reset_origin(self, rts):
         s = rts.slice(0.018, 0.05, reset_origin=True)
+        assert not s.is_gappy()
         np.testing.assert_array_equal(s.raw, [3.0, 4.0])
         # data[0] (= 3) was at t=0.03; after reset by start=0.018, t=0.012.
         np.testing.assert_allclose(s.timestamps, [0.012, 0.022])
@@ -691,12 +689,14 @@ class TestSliceGappy:
 
     def test_slice_spans_full_range_reset_origin(self, rts):
         s = rts.slice(0.0, 0.05, reset_origin=True)
+        assert s.is_gappy()
         np.testing.assert_allclose(s.domain.start, [0.0, 0.03])
         np.testing.assert_allclose(s.domain.end, [0.02, 0.05])
         np.testing.assert_allclose(s.timestamps, [0.0, 0.01, 0.02, 0.03, 0.04])
 
     def test_slice_outside_domain(self, rts):
         s = rts.slice(1.0, 2.0, reset_origin=True)
+        assert not s.is_gappy()
         assert len(s) == 0
         assert s.domain.start[0] == s.domain.end[-1] == 0.0
 
@@ -706,6 +706,7 @@ class TestSliceGappy:
             s = lazy.slice(0.0, 0.05, reset_origin=False).slice(
                 0.018, 0.05, reset_origin=False
             )
+            assert not s.is_gappy()
             np.testing.assert_array_equal(s.raw, [3.0, 4.0])
 
 
@@ -821,3 +822,126 @@ class TestIndexMask:
         assert mask.dtype == bool
         expected = []
         np.testing.assert_array_equal(mask, expected)
+
+
+class TestIsGappy:
+
+    @pytest.fixture(params=["regular", "lazy"])
+    def rts(self, request, test_filepath):
+        rts = RegularTimeSeries(
+            raw=[0, 1, 2, 3],
+            sampling_rate=10,
+            domain="auto",
+        )
+        if request.param == "regular":
+            yield rts
+        else:
+            with _make_lazy(rts, LazyRegularTimeSeries, test_filepath) as data:
+                yield data
+
+    def test_basic(self, rts):
+        assert rts.is_gappy() is False
+
+    @pytest.fixture(params=["regular", "lazy"])
+    def gappy_rts(self, request, test_filepath):
+        ts = np.array([0.0, 0.01, 0.03, 0.04, 0.07, 0.09])
+        raw = np.arange(len(ts))
+        rts = RegularTimeSeries.from_gappy_timeseries(
+            timestamps=ts,
+            raw=raw,
+            sampling_rate=100.0,
+        )
+        if request.param == "regular":
+            yield rts
+        else:
+            with _make_lazy(rts, LazyRegularTimeSeries, test_filepath) as data:
+                yield data
+
+    def test_gappy(self, gappy_rts):
+        assert gappy_rts.is_gappy() is True
+
+    def test_gappy_slice_collapses_to_single_interval(self, gappy_rts):
+        sliced = gappy_rts.slice(0.0, 0.02)
+        assert sliced.is_gappy() is False
+
+    def test_empty(self, test_filepath):
+        empty_rts = RegularTimeSeries(sampling_rate=10, raw=[])
+        assert empty_rts.is_gappy() is False
+
+        with _make_lazy(empty_rts, LazyRegularTimeSeries, test_filepath) as rts:
+            assert rts.is_gappy() is False
+
+
+class TestToIrregular:
+
+    @pytest.fixture(params=["regular", "lazy"])
+    def rts(self, request, test_filepath):
+        rts = RegularTimeSeries(
+            raw=[0, 1, 2, 3],
+            sampling_rate=10,
+            domain="auto",
+        )
+        if request.param == "regular":
+            yield rts
+        else:
+            with _make_lazy(rts, LazyRegularTimeSeries, test_filepath) as data:
+                yield data
+
+    def test_basic(self, rts):
+        irts = rts.to_irregular()
+        np.testing.assert_array_equal(irts.timestamps, [0.0, 0.1, 0.2, 0.3])
+        np.testing.assert_array_equal(irts.raw, rts.raw)
+        # ensure things are copies and not views
+        assert not np.shares_memory(irts.timestamps, rts.timestamps)
+        assert not np.shares_memory(irts.raw, rts.raw)
+        assert id(irts.domain) != id(rts.domain)
+        assert not np.shares_memory(irts.domain.start, rts.domain.start)
+        assert not np.shares_memory(irts.domain.end, rts.domain.end)
+
+    @pytest.fixture(params=["regular", "lazy"])
+    def gappy_rts(self, request, test_filepath):
+        ts = np.array([0.0, 0.01, 0.03, 0.04, 0.07, 0.09])
+        raw = np.arange(len(ts))
+        rts = RegularTimeSeries.from_gappy_timeseries(
+            timestamps=ts,
+            raw=raw,
+            sampling_rate=100.0,
+        )
+        if request.param == "regular":
+            yield rts
+        else:
+            with _make_lazy(rts, LazyRegularTimeSeries, test_filepath) as data:
+                yield data
+
+    def test_gappy(self, gappy_rts):
+        irts = gappy_rts.to_irregular()
+        np.testing.assert_array_equal(
+            irts.timestamps, [0.0, 0.01, 0.03, 0.04, 0.07, 0.09]
+        )
+        np.testing.assert_array_equal(irts.raw, [0, 1, 2, 3, 4, 5])
+        # ensure things are copies and not views
+        assert not np.shares_memory(irts.timestamps, gappy_rts.timestamps)
+        assert not np.shares_memory(irts.raw, gappy_rts.raw)
+        assert id(irts.domain) != id(gappy_rts.domain)
+        assert not np.shares_memory(irts.domain.start, gappy_rts.domain.start)
+        assert not np.shares_memory(irts.domain.end, gappy_rts.domain.end)
+
+    def test_empty(self, test_filepath):
+        rts = RegularTimeSeries(sampling_rate=10, raw=[])
+        irts = rts.to_irregular()
+        assert len(irts) == 0
+        # ensure things are copies and not views
+        assert not np.shares_memory(irts.timestamps, rts.timestamps)
+        assert not np.shares_memory(irts.raw, rts.raw)
+        assert id(irts.domain) != id(rts.domain)
+        assert not np.shares_memory(irts.domain.start, rts.domain.start)
+        assert not np.shares_memory(irts.domain.end, rts.domain.end)
+
+        with _make_lazy(rts, LazyRegularTimeSeries, test_filepath) as lazy_rts:
+            irts = lazy_rts.to_irregular()
+            assert len(irts) == 0
+            assert not np.shares_memory(irts.timestamps, lazy_rts.timestamps)
+            assert not np.shares_memory(irts.raw, lazy_rts.raw)
+            assert id(irts.domain) != id(lazy_rts.domain)
+            assert not np.shares_memory(irts.domain.start, lazy_rts.domain.start)
+            assert not np.shares_memory(irts.domain.end, lazy_rts.domain.end)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from typing import Literal, Any
 import warnings
+import copy
 
 import h5py
 import numpy as np
@@ -369,11 +370,53 @@ class RegularTimeSeries(ArrayDict):
         return out
 
     def to_irregular(self):
-        r"""Converts the time series to an irregular time series."""
+        r"""Converts the :obj:`RegularTimeSeries` object to an :obj:`IrregularTimeSeries` object.
+
+        Gap-fill samples (where :meth:`index_mask` is :obj:`False`) are dropped.
+
+        Returns:
+            :obj:`IrregularTimeSeries` with timestamps and all attributes copied.
+
+        Example ::
+
+            >>> import numpy as np
+            >>> from temporaldata import RegularTimeSeries
+
+            >>> # Contiguous (non-gappy) series: every sample is kept.
+            >>> rts = RegularTimeSeries(raw=np.arange(4), sampling_rate=10.0)
+            >>> irts = rts.to_irregular()
+            >>> irts.timestamps
+            array([0. , 0.1, 0.2, 0.3])
+            >>> irts.raw
+            array([0, 1, 2, 3])
+
+            >>> # Gappy series: gap-fill samples are dropped.
+            >>> ts = [0.0, 0.01, 0.03, 0.04, 0.06]
+            >>> raw = [1, 2, 3, 4, 5]
+            >>> rts = RegularTimeSeries.from_gappy_timeseries(
+            ...     ts, sampling_rate=100.0, raw=raw,
+            ... )
+            >>> rts.raw  # contains fill values
+            array([ 1,  2, -1,  3,  4, -1,  5])
+            >>> irts = rts.to_irregular()
+            >>> irts.timestamps
+            array([0.  , 0.01, 0.03, 0.04, 0.06])
+            >>> irts.raw
+            array([1, 2, 3, 4, 5])
+        """
+        if not self.is_gappy():
+            # Every sample is real, skip the mask.
+            return IrregularTimeSeries(
+                timestamps=self.timestamps,
+                **{k: getattr(self, k).copy() for k in self.keys()},
+                domain=copy.deepcopy(self.domain),
+            )
+
+        mask = self.index_mask()
         return IrregularTimeSeries(
-            timestamps=self.timestamps,
-            **{k: getattr(self, k) for k in self.keys()},
-            domain=self.domain,
+            timestamps=self.timestamps[mask],
+            **{k: getattr(self, k)[mask] for k in self.keys()},
+            domain=copy.deepcopy(self.domain),
         )
 
     def to_hdf5(self, file):
@@ -488,6 +531,11 @@ class RegularTimeSeries(ArrayDict):
 
         Raises:
             ValueError: If timestamps deviate from the regular grid by more than :obj:`rtol`
+
+        See Also:
+            * :meth:`is_gappy` to check whether a series has gaps.
+            * :meth:`index_mask` for a boolean mask of real vs. gap-fill samples.
+
         Example ::
 
             >>> import numpy as np
@@ -595,6 +643,37 @@ class RegularTimeSeries(ArrayDict):
             domain=domain,
             **filled,
         )
+
+    def is_gappy(self) -> bool:
+        r"""Returns :obj:`True` if this :obj:`RegularTimeSeries` has gaps.
+
+        A series is *gappy* when its :attr:`domain` is made up of more than one
+        interval; positions inside the gaps are filled with the configured
+        gap value (see :meth:`from_gappy_timeseries`). A contiguous series
+        (single-interval domain) returns :obj:`False`.
+
+        Returns:
+            bool: :obj:`True` if the domain has more than one interval.
+
+        See Also:
+            :meth:`index_mask` for a boolean mask of real vs. gap-fill samples.
+
+        Example ::
+
+            >>> import numpy as np
+            >>> from temporaldata import RegularTimeSeries
+
+            >>> rts = RegularTimeSeries(raw=np.arange(4), sampling_rate=100.0)
+            >>> rts.is_gappy()
+            False
+
+            >>> rts = RegularTimeSeries.from_gappy_timeseries(
+            ...     [0.0, 0.01, 0.03], sampling_rate=100.0, raw=[1, 2, 3],
+            ... )
+            >>> rts.is_gappy()
+            True
+        """
+        return len(self.domain) > 1
 
 
 class LazyRegularTimeSeries(RegularTimeSeries):
