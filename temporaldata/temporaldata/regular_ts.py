@@ -182,7 +182,7 @@ class RegularTimeSeries(ArrayDict):
                   to the selected **index** (i.e. the actual time of the sample).
         """
         domain_start = self.domain.start[0]
-        domain_end = self.domain.end[0]
+        domain_end = self.domain.end[-1]
 
         # Clamp to domain bounds
         if time <= domain_start:
@@ -215,7 +215,17 @@ class RegularTimeSeries(ArrayDict):
         eps: float = 1e-9,
     ):
         r"""Returns a new :obj:`RegularTimeSeries` object that contains the data between
-        the start (inclusive) and end (exclusive) times (i.e., [start, end)]).
+        the start (inclusive) and end (exclusive) times (i.e., [start, end)).
+
+        :obj:`start` and :obj:`end` are snapped up to the next grid point (the next
+        multiple of ``1/sampling_rate``).
+
+        - Gap-filled samples at the start or end of the result are trimmed, so
+          returned data always begins and ends on real samples.
+        - Gaps in the middle of the window are preserved as-is and remain filled
+          with the gap value.
+        - Slices that fall fully outside the domain or entirely within a gap
+          return empty data.
 
         Args:
             start: Start time.
@@ -234,20 +244,37 @@ class RegularTimeSeries(ArrayDict):
         start_id, out_start = self._time_to_idx(start, eps=eps)
         end_id, out_end = self._time_to_idx(end, eps=eps)
 
+        # Intersect with the (possibly multi-interval) domain
+        new_domain = self.domain & Interval(out_start, out_end)
+
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
 
-        out._domain = Interval(start=out_start, end=out_end)
+        # No real samples
+        is_empty = len(new_domain) == 0 or new_domain.start[0] == new_domain.end[-1]
+        if is_empty:
+            out._domain = (
+                Interval(start=0.0, end=0.0)
+                if reset_origin
+                else Interval(start=out_start, end=out_start)
+            )
+            for key in self.keys():
+                out.__dict__[key] = self.__dict__[key][0:0].copy()
+            return out
+
+        # Trim leading/trailing gap samples, Internal gaps stay in the array as gap-filled values.
+        leading_trim = int(
+            round((new_domain.start[0] - out_start) * self.sampling_rate)
+        )
+        trailing_trim = int(round((out_end - new_domain.end[-1]) * self.sampling_rate))
+        start_id += leading_trim
+        end_id -= trailing_trim
 
         if reset_origin:
-            outside_domain = end <= self.domain.start[0] or start >= self.domain.end[0]
-            if outside_domain:
-                out._domain.start = out._domain.start - out_start
-                out._domain.end = out._domain.end - out_end
+            new_domain.start = new_domain.start - start
+            new_domain.end = new_domain.end - start
 
-            else:
-                out._domain.start = out._domain.start - start
-                out._domain.end = out._domain.end - start
+        out._domain = new_domain
 
         for key in self.keys():
             out.__dict__[key] = self.__dict__[key][start_id:end_id].copy()
@@ -394,6 +421,10 @@ class RegularTimeSeries(ArrayDict):
             ... )
             >>> rts.raw
             array([ 1.,  2., nan,  3.,  4.])
+            >>> rts.domain.start
+            array([0.  , 0.03])
+            >>> rts.domain.end
+            array([0.02, 0.05])
         """
         if not isinstance(timestamps, np.ndarray):
             raise ValueError(
@@ -428,7 +459,8 @@ class RegularTimeSeries(ArrayDict):
                 f"is inherently irregular."
             )
 
-        min_idx_gap = int(np.min(np.diff(grid_idx)))
+        idx_diffs = np.diff(grid_idx)
+        min_idx_gap = int(idx_diffs.min())
         if min_idx_gap < 1:
             raise ValueError(
                 f"timestamps contain duplicate or sub-sample-spaced entries "
@@ -443,6 +475,15 @@ class RegularTimeSeries(ArrayDict):
             )
 
         num_timesteps = int(grid_idx[-1]) + 1
+
+        # Build a multi-interval domain that excludes gaps
+        gap_after = idx_diffs > 1
+        is_run_start = np.concatenate([[True], gap_after])
+        is_run_end = np.concatenate([gap_after, [True]])
+        domain = Interval(
+            start=start_time + grid_idx[is_run_start] / sampling_rate,
+            end=start_time + (grid_idx[is_run_end] + 1) / sampling_rate,
+        )
 
         filled: dict[str, np.ndarray] = {}
         for key, arr in kwargs.items():
@@ -475,8 +516,7 @@ class RegularTimeSeries(ArrayDict):
 
         return cls(
             sampling_rate=sampling_rate,
-            domain="auto",
-            domain_start=start_time,
+            domain=domain,
             **filled,
         )
 
@@ -558,7 +598,17 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         eps: float = 1e-9,
     ):
         r"""Returns a new :obj:`RegularTimeSeries` object that contains the data between
-        the start and end times.
+        the start (inclusive) and end (exclusive) times (i.e., [start, end)).
+
+        :obj:`start` and :obj:`end` are snapped up to the next grid point (the next
+        multiple of ``1/sampling_rate``).
+
+        - Gap-filled samples at the start or end of the result are trimmed, so
+          returned data always begins and ends on real samples.
+        - Gaps in the middle of the window are preserved as-is and remain filled
+          with the gap value.
+        - Slices that fall fully outside the domain or entirely within a gap
+          return empty data.
 
         Args:
             start: Start time.
@@ -576,19 +626,42 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         start_id, out_start = self._time_to_idx(start, eps=eps)
         end_id, out_end = self._time_to_idx(end, eps=eps)
 
+        # Intersect with the (possibly multi-interval) domain
+        new_domain = self.domain & Interval(out_start, out_end)
+
+        is_empty = len(new_domain) == 0 or new_domain.start[0] == new_domain.end[-1]
+        if is_empty:
+            # No data to defer-load; return an eager RegularTimeSeries.
+            out = RegularTimeSeries.__new__(RegularTimeSeries)
+            out._sampling_rate = self.sampling_rate
+            out._domain = (
+                Interval(start=0.0, end=0.0)
+                if reset_origin
+                else Interval(start=out_start, end=out_start)
+            )
+            for key in self.keys():
+                out.__dict__[key] = self.__dict__[key][0:0]
+            return out
+
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
+        out._lazy_ops = {}
 
-        out._domain = Interval(start=out_start, end=out_end)
+        parent_offset = self._lazy_ops["slice"][0] if "slice" in self._lazy_ops else 0
+
+        # Trim leading/trailing gap samples
+        leading_trim = int(
+            round((new_domain.start[0] - out_start) * self.sampling_rate)
+        )
+        trailing_trim = int(round((out_end - new_domain.end[-1]) * self.sampling_rate))
+        start_id += leading_trim
+        end_id -= trailing_trim
 
         if reset_origin:
-            outside_domain = end <= self.domain.start[0] or start >= self.domain.end[0]
-            if outside_domain:
-                out._domain.start = out._domain.start - out_start
-                out._domain.end = out._domain.end - out_end
-            else:
-                out._domain.start = out._domain.start - start
-                out._domain.end = out._domain.end - start
+            new_domain.start = new_domain.start - start
+            new_domain.end = new_domain.end - start
+
+        out._domain = new_domain
 
         for key in self.keys():
             if isinstance(self.__dict__[key], h5py.Dataset):
@@ -596,15 +669,10 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             else:
                 out.__dict__[key] = self.__dict__[key][start_id:end_id].copy()
 
-        out._lazy_ops = {}
-
-        if "slice" not in self._lazy_ops:
-            out._lazy_ops["slice"] = (start_id, end_id)
-        else:
-            out._lazy_ops["slice"] = (
-                self._lazy_ops["slice"][0] + start_id,
-                self._lazy_ops["slice"][0] + end_id,
-            )
+        out._lazy_ops["slice"] = (
+            parent_offset + start_id,
+            parent_offset + end_id,
+        )
 
         return out
 

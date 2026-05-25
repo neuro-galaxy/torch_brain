@@ -8,6 +8,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 - `ArrayDict`, `Interval`, `IrregularTimeSeries`, and `RegularTimeSeries` constructors now accept any array-like input (`list`, `tuple`, or any object implementing `__array__` such as `torch.Tensor` or `pandas.Series`) in addition to `np.ndarray`. Inputs are automatically coerced to `np.ndarray` via `np.asarray()`. Parameter types are annotated with a custom `ArrayLike` type alias. ([#123](https://github.com/neuro-galaxy/temporaldata/pull/123))
 - Added `RegularTimeSeries.from_gappy_timeseries()` method to construct a regular time series from approximately-regular but gappy timestamps, snapping samples to a regular grid and filling missing samples with a configurable `gap_value`. ([#122](https://github.com/neuro-galaxy/temporaldata/pull/122))
+- Gap-aware slicing for `RegularTimeSeries` and `LazyRegularTimeSeries`. ([#129](https://github.com/neuro-galaxy/temporaldata/pull/129))
+  - `from_gappy_timeseries` now builds a multi-interval domain that excludes gaps (previously a single contiguous interval spanning the full grid).
+  - `slice()` trims gap-filled samples from the leading and trailing edges of the result, so the returned data always begins and ends on real samples.
+  - Gap-filled samples in the middle of the window are preserved as-is.
+  - Slices that fall entirely outside the domain or entirely within a gap return an empty result.
 
 ### Fixed
 - Fixed `LazyInterval.select_by_mask()` and `LazyIrregularTimeSeries.select_by_mask()` dropping non-hardcoded private attributes (e.g. `_sorted`) from the result ([#121](https://github.com/neuro-galaxy/temporaldata/pull/121))

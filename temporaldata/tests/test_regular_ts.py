@@ -1,5 +1,6 @@
 import os
 import tempfile
+from contextlib import contextmanager
 
 import h5py
 import numpy as np
@@ -7,6 +8,15 @@ import pandas as pd
 import pytest
 
 from temporaldata import Interval, LazyRegularTimeSeries, RegularTimeSeries
+
+
+@contextmanager
+def _make_lazy(non_lazy, lazy_cls, test_filepath):
+    with h5py.File(test_filepath, "w") as f:
+        non_lazy.to_hdf5(f)
+    f = h5py.File(test_filepath, "r")
+    yield lazy_cls.from_hdf5(f)
+    f.close()
 
 
 @pytest.fixture
@@ -370,8 +380,8 @@ class TestFromGappyTimeseries:
             np.isnan(rts.raw), [False, False, True, False, False]
         )
         np.testing.assert_array_equal(rts.raw[~np.isnan(rts.raw)], raw)
-        assert rts.domain.start[0] == 0.0
-        assert rts.domain.end[0] == pytest.approx(0.05)
+        np.testing.assert_allclose(rts.domain.start, [0.0, 0.03])
+        np.testing.assert_allclose(rts.domain.end, [0.02, 0.05])
 
     def test_multiple_arrays_and_multidim(self):
         ts = np.array([10.0, 10.5, 11.5])  # missing 11.0 at sr=2Hz
@@ -385,9 +395,9 @@ class TestFromGappyTimeseries:
         assert rts.b.shape == (4, 4)
         assert np.isnan(rts.b[2]).all()
         np.testing.assert_array_equal(rts.b[[0, 1, 3]], b)
-        # Domain starts at timestamps[0].
-        assert rts.domain.start[0] == 10.0
-        assert rts.domain.end[0] == pytest.approx(10.0 + 4 / 2.0)
+        # Domain excludes the gap at 11.0–11.5.
+        np.testing.assert_allclose(rts.domain.start, [10.0, 11.5])
+        np.testing.assert_allclose(rts.domain.end, [11.0, 12.0])
 
     def test_integer_gap_preserves_dtype(self):
         ts = np.array([0.0, 0.1, 0.3])  # missing 0.2 at sr=10Hz
@@ -600,6 +610,86 @@ class TestFromGappyTimeseries:
                 sampling_rate=10.0,
                 raw=np.array([1.0, 2.0, 3.0]),
             )
+
+
+class TestSliceGappy:
+    """Slicing must trim leading/trailing gap samples and preserve internal ones.
+
+    Fixture: 5 grid samples at 100Hz, idx 2 (time 0.02) missing.
+        data:   [1, 2, nan, 3, 4]
+        domain: [0.0, 0.02) U [0.03, 0.05)
+    """
+
+    @staticmethod
+    def _build():
+        ts = np.array([0.0, 0.01, 0.03, 0.04])
+        raw = np.array([1.0, 2.0, 3.0, 4.0])
+        return RegularTimeSeries.from_gappy_timeseries(ts, sampling_rate=100.0, raw=raw)
+
+    @pytest.fixture(params=["regular", "lazy"])
+    def rts(self, request, test_filepath):
+        if request.param == "regular":
+            yield self._build()
+        else:
+            with _make_lazy(
+                self._build(), LazyRegularTimeSeries, test_filepath
+            ) as data:
+                yield data
+
+    def test_slice_trims_leading_gap(self, rts):
+        # Window starts inside the gap, so data[0] would otherwise be nan.
+        s = rts.slice(0.018, 0.05, reset_origin=False)
+        np.testing.assert_array_equal(s.raw, [3.0, 4.0])
+        np.testing.assert_allclose(s.domain.start, [0.03])
+        np.testing.assert_allclose(s.domain.end, [0.05])
+
+    def test_slice_trims_trailing_gap(self, rts):
+        # Window ends inside the gap, so data[-1] would otherwise be nan.
+        s = rts.slice(0.0, 0.03, reset_origin=False)
+        np.testing.assert_array_equal(s.raw, [1.0, 2.0])
+        np.testing.assert_allclose(s.domain.start, [0.0])
+        np.testing.assert_allclose(s.domain.end, [0.02])
+
+    def test_slice_preserves_internal_gap(self, rts):
+        # Window spans the gap; the interior nan must be kept.
+        s = rts.slice(0.0, 0.05, reset_origin=False)
+        np.testing.assert_array_equal(
+            np.isnan(s.raw), [False, False, True, False, False]
+        )
+        np.testing.assert_allclose(s.domain.start, [0.0, 0.03])
+        np.testing.assert_allclose(s.domain.end, [0.02, 0.05])
+
+    def test_slice_inside_gap_is_empty(self, rts):
+        s = rts.slice(0.022, 0.028, reset_origin=False)
+        assert len(s) == 0
+        assert s.domain.start[0] == s.domain.end[-1] == 0.03
+
+    def test_slice_reset_origin(self, rts):
+        s = rts.slice(0.018, 0.05, reset_origin=True)
+        np.testing.assert_array_equal(s.raw, [3.0, 4.0])
+        # data[0] (= 3) was at t=0.03; after reset by start=0.018, t=0.012.
+        np.testing.assert_allclose(s.timestamps, [0.012, 0.022])
+        np.testing.assert_allclose(s.domain.start, [0.012])
+        np.testing.assert_allclose(s.domain.end, [0.032])
+
+    def test_slice_spans_full_range_reset_origin(self, rts):
+        s = rts.slice(0.0, 0.05, reset_origin=True)
+        np.testing.assert_allclose(s.domain.start, [0.0, 0.03])
+        np.testing.assert_allclose(s.domain.end, [0.02, 0.05])
+        np.testing.assert_allclose(s.timestamps, [0.0, 0.01, 0.02, 0.03, 0.04])
+
+    def test_slice_outside_domain(self, rts):
+        s = rts.slice(1.0, 2.0, reset_origin=True)
+        assert len(s) == 0
+        assert s.domain.start[0] == s.domain.end[-1] == 0.0
+
+    def test_lazy_consecutive_slices(self, test_filepath):
+        # Nested slice: outer trims trailing gap, inner trims leading gap.
+        with _make_lazy(self._build(), LazyRegularTimeSeries, test_filepath) as lazy:
+            s = lazy.slice(0.0, 0.05, reset_origin=False).slice(
+                0.018, 0.05, reset_origin=False
+            )
+            np.testing.assert_array_equal(s.raw, [3.0, 4.0])
 
 
 class TestRegularTimeSeriesCoercion:
