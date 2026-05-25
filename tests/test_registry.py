@@ -7,6 +7,8 @@ from torch_brain.registry import (
     MODALITY_REGISTRY,
 )
 
+import torch.nn as nn
+
 
 def test_data_type_enum():
     """Test DataType enum values and members."""
@@ -26,7 +28,7 @@ def test_modality_spec_creation():
         id=1,
         dim=2,
         type=DataType.CONTINUOUS,
-        loss_fn=torch_brain.nn.loss.MSELoss(),
+        loss_fn=nn.MSELoss(),
         timestamp_key="test.timestamps",
         value_key="test.values",
     )
@@ -52,7 +54,7 @@ def test_register_modality(clear_registry):
         "test_modality",
         dim=2,
         type=DataType.CONTINUOUS,
-        loss_fn=torch_brain.nn.loss.MSELoss(),
+        loss_fn=nn.MSELoss(),
         timestamp_key="test.timestamps",
         value_key="test.values",
     )
@@ -69,7 +71,7 @@ def test_register_duplicate_modality(clear_registry):
         "test_modality",
         dim=2,
         type=DataType.CONTINUOUS,
-        loss_fn=torch_brain.nn.loss.MSELoss(),
+        loss_fn=nn.MSELoss(),
         timestamp_key="test.timestamps",
         value_key="test.values",
     )
@@ -81,7 +83,7 @@ def test_register_duplicate_modality(clear_registry):
             "test_modality",
             dim=3,
             type=DataType.BINARY,
-            loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
+            loss_fn=nn.CrossEntropyLoss(),
             timestamp_key="other.timestamps",
             value_key="other.values",
         )
@@ -93,7 +95,7 @@ def test_register_multiple_modalities(clear_registry):
         "modality1",
         dim=2,
         type=DataType.CONTINUOUS,
-        loss_fn=torch_brain.nn.loss.MSELoss(),
+        loss_fn=nn.MSELoss(),
         timestamp_key="test1.timestamps",
         value_key="test1.values",
     )
@@ -102,7 +104,7 @@ def test_register_multiple_modalities(clear_registry):
         "modality2",
         dim=3,
         type=DataType.BINARY,
-        loss_fn=torch_brain.nn.loss.CrossEntropyLoss(),
+        loss_fn=nn.CrossEntropyLoss(),
         timestamp_key="test2.timestamps",
         value_key="test2.values",
     )
