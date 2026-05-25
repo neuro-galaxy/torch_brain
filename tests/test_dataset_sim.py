@@ -23,7 +23,6 @@ try:
         SessionDescription,
         SubjectDescription,
     )
-    from brainsets.taxonomy import RecordingTech, Species, Task
 
     BRAINSETS_AVAILABLE = True
 except ImportError:
@@ -50,16 +49,16 @@ def dummy_data(tmp_path):
         ),
         subject=SubjectDescription(
             id="alice",
-            species=Species.MACACA_MULATTA,
+            species="MACACA_MULATTA",
         ),
         session=SessionDescription(
             id="20100102_1",
             recording_date=parser.parse("2010-01-01T00:00:00"),
-            task=Task.REACHING,
+            task="REACHING",
         ),
         device=DeviceDescription(
             id="20100102",
-            recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
+            recording_tech="UTAH_ARRAY_SPIKES",
         ),
         spikes=IrregularTimeSeries(
             timestamps=np.arange(0, 1, 0.001),
@@ -96,16 +95,16 @@ def dummy_data(tmp_path):
         ),
         subject=SubjectDescription(
             id="bob",
-            species=Species.MACACA_MULATTA,
+            species="MACACA_MULATTA",
         ),
         session=SessionDescription(
             id="20100130_1",
             recording_date=parser.parse("2010-01-01T00:00:00"),
-            task=Task.REACHING,
+            task="REACHING",
         ),
         device=DeviceDescription(
             id="20100130",
-            recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
+            recording_tech="UTAH_ARRAY_SPIKES",
         ),
         spikes=IrregularTimeSeries(
             timestamps=np.arange(0, 1, 0.001),
@@ -139,16 +138,16 @@ def dummy_data(tmp_path):
         ),
         subject=SubjectDescription(
             id="charlie",
-            species=Species.MACACA_MULATTA,
+            species="MACACA_MULATTA",
         ),
         session=SessionDescription(
             id="20110130_1",
             recording_date=parser.parse("2010-01-01T00:00:00"),
-            task=Task.REACHING,
+            task="REACHING",
         ),
         device=DeviceDescription(
             id="20100130",
-            recording_tech=RecordingTech.UTAH_ARRAY_SPIKES,
+            recording_tech="UTAH_ARRAY_SPIKES",
         ),
         spikes=IrregularTimeSeries(
             timestamps=np.arange(0, 1, 0.001),
