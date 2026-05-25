@@ -84,7 +84,12 @@ class RegularTimeSeries(ArrayDict):
     and meaningful Fourier operations. The first dimension of all attributes must be
     the time dimension.
 
-    .. note:: If you have a matrix of shape (N, T), where N is the number of channels and T is the number of time points, you should transpose it to (T, N) before passing it to the constructor, since the first dimension should always be time.
+    .. note::
+
+        If you have a matrix of shape :math:`(N, T)`, where :math:`N` is the number of
+        channels and :math:`T` is the number of time points, you should transpose it to
+        :math:`(T, N)` before passing it to the constructor, since the first dimension
+        should always be time.
 
     Args:
         sampling_rate: Sampling rate in Hz.
@@ -93,6 +98,9 @@ class RegularTimeSeries(ArrayDict):
         **kwargs: Arbitrary keyword arguments where the values are arbitrary
             multi-dimensional (2d, 3d, ..., nd) arrays with shape (N, \*).
 
+    See Also:
+        :meth:`from_gappy_timeseries` to construct from regular timeseries that has
+        gaps or missing values.
 
     Example ::
 
@@ -144,13 +152,92 @@ class RegularTimeSeries(ArrayDict):
 
     @property
     def sampling_rate(self) -> float:
-        r"""Returns the sampling rate in Hz."""
+        r"""Sampling rate in Hz"""
         return self._sampling_rate
 
     @property
+    def timestamps(self) -> np.ndarray:
+        r"""Sample timestamps"""
+        return (
+            self.domain.start[0]
+            + np.arange(len(self), dtype=np.float64) / self.sampling_rate
+        )
+
+    @property
     def domain(self) -> Interval:
-        r"""Returns the domain of the time series."""
+        r"""Domain of this time series"""
         return self._domain
+
+    def index_mask(self) -> np.ndarray:
+        r"""Boolean mask marking which samples fall inside :attr:`domain`.
+
+        For a gappy :obj:`RegularTimeSeries` (one whose :attr:`domain` consists
+        of more than one interval), some positions along the time axis are
+        fill values rather than real observations. This method returns a
+        1-D boolean array of length ``len(self)`` where ``True`` marks a real
+        sample and ``False`` marks a gap (fill).
+
+        For a contiguous :obj:`RegularTimeSeries` (single-interval domain) the
+        result is all ``True``.
+
+        Returns:
+            np.ndarray: 1-D boolean array of shape ``(len(self),)``.
+
+        Example ::
+
+            >>> import numpy as np
+            >>> from temporaldata import RegularTimeSeries
+
+            >>> # Contiguous (non-gappy) series: every sample is real.
+            >>> rts = RegularTimeSeries(
+            ...     raw=np.arange(4), sampling_rate=100.0,
+            ... )
+            >>> rts.index_mask()
+            array([ True,  True,  True,  True])
+
+            >>> # Gappy series: 0.02s and 0.05s samples are missing.
+            >>> ts = [0.0, 0.01, 0.03, 0.04, 0.06]
+            >>> raw = [1, 2, 3, 4, 5]
+            >>> rts = RegularTimeSeries.from_gappy_timeseries(
+            ...     ts, sampling_rate=100.0, raw=raw,
+            ... )
+            >>> rts.index_mask()
+            array([ True,  True, False,  True,  True, False,  True])
+            >>> rts.raw  # contains fill values
+            array([ 1,  2, -1,  3,  4, -1,  5])
+            >>> rts.raw[rts.index_mask()]
+            array([1, 2, 3, 4, 5])
+        """
+        n = len(self)
+        domain = self.domain
+
+        if len(domain) == 1:
+            return np.full(n, True, dtype=bool)
+
+        sampling_rate = self.sampling_rate
+        start_ts, end_ts = domain.start, domain.end
+        start_id = np.round((start_ts - start_ts[0]) * sampling_rate).astype(int)
+        end_id = np.round((end_ts - start_ts[0]) * sampling_rate).astype(int)
+
+        if end_id[-1] != n:
+            raise RuntimeError(  # pragma: no cover
+                f"This should never happen. Debug info:\n"
+                f"{n=}\n"
+                f"{start_id=}\n"
+                f"{end_id=}\n"
+            )
+
+        # Create an array that marks start of a True run by +1
+        # and start of a False run by -1
+        diff = np.zeros(n + 1, dtype=np.int8)
+        diff[start_id] = 1
+        diff[end_id] = -1
+        # Cumsum would convert it to runs of ones and zeros corresponding
+        # to valid and invalid timestamps
+        ans = diff.cumsum()[:n].astype(bool)
+        # Why this way? to avoid python for-loops; numpy vector ops should be faster
+
+        return ans
 
     def select_by_mask(self, mask: np.ndarray):
         """Raises a NotImplementedError as this method is not supported
@@ -289,14 +376,6 @@ class RegularTimeSeries(ArrayDict):
             domain=self.domain,
         )
 
-    @property
-    def timestamps(self):
-        r"""Returns the timestamps of the time series."""
-        return (
-            self.domain.start[0]
-            + np.arange(len(self), dtype=np.float64) / self.sampling_rate
-        )
-
     def to_hdf5(self, file):
         r"""Saves the data object to an HDF5 file.
 
@@ -426,6 +505,8 @@ class RegularTimeSeries(ArrayDict):
             array([0.  , 0.03])
             >>> rts.domain.end
             array([0.02, 0.05])
+            >>> rts.index_mask()  # indicates valid and filled-in timestamps
+            array([ True,  True, False,  True,  True])
         """
         timestamps = np.asarray(timestamps)
         if timestamps.ndim != 1:

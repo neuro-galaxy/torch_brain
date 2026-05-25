@@ -738,3 +738,86 @@ class TestRegularTimeSeriesCoercion:
         )
         assert isinstance(data.raw, np.ndarray)
         assert data.raw.shape == (100, 4)
+
+
+class TestIndexMask:
+
+    @pytest.fixture(params=["regular", "lazy"])
+    def rts(self, request, test_filepath):
+        rts = RegularTimeSeries(
+            raw=[0, 1, 2, 3],
+            sampling_rate=10,
+            domain="auto",
+        )
+        if request.param == "regular":
+            yield rts
+        else:
+            with _make_lazy(rts, LazyRegularTimeSeries, test_filepath) as data:
+                yield data
+
+    def test_basic(self, rts):
+        assert len(rts) == 4
+        mask = rts.index_mask()
+        assert mask.dtype == bool
+        expected = [True, True, True, True]
+        np.testing.assert_array_equal(mask, expected)
+
+    def test_basic_with_slice(self, rts):
+        sliced = rts.slice(0.12, 0.5)
+        assert len(sliced) == 2
+        mask = sliced.index_mask()
+        assert mask.dtype == bool
+        expected = [True, True]
+        np.testing.assert_array_equal(mask, expected)
+
+    def test_empty_slice(self, rts):
+        sliced = rts.slice(4.0, 4.1)
+        assert len(sliced) == 0
+        mask = sliced.index_mask()
+        assert mask.dtype == bool
+        expected = []
+        np.testing.assert_array_equal(mask, expected)
+
+    @pytest.fixture(params=["regular", "lazy"])
+    def gappy_rts(self, request, test_filepath):
+        ts = np.array([0.0, 0.01, 0.03, 0.04, 0.07, 0.09])
+        raw = np.arange(len(ts))
+        rts = RegularTimeSeries.from_gappy_timeseries(
+            timestamps=ts,
+            raw=raw,
+            sampling_rate=100.0,
+        )
+        if request.param == "regular":
+            yield rts
+        else:
+            with _make_lazy(rts, LazyRegularTimeSeries, test_filepath) as data:
+                yield data
+
+    def test_gappy(self, gappy_rts):
+        assert len(gappy_rts) == 10
+        mask = gappy_rts.index_mask()
+        assert mask.dtype == bool
+        expected = [True, True, False, True, True, False, False, True, False, True]
+        np.testing.assert_array_equal(mask, expected)
+
+    def test_gappy_with_slice(self, gappy_rts):
+        sliced = gappy_rts.slice(0.015, 0.14)
+        assert len(sliced) == 7
+        mask = sliced.index_mask()
+        assert mask.dtype == bool
+        expected = [True, True, False, False, True, False, True]
+        np.testing.assert_array_equal(mask, expected)
+
+    def test_gappy_slice_collapses_to_single_interval(self, gappy_rts):
+        sliced = gappy_rts.slice(0.0, 0.02)
+        assert len(sliced) == 2
+        mask = sliced.index_mask()
+        np.testing.assert_array_equal(mask, [True, True])
+
+    def test_gappy_empty_slice(self, gappy_rts):
+        sliced = gappy_rts.slice(0.02, 0.03)
+        assert len(sliced) == 0
+        mask = sliced.index_mask()
+        assert mask.dtype == bool
+        expected = []
+        np.testing.assert_array_equal(mask, expected)

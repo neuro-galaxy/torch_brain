@@ -7,13 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 - `ArrayDict`, `Interval`, `IrregularTimeSeries`, and `RegularTimeSeries` constructors now accept any array-like input (`list`, `tuple`, or any object implementing `__array__` such as `torch.Tensor` or `pandas.Series`) in addition to `np.ndarray`. Inputs are automatically coerced to `np.ndarray` via `np.asarray()`. Parameter types are annotated with a custom `ArrayLike` type alias. ([#123](https://github.com/neuro-galaxy/temporaldata/pull/123))
-- Added `RegularTimeSeries.from_gappy_timeseries()` method to construct a regular time series from approximately-regular but gappy timestamps, snapping samples to a regular grid and filling missing samples with a configurable `gap_value`. ([#122](https://github.com/neuro-galaxy/temporaldata/pull/122))
-- Gap-aware slicing for `RegularTimeSeries` and `LazyRegularTimeSeries`. ([#129](https://github.com/neuro-galaxy/temporaldata/pull/129))
-  - `from_gappy_timeseries` now builds a multi-interval domain that excludes gaps (previously a single contiguous interval spanning the full grid).
-  - `slice()` trims gap-filled samples from the leading and trailing edges of the result, so the returned data always begins and ends on real samples.
-  - Gap-filled samples in the middle of the window are preserved as-is.
-  - Slices that fall entirely outside the domain or entirely within a gap return an empty result.
-- `RegularTimeSeries.from_gappy_timeseries()` now also accepts `ArrayLike` inputs for `timestamps` and value kwargs, coercing them via `np.asarray()`. ([#132](https://github.com/neuro-galaxy/temporaldata/pull/132))
+- Added _gappy_ `RegularTimeSeries` support:
+  - Constructor `RegularTimeSeries.from_gappy_timeseries()` fills missing samples with a configurable `gap_value` ([#122](https://github.com/neuro-galaxy/temporaldata/pull/122))
+  - Updated slicing to work with gaps ([#129](https://github.com/neuro-galaxy/temporaldata/pull/129))
+  - `RegularTimeSeries.from_gappy_timeseries()` now also accepts `ArrayLike` inputs ([#132](https://github.com/neuro-galaxy/temporaldata/pull/132))
+  - Added `RegularTimeSeries.index_mask()` returning a boolean mask marking which samples fall inside `domain` (`True`) vs. gap fills (`False`) ([#133](https://github.com/neuro-galaxy/temporaldata/pull/133))
 
 
 ### Fixed
