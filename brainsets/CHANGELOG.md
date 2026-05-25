@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added the `OpenNeuroDataset` and the `OpenNeuroPipeline` base classes ([#128](https://github.com/neuro-galaxy/brainsets/pull/128)).
 
 ### Removed
+- Removed `NestedEnumType`, `StringIntEnum`, `Dictable`, and `string_int_enum_serialize_fn` from `brainsets.core`; also removed the `StringIntEnum` entry from `serialize_fn_map` ([#150](https://github.com/neuro-galaxy/brainsets/pull/150)).
 - Deprecated and removed the `brainsets.taxonomy` module; its enums (`Species`, `Sex`, `Task`, `Macaque`, `Cre_line`, `Orientation_8_Classes`, `RecordingTech`, `Hemisphere`) now raise an `ImportError` directing users to encode the metadata directly ([#146](https://github.com/neuro-galaxy/brainsets/pull/146)).
 - Removed the `type` attribute from channel/unit ArrayDicts in pipelines; use `DeviceDescription` to store recording technology instead. Affects `churchland_shenoy_neural_2012`, `neuroprobe_2025`, `odoherty_sabes_nonhuman_2017`, `pei_pandarinath_nlb_2021`, and `perich_miller_population_2018` ([#146](https://github.com/neuro-galaxy/brainsets/pull/146)).
 
