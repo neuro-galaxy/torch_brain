@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from .arraydict import ArrayDict
+from .typing import ArrayLike
 from .interval import Interval
 from .utils import _validate_select_by_mask_input
 
@@ -35,8 +36,8 @@ class IrregularTimeSeries(ArrayDict):
         >>> from temporaldata import IrregularTimeSeries
 
         >>> spikes = IrregularTimeSeries(
-        ...     unit_index=np.array([0, 0, 1, 0, 1, 2]),
-        ...     timestamps=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        ...     unit_index=[0, 0, 1, 0, 1, 2],
+        ...     timestamps=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
         ...     waveforms=np.zeros((6, 48)),
         ...     domain="auto",
         ... )
@@ -78,11 +79,11 @@ class IrregularTimeSeries(ArrayDict):
 
     def __init__(
         self,
-        timestamps: np.ndarray,
+        timestamps: ArrayLike,
         *,
         timekeys: List[str] | None = None,
         domain: Interval | Literal["auto"],
-        **kwargs: np.ndarray,
+        **kwargs: ArrayLike,
     ):
         super().__init__(timestamps=timestamps, **kwargs)
 
@@ -153,6 +154,7 @@ class IrregularTimeSeries(ArrayDict):
         super(IrregularTimeSeries, self).__setattr__(name, value)
 
         if name == "timestamps":
+            value = self.__dict__[name]
             assert value.ndim == 1, "timestamps must be 1D."
             assert ~np.isnan(value).any(), f"timestamps cannot contain NaNs."
             if value.dtype != np.float64:

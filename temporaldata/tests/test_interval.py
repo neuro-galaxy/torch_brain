@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import pandas as pd
 import h5py
 from temporaldata import Interval, LazyInterval
 
@@ -1317,3 +1318,44 @@ class TestPointIntervals:
         assert len(result) == 2
         assert np.allclose(result.start, [1.0, 5.0])
         assert np.allclose(result.end, [1.0, 5.0])
+
+
+class TestIntervalCoercion:
+    def test_list(self):
+        data = Interval(
+            start=[0.0, 1.0, 2.0],
+            end=[1.0, 2.0, 3.0],
+            go_cue_time=[0.5, 1.5, 2.5],
+        )
+        assert isinstance(data.start, np.ndarray)
+        assert isinstance(data.end, np.ndarray)
+        assert isinstance(data.go_cue_time, np.ndarray)
+        assert np.array_equal(data.start, np.array([0.0, 1.0, 2.0]))
+        assert len(data) == 3
+
+    def test_tuple(self):
+        data = Interval(
+            start=(0.0, 1.0, 2.0),
+            end=(1.0, 2.0, 3.0),
+        )
+        assert isinstance(data.start, np.ndarray)
+        assert isinstance(data.end, np.ndarray)
+        assert np.array_equal(data.end, np.array([1.0, 2.0, 3.0]))
+
+    def test_scalar(self):
+        data = Interval(0.0, 1.0)
+        assert isinstance(data.start, np.ndarray)
+        assert isinstance(data.end, np.ndarray)
+        assert data.start[0] == 0.0
+        assert data.end[0] == 1.0
+
+    def test_pandas_series(self):
+        data = Interval(
+            start=pd.Series([0.0, 1.0, 2.0]),
+            end=pd.Series([1.0, 2.0, 3.0]),
+            go_cue_time=pd.Series([0.5, 1.5, 2.5]),
+        )
+        assert isinstance(data.start, np.ndarray)
+        assert isinstance(data.end, np.ndarray)
+        assert isinstance(data.go_cue_time, np.ndarray)
+        assert np.array_equal(data.start, np.array([0.0, 1.0, 2.0]))

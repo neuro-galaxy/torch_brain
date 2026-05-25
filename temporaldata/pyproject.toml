@@ -17,7 +17,7 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     "setuptools>=60.0.0",
-    "numpy>=1.14.0",
+    "numpy>=1.20.0",
     "pandas>=1.0.0",
     "h5py>=3.0.0",
 ]

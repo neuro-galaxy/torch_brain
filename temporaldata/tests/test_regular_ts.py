@@ -3,6 +3,7 @@ import tempfile
 
 import h5py
 import numpy as np
+import pandas as pd
 import pytest
 
 from temporaldata import Interval, LazyRegularTimeSeries, RegularTimeSeries
@@ -599,3 +600,34 @@ class TestFromGappyTimeseries:
                 sampling_rate=10.0,
                 raw=np.array([1.0, 2.0, 3.0]),
             )
+
+
+class TestRegularTimeSeriesCoercion:
+    def test_list(self):
+        data = RegularTimeSeries(
+            raw=[[float(i)] * 4 for i in range(10)],
+            sampling_rate=10.0,
+            domain=Interval(0.0, 1.0),
+        )
+        assert isinstance(data.raw, np.ndarray)
+        assert data.raw.shape == (10, 4)
+        assert len(data) == 10
+
+    def test_tuple(self):
+        data = RegularTimeSeries(
+            raw=tuple([float(i)] * 4 for i in range(10)),
+            sampling_rate=10.0,
+            domain=Interval(0.0, 1.0),
+        )
+        assert isinstance(data.raw, np.ndarray)
+        assert data.raw.shape == (10, 4)
+
+    def test_pandas_dataframe(self):
+        df = pd.DataFrame(np.zeros((100, 4)))
+        data = RegularTimeSeries(
+            raw=df,
+            sampling_rate=10.0,
+            domain=Interval(0.0, 10.0),
+        )
+        assert isinstance(data.raw, np.ndarray)
+        assert data.raw.shape == (100, 4)

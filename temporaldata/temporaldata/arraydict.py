@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import copy
-from typing import Dict, List
+from typing import List
 import logging
 
 import h5py
 import numpy as np
 import pandas as pd
 
+from .typing import ArrayLike
 from .utils import _size_repr, _validate_select_by_mask_input
 
 
@@ -25,8 +26,8 @@ class ArrayDict(object):
         >>> import numpy as np
 
         >>> units = ArrayDict(
-        ...     unit_id=np.array(["unit01", "unit02"]),
-        ...     brain_region=np.array(["M1", "M1"]),
+        ...     unit_id=["unit01", "unit02"],
+        ...     brain_region=["M1", "M1"],
         ...     waveform_mean=np.random.rand(2, 48),
         ... )
 
@@ -38,7 +39,7 @@ class ArrayDict(object):
         )
     """
 
-    def __init__(self, **kwargs: np.ndarray):
+    def __init__(self, **kwargs: ArrayLike):
         for key, value in kwargs.items():
             self.__setattr__(key, value)
 
@@ -66,10 +67,7 @@ class ArrayDict(object):
         # for non-private attributes, we want to check that they are ndarrays
         # and that they match the first dimension of existing attributes
         if not name.startswith("_"):
-            # only ndarrays are accepted
-            assert isinstance(
-                value, np.ndarray
-            ), f"{name} must be a numpy array, got object of type {type(value)}"
+            value = np.asarray(value)
 
             if value.ndim == 0:
                 raise ValueError(

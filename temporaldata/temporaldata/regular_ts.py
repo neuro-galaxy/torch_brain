@@ -8,6 +8,7 @@ import h5py
 import numpy as np
 
 from .arraydict import ArrayDict
+from .typing import ArrayLike
 from .interval import Interval
 from .irregular_ts import IrregularTimeSeries
 
@@ -124,7 +125,7 @@ class RegularTimeSeries(ArrayDict):
         sampling_rate: float,  # in Hz
         domain: Interval | Literal["auto"] = "auto",
         domain_start=0.0,
-        **kwargs: np.ndarray,
+        **kwargs: ArrayLike,
     ):
         super().__init__(**kwargs)
 

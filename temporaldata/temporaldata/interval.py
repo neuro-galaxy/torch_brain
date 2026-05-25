@@ -10,6 +10,7 @@ import pandas as pd
 
 from .arraydict import ArrayDict
 from .utils import _validate_select_by_mask_input
+from .typing import ArrayLike
 
 
 class Interval(ArrayDict):
@@ -30,10 +31,10 @@ class Interval(ArrayDict):
         >>> from temporaldata import Interval
 
         >>> intervals = Interval(
-        ...    start=np.array([0., 1., 2.]),
-        ...    end=np.array([1., 2., 3.]),
-        ...    go_cue_time=np.array([0.5, 1.5, 2.5]),
-        ...    drifting_gratings_dir=np.array([0, 45, 90]),
+        ...    start=[0., 1., 2.],
+        ...    end=[1., 2., 3.],
+        ...    go_cue_time=[0.5, 1.5, 2.5],
+        ...    drifting_gratings_dir=[0, 45, 90],
         ...    timekeys=["start", "end", "go_cue_time"],
         ... )
 
@@ -82,11 +83,11 @@ class Interval(ArrayDict):
 
     def __init__(
         self,
-        start: Union[float, np.ndarray],
-        end: Union[float, np.ndarray],
+        start: int | float | ArrayLike,
+        end: int | float | ArrayLike,
         *,
         timekeys=None,
-        **kwargs: np.ndarray,
+        **kwargs: ArrayLike,
     ):
         # we allow for scalar start and end, since it is common to have a single
         # interval especially when defining a domain
@@ -125,6 +126,7 @@ class Interval(ArrayDict):
         super(Interval, self).__setattr__(name, value)
 
         if name == "start" or name == "end":
+            value = self.__dict__[name]
             assert value.ndim == 1, f"{name} must be 1D."
             assert ~np.isnan(value).any(), f"{name} cannot contain NaNs."
             if value.dtype != np.float64:
@@ -143,9 +145,9 @@ class Interval(ArrayDict):
             >>> from temporaldata import Interval
 
             >>> intervals = Interval(
-            ...     start=np.array([0., 1., 2.]),
-            ...     end=np.array([1., 2., 3.]),
-            ...     some_other_attribute=np.array([0, 1, 2]),
+            ...     start=[0., 1., 2.],
+            ...     end=[1., 2., 3.],
+            ...     some_other_attribute=[0, 1, 2],
             ... )
 
             >>> for start, end in intervals:

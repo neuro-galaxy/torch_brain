@@ -1,11 +1,11 @@
 import pytest
 import os
-import copy
+
 import h5py
 import numpy as np
 import pandas as pd
 import tempfile
-import logging
+
 from temporaldata import ArrayDict, LazyArrayDict
 
 
@@ -37,18 +37,8 @@ def test_array_dict():
     assert "brain_region" in data
     assert "waveform_mean" in data
 
-    # setting an incorrect attribute
-    with pytest.raises(AssertionError):
-        data.dummy_list = [1, 2]
-
     with pytest.raises(ValueError):
         data.wrong_len = np.array([0, 1, 2, 3])
-
-    with pytest.raises(AssertionError):
-        data = ArrayDict(
-            # Intentionally pass a wrong type (list instead of np.ndarray)
-            unit_id=["unit01", "unit02"]  # ty: ignore[invalid-argument-type]
-        )
 
     with pytest.raises(ValueError):
         data = ArrayDict(
@@ -251,3 +241,58 @@ def test_array_dict_from_dataframe():
 
     assert hasattr(a_with_non_ascii_col, "col2")
     assert not hasattr(a_with_non_ascii_col, "col1")
+
+
+class TestArrayDictCoercion:
+    def test_list(self):
+        data = ArrayDict(
+            values=[1.0, 2.0, 3.0],
+            labels=["a", "b", "c"],
+            matrix=[[1, 2], [3, 4], [5, 6]],
+        )
+        assert isinstance(data.values, np.ndarray)
+        assert isinstance(data.labels, np.ndarray)
+        assert isinstance(data.matrix, np.ndarray)
+        assert np.array_equal(data.values, np.array([1.0, 2.0, 3.0]))
+        assert data.matrix.shape == (3, 2)
+
+    def test_tuple(self):
+        data = ArrayDict(
+            values=(1.0, 2.0, 3.0),
+            labels=("a", "b", "c"),
+        )
+        assert isinstance(data.values, np.ndarray)
+        assert isinstance(data.labels, np.ndarray)
+        assert np.array_equal(data.values, np.array([1.0, 2.0, 3.0]))
+
+    def test_setattr(self):
+        data = ArrayDict()
+        data.values = [1.0, 2.0, 3.0]
+        assert isinstance(data.values, np.ndarray)
+        assert np.array_equal(data.values, np.array([1.0, 2.0, 3.0]))
+
+    def test_supports_array(self):
+        class MyArray:
+            def __init__(self, values):
+                self._data = np.array(values)
+
+            def __array__(self, dtype=None, copy=None):
+                return self._data if dtype is None else self._data.astype(dtype)
+
+        data = ArrayDict(values=MyArray([1.0, 2.0, 3.0]))
+        assert isinstance(data.values, np.ndarray)
+        assert np.array_equal(data.values, np.array([1.0, 2.0, 3.0]))
+
+    def test_pandas_series(self):
+        data = ArrayDict(
+            values=pd.Series([1.0, 2.0, 3.0]),
+            labels=pd.Series(["a", "b", "c"]),
+        )
+        assert isinstance(data.values, np.ndarray)
+        assert isinstance(data.labels, np.ndarray)
+        assert np.array_equal(data.values, np.array([1.0, 2.0, 3.0]))
+
+    def test_invalid(self):
+        data = ArrayDict()
+        with pytest.raises(ValueError):
+            data.x = 5  # scalar → 0-d array → not at least 1-dimensional
