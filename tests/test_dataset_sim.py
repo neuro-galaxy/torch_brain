@@ -45,7 +45,7 @@ def dummy_data(tmp_path):
             origin_version="dandiset/000005/draft",
             derived_version="1.0.0",
             source="https://dandiarchive.org/#/dandiset/000005",
-            description="",
+            description="mock description",
         ),
         subject=SubjectDescription(
             id="alice",
@@ -91,7 +91,7 @@ def dummy_data(tmp_path):
             origin_version="dandiset/000005/draft",
             derived_version="1.0.0",
             source="https://dandiarchive.org/#/dandiset/000005",
-            description="",
+            description="mock description",
         ),
         subject=SubjectDescription(
             id="bob",
@@ -134,7 +134,7 @@ def dummy_data(tmp_path):
             origin_version="dandiset/000005/draft",
             derived_version="1.0.0",
             source="https://dandiarchive.org/#/dandiset/000005",
-            description="",
+            description="mock description",
         ),
         subject=SubjectDescription(
             id="charlie",
