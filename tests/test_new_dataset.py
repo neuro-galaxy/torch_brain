@@ -17,7 +17,6 @@ from brainsets.descriptions import (
     SessionDescription,
     SubjectDescription,
 )
-from brainsets.taxonomy import Species
 
 from torch_brain.dataset import Dataset, DatasetIndex, NestedDataset
 from torch_brain.dataset.mixins import SpikingDatasetMixin, MultiChannelDatasetMixin
@@ -29,12 +28,12 @@ def create_spiking_data(brainset_id, subject_id, session_id, length):
     return Data(
         brainset=BrainsetDescription(
             id=brainset_id,
-            origin_version="",
-            derived_version="",
-            source="",
-            description="",
+            origin_version="1.0.0",
+            derived_version="1.0.0",
+            source="https://mock.org",
+            description="mock description",
         ),
-        subject=SubjectDescription(subject_id, Species.UNKNOWN),
+        subject=SubjectDescription(subject_id),
         session=SessionDescription(session_id, datetime.now()),
         spikes=IrregularTimeSeries(
             timestamps=np.sort(np.random.uniform(0, length, num_spikes)),
@@ -58,12 +57,12 @@ def create_multichannel_data(
     return Data(
         brainset=BrainsetDescription(
             id=brainset_id,
-            origin_version="",
-            derived_version="",
-            source="",
-            description="",
+            origin_version="1.0.0",
+            derived_version="1.0.0",
+            source="https://mock.org",
+            description="mock description",
         ),
-        subject=SubjectDescription(subject_id, Species.UNKNOWN),
+        subject=SubjectDescription(subject_id),
         session=SessionDescription(session_id, datetime.now()),
         multichannel_data=RegularTimeSeries(
             sampling_rate=sampling_rate,
