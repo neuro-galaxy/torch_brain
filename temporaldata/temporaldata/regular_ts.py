@@ -374,6 +374,9 @@ class RegularTimeSeries(ArrayDict):
 
         Gap-fill samples (where :meth:`index_mask` is :obj:`False`) are dropped.
 
+        The returned arrays (timestamps, values, and domain) are independent
+        copies; mutating them will not affect this :obj:`RegularTimeSeries`.
+
         Returns:
             :obj:`IrregularTimeSeries` with timestamps and all attributes copied.
 
