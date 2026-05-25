@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
   - `slice()` trims gap-filled samples from the leading and trailing edges of the result, so the returned data always begins and ends on real samples.
   - Gap-filled samples in the middle of the window are preserved as-is.
   - Slices that fall entirely outside the domain or entirely within a gap return an empty result.
+- `RegularTimeSeries.from_gappy_timeseries()` now also accepts `ArrayLike` inputs for `timestamps` and value kwargs, coercing them via `np.asarray()`. ([#132](https://github.com/neuro-galaxy/temporaldata/pull/132))
+
 
 ### Fixed
 - Fixed `LazyInterval.select_by_mask()` and `LazyIrregularTimeSeries.select_by_mask()` dropping non-hardcoded private attributes (e.g. `_sorted`) from the result ([#121](https://github.com/neuro-galaxy/temporaldata/pull/121))

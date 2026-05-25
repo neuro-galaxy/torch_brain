@@ -414,13 +414,6 @@ class TestFromGappyTimeseries:
         ts = np.array([0.0, 0.1, 0.2])
         raw = np.array([1.0, 2.0, 3.0])
 
-        with pytest.raises(ValueError, match="numpy array"):
-            RegularTimeSeries.from_gappy_timeseries(
-                [0, 1, 2],  # ty:ignore[invalid-argument-type]
-                sampling_rate=10.0,
-                raw=raw,
-            )
-
         with pytest.raises(ValueError, match="1-D"):
             RegularTimeSeries.from_gappy_timeseries(
                 ts.reshape(-1, 1), sampling_rate=10.0, raw=raw
@@ -610,6 +603,30 @@ class TestFromGappyTimeseries:
                 sampling_rate=10.0,
                 raw=np.array([1.0, 2.0, 3.0]),
             )
+
+
+class _SupportsArrayWrapper:
+    def __init__(self, values):
+        self._data = np.asarray(values)
+
+    def __array__(self, dtype=None, copy=None):
+        return self._data if dtype is None else self._data.astype(dtype)
+
+
+class TestFromGappyTimeseriesCoercion:
+    @pytest.mark.parametrize(
+        "wrap",
+        [list, tuple, pd.Series, _SupportsArrayWrapper],
+        ids=["list", "tuple", "pd.Series", "SupportsArray"],
+    )
+    def test_coercion(self, wrap):
+        rts = RegularTimeSeries.from_gappy_timeseries(
+            wrap([0.0, 0.01, 0.03, 0.04]),
+            sampling_rate=100.0,
+            raw=wrap([1.0, 2.0, 3.0, 4.0]),
+        )
+        assert isinstance(rts.raw, np.ndarray)
+        np.testing.assert_array_equal(rts.raw, [1.0, 2.0, np.nan, 3.0, 4.0])
 
 
 class TestSliceGappy:

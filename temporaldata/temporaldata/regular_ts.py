@@ -362,11 +362,11 @@ class RegularTimeSeries(ArrayDict):
     @classmethod
     def from_gappy_timeseries(
         cls,
-        timestamps: np.ndarray,
+        timestamps: ArrayLike,
         sampling_rate: float,
         gap_value: Any | dict[str, Any] | None = None,
         rtol: float = 1e-3,
-        **kwargs: np.ndarray,
+        **kwargs: ArrayLike,
     ) -> RegularTimeSeries:
         r"""Regularize an approximately-regular but gappy timeseries.
 
@@ -381,9 +381,10 @@ class RegularTimeSeries(ArrayDict):
         suffer numerical-precision issues during slicing.
 
         Args:
-            timestamps: 1-D array of timestamps, strictly increasing. Each
-                entry must lie within :obj:`rtol` samples of a regular grid
-                at :obj:`sampling_rate`, anchored at :obj:`timestamps[0]`.
+            timestamps: 1-D array-like of timestamps, strictly increasing.
+                Each entry must lie within :obj:`rtol` samples of a regular
+                grid at :obj:`sampling_rate`, anchored at
+                :obj:`timestamps[0]`.
             sampling_rate: Sampling rate in Hz.
             gap_value: Value used to fill missing samples. May be:
 
@@ -399,7 +400,7 @@ class RegularTimeSeries(ArrayDict):
                   if a kwarg's dtype kind is not in the dict.
             rtol: Maximum allowed deviation, in samples, of any input timestamp
                 from the regular grid.
-            **kwargs: Named value arrays whose first dimension equals
+            **kwargs: Named array-like values whose first dimension equals
                 ``len(timestamps)``.
 
         Returns:
@@ -426,10 +427,7 @@ class RegularTimeSeries(ArrayDict):
             >>> rts.domain.end
             array([0.02, 0.05])
         """
-        if not isinstance(timestamps, np.ndarray):
-            raise ValueError(
-                f"timestamps must be a numpy array, got {type(timestamps)}"
-            )
+        timestamps = np.asarray(timestamps)
         if timestamps.ndim != 1:
             raise ValueError(f"timestamps must be 1-D, got shape {timestamps.shape}")
         if len(timestamps) < 2:
@@ -487,10 +485,7 @@ class RegularTimeSeries(ArrayDict):
 
         filled: dict[str, np.ndarray] = {}
         for key, arr in kwargs.items():
-            if not isinstance(arr, np.ndarray):
-                raise ValueError(
-                    f"{key!r} must be an ndarray, got {type(arr).__name__}"
-                )
+            arr = np.asarray(arr)
             if len(arr) != len(timestamps):
                 raise ValueError(
                     f"{key!r} has length {len(arr)}, expected "
