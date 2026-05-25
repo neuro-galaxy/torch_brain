@@ -28,10 +28,10 @@ def create_spiking_data(brainset_id, subject_id, session_id, length):
     return Data(
         brainset=BrainsetDescription(
             id=brainset_id,
-            origin_version="",
-            derived_version="",
-            source="",
-            description="",
+            origin_version="1.0.0",
+            derived_version="1.0.0",
+            source="https://mock.org",
+            description="mock description",
         ),
         subject=SubjectDescription(subject_id),
         session=SessionDescription(session_id, datetime.now()),
@@ -57,10 +57,10 @@ def create_multichannel_data(
     return Data(
         brainset=BrainsetDescription(
             id=brainset_id,
-            origin_version="",
-            derived_version="",
-            source="",
-            description="",
+            origin_version="1.0.0",
+            derived_version="1.0.0",
+            source="https://mock.org",
+            description="mock description",
         ),
         subject=SubjectDescription(subject_id),
         session=SessionDescription(session_id, datetime.now()),
