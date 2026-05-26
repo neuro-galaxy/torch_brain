@@ -1,0 +1,10 @@
+Marks the public release of brainsets
+
+This history is modified to accomodate merger with torch_brain.
+
+In addition to the co-authors listed below, there were also
+contributions from Venky, Daniel Liette, Santosh Nachimuthu, Killian Palos,
+Krystal Xuejing Pan, Avery Ryoo.
+
+Co-Authored-By: Vinam Arora <vinam@posteo.de>
+Co-Authored-By: Patrick Mineault <patrick.mineault@gmail.com>
