@@ -104,7 +104,7 @@ Notice that the intervals are of different lengths. Visually, they look like:
 .. image:: static/sampler_12_0.png
 
 
-Samplers in Action
+Samplers in action
 ------------------
 
 **torch_brain** provides a number of samplers that can be used to
