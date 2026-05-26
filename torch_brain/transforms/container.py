@@ -1,4 +1,4 @@
-from typing import Any, Callable, List
+from typing import Callable, List
 import copy
 import logging
 
@@ -94,8 +94,9 @@ class SkipOnFailure:
     unchanged.
 
     Example:
-        >>> from torch_brain.transforms import SkipOnFailure, RandomSelectByRegion
-        >>> transform = SkipOnFailure(RandomSelectByRegion(min_units=5, seed=42))
+        >>> import numpy as np
+        >>> from torch_brain.transforms import SkipOnFailure, UnitFilter
+        >>> transform = SkipOnFailure(UnitFilter(lambda units: np.ones(len(units), dtype=bool), field="units"))
 
     Args:
         transform: transformation to attempt to apply.
@@ -115,8 +116,7 @@ class SkipOnFailure:
             return self.transform(data)
         except Exception as e:
             logging.warning(
-                f"Transform {self.transform} failed for sample from "
-                f"{data.session.id}. The following exception was raised: {e}\n"
+                f"Transform {self.transform} failed. The following exception was raised: {e}\n"
                 f"Restoring pre-transform data."
             )
             if self.backup_copy:
