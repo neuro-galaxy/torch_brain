@@ -60,36 +60,5 @@ class BinSpikes:
             domain_start=spikes.domain.start[0],
         )
 
-        # TODO switch to Data.set_nested_attribute() when released through temporaldata
-        _set_nested_attribute(data, f"{self.spikes_attr}_binned", binned_spikes)
+        data.set_nested_attribute(f"{self.spikes_attr}_binned", binned_spikes)
         return data
-
-
-# TODO remove when Data.set_nested_attribute() is released through temporaldata
-def _set_nested_attribute(data, path: str, value):
-    r"""Set a nested attribute in a :class:`temporaldata.Data` object using a dot-separated path.
-
-    Args:
-        data: The :class:`temporaldata.Data` object to modify.
-        path: The dot-separated path to the nested attribute (e.g., "session.id").
-        value: The value to set for the attribute.
-
-    Returns:
-        The modified data object (same instance, modified in-place).
-
-    Raises:
-        AttributeError: If any component of the path cannot be resolved.
-    """
-    # Split key by dots, resolve using getattr
-    components = path.split(".")
-    obj = data
-    for c in components[:-1]:
-        try:
-            obj = getattr(obj, c)
-        except AttributeError:
-            raise AttributeError(
-                f"Could not resolve {path} in data (specifically, at level {c})"
-            )
-
-    setattr(obj, components[-1], value)
-    return data
