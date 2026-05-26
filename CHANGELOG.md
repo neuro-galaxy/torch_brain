@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
+- Added `SkipOnFailure` transform container that safely applies a transform and falls back to the original data if the transform raises an exception ([#105](https://github.com/neuro-galaxy/torch_brain/pull/105))
 - Added `MultiChannelDatasetMixin` to provide `get_channel_ids` and prefixing interface for EEG-like datasets ([#173](https://github.com/neuro-galaxy/torch_brain/pull/173))
 - Added `BinSpikes` transform ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 - Added public weights for `CalciumPOYOPlus` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
@@ -53,11 +54,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - `InfiniteVocabEmbedding.load_state_dict`: fix inplace modification for source vocab ([#148](https://github.com/neuro-galaxy/torch_brain/pull/148))
 - `bin_spikes`: fix bug when start time is non-zero ([#160](https://github.com/neuro-galaxy/torch_brain/pull/160))
 - Fixed `task_emb` size in CaPOYO and POYO+ to account for 1-indexed modality IDs, which caused an index error when accessing the last-registered modality. ([#174](https://github.com/neuro-galaxy/torch_brain/pull/174))
-
-## Unreleased
-
-### Added
-- Added a transform container to gracefully handle data transformations that might fail. ([#105](https://github.com/neuro-galaxy/torch_brain/pull/105))
 
 ## [0.1.0] - 2025-03-26
 ### Added
