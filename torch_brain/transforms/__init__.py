@@ -1,5 +1,5 @@
 from .bin_spikes import BinSpikes
-from .container import Compose, ConditionalChoice, RandomChoice
+from .container import Compose, ConditionalChoice, RandomChoice, SkipOnFailure
 from .output_sampler import RandomOutputSampler
 from .random_crop import RandomCrop
 from .random_time_scaling import RandomTimeScaling
@@ -18,6 +18,7 @@ __all__ = [
     "BinSpikes",
     "UnitFilter",
     "UnitFilterById",
+    "SkipOnFailure",
 ]
 
 # see docs/source/api_reference.py
