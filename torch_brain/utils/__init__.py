@@ -4,6 +4,14 @@ from .misc import np_string_prefix
 from .binning import bin_spikes
 from .stitcher import stitch
 
+
+def seed_everything(*args, **kwargs):
+    raise ImportError(
+        "`seed_everything` has been removed from `torch_brain.utils`. "
+        "You can find a reference implementation in `examples/poyo/utils.py`"
+    )
+
+
 __all__ = [
     "stitch",
     "create_linspace_latent_tokens",
