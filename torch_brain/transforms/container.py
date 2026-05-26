@@ -13,7 +13,7 @@ class Compose:
     the last transform, which can return any object.
 
     Args:
-        transforms (list of callable): list of transforms to compose.
+        transforms: list of transforms to compose.
     """
 
     def __init__(self, transforms: List[Callable]):
@@ -31,12 +31,14 @@ class RandomChoice:
 
     Args:
         transforms: list of transformations
-        p (list of floats, optional): probability of each transform being picked.
+        p: probability of each transform being picked.
             If :obj:`p` doesn't sum to 1, it is automatically normalized. By default,
             all transforms have the same probability.
     """
 
-    def __init__(self, transforms: List[Callable], p: List[float] = None) -> None:
+    def __init__(
+        self, transforms: List[Callable], p: List[float] | None = None
+    ) -> None:
         if p is None:
             p = [1] * len(transforms)
         elif len(p) != len(transforms):
