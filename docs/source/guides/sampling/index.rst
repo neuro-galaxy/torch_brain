@@ -64,7 +64,7 @@ These intervals do not have to be contiguous, and can be of any length.
 
 Many **brainsets** provide default train/validation/test sampling
 intervals. For example, let’s load a single recording in the
-``PerichMillerPopulation2018`` dataset.
+:obj:`~brainsets.datasets.PerichMillerPopulation2018` dataset.
 
 .. code:: pycon
 
