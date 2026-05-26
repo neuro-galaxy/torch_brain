@@ -12,7 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added `torch_brain.samplers` module with dedicated sampler classes moved out of `torch_brain.data.sampler`: `RandomFixedWindowSampler`,`SequentialFixedWindowSampler`, `TrialSampler`, `DistributedEvaluationSamplerWrapper`, and  `DistributedStitchingFixedWindowSampler` ([#217](https://github.com/neuro-galaxy/torch_brain/pull/217))
 
 ### Removed
-- Removed `torch_brain.nn.loss` module (`MSELoss`, `CrossEntropyLoss`, `MallowDistanceLoss`)
+- Removed `torch_brain.nn.loss` module (coupled to modality registry) (`MSELoss`, `CrossEntropyLoss`, `MallowDistanceLoss`) ([#226](https://github.com/neuro-galaxy/torch_brain/pull/226))
 - Removed `torch_brain.utils.prepare_for_readout` (unused) ([#218](https://github.com/neuro-galaxy/torch_brain/pull/218))
 - Removed `einops` as a dependency; replaced all `rearrange`/`repeat` calls with native PyTorch and NumPy equivalents. ([#216](https://github.com/neuro-galaxy/torch_brain/pull/216))
 - Removed `torch_brain.nn.FeedForwad` (too inflexible) ([#204](https://github.com/neuro-galaxy/torch_brain/pull/204))
