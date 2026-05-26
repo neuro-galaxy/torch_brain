@@ -128,12 +128,18 @@ class SkipOnFailure:
         try:
             return self.transform(data)
         except Exception as e:
-            if self.warn:
-                logging.warning(
-                    f"Transform {self.transform} failed. The following exception was raised: {e}\n"
-                    f"Restoring pre-transform data."
-                )
             if self.backup_copy:
+                if self.warn:
+                    logging.warning(
+                        f"Transform {self.transform} failed. The following exception was raised: {e}\n"
+                        f"Restoring pre-transform data."
+                    )
                 return data_backup
+
             else:
+                if self.warn:
+                    logging.warning(
+                        f"Transform {self.transform} failed. The following exception was raised: {e}\n"
+                        f"Returning original data (may be partially mutated)."
+                    )
                 return data
