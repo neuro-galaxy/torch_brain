@@ -49,8 +49,8 @@ time* intervals. This is achieved with the following design:
 
 Datasets in **torch_brain** typically contain multiple recordings, and
 so we define sampling intervals as *dictionaries* keyed by the recording
-IDs. Each entry is a :obj:`temporaldata.Interval` object that specify the valid start
-and end sampling times for that recording:
+IDs. Each entry is a :obj:`temporaldata.Interval` object that specifies
+the valid start and end sampling times for that recording:
 
 .. code:: python
 
