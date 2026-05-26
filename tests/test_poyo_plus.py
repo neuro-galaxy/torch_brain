@@ -18,7 +18,7 @@ def setup_module():
         "custom_gaze_pos_2d",
         dim=2,
         type=DataType.CONTINUOUS,
-        loss_fn=nn.MSELoss(),
+        loss_fn=nn.MSELoss(reduction="none"),
         timestamp_key="gaze.timestamps",
         value_key="gaze.position",
     )
