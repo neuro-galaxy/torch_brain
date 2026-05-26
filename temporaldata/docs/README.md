@@ -9,7 +9,7 @@ pip install -r requirements.txt
 
 To build the documentation, run the following from current directory:
 ```bash
-make html
+make clean html
 ```
 One can then view the documentation by opening `build/html/index.html` in a web browser.
 
