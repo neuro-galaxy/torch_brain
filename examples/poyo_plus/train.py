@@ -112,7 +112,7 @@ class TrainWrapper(L.LightningModule):
             if readout_id in target_weights and target_weights[readout_id] is not None:
                 weights = target_weights[readout_id]
 
-            taskwise_loss[readout_id] = spec.loss_fn(output, target, weights)
+            taskwise_loss[readout_id] = (spec.loss_fn(output, target) * weights).mean()
 
             # count the number of sequences in the batch that have the current task
             num_sequences_with_current_task = torch.any(

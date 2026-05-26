@@ -114,7 +114,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="cursor.timestamps",
     value_key="cursor.vel",
-    loss_fn=nn.MSELoss(),
+    loss_fn=nn.MSELoss(reduction="none"),
 )
 
 register_modality(
@@ -123,7 +123,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="cursor.timestamps",
     value_key="cursor.pos",
-    loss_fn=nn.MSELoss(),
+    loss_fn=nn.MSELoss(reduction="none"),
 )
 
 register_modality(
@@ -132,7 +132,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="behavior.timestamps",
     value_key="behavior.hand_vel",
-    loss_fn=nn.MSELoss(),
+    loss_fn=nn.MSELoss(reduction="none"),
 )
 
 register_modality(
@@ -141,7 +141,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="drifting_gratings.timestamps",
     value_key="drifting_gratings.orientation_id",
-    loss_fn=nn.CrossEntropyLoss(),
+    loss_fn=nn.CrossEntropyLoss(reduction="none"),
 )
 
 register_modality(
@@ -150,7 +150,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="drifting_gratings.timestamps",
     value_key="drifting_gratings.temporal_frequency_id",
-    loss_fn=nn.CrossEntropyLoss(),
+    loss_fn=nn.CrossEntropyLoss(reduction="none"),
 )
 
 register_modality(
@@ -159,7 +159,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_movie_one.timestamps",
     value_key="natural_movie_one.frame",
-    loss_fn=nn.CrossEntropyLoss(),
+    loss_fn=nn.CrossEntropyLoss(reduction="none"),
 )
 
 register_modality(
@@ -168,7 +168,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_movie_two.timestamps",
     value_key="natural_movie_two.frame",
-    loss_fn=nn.CrossEntropyLoss(),
+    loss_fn=nn.CrossEntropyLoss(reduction="none"),
 )
 
 register_modality(
@@ -177,7 +177,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_movie_three.timestamps",
     value_key="natural_movie_three.frame",
-    loss_fn=nn.CrossEntropyLoss(),
+    loss_fn=nn.CrossEntropyLoss(reduction="none"),
 )
 
 register_modality(
@@ -186,7 +186,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="locally_sparse_noise.timestamps",
     value_key="locally_sparse_noise.frame",
-    loss_fn=nn.CrossEntropyLoss(),
+    loss_fn=nn.CrossEntropyLoss(reduction="none"),
 )
 
 register_modality(
@@ -195,7 +195,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="static_gratings.timestamps",
     value_key="static_gratings.orientation_id",
-    loss_fn=nn.CrossEntropyLoss(),
+    loss_fn=nn.CrossEntropyLoss(reduction="none"),
 )
 
 register_modality(
@@ -204,7 +204,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="static_gratings.timestamps",
     value_key="static_gratings.spatial_frequency_id",
-    loss_fn=nn.CrossEntropyLoss(),
+    loss_fn=nn.CrossEntropyLoss(reduction="none"),
 )
 
 register_modality(
@@ -213,7 +213,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="static_gratings.timestamps",
     value_key="static_gratings.phase_id",
-    loss_fn=nn.CrossEntropyLoss(),
+    loss_fn=nn.CrossEntropyLoss(reduction="none"),
 )
 
 register_modality(
@@ -222,7 +222,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="natural_scenes.timestamps",
     value_key="natural_scenes.frame",
-    loss_fn=nn.CrossEntropyLoss(),
+    loss_fn=nn.CrossEntropyLoss(reduction="none"),
 )
 
 register_modality(
@@ -231,7 +231,7 @@ register_modality(
     type=DataType.MULTINOMIAL,
     timestamp_key="gabors.timestamps",
     value_key="gabors.gabors_orientation",
-    loss_fn=nn.CrossEntropyLoss(),
+    loss_fn=nn.CrossEntropyLoss(reduction="none"),
 )
 
 register_modality(
@@ -240,7 +240,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="gabors.timestamps",
     value_key="gabors.pos_2d",
-    loss_fn=nn.MSELoss(),
+    loss_fn=nn.MSELoss(reduction="none"),
 )
 
 register_modality(
@@ -249,7 +249,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="running.timestamps",
     value_key="running.running_speed",
-    loss_fn=nn.MSELoss(),
+    loss_fn=nn.MSELoss(reduction="none"),
 )
 
 register_modality(
@@ -258,7 +258,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="gaze.timestamps",
     value_key="gaze.pos_2d",
-    loss_fn=nn.MSELoss(),
+    loss_fn=nn.MSELoss(reduction="none"),
 )
 
 register_modality(
@@ -267,7 +267,7 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="pupil.timestamps",
     value_key="pupil.location",
-    loss_fn=nn.MSELoss(),
+    loss_fn=nn.MSELoss(reduction="none"),
 )
 
 register_modality(
@@ -276,5 +276,5 @@ register_modality(
     type=DataType.CONTINUOUS,
     timestamp_key="pupil.timestamps",
     value_key="pupil.size_2d",
-    loss_fn=nn.MSELoss(),
+    loss_fn=nn.MSELoss(reduction="none"),
 )
