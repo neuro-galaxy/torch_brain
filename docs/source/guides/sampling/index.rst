@@ -145,7 +145,6 @@ which randomly samples windows of a fixed length from the data.
     >>> sampler = RandomFixedWindowSampler(
     ...     sampling_intervals=dataset.get_sampling_intervals("train"),
     ...     window_length=1.0,
-    ...     generator=None,
     ... )
 
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
@@ -189,7 +188,6 @@ reprocess the underlying data.
     >>> sampler = RandomFixedWindowSampler(
     ...     sampling_intervals=dataset.get_sampling_intervals("train"),
     ...     window_length=10.0,
-    ...     generator=None,
     ... )
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
     WARNING:root:Skipping 113.86756666666673 seconds of data due to short intervals. Remaining: 270.0 seconds.
@@ -361,7 +359,6 @@ The sampler can be initialized in the same way as before.
     >>> sampler = RandomFixedWindowSampler(
     ...     sampling_intervals=dataset.get_sampling_intervals("train"),
     ...     window_length=1.0,
-    ...     generator=None,
     ... )
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
     WARNING:root:Skipping 8.784433333333283 seconds of data due to short intervals. Remaining: 1233.0 seconds.
