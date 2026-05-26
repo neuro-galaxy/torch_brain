@@ -47,6 +47,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 - Refactor `RotaryEmbedding` to `RotaryTimeEmbedding` ([#97](https://github.com/neuro-galaxy/torch_brain/pull/97))
+- Renamed `UnitFilterById` to `UnitFilterByAttr` to support filtering by any unit attribute. ([#171](https://github.com/neuro-galaxy/torch_brain/pull/171))
 
 ### Fixed
 - `InfiniteVocabEmbedding.extend_vocab`: fix incorrect device behavior ([#99](https://github.com/neuro-galaxy/torch_brain/pull/99))
