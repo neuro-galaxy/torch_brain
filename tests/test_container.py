@@ -60,12 +60,18 @@ class TestSkipOnFailure:
         result = transform(mock_data)
         assert result is mock_data
 
-    def test_failure_emits_warning(self, mock_data, caplog):
-        transform = SkipOnFailure(self.AlwaysFail())
+    def test_failure_emits_warning_when_warn_is_true(self, mock_data, caplog):
+        transform = SkipOnFailure(self.AlwaysFail(), warn=True)
         with caplog.at_level(logging.WARNING):
             transform(mock_data)
         assert len(caplog.records) == 1
         assert "intentional failure" in caplog.records[0].message
+
+    def test_failure_no_warning_by_default(self, mock_data, caplog):
+        transform = SkipOnFailure(self.AlwaysFail())
+        with caplog.at_level(logging.WARNING):
+            transform(mock_data)
+        assert len(caplog.records) == 0
 
     def test_failure_with_backup_copy_restores_pre_mutation_state(self, mock_data):
         original_id = mock_data.units.id[0]

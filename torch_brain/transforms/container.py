@@ -108,11 +108,16 @@ class SkipOnFailure:
         transform: transformation to attempt to apply.
         backup_copy: whether to make a backup copy of the input data. Set to True if the
             transform risks mutating the input data in-place before raising an exception.
+            Defaults to False.
+        warn: whether to emit a warning when the transform fails. Defaults to False.
     """
 
-    def __init__(self, transform: Callable, backup_copy: bool = False) -> None:
+    def __init__(
+        self, transform: Callable, backup_copy: bool = False, warn: bool = False
+    ) -> None:
         self.transform = transform
         self.backup_copy = backup_copy
+        self.warn = warn
 
     def __call__(self, data: temporaldata.Data) -> temporaldata.Data:
         if self.backup_copy:
@@ -121,10 +126,11 @@ class SkipOnFailure:
         try:
             return self.transform(data)
         except Exception as e:
-            logging.warning(
-                f"Transform {self.transform} failed. The following exception was raised: {e}\n"
-                f"Restoring pre-transform data."
-            )
+            if self.warn:
+                logging.warning(
+                    f"Transform {self.transform} failed. The following exception was raised: {e}\n"
+                    f"Restoring pre-transform data."
+                )
             if self.backup_copy:
                 return data_backup
             else:
