@@ -26,6 +26,8 @@ from brainsets.utils.s3_utils import (
 )
 
 OPENNEURO_S3_BUCKET = "openneuro.org"
+r"""S3 bucket URL for OpenNeuro"""
+
 GRAPHQL_ENDPOINT = "https://openneuro.org/crn/graphql"
 
 

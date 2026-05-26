@@ -4,6 +4,20 @@ This module provides functions to extract metadata and signal data from
 MNE Raw objects and convert them to brainsets data structures.
 """
 
+__all__ = [
+    "extract_measurement_date",
+    "concatenate_recordings",
+    "extract_signal",
+    "extract_channels",
+]
+
+# Drives the generated API reference; see docs/source/api_reference.py.
+__api_ref__ = {
+    "description": None,
+    "sections": [{"autosummary": __all__}],
+}
+
+
 import datetime
 import numpy as np
 from typing import Tuple, Literal

@@ -15,7 +15,10 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
     .. admonition:: Preprocessing
 
         To download and prepare this dataset, run
-        ``brainsets prepare perich_miller_population_2018``.
+
+        .. code:: shell
+
+            brainsets prepare perich_miller_population_2018
 
     **Tasks:** Center-Out and Random Target
 

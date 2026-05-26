@@ -22,18 +22,18 @@ To view the current configuration::
     brainsets config show
 
 Listing available datasets
--------------------------
+--------------------------
 You can list the available datasets by running the ``list`` command::
 
     brainsets list
 
 Preparing data
--------------
+--------------
 You can prepare a dataset by running the ``prepare`` command::
 
     brainsets prepare <brainset>
 
-Data preparation involves downloading the raw data from the source then processing it, 
+Data preparation involves downloading the raw data from the source then processing it,
 following a set of rules defined in ``pipelines/<brainset>/``.
 For example, to prepare the Perich & Miller (2018) dataset, you can run::
 

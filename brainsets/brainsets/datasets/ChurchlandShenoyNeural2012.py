@@ -14,7 +14,10 @@ class ChurchlandShenoyNeural2012(SpikingDatasetMixin, Dataset):
     .. admonition:: Preprocessing
 
         To download and prepare this dataset, run
-        ``brainsets prepare churchland_shenoy_neural_2012``.
+
+        .. code:: shell
+
+            brainsets prepare churchland_shenoy_neural_2012
 
     **Tasks:** Center-Out
 

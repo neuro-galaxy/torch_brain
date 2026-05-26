@@ -31,3 +31,12 @@ __all__ = [
     "OpenNeuroDataModality",
     "base_openneuro_parser",
 ]
+
+__api_ref__ = {
+    "description": None,
+    "sections": [
+        {
+            "autosummary": __all__,
+        },
+    ],
+}

@@ -10,7 +10,10 @@ class KochiVisualNamingDS006914(OpenNeuroDataset):
     .. admonition:: Preprocessing
 
         To download and prepare this dataset, run
-        ``brainsets prepare kochi_visualnaming_ds006914``.
+
+        .. code:: shell
+
+            brainsets prepare kochi_visualnaming_ds006914
 
     Each dataset instance uses a split strategy (`split_type`) and can optionally be
     restricted to specific recordings via recording_ids.

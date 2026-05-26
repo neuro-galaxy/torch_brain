@@ -1,4 +1,4 @@
-{{ objname | escape | underline}}
+{{ objname | escape | underline(line="=") }}
 
 .. currentmodule:: {{ module }}
 

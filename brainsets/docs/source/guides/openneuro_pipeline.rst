@@ -1,5 +1,5 @@
-Creating an :obj:`OpenNeuroPipeline`
-===================================
+Creating an OpenNeuroPipeline
+=============================
 
 .. py:currentmodule:: brainsets.utils.openneuro
 .. |OpenNeuroPipeline| replace:: :class:`OpenNeuroPipeline`

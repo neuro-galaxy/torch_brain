@@ -8,12 +8,17 @@ from ._utils import get_processed_dir
 
 class AllenVisualCodingOphys2016(CalciumImagingDatasetMixin, Dataset):
     """
-
+    Two-photon calcium imaging of mouse visual cortex from the Allen Brain
+    Observatory Visual Coding dataset, recorded during presentation of visual
+    stimuli.
 
     .. admonition:: Preprocessing
 
         To download and prepare this dataset, run
-        ``brainsets prepare allen_visual_coding_ophys_2016``.
+
+        .. code:: shell
+
+            brainsets prepare allen_visual_coding_ophys_2016
 
     """
 

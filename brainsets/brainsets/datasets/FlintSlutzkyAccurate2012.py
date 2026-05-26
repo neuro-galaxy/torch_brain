@@ -14,7 +14,10 @@ class FlintSlutzkyAccurate2012(SpikingDatasetMixin, Dataset):
     .. admonition:: Preprocessing
 
         To download and prepare this dataset, run
-        ``brainsets prepare flint_slutzky_accurate_2012``.
+
+        .. code:: shell
+
+            brainsets prepare flint_slutzky_accurate_2012
 
     **Tasks:** Center-Out
 

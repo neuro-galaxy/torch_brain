@@ -5,6 +5,25 @@ This module provides utility functions to parse BIDS-compliant filenames, discov
 For more information about BIDS, see the BIDS specification: https://bids-specification.readthedocs.io/en/stable/
 """
 
+__all__ = [
+    "fetch_eeg_recordings",
+    "fetch_ieeg_recordings",
+    "group_recordings_by_entity",
+    "check_eeg_recording_files_exist",
+    "check_ieeg_recording_files_exist",
+    "build_bids_path",
+    "load_json_sidecar",
+    "load_participants_tsv",
+    "get_subject_info",
+]
+
+# Drives the generated API reference; see docs/source/api_reference.py.
+__api_ref__ = {
+    "description": None,
+    "sections": [{"autosummary": __all__}],
+}
+
+
 from collections import defaultdict
 from typing import Optional, Literal
 from pathlib import Path

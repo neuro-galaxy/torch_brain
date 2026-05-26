@@ -14,7 +14,10 @@ class OdohertySabesNonhuman2017(SpikingDatasetMixin, Dataset):
     .. admonition:: Preprocessing
 
         To download and prepare this dataset, run
-        ``brainsets prepare odoherty_sabes_nonhuman_2017``.
+
+        .. code:: shell
+
+            brainsets prepare odoherty_sabes_nonhuman_2017
 
     **Tasks:** Random Target
 

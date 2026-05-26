@@ -163,4 +163,4 @@ data/raw
 **/.DS_Store
 
 uv.lock
-docs/source/_generated
+docs/source/generated

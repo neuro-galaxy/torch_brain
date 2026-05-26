@@ -1,9 +1,29 @@
-_functions = ["datetime_serialize_fn"]
-_constants = ["serialize_fn_map"]
+__all__ = [
+    "datetime_serialize_fn",
+    "serialize_fn_map",
+]
 
-__all__ = _functions + _constants
+# Drives the generated API reference; see docs/source/api_reference.py.
+__api_ref__ = {
+    "description": None,
+    "sections": [
+        {
+            "title": "Functions",
+            "autosummary": [
+                "datetime_serialize_fn",
+            ],
+        },
+        {
+            "title": "Constants",
+            "autosummary": [
+                "serialize_fn_map",
+            ],
+        },
+    ],
+}
 
 import datetime
+from typing import Callable
 
 
 def datetime_serialize_fn(obj, serialize_fn_map=None):
@@ -11,7 +31,7 @@ def datetime_serialize_fn(obj, serialize_fn_map=None):
     return str(obj)
 
 
-serialize_fn_map = {
+serialize_fn_map: dict[type, Callable] = {
     datetime.datetime: datetime_serialize_fn,
 }
 r"""A dict that maps classes to their serialization functions"""

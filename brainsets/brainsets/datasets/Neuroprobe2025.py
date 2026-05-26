@@ -142,7 +142,10 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
     .. admonition:: Preprocessing
 
         To download and prepare this dataset, run
-        ``brainsets prepare neuroprobe_2025``.
+
+        .. code:: shell
+
+            brainsets prepare neuroprobe_2025
 
     Each instance operates in exactly one of two mutually-exclusive modes:
 

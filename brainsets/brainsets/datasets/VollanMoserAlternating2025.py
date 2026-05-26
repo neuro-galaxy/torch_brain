@@ -127,7 +127,10 @@ class VollanMoserAlternating2025(SpikingDatasetMixin, Dataset):
     .. admonition:: Preprocessing
 
         To download and prepare this dataset, run
-        ``brainsets prepare vollan_moser_alternating_2025``.
+
+        .. code:: shell
+
+            brainsets prepare vollan_moser_alternating_2025
 
     **Tasks:** Open Field, Linear Track, M-Maze, Wagon Wheel, Sleep
 

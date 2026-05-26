@@ -10,7 +10,10 @@ class KlinzingSleepDS005555(OpenNeuroDataset):
     .. admonition:: Preprocessing
 
         To download and prepare this dataset, run
-        ``brainsets prepare klinzing_sleep_ds005555``.
+
+        .. code:: shell
+
+            brainsets prepare klinzing_sleep_ds005555
 
     Each dataset instance uses a split strategy (`split_type`) and can optionally be
     restricted to specific recordings via recording_ids.

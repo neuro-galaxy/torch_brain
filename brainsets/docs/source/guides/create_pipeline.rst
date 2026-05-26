@@ -1,5 +1,5 @@
-Creating a :obj:`BrainsetPipeline`
-====================================
+Creating a BrainsetPipeline
+===========================
 
 .. py:currentmodule:: brainsets.pipeline
 .. |BrainsetPipeline| replace:: :class:`BrainsetPipeline`
@@ -32,7 +32,7 @@ If you are brand new to the brainsets CLI, start with
 
 
 Step 1 – Create a pipeline directory
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A pipeline lives in a directory containing at least a ``pipeline.py`` file::
 
@@ -102,7 +102,7 @@ is a complete example that uses all of these hooks.
 
 
 Step 3 – Gather and enumerate metadata with :meth:`get_manifest`
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 |get_manifest| constructs the manifest—a table describing every session your pipeline
 needs to process. Each row provides the metadata needed to fetch and handle a single
@@ -182,7 +182,7 @@ Key things to remember:
 
 
 Step 5 – Process into :obj:`Data` objects
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 |process| receives the object returned by |download|, converts
 it into processed :obj:`temporaldata.Data` object(s), and stores these inside ``self.processed_dir``.
@@ -281,7 +281,7 @@ isolated environment before running your pipeline.
 The metadata block must:
 
 * Start with ``# /// brainset-pipeline`` and end with ``# ///``
-* Use TOML syntax for the content (each line prefixed with ``#`` or ``# ``)
+* Use TOML syntax for the content (each line prefixed with ``#``, optionally followed by a space)
 
 Supported keys:
 

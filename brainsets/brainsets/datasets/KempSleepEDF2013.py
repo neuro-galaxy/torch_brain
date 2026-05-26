@@ -17,7 +17,10 @@ class KempSleepEDF2013(Dataset):
     .. admonition:: Preprocessing
 
         To download and prepare this dataset, run
-        ``brainsets prepare kemp_sleep_edf_2013``.
+
+        .. code:: shell
+
+            brainsets prepare kemp_sleep_edf_2013
 
     Args:
         root (str, optional): Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
