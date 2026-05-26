@@ -25,13 +25,13 @@ from torch_brain.models import POYOPlus
 from torch_brain.registry import MODALITY_REGISTRY
 from torch_brain.transforms import Compose
 from torch_brain.utils import callbacks as tbrain_callbacks
-from torch_brain.utils import seed_everything
 from torch_brain.utils.callbacks import (
     MultiTaskDecodingStitchEvaluator,
     DataForMultiTaskDecodingStitchEvaluator,
 )
 
 from optim import SparseLamb
+from utils import seed_everything
 
 # higher speed on machines with tensor cores
 torch.set_float32_matmul_precision("medium")

@@ -14,11 +14,11 @@ from omegaconf import DictConfig
 
 from torch_brain.registry import MODALITY_REGISTRY
 from torch_brain.utils import callbacks as tbrain_callbacks
-from torch_brain.utils import seed_everything
 from torch_brain.utils.datamodules import DataModule
 from torch_brain.utils.stitcher import StitchEvaluator
 
 from train import POYOTrainWrapper
+from utils import seed_everything
 
 from torch_brain.models import POYOPlus, CalciumPOYOPlus
 
