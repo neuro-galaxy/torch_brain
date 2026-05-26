@@ -249,6 +249,49 @@ TrialSampler
 .. image:: static/sampler_trial_10s.gif
 
 
+From a sample to a data slice
+-----------------------------
+
+All three samplers above emit the same kind of object: a
+:obj:`DatasetIndex`. It is a small dataclass that records *where* a
+sample comes from — which recording, and which time window:
+
+.. code:: python
+
+   @dataclass
+   class DatasetIndex:
+       recording_id: str
+       start: float
+       end: float
+
+These three fields are everything a :obj:`Dataset` needs to load a
+sample. Indexing the dataset with a :obj:`DatasetIndex` returns a
+:obj:`temporaldata.Data` object containing just that time slice of
+the underlying recording:
+
+.. code:: pycon
+
+    >>> sample_index = next(iter(sampler))
+    >>> sample_index
+    DatasetIndex(recording_id='c_20131003_center_out_reaching', start=660.13, end=661.13)
+
+    >>> data = dataset[sample_index]
+    >>> data
+    Data(
+      spikes=IrregularTimeSeries(timestamps=..., unit_index=...),
+      cursor=IrregularTimeSeries(timestamps=..., pos=..., vel=...),
+      trials=Interval(...),
+      ...
+    )
+    >>> data.start, data.end, data.absolute_start
+    0.0, 1.0, 660.13
+
+This is the bridge between sampling and data loading: the sampler
+emits a stream of :obj:`DatasetIndex` objects, and the
+:obj:`Dataset` turns each one into a sliced
+:obj:`~temporaldata.Data` sample.
+
+
 Sampling from multiple recordings
 ---------------------------------
 
