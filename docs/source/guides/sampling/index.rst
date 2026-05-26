@@ -21,10 +21,11 @@ underlying data every time the training recipe changes.
 
 In this guide you will learn:
 
-- what *sampling intervals* are, and how they let a :obj:`Dataset`
-  tell a sampler where it is allowed to sample from,
-- how to use the built-in samplers to generate fixed-length windows
-  (or full trials) for training and evaluation,
+- what *sampling intervals* are, and how they tell a sampler where
+  it is allowed to sample from,
+- how to get these sampling intervals from a :obj:`Dataset`,
+- how to use the built-in samplers to generate fixed or variable length
+  windows for training and evaluation,
 - and how the same setup scales seamlessly to datasets that contain
   multiple recordings.
 
@@ -70,9 +71,9 @@ intervals. For example, let’s load a single recording in the
     >>> from brainsets.datasets import PerichMillerPopulation2018
 
     >>> dataset = PerichMillerPopulation2018(
-    >>>     root="./data/processed",
-    >>>     recording_ids=["c_20131003_center_out_reaching"],
-    >>> )
+    ...     root="./data/processed",
+    ...     recording_ids=["c_20131003_center_out_reaching"],
+    ... )
     >>> sampling_intervals = dataset.get_sampling_intervals("train")
     >>> print(sampling_intervals)
     {'c_20131003_center_out_reaching': LazyInterval(
@@ -87,8 +88,8 @@ part of the recording. Let’s print the first 5:
 .. code:: pycon
 
     >>> for recording_id in sampling_intervals:
-    >>>     for start, end in zip(sampling_intervals[recording_id].start[:5], sampling_intervals[recording_id].end[:5]):
-    >>>         print(f"start: {start:.2f}, end: {end:.2f}")
+    ...     for start, end in zip(sampling_intervals[recording_id].start[:5], sampling_intervals[recording_id].end[:5]):
+    ...         print(f"start: {start:.2f}, end: {end:.2f}")
     start: 0.00, end: 38.51
     start: 44.02, end: 49.32
     start: 55.78, end: 60.20
@@ -98,10 +99,18 @@ part of the recording. Let’s print the first 5:
 
 Notice that the intervals are of different lengths. Visually, they look like:
 
+.. figure:: static/sampler_10_0.png
 
-.. image:: static/sampler_10_0.png
+   Train sampling intervals for one recording. Each gray block marks
+   an interval that a sampler is allowed to draw from.
 
-.. image:: static/sampler_12_0.png
+The same dataset also exposes validation and test splits via
+``get_sampling_intervals("valid")`` and ``get_sampling_intervals("test")``.
+Overlaying all three shows how the brainset partitions the recording:
+
+.. figure:: static/sampler_12_0.png
+
+   Train, validation, and test sampling intervals on the same recording.
 
 
 Samplers in action
@@ -134,10 +143,10 @@ which randomly samples windows of a fixed length from the data.
     >>> from torch_brain.samplers import RandomFixedWindowSampler
 
     >>> sampler = RandomFixedWindowSampler(
-    >>>     sampling_intervals=dataset.get_sampling_intervals("train"),
-    >>>     window_length=1.0,
-    >>>     generator=None,
-    >>> )
+    ...     sampling_intervals=dataset.get_sampling_intervals("train"),
+    ...     window_length=1.0,
+    ...     generator=None,
+    ... )
 
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
     WARNING:root:Skipping 1.8665333333332796 seconds of data due to short intervals. Remaining: 417.0 seconds.
@@ -153,7 +162,7 @@ We can visualize what the sampler is doing as we are iterating over it.
 .. code:: pycon
 
     >>> for i, sample_index in enumerate(sampler):
-    >>>     print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
+    ...     print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
     Sample between 251.01 and 252.01
     Sample between 257.01 and 258.01
     Sample between 453.49 and 454.49
@@ -161,8 +170,11 @@ We can visualize what the sampler is doing as we are iterating over it.
     Sample between 422.79 and 423.79
     ...
 
-.. image:: static/sampler_1s.gif
+.. figure:: static/sampler_1s.gif
 
+   Windows of length 1 s drawn by the random fixed-window sampler.
+   Each red block is one sample placed over the gray sampling
+   intervals.
 
 Note that the order of the samples is shuffled, and that temporal jitter
 is used, so that the windows are not sampled at the same time from epoch
@@ -175,16 +187,16 @@ reprocess the underlying data.
 .. code:: pycon
 
     >>> sampler = RandomFixedWindowSampler(
-    >>>     sampling_intervals=dataset.get_sampling_intervals("train"),
-    >>>     window_length=10.0,
-    >>>     generator=None,
-    >>> )
+    ...     sampling_intervals=dataset.get_sampling_intervals("train"),
+    ...     window_length=10.0,
+    ...     generator=None,
+    ... )
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
     WARNING:root:Skipping 113.86756666666673 seconds of data due to short intervals. Remaining: 270.0 seconds.
     Number of sampled windows in one epoch:  27
 
     >>> for i, sample_index in enumerate(sampler):
-    >>>     print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
+    ...     print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
     Sample between 28.51 and 38.51
     Sample between 158.61 and 168.61
     Sample between 244.77 and 254.77
@@ -192,7 +204,11 @@ reprocess the underlying data.
     Sample between 535.77 and 545.77
     ...
 
-.. image:: static/sampler_10s.gif
+.. figure:: static/sampler_10s.gif
+
+   Same sampler with a window length of 10 seconds. Larger windows
+   mean fewer samples per epoch, and short intervals get skipped
+   because no 10 s window fits inside them.
 
 While we're at it, let's also look at the other two samplers:
 
@@ -204,16 +220,16 @@ SequentialFixedWindowSampler
     >>> from torch_brain.samplers import SequentialFixedWindowSampler
 
     >>> sampler = SequentialFixedWindowSampler(
-    >>>     sampling_intervals=dataset.get_sampling_intervals("train"),
-    >>>     window_length=10.0,
-    >>>     drop_short=True,
-    >>> )
+    ...     sampling_intervals=dataset.get_sampling_intervals("train"),
+    ...     window_length=10.0,
+    ...     drop_short=True,
+    ... )
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
     WARNING:root:Skipping 113.86756666666673 seconds of data due to short intervals. Remaining: 420.0 seconds.
     Number of sampled windows in one epoch:  42
 
     >>> for i, sample_index in enumerate(sampler):
-        print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
+    ...     print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
     Sample between 0.00 and 10.00
     Sample between 10.00 and 20.00
     Sample between 20.00 and 30.00
@@ -221,24 +237,31 @@ SequentialFixedWindowSampler
     Sample between 109.40 and 119.40
     ...
 
-.. image:: static/sampler_sequential_10s.gif
+.. figure:: static/sampler_sequential_10s.gif
+
+   Sequential fixed-window sampler with a window length of 10
+   seconds. Windows tile each interval from left to right without
+   overlap, and in deterministic order.
 
 TrialSampler
 ~~~~~~~~~~~~
+
+A :obj:`~torch_brain.samplers.TrialSampler` treats each interval start-end pair as
+a *"trial"*, and samples them as whole.
 
 .. code:: pycon
 
     >>> from torch_brain.samplers import TrialSampler
 
     >>> sampler = TrialSampler(
-    >>>     sampling_intervals=dataset.get_sampling_intervals("train"),
-    >>>     shuffle=True,
-    >>> )
+    ...     sampling_intervals=dataset.get_sampling_intervals("train"),
+    ...     shuffle=True,
+    ... )
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
     Number of sampled windows in one epoch:  38
 
     >>> for i, sample_index in enumerate(sampler):
-        print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
+    ...     print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
     Sample between 227.69 and 232.62
     Sample between 637.58 and 644.05
     Sample between 415.17 and 415.69
@@ -246,7 +269,12 @@ TrialSampler
     Sample between 421.70 and 432.91
     ...
 
-.. image:: static/sampler_trial_10s.gif
+.. figure:: static/sampler_trial_10s.gif
+
+   The trial sampler returns each interval as-is, so samples are
+   *variable-length* and follow the trial structure of the data.
+
+Notice that the samples are *variable-length* in this case!
 
 
 From a sample to a data slice
@@ -302,13 +330,13 @@ recordings:
 .. code:: pycon
 
     >>> dataset = PerichMillerPopulation2018(
-    >>>     root="./data/processed",
-    >>>     recording_ids=[
-    >>>         "c_20131003_center_out_reaching",
-    >>>         "c_20131022_center_out_reaching",
-    >>>         "c_20131023_center_out_reaching",
-    >>>     ],
-    >>> )
+    ...     root="./data/processed",
+    ...     recording_ids=[
+    ...         "c_20131003_center_out_reaching",
+    ...         "c_20131022_center_out_reaching",
+    ...         "c_20131023_center_out_reaching",
+    ...     ],
+    ... )
     >>> print(dataset.get_sampling_intervals("train"))
     {'c_20131003_center_out_reaching': LazyInterval(
       end=<HDF5 dataset "end": shape (38,), type "<f8">,
@@ -331,19 +359,19 @@ The sampler can be initialized in the same way as before.
 .. code:: pycon
 
     >>> sampler = RandomFixedWindowSampler(
-    >>>     sampling_intervals=dataset.get_sampling_intervals("train"),
-    >>>     window_length=1.0,
-    >>>     generator=None,
-    >>> )
+    ...     sampling_intervals=dataset.get_sampling_intervals("train"),
+    ...     window_length=1.0,
+    ...     generator=None,
+    ... )
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
     WARNING:root:Skipping 8.784433333333283 seconds of data due to short intervals. Remaining: 1233.0 seconds.
     Number of sampled windows in one epoch:  1233
 
     >>> for i, sample_index in enumerate(sampler):
-    >>>     print(
-    >>>         f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f} "
-    >>>         f"from recording {sample_index.recording_id}"
-    >>>     )
+    ...     print(
+    ...         f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f} "
+    ...         f"from recording {sample_index.recording_id}"
+    ...     )
     Sample between 349.16 and 350.16 from recording c_20131023_center_out_reaching
     Sample between 180.99 and 181.99 from recording c_20131022_center_out_reaching
     Sample between 33.14 and 34.14 from recording c_20131023_center_out_reaching
@@ -353,7 +381,11 @@ The sampler can be initialized in the same way as before.
 
 We visualize this below:
 
-.. image:: static/sampler_multi.gif
+.. figure:: static/sampler_multi.gif
+
+   Sampling across three recordings simultaneously. Each row shows
+   one recording's intervals (gray) and the windows drawn from them
+   (red); samples interleave freely across recordings.
 
 
 Further Reading
