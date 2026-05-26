@@ -1,21 +1,15 @@
 import os
-import random
 import logging
-
-import torch
+import random
 import numpy as np
-
+import torch
 
 log = logging.getLogger(__name__)
 
 
 def seed_everything(seed: int) -> None:
-    """Sets random seed for reproducibility.
-    Args:
-        seed (int): Random seed.
-    """
     if seed is not None:
-        log.info("Global seed set to {}.".format(seed))
+        log.info(f"Global seed: {seed}")
 
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
