@@ -94,9 +94,15 @@ class SkipOnFailure:
     unchanged.
 
     Example:
-        >>> import numpy as np
-        >>> from torch_brain.transforms import SkipOnFailure, UnitFilter
-        >>> transform = SkipOnFailure(UnitFilter(lambda units: np.ones(len(units), dtype=bool), field="units"))
+        >>> from torch_brain.transforms import SkipOnFailure
+        >>> class RequireMinUnits:
+        ...     def __init__(self, min_units):
+        ...         self.min_units = min_units
+        ...     def __call__(self, data):
+        ...         if len(data.units) < self.min_units:
+        ...             raise ValueError("not enough units")
+        ...         return data
+        >>> transform = SkipOnFailure(RequireMinUnits(min_units=10))
 
     Args:
         transform: transformation to attempt to apply.
