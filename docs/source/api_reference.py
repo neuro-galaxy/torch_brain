@@ -1,11 +1,5 @@
 from importlib import import_module
-from pathlib import Path
 import jinja2
-
-import torch_brain
-import torch_brain.dataset
-import torch_brain.nn
-import torch_brain.batching.collate
 
 """
 CONFIGURING API_REFERENCE
