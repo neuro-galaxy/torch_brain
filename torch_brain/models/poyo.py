@@ -253,6 +253,9 @@ class POYO(nn.Module):
         output_latents = output_queries + self.dec_ffn(output_queries)
         output = self.readout(output_latents)
 
+        if unpack_output and output_mask is None:
+            raise ValueError("output_mask is required when unpack_output=True")
+
         if unpack_output:
             output = [output[b][output_mask[b]] for b in range(output.size(0))]
 
