@@ -6,16 +6,6 @@ from .infinite_vocab_embedding import InfiniteVocabEmbedding
 from .position_embeddings import RotaryTimeEmbedding, SinusoidalTimeEmbedding
 from .rotary_attention import RotaryCrossAttention, RotarySelfAttention
 
-# loss
-from . import loss
-from .loss import Loss, MSELoss, CrossEntropyLoss, MallowDistanceLoss
-
-# readout layers
-from .multitask_readout import (
-    MultitaskReadout,
-    prepare_for_multitask_readout,
-)
-
 __all__ = [
     "Embedding",
     "InfiniteVocabEmbedding",
@@ -23,12 +13,6 @@ __all__ = [
     "SinusoidalTimeEmbedding",
     "RotaryCrossAttention",
     "RotarySelfAttention",
-    "Loss",
-    "MSELoss",
-    "CrossEntropyLoss",
-    "MallowDistanceLoss",
-    "MultitaskReadout",
-    "prepare_for_multitask_readout",
 ]
 
 # see docs/source/api_reference.py
@@ -49,22 +33,6 @@ __api_ref__ = {
             "autosummary": [
                 "RotaryCrossAttention",
                 "RotarySelfAttention",
-            ],
-        },
-        {
-            "title": "Readout",
-            "autosummary": [
-                "MultitaskReadout",
-                "prepare_for_multitask_readout",
-            ],
-        },
-        {
-            "title": "Losses",
-            "autosummary": [
-                "Loss",
-                "MSELoss",
-                "CrossEntropyLoss",
-                "MallowDistanceLoss",
             ],
         },
     ],
