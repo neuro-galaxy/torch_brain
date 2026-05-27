@@ -25,7 +25,6 @@
 ### List of implemented models
 
 + [POYO: A Unified, Scalable Framework for Neural Population Decoding (Azabou et al. 2023)](examples/poyo)
-+ [Multi-session, multi-task neural decoding from distinct cell-types and brain regions (Azabou et al. 2025)](examples/poyo_plus)
 + More coming soon...
 
 ## Installation
