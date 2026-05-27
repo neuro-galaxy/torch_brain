@@ -8,7 +8,7 @@ Please check out [POYO's official code repository](https://github.com/nerdslab/p
 
 In addition to installing `torch_brain`, you need to:
 ```bash
-pip install wandb brainsets
+pip install wandb brainsets torchmetrics>=1.6.0
 ```
 
 ### Training POYO-MP
