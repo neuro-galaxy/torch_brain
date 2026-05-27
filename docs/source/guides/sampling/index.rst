@@ -44,8 +44,23 @@ time* intervals. This is achieved with the following design:
 -  The sampler uses this information to create samples, which are
    effectively :math:`(t_{start}, t_{end})` pairs emitted as a
    :obj:`DatasetIndex` object.
--  :obj:`Dataset` uses this sample information to load, slice, and create
-   the tensorized data samples.
+-  :obj:`Dataset` uses this sample information to load and slice
+   the data samples.
+
+.. figure:: static/overview.png
+   :width: 80%
+   :align: center
+
+   Interplay between Dataset and Sampler.
+
+.. tip::
+
+   Typically, all this is orchestrated by a PyTorch :obj:`~torch.utils.data.DataLoader`.
+   In this guide, we will go through the logic of sampling *manually*,
+   to give you a more fundamental understanding of these concepts.
+   See
+   :doc:`this </generated/notebooks/nlb_maze_minimal_example>` minimal
+   training example for how it all fits with a DataLoader.
 
 Datasets in **torch_brain** typically contain multiple recordings, and
 so we define sampling intervals as *dictionaries* keyed by the recording
