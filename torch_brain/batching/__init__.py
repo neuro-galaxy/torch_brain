@@ -31,7 +31,7 @@ __api_ref__ = {
     "description": None,
     "sections": [
         {
-            "title": "torch_brain.batching.collate",
+            "title": "Collate",
             "autosummary": [
                 "chain",
                 "collate",
