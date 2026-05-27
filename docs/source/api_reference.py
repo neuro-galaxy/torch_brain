@@ -5,7 +5,6 @@ import jinja2
 import torch_brain
 import torch_brain.dataset
 import torch_brain.nn
-import torch_brain.registry
 import torch_brain.data.collate
 
 """
@@ -64,7 +63,6 @@ API_MODS = [
     "torch_brain.transforms",
     "torch_brain.nn",
     "torch_brain.models",
-    "torch_brain.registry",
     "torch_brain.utils",
 ]
 
