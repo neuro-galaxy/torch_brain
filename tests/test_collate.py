@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from torch_brain.data import (
+from torch_brain.batching import (
     chain,
     collate,
     pad,

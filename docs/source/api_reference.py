@@ -5,7 +5,7 @@ import jinja2
 import torch_brain
 import torch_brain.dataset
 import torch_brain.nn
-import torch_brain.data.collate
+import torch_brain.batching.collate
 
 """
 CONFIGURING API_REFERENCE
@@ -57,6 +57,7 @@ is not a particular submodule does the hook become useful.
 
 # Modules to include in API reference.
 API_MODS = [
+    "torch_brain.batching",
     "torch_brain.dataset",
     "torch_brain.data",
     "torch_brain.samplers",
