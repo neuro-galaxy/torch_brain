@@ -13,12 +13,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Removed
 - Removed `torch_brain.utils.seed_everything`; a reference implementation can still be found in `examples/poyo/utils.py` ([#227](https://github.com/neuro-galaxy/torch_brain/pull/227))
-- Removed `POYOPlus` and `CalciumPOYOPlus` models (`torch_brain.models.poyo_plus`, `torch_brain.models.calcium_poyo_plus`)
-- Removed `examples/poyo_plus/` directory and all associated configs, training scripts, and utilities
-- Removed `torch_brain.registry` — modality registry system (`register_modality`, `get_modality_by_id`, `MODALITY_REGISTRY`, `ModalitySpec`, `DataType`)
-- Removed `torch_brain.nn.loss` — custom loss classes (`Loss`, `MSELoss`, `CrossEntropyLoss`, `MallowDistanceLoss`)
-- Removed `torch_brain.nn.MultitaskReadout` and `torch_brain.nn.prepare_for_multitask_readout`
-- Removed `DecodingStitchEvaluator` and `MultiTaskDecodingStitchEvaluator` from `torch_brain.utils.callbacks`
+- Removed `POYOPlus` and `CalciumPOYOPlus` models (`torch_brain.models.poyo_plus`, `torch_brain.models.calcium_poyo_plus`) ([#230](https://github.com/neuro-galaxy/torch_brain/pull/230))
+- Removed `examples/poyo_plus/` directory and all associated configs, training scripts, and utilities ([#230](https://github.com/neuro-galaxy/torch_brain/pull/230))
+- Removed `torch_brain.registry` — modality registry system (`register_modality`, `get_modality_by_id`, `MODALITY_REGISTRY`, `ModalitySpec`, `DataType`) ([#230](https://github.com/neuro-galaxy/torch_brain/pull/230))
+- Removed `torch_brain.nn.loss` — custom loss classes (`Loss`, `MSELoss`, `CrossEntropyLoss`, `MallowDistanceLoss`) ([#230](https://github.com/neuro-galaxy/torch_brain/pull/230))
+- Removed `torch_brain.nn.MultitaskReadout` and `torch_brain.nn.prepare_for_multitask_readout` ([#230](https://github.com/neuro-galaxy/torch_brain/pull/230))
+- Removed `DecodingStitchEvaluator` and `MultiTaskDecodingStitchEvaluator` from `torch_brain.utils.callbacks` ([#230](https://github.com/neuro-galaxy/torch_brain/pull/230))
 - Removed `torch_brain.utils.prepare_for_readout` (unused) ([#218](https://github.com/neuro-galaxy/torch_brain/pull/218))
 - Removed `einops` as a dependency; replaced all `rearrange`/`repeat` calls with native PyTorch and NumPy equivalents. ([#216](https://github.com/neuro-galaxy/torch_brain/pull/216))
 - Removed `torch_brain.nn.FeedForwad` (too inflexible) ([#204](https://github.com/neuro-galaxy/torch_brain/pull/204))
