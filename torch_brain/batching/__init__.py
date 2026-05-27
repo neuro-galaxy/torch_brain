@@ -24,7 +24,6 @@ __all__ = [
     "track_mask8",
     "track_mask2d",
     "track_mask2d8",
-    "Dataset",
 ]
 
 # see docs/source/api_reference.py
