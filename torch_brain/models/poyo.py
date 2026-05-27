@@ -1,5 +1,5 @@
 import inspect
-from typing import Dict, List, Optional, Union
+from typing import Dict, List
 import logging
 
 from pathlib import Path
@@ -7,7 +7,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchtyping import TensorType
 from temporaldata import Data
 
 from torch_brain.dataset import Dataset
@@ -163,50 +162,45 @@ class POYO(nn.Module):
         self,
         *,
         # input sequence
-        input_unit_index: TensorType["batch", "n_in", int],
-        input_timestamps: TensorType["batch", "n_in", float],
-        input_token_type: TensorType["batch", "n_in", int],
-        input_mask: Optional[TensorType["batch", "n_in", bool]] = None,
+        input_unit_index: torch.Tensor,
+        input_timestamps: torch.Tensor,
+        input_token_type: torch.Tensor,
+        input_mask: torch.Tensor | None = None,
         # latent sequence
-        latent_index: TensorType["batch", "n_latent", int],
-        latent_timestamps: TensorType["batch", "n_latent", float],
+        latent_index: torch.Tensor,
+        latent_timestamps: torch.Tensor,
         # Metadata for queries
-        session_index: TensorType["batch", int],
+        session_index: torch.Tensor,
         # output sequence
-        output_timestamps: TensorType["batch", "n_out", float],
-        output_mask: Optional[TensorType["batch", "n_out", bool]] = None,
+        output_timestamps: torch.Tensor,
+        output_mask: torch.Tensor | None = None,
         unpack_output: bool = False,
-    ) -> Union[
-        TensorType["batch", "n_out", "dim_out", float],
-        List[TensorType[..., "dim_out", float]],
-    ]:
+    ) -> torch.Tensor | List[torch.Tensor]:
         """Forward pass of the POYO model.
 
         The model processes input spike sequences through its encoder-processor-decoder
         architecture to generate task-specific predictions.
 
         Args:
-            input_unit_index: Indices of input units
-            input_timestamps: Timestamps of input spikes
-            input_token_type: Type of input tokens
-            input_mask: Mask for input sequence
-            latent_index: Indices for latent tokens
-            latent_timestamps: Timestamps for latent tokens
-            session_index: Index of the recording session
-            output_timestamps: Timestamps for output predictions
-            output_mask: A mask of the same size as output_timestamps. True implies
-                that particular timestamp is a valid query for POYO. This is required
-                iff `unpack_output` is set to True.
-            unpack_output: If False, this function will return a padded tensor of
-                shape (batch size, num of max output queries in batch, `dim_out`).
-                In this case you have to use `output_mask` externally to only look
-                at valid outputs. If True, this will return a list of Tensors:
-                the length of the list is equal to batch size, the shape of
-                i^th Tensor is (num of valid output queries for i^th sample, `d_out`).
+            input_unit_index: Unit indices of shape ``(B, N_in)``.
+            input_timestamps: Spike timestamps of shape ``(B, N_in)``.
+            input_token_type: Token type indices of shape ``(B, N_in)``.
+            input_mask: Boolean mask of shape ``(B, N_in)``.
+            latent_index: Latent token indices of shape ``(B, N_lat)``.
+            latent_timestamps: Latent token timestamps of shape ``(B, N_lat)``.
+            session_index: Session indices of shape ``(B,)``.
+            output_timestamps: Output query timestamps of shape ``(B, N_out)``.
+            output_mask: Boolean mask of shape ``(B, N_out)``.
+                Required when ``unpack_output=True``.
+            unpack_output: If ``False``, returns a padded tensor of shape
+                ``(B, N_out, dim_out)``; use ``output_mask`` to index valid entries.
+                If ``True``, returns a list of ``B`` tensors each of shape
+                ``(N_out_i, dim_out)`` containing only the valid outputs.
 
         Returns:
-            A :class:`torch.Tensor` of shape `(batch, n_out, dim_out)`
-            containing the predicted outputs corresponding to `output_timestamps`.
+            Shape ``(B, N_out, dim_out)`` when ``unpack_output=False``,
+            or a list of ``B`` tensors of shape ``(N_out_i, dim_out)``
+            when ``unpack_output=True``.
         """
 
         if self.unit_emb.is_lazy():
@@ -407,12 +401,12 @@ class FeedForward(nn.Module):
     """A feed-forward network with GEGLU activation.
 
     Args:
-        dim (int): Input and output dimension
-        mult (int, optional): Multiplier for hidden dimension. Defaults to 4
-        dropout (float, optional): Dropout probability. Defaults to 0.2
+        dim: Input and output dimension
+        mult: Multiplier for hidden dimension. Defaults to 4
+        dropout: Dropout probability. Defaults to 0.2
     """
 
-    def __init__(self, dim, mult=4, dropout=0.2):
+    def __init__(self, dim: int, mult: int = 4, dropout: float = 0.2):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(dim, dim * mult * 2),
