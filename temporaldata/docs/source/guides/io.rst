@@ -27,7 +27,6 @@ To save a data object to disk, use the ``save`` method:
             sensor=RegularTimeSeries(
                 sampling_rate=100,
                 accelerometer=np.random.randn(400, 3),
-                domain=Interval(start=0, end=4)
             ),
             user_id='user123',
             device='laptop'
@@ -53,7 +52,6 @@ To save a data object to disk, use the ``save`` method:
             lfp=RegularTimeSeries(
                 sampling_rate=1000,
                 raw=np.random.randn(4000, 3),
-                domain=Interval(start=0, end=4)
             ),
             subject_id='mouse1',
             date='2023-01-01'

@@ -86,9 +86,7 @@ def test_regulartimeseries(test_filepath):
         assert np.allclose(data_slice.domain.end, data.domain.end)
         assert np.allclose(data_slice.timestamps, data.timestamps)
 
-    data = RegularTimeSeries(
-        lfp=np.random.random((100, 48)), sampling_rate=10, domain="auto"
-    )
+    data = RegularTimeSeries(lfp=np.random.random((100, 48)), sampling_rate=10)
 
     _test_regulartimeseries(data)
 
@@ -105,7 +103,6 @@ def test_regulartimeseries(test_filepath):
     data = RegularTimeSeries(
         lfp=np.random.random((100, 48)),
         sampling_rate=10,
-        domain="auto",
         domain_start=1.0,
     )
 
@@ -146,7 +143,6 @@ def test_lazy_regular_timeseries(test_filepath):
         raw=raw.copy(),
         gamma=gamma.copy(),
         sampling_rate=250.0,
-        domain="auto",
     )
 
     with h5py.File(test_filepath, "w") as f:
@@ -249,7 +245,7 @@ def test_lazy_regular_timeseries(test_filepath):
 
 
 def test_slice_numerical_instability():
-    ts = RegularTimeSeries(value=np.zeros((40)), sampling_rate=4, domain="auto")
+    ts = RegularTimeSeries(value=np.zeros((40)), sampling_rate=4)
     # Expected timestamps: [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, ...]
 
     eps = 1e-14
@@ -307,7 +303,7 @@ def test_slice_numerical_instability():
     assert sliced_ts.domain.start[0] == 0.25
     assert sliced_ts.domain.end[-1] == 1.0
 
-    ts = RegularTimeSeries(value=np.zeros((40)), sampling_rate=10, domain="auto")
+    ts = RegularTimeSeries(value=np.zeros((40)), sampling_rate=10)
     # Expected timestamps: [0.0, 0.1, 0.2, ...]
 
     # Using math that natively generates known float anomalies.
@@ -321,9 +317,7 @@ def test_slice_numerical_instability():
 
 
 def test_slice_outside_domain(test_filepath):
-    ts = RegularTimeSeries(
-        value=np.zeros((100)), sampling_rate=10, domain="auto", domain_start=10.0
-    )
+    ts = RegularTimeSeries(value=np.zeros((100)), sampling_rate=10, domain_start=10.0)
 
     def _assert_slice_outside_domain(ts):
         sliced_ts = ts.slice(0, 5, reset_origin=False)
@@ -715,7 +709,6 @@ class TestRegularTimeSeriesCoercion:
         data = RegularTimeSeries(
             raw=[[float(i)] * 4 for i in range(10)],
             sampling_rate=10.0,
-            domain=Interval(0.0, 1.0),
         )
         assert isinstance(data.raw, np.ndarray)
         assert data.raw.shape == (10, 4)
@@ -725,7 +718,6 @@ class TestRegularTimeSeriesCoercion:
         data = RegularTimeSeries(
             raw=tuple([float(i)] * 4 for i in range(10)),
             sampling_rate=10.0,
-            domain=Interval(0.0, 1.0),
         )
         assert isinstance(data.raw, np.ndarray)
         assert data.raw.shape == (10, 4)
@@ -735,7 +727,6 @@ class TestRegularTimeSeriesCoercion:
         data = RegularTimeSeries(
             raw=df,
             sampling_rate=10.0,
-            domain=Interval(0.0, 10.0),
         )
         assert isinstance(data.raw, np.ndarray)
         assert data.raw.shape == (100, 4)
@@ -748,7 +739,6 @@ class TestIndexMask:
         rts = RegularTimeSeries(
             raw=[0, 1, 2, 3],
             sampling_rate=10,
-            domain="auto",
         )
         if request.param == "regular":
             yield rts
@@ -831,7 +821,6 @@ class TestIsGappy:
         rts = RegularTimeSeries(
             raw=[0, 1, 2, 3],
             sampling_rate=10,
-            domain="auto",
         )
         if request.param == "regular":
             yield rts
@@ -879,7 +868,6 @@ class TestToIrregular:
         rts = RegularTimeSeries(
             raw=[0, 1, 2, 3],
             sampling_rate=10,
-            domain="auto",
         )
         if request.param == "regular":
             yield rts
@@ -945,3 +933,65 @@ class TestToIrregular:
             assert id(irts.domain) != id(lazy_rts.domain)
             assert not np.shares_memory(irts.domain.start, lazy_rts.domain.start)
             assert not np.shares_memory(irts.domain.end, lazy_rts.domain.end)
+
+
+class TestDomainArg:
+    """The domain is always computed; the legacy `domain` kwarg is soft-deprecated."""
+
+    def test_explicit_interval_domain_raises(self):
+        with pytest.raises(ValueError, match="no longer supported"):
+            RegularTimeSeries(
+                raw=np.zeros((10, 4)),
+                sampling_rate=10.0,
+                domain=Interval(0.0, 1.0),  # ty: ignore[invalid-argument-type]
+            )
+
+    def test_auto_string_domain_warns(self):
+        # `domain="auto"` is the legacy default; we keep accepting it but warn.
+        with pytest.warns(DeprecationWarning, match="deprecated"):
+            rts = RegularTimeSeries(
+                raw=np.zeros((10, 4)),
+                sampling_rate=10.0,
+                domain="auto",  # ty: ignore[invalid-argument-type]
+            )
+        # Behaviour is still auto-compute: domain is grid-aligned to len/sampling_rate.
+        np.testing.assert_allclose(rts.domain.start, [0.0])
+        np.testing.assert_allclose(rts.domain.end, [1.0])
+
+    def test_non_numeric_domain_start_raises(self):
+        with pytest.raises(ValueError, match="domain_start must be a number"):
+            RegularTimeSeries(
+                raw=np.zeros((10, 4)),
+                sampling_rate=10.0,
+                domain_start="0.0",  # ty: ignore[invalid-argument-type]
+            )
+
+    def test_auto_domain_is_grid_aligned(self):
+        rts = RegularTimeSeries(
+            raw=np.zeros((10, 4)), sampling_rate=10.0, domain_start=2.5
+        )
+        np.testing.assert_allclose(rts.domain.start, [2.5])
+        np.testing.assert_allclose(rts.domain.end, [3.5])
+        assert not rts.is_gappy()
+
+    def test_gappy_domain_survives_hdf5_roundtrip(self, test_filepath):
+        # A gappy RTS has a multi-interval domain that `from_hdf5` cannot
+        # reconstruct from `domain_start` alone; it must restore the saved
+        # `_domain` after construction.
+        ts = np.array([0.0, 0.01, 0.03, 0.04])
+        raw = np.array([1.0, 2.0, 3.0, 4.0])
+        rts = RegularTimeSeries.from_gappy_timeseries(ts, sampling_rate=100.0, raw=raw)
+        assert rts.is_gappy()
+
+        with h5py.File(test_filepath, "w") as f:
+            rts.to_hdf5(f)
+        with h5py.File(test_filepath, "r") as f:
+            loaded = RegularTimeSeries.from_hdf5(f)
+
+        assert loaded.is_gappy()
+        np.testing.assert_allclose(loaded.domain.start, rts.domain.start)
+        np.testing.assert_allclose(loaded.domain.end, rts.domain.end)
+        np.testing.assert_array_equal(np.isnan(loaded.raw), np.isnan(rts.raw))
+        np.testing.assert_array_equal(
+            loaded.raw[~np.isnan(loaded.raw)], rts.raw[~np.isnan(rts.raw)]
+        )

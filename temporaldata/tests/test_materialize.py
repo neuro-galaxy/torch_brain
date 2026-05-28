@@ -42,7 +42,6 @@ def test_materialize(test_filepath):
         lfp=RegularTimeSeries(
             raw=np.zeros((1000, 3)),
             sampling_rate=250.0,
-            domain="auto",
         ),
         units=ArrayDict(
             id=np.array(["unit_0", "unit_1", "unit_2"]),

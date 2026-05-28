@@ -208,12 +208,12 @@ class TestPrivateAttribsAreDeepCopied:
 class TestRegularTimeSeriesNotImplemented:
 
     def test_raises_not_implemented(self):
-        data = RegularTimeSeries(value=np.zeros(4), sampling_rate=1.0, domain="auto")
+        data = RegularTimeSeries(value=np.zeros(4), sampling_rate=1.0)
         with pytest.raises(NotImplementedError):
             data.select_by_mask(np.array([True, False, True, False]))
 
     def test_lazy_raises_not_implemented(self, test_filepath):
-        data = RegularTimeSeries(value=np.zeros(4), sampling_rate=1.0, domain="auto")
+        data = RegularTimeSeries(value=np.zeros(4), sampling_rate=1.0)
         with _make_lazy(data, LazyRegularTimeSeries, test_filepath) as lazy:
             with pytest.raises(NotImplementedError):
                 lazy.select_by_mask(np.array([True, False, True, False]))

@@ -25,7 +25,6 @@ as well as :obj:`Data <temporaldata.Data>` objects support time-based slicing th
         sensor=RegularTimeSeries(
             sampling_rate=100,
             accelerometer=np.random.randn(400, 3),
-            domain=Interval(start=0, end=4),
         ),
         activities=Interval(
             start=np.array([0.0, 2.0, 4.5]),

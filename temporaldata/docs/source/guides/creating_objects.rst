@@ -265,7 +265,6 @@ A :obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>` represents uniformly
             temperature=np.random.randn(1000),  # 10 seconds of temperature data
             humidity=np.random.randn(1000),  # 10 seconds of humidity data
             domain_start=0,  # Start time
-            domain="auto",
         )
 
         print(sensor_data.timestamps)
@@ -282,7 +281,6 @@ A :obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>` represents uniformly
             sampling_rate=1000,  # Hz
             raw=np.random.randn(10000, 3),  # 10 seconds of 3-channel LFP
             domain_start=0,  # Start time
-            domain="auto",
         )
 
         print(lfp.timestamps)
@@ -291,35 +289,18 @@ A :obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>` represents uniformly
 
 Choosing ``domain``
 ^^^^^^^^^^^^^^^^^^^
-The recommended way to set the domain is to set ``domain="auto"`` and providing ``domain_start`` 
-like the examples above. Alternatively, you can set the domain explicitly using an :obj:`Interval <temporaldata.Interval>` object like for :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`.
+:obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>` does not need a ``domain``
+argument. The domain is always computed automatically as
+:math:`[t_0,\ t_0 + N / f_s)`, where :math:`t_0` is ``domain_start``, :math:`N` is the
+number of samples, and :math:`f_s` is ``sampling_rate``, so that its boundaries stay
+aligned to the sample grid. Use ``domain_start`` to set the start time, as in the
+examples above.
 
-.. tab:: Generic
+.. note::
 
-    .. code-block:: python
-
-        from temporaldata import RegularTimeSeries, Interval
-
-        # Explicitly set domain with Interval
-        sensor_data = RegularTimeSeries(
-            sampling_rate=100,  # Hz
-            temperature=np.random.randn(1000),  # 10 seconds of temperature data
-            humidity=np.random.randn(1000),  # 10 seconds of humidity data
-            domain=Interval(start=0, end=10)  # Explicitly set 0-10 seconds
-        )
-
-.. tab:: Neuroscience
-
-    .. code-block:: python
-
-        from temporaldata import RegularTimeSeries, Interval
-
-        # Explicitly set domain with Interval
-        lfp = RegularTimeSeries(
-            sampling_rate=1000,  # Hz
-            raw=np.random.randn(10000, 3),  # 10 seconds of 3-channel LFP
-            domain=Interval(start=0, end=10)  # Explicitly set 0-10 seconds
-        )
+    Passing ``domain="auto"`` is still accepted for backward compatibility but
+    emits a :class:`DeprecationWarning` and will be removed in a future version.
+    Passing a custom :obj:`Interval <temporaldata.Interval>` raises ``ValueError``.
 
 
 Converting to :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`
@@ -470,7 +451,6 @@ The :obj:`Data <temporaldata.Data>` class is a container that holds and organize
             sensor=RegularTimeSeries(
                 sampling_rate=100,
                 accelerometer=np.random.randn(400, 3),
-                domain=Interval(start=0, end=4)
             ),
             activities=Interval(
                 start=np.array([0, 2]),
@@ -503,7 +483,6 @@ The :obj:`Data <temporaldata.Data>` class is a container that holds and organize
             lfp=RegularTimeSeries(
                 sampling_rate=1000,
                 raw=np.random.randn(4000, 3),
-                domain=Interval(start=0, end=4)
             ),
             trials=Interval(
                 start=np.array([0, 2]),

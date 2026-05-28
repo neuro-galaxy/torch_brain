@@ -37,7 +37,6 @@ def saved_data(test_filepath):
         lfp=RegularTimeSeries(
             raw=np.random.random((100, 4)),
             sampling_rate=10,
-            domain=Interval(0.0, 10.0),
         ),
         trials=Interval(
             start=np.array([0.0, 1.0, 2.0]),

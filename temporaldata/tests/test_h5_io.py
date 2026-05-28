@@ -40,9 +40,7 @@ def test_save_to_hdf5(test_filepath):
     with h5py.File(test_filepath, "w") as file:
         b.to_hdf5(file)
 
-    c = RegularTimeSeries(
-        x=np.random.random((100, 48)), sampling_rate=10, domain=Interval(0.0, 10.0)
-    )
+    c = RegularTimeSeries(x=np.random.random((100, 48)), sampling_rate=10)
 
     with h5py.File(test_filepath, "w") as file:
         c.to_hdf5(file)
@@ -95,9 +93,7 @@ def test_load_from_h5(test_filepath):
         np.array([0.0, 1.0, 2.0]), x=np.array([1.0, 2.0, 3.0]), domain="auto"
     )
     b = Interval(start=np.array([0, 1, 2]), end=np.array([1, 2, 3]))
-    c = RegularTimeSeries(
-        x=np.random.random((100, 48)), sampling_rate=10, domain=Interval(0.0, 10.0)
-    )
+    c = RegularTimeSeries(x=np.random.random((100, 48)), sampling_rate=10)
     d = Data(
         a_timeseries=a,
         b_intervals=b,
@@ -131,9 +127,7 @@ def test_load_classmethod(test_filepath):
         np.array([0.0, 1.0, 2.0]), x=np.array([1.0, 2.0, 3.0]), domain="auto"
     )
     b = Interval(start=np.array([0, 1, 2]), end=np.array([1, 2, 3]))
-    c = RegularTimeSeries(
-        x=np.random.random((100, 48)), sampling_rate=10, domain=Interval(0.0, 10.0)
-    )
+    c = RegularTimeSeries(x=np.random.random((100, 48)), sampling_rate=10)
     d = Data(
         a_timeseries=a,
         b_intervals=b,

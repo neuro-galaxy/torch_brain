@@ -79,7 +79,6 @@ def _build_realistic_data():
     ecog = RegularTimeSeries(
         signal=rng.standard_normal((500_000, 4)),
         sampling_rate=500.0,
-        domain=Interval(0.0, 1000.0),
     )
 
     pose_kwargs = {}
@@ -98,7 +97,6 @@ def _build_realistic_data():
     pose = RegularTimeSeries(
         **pose_kwargs,
         sampling_rate=30.0,
-        domain=Interval(0.0, 1000.0),
     )
 
     n_spikes = 50_000
@@ -240,7 +238,6 @@ def bench_rts_slice():
         sampling_rate=50,
         waveforms=rng.standard_normal((n, 48)),
         domain_start=0.0,
-        domain="auto",
     )
 
     def go():

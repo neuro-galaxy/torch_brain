@@ -44,7 +44,6 @@ def test_data():
         lfp=RegularTimeSeries(
             raw=np.zeros((1000, 3)),
             sampling_rate=250.0,
-            domain="auto",
         ),
         units=ArrayDict(
             id=np.array(["unit_0", "unit_1", "unit_2"]),
@@ -100,7 +99,6 @@ def test_data_copy():
         lfp=RegularTimeSeries(
             raw=np.zeros((1000, 3)),
             sampling_rate=250.0,
-            domain="auto",
         ),
         units=ArrayDict(
             id=np.array(["unit_0", "unit_1", "unit_2"]),
@@ -154,7 +152,6 @@ def test_lazy_data_copy(test_filepath):
         lfp=RegularTimeSeries(
             raw=np.zeros((1000, 3)),
             sampling_rate=250.0,
-            domain="auto",
         ),
         units=ArrayDict(
             id=np.array(["unit_0", "unit_1", "unit_2"]),
@@ -223,7 +220,6 @@ def test_data_absolute_start(test_filepath):
         lfp=RegularTimeSeries(
             raw=np.zeros((1000, 3)),
             sampling_rate=250.0,
-            domain="auto",
         ),
         units=ArrayDict(
             id=np.array(["unit_0", "unit_1", "unit_2"]),
@@ -345,7 +341,6 @@ def test_precision(caplog):
     lfp = RegularTimeSeries(
         raw=np.zeros((1000, 3)),
         sampling_rate=250.0,
-        domain="auto",
     )
     assert lfp.timestamps.dtype == np.float64
 
@@ -554,7 +549,6 @@ def test_data_auto_domain():
         lfp=RegularTimeSeries(
             raw=np.zeros((1000, 3)),
             sampling_rate=250.0,
-            domain="auto",
         ),
         units=ArrayDict(
             id=np.array(["unit_0", "unit_1", "unit_2"]),

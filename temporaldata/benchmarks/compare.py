@@ -24,7 +24,6 @@ import sys
 import tempfile
 import time
 
-
 BENCH_SCRIPT = os.path.join(os.path.dirname(__file__), "benchmark.py")
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
 

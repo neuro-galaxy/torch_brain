@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import Literal, Any
+from typing import Any
 import warnings
 import copy
 
@@ -94,8 +94,7 @@ class RegularTimeSeries(ArrayDict):
 
     Args:
         sampling_rate: Sampling rate in Hz.
-        domain: :obj:`"auto"` or an :obj:`Interval` object that defines the domain over which the
-            timeseries is defined.
+        domain_start: Absolute starting time offset (in seconds) of this signal. Defaults to :obj:`0.0`.
         **kwargs: Arbitrary keyword arguments where the values are arbitrary
             multi-dimensional (2d, 3d, ..., nd) arrays with shape (N, \*).
 
@@ -111,7 +110,6 @@ class RegularTimeSeries(ArrayDict):
         >>> lfp = RegularTimeSeries(
         ...     raw=np.zeros((1000, 128)),
         ...     sampling_rate=250.,
-        ...     domain=Interval(0., 4.),
         ... )
 
         >>> lfp.slice(0, 1)
@@ -132,24 +130,44 @@ class RegularTimeSeries(ArrayDict):
         self,
         *,
         sampling_rate: float,  # in Hz
-        domain: Interval | Literal["auto"] = "auto",
-        domain_start=0.0,
+        domain_start: float = 0.0,
         **kwargs: ArrayLike,
     ):
+        if "domain" in kwargs:
+            domain = kwargs.pop("domain")
+            if domain == "auto":
+                warnings.warn(
+                    "The `domain` argument of `RegularTimeSeries` is deprecated "
+                    "and will be removed in a future version. The domain is "
+                    "always computed automatically as "
+                    "[domain_start, domain_start + len(self) / sampling_rate); "
+                    'you can drop `domain="auto"` from your call.',
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            else:
+                raise ValueError(
+                    "Manually setting the domain of `RegularTimeSeries` to a "
+                    "custom `Interval` is no longer supported; the domain is "
+                    "always computed automatically as "
+                    "[domain_start, domain_start + len(self) / sampling_rate) "
+                    "so that its boundaries stay aligned to the sample grid. "
+                    "Use `domain_start` to set the start time."
+                )
+
         super().__init__(**kwargs)
 
         self._sampling_rate = sampling_rate
 
-        if domain == "auto":
-            if not isinstance(domain_start, (int, float)):
-                raise ValueError(
-                    f"domain_start must be a number, got {type(domain_start)}."
-                )
-            domain = Interval(
-                start=np.array([domain_start]),
-                end=np.array([domain_start + len(self) / sampling_rate]),
+        if not isinstance(domain_start, (int, float)):
+            raise ValueError(
+                f"domain_start must be a number, got {type(domain_start)}."
             )
-        self._domain = domain
+
+        self._domain = Interval(
+            start=domain_start,
+            end=domain_start + len(self) / sampling_rate,
+        )
 
     @property
     def sampling_rate(self) -> float:
@@ -436,7 +454,6 @@ class RegularTimeSeries(ArrayDict):
                 data = RegularTimeSeries(
                     raw=np.zeros((1000, 128)),
                     sampling_rate=250.,
-                    domain=Interval(0., 4.),
                 )
 
                 with h5py.File("data.h5", "w") as f:
@@ -480,7 +497,12 @@ class RegularTimeSeries(ArrayDict):
                 data[key] = value[:]
 
         domain = Interval.from_hdf5(file["domain"])
-        obj = cls(**data, sampling_rate=file.attrs["sampling_rate"], domain=domain)
+        obj = cls(
+            **data,
+            sampling_rate=file.attrs["sampling_rate"],
+            domain_start=float(domain.start[0]),
+        )
+        obj._domain = domain
 
         return obj
 
@@ -641,11 +663,9 @@ class RegularTimeSeries(ArrayDict):
             out[grid_idx] = arr
             filled[key] = out
 
-        return cls(
-            sampling_rate=sampling_rate,
-            domain=domain,
-            **filled,
-        )
+        obj = cls(sampling_rate=sampling_rate, domain_start=start_time, **filled)
+        obj._domain = domain  # replace single-interval auto domain with gappy one
+        return obj
 
     def is_gappy(self) -> bool:
         r"""Returns :obj:`True` if this :obj:`RegularTimeSeries` has gaps.
