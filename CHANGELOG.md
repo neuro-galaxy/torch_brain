@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed `torch_brain.nn.MultitaskReadout` and `torch_brain.nn.prepare_for_multitask_readout` ([#230](https://github.com/neuro-galaxy/torch_brain/pull/230))
 - Removed `DecodingStitchEvaluator` and `MultiTaskDecodingStitchEvaluator` from `torch_brain.utils.callbacks` ([#230](https://github.com/neuro-galaxy/torch_brain/pull/230))
 - Removed `torch_brain.utils.prepare_for_readout` (unused) ([#218](https://github.com/neuro-galaxy/torch_brain/pull/218))
+- Removed `torchtyping` as a dependency; replaced all `TensorType` annotations in `POYO` with plain `torch.Tensor` ([#231](https://github.com/neuro-galaxy/torch_brain/pull/231))
 - Removed `einops` as a dependency; replaced all `rearrange`/`repeat` calls with native PyTorch and NumPy equivalents. ([#216](https://github.com/neuro-galaxy/torch_brain/pull/216))
 - Removed `torch_brain.nn.FeedForwad` (too inflexible) ([#204](https://github.com/neuro-galaxy/torch_brain/pull/204))
 - Removed `torch_brain.optim` / `SparseLamb` from the public package API ([#203](https://github.com/neuro-galaxy/torch_brain/pull/203))
