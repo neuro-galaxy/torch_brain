@@ -1,4 +1,5 @@
 from importlib import import_module
+
 import jinja2
 
 """
@@ -51,14 +52,14 @@ is not a particular submodule does the hook become useful.
 
 # Modules to include in API reference.
 API_MODS = [
-    "torch_brain.batching",
     "torch_brain.dataset",
-    "torch_brain.data",
     "torch_brain.samplers",
     "torch_brain.transforms",
+    "torch_brain.batching",
     "torch_brain.nn",
     "torch_brain.models",
     "torch_brain.utils",
+    "torch_brain.data",
 ]
 
 API_REFERENCE = {m: import_module(m).__api_ref__ for m in API_MODS}
