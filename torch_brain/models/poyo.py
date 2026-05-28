@@ -1,16 +1,16 @@
 import inspect
-from typing import Dict, List
 import logging
-
 from pathlib import Path
+from typing import Dict, List
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from temporaldata import Data
 
-from torch_brain.dataset import Dataset
 from torch_brain.data import pad8, track_mask8
+from torch_brain.dataset import Dataset
 from torch_brain.nn import (
     Embedding,
     InfiniteVocabEmbedding,
@@ -18,7 +18,6 @@ from torch_brain.nn import (
     RotarySelfAttention,
     RotaryTimeEmbedding,
 )
-
 from torch_brain.utils import (
     create_linspace_latent_tokens,
     create_start_end_unit_tokens,
@@ -193,13 +192,13 @@ class POYO(nn.Module):
             output_mask: Boolean mask of shape :math:`(B, N_{out})`.
                 Required when ``unpack_output=True``.
             unpack_output: If ``False``, returns a padded tensor of shape
-                :math:`(B, N_{out}, d_{out})`; use ``output_mask`` to index valid entries.
+                :math:`(B, N_{out}, D_{out})`; use ``output_mask`` to index valid entries.
                 If ``True``, returns a list of :math:`B` tensors each of shape
-                :math:`(N_{out,i}, d_{out})` containing only the valid outputs.
+                :math:`(N_{out,i}, D_{out})` containing only the valid outputs.
 
         Returns:
-            Shape :math:`(B, N_{out}, d_{out})` when ``unpack_output=False``,
-            or a list of :math:`B` tensors of shape :math:`(N_{out,i}, d_{out})`
+            Shape :math:`(B, N_{out}, D_{out})` when ``unpack_output=False``,
+            or a list of :math:`B` tensors of shape :math:`(N_{out,i}, D_{out})`
             when ``unpack_output=True``.
         """
 
