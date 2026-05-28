@@ -182,24 +182,24 @@ class POYO(nn.Module):
         architecture to generate task-specific predictions.
 
         Args:
-            input_unit_index: Unit indices of shape ``(B, N_in)``.
-            input_timestamps: Spike timestamps of shape ``(B, N_in)``.
-            input_token_type: Token type indices of shape ``(B, N_in)``.
-            input_mask: Boolean mask of shape ``(B, N_in)``.
-            latent_index: Latent token indices of shape ``(B, N_lat)``.
-            latent_timestamps: Latent token timestamps of shape ``(B, N_lat)``.
-            session_index: Session indices of shape ``(B,)``.
-            output_timestamps: Output query timestamps of shape ``(B, N_out)``.
-            output_mask: Boolean mask of shape ``(B, N_out)``.
+            input_unit_index: Unit indices of shape :math:`(B, N_{in})`.
+            input_timestamps: Spike timestamps of shape :math:`(B, N_{in})`.
+            input_token_type: Token type indices of shape :math:`(B, N_{in})`.
+            input_mask: Boolean mask of shape :math:`(B, N_{in})`.
+            latent_index: Latent token indices of shape :math:`(B, N_{lat})`.
+            latent_timestamps: Latent token timestamps of shape :math:`(B, N_{lat})`.
+            session_index: Session indices of shape :math:`(B,)`.
+            output_timestamps: Output query timestamps of shape :math:`(B, N_{out})`.
+            output_mask: Boolean mask of shape :math:`(B, N_{out})`.
                 Required when ``unpack_output=True``.
             unpack_output: If ``False``, returns a padded tensor of shape
-                ``(B, N_out, dim_out)``; use ``output_mask`` to index valid entries.
-                If ``True``, returns a list of ``B`` tensors each of shape
-                ``(N_out_i, dim_out)`` containing only the valid outputs.
+                :math:`(B, N_{out}, d_{out})`; use ``output_mask`` to index valid entries.
+                If ``True``, returns a list of :math:`B` tensors each of shape
+                :math:`(N_{out,i}, d_{out})` containing only the valid outputs.
 
         Returns:
-            Shape ``(B, N_out, dim_out)`` when ``unpack_output=False``,
-            or a list of ``B`` tensors of shape ``(N_out_i, dim_out)``
+            Shape :math:`(B, N_{out}, d_{out})` when ``unpack_output=False``,
+            or a list of :math:`B` tensors of shape :math:`(N_{out,i}, d_{out})`
             when ``unpack_output=True``.
         """
 
