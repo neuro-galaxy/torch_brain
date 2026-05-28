@@ -1,11 +1,6 @@
 from importlib import import_module
-from pathlib import Path
-import jinja2
 
-import torch_brain
-import torch_brain.dataset
-import torch_brain.nn
-import torch_brain.data.collate
+import jinja2
 
 """
 CONFIGURING API_REFERENCE
@@ -58,12 +53,13 @@ is not a particular submodule does the hook become useful.
 # Modules to include in API reference.
 API_MODS = [
     "torch_brain.dataset",
-    "torch_brain.data",
     "torch_brain.samplers",
     "torch_brain.transforms",
+    "torch_brain.batching",
     "torch_brain.nn",
     "torch_brain.models",
     "torch_brain.utils",
+    "torch_brain.data",
 ]
 
 API_REFERENCE = {m: import_module(m).__api_ref__ for m in API_MODS}
