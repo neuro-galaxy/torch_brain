@@ -16,6 +16,7 @@ User Guide
    data_manipulation
    interval_operations
    io
+   gappy_regular_ts
 
 .. toctree::
    :maxdepth: 1
