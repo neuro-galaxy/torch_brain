@@ -1,7 +1,7 @@
 from typing import Optional, Iterable, Mapping, Callable
-from torch_brain.utils import np_string_prefix
-from temporaldata import Data, Interval
 
+from torch_brain.utils import np_string_prefix
+from torch_brain.data import Data, Interval
 from .dataset import Dataset, DatasetIndex
 from .mixins import SpikingDatasetMixin
 

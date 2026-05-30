@@ -1,8 +1,8 @@
 from typing import Optional
 
 import numpy as np
-from temporaldata import Data, RegularTimeSeries
 
+from torch_brain.data import Data, RegularTimeSeries
 from torch_brain.utils.binning import bin_spikes
 
 

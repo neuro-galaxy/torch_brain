@@ -105,7 +105,7 @@ class RegularTimeSeries(ArrayDict):
     Example ::
 
         >>> import numpy as np
-        >>> from temporaldata import RegularTimeSeries
+        >>> from torch_brain.data import RegularTimeSeries
 
         >>> lfp = RegularTimeSeries(
         ...     raw=np.zeros((1000, 128)),
@@ -205,7 +205,7 @@ class RegularTimeSeries(ArrayDict):
         Example ::
 
             >>> import numpy as np
-            >>> from temporaldata import RegularTimeSeries
+            >>> from torch_brain.data import RegularTimeSeries
 
             >>> # Contiguous (non-gappy) series: every sample is real.
             >>> rts = RegularTimeSeries(
@@ -401,7 +401,7 @@ class RegularTimeSeries(ArrayDict):
         Example ::
 
             >>> import numpy as np
-            >>> from temporaldata import RegularTimeSeries
+            >>> from torch_brain.data import RegularTimeSeries
 
             >>> # Contiguous (non-gappy) series: every sample is kept.
             >>> rts = RegularTimeSeries(raw=np.arange(4), sampling_rate=10.0)
@@ -449,7 +449,7 @@ class RegularTimeSeries(ArrayDict):
         .. code-block:: python
 
                 import h5py
-                from temporaldata import RegularTimeSeries
+                from torch_brain.data import RegularTimeSeries
 
                 data = RegularTimeSeries(
                     raw=np.zeros((1000, 128)),
@@ -484,7 +484,7 @@ class RegularTimeSeries(ArrayDict):
         .. code-block:: python
 
             import h5py
-            from temporaldata import RegularTimeSeries
+            from torch_brain.data import RegularTimeSeries
 
             with h5py.File("data.h5", "r") as f:
                 data = RegularTimeSeries.from_hdf5(f)
@@ -564,7 +564,7 @@ class RegularTimeSeries(ArrayDict):
         Example ::
 
             >>> import numpy as np
-            >>> from temporaldata import RegularTimeSeries
+            >>> from torch_brain.data import RegularTimeSeries
 
             >>> # 4 samples at 100 Hz, the 0.02s sample is missing.
             >>> ts = np.array([0.0, 0.01, 0.03, 0.04])
@@ -684,7 +684,7 @@ class RegularTimeSeries(ArrayDict):
         Example ::
 
             >>> import numpy as np
-            >>> from temporaldata import RegularTimeSeries
+            >>> from torch_brain.data import RegularTimeSeries
 
             >>> rts = RegularTimeSeries(raw=np.arange(4), sampling_rate=100.0)
             >>> rts.is_gappy()
@@ -878,7 +878,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         .. code-block:: python
 
             import h5py
-            from temporaldata import ArrayDict
+            from torch_brain.data import ArrayDict
 
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)

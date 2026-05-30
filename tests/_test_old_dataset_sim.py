@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import yaml
 from dateutil import parser
-from temporaldata import (
+from torch_brain.data import (
     ArrayDict,
     Data,
     Interval,

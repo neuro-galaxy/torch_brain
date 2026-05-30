@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from temporaldata import Interval
+from torch_brain.data import Interval
 
 from torch_brain.samplers import DistributedStitchingFixedWindowSampler
 

@@ -3,7 +3,7 @@ import logging
 import numpy as np
 import pytest
 
-from temporaldata import ArrayDict, Data, IrregularTimeSeries
+from torch_brain.data import ArrayDict, Data, IrregularTimeSeries
 from torch_brain.transforms.unit_filter import UnitFilter, UnitFilterById
 
 logger = logging.getLogger(__name__)

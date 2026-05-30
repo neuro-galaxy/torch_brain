@@ -33,7 +33,7 @@ class IrregularTimeSeries(ArrayDict):
     Example ::
 
         >>> import numpy as np
-        >>> from temporaldata import IrregularTimeSeries
+        >>> from torch_brain.data import IrregularTimeSeries
 
         >>> spikes = IrregularTimeSeries(
         ...     unit_index=[0, 0, 1, 0, 1, 2],
@@ -316,7 +316,7 @@ class IrregularTimeSeries(ArrayDict):
         .. code-block:: python
 
             import h5py
-            from temporaldata import IrregularTimeseries
+            from torch_brain.data import IrregularTimeseries
 
             data = IrregularTimeseries(
                 unit_index=np.array([0, 0, 1, 0, 1, 2]),
@@ -387,7 +387,7 @@ class IrregularTimeSeries(ArrayDict):
         .. code-block:: python
 
             import h5py
-            from temporaldata import IrregularTimeSeries
+            from torch_brain.data import IrregularTimeSeries
 
             with h5py.File("data.h5", "r") as f:
                 data = IrregularTimeSeries.from_hdf5(f)
@@ -694,7 +694,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         .. code-block:: python
 
             import h5py
-            from temporaldata import ArrayDict
+            from torch_brain.data import ArrayDict
 
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)

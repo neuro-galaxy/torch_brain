@@ -7,7 +7,7 @@ import numpy as np
 import torch
 
 from torch_brain.utils import np_string_prefix
-from temporaldata import Data, Interval
+from torch_brain.data import Data, Interval
 
 
 @dataclass

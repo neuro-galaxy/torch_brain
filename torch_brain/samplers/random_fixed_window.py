@@ -5,7 +5,7 @@ from functools import cached_property
 
 import torch
 
-from temporaldata import Interval
+from torch_brain.data import Interval
 from torch_brain.dataset import DatasetIndex
 
 

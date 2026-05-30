@@ -22,7 +22,7 @@ class ArrayDict(object):
 
     Example ::
 
-        >>> from temporaldata import ArrayDict
+        >>> from torch_brain.data import ArrayDict
         >>> import numpy as np
 
         >>> units = ArrayDict(
@@ -106,7 +106,7 @@ class ArrayDict(object):
 
         Example ::
 
-            >>> from temporaldata import ArrayDict
+            >>> from torch_brain.data import ArrayDict
             >>> import numpy as np
 
             >>> units = ArrayDict(
@@ -215,7 +215,7 @@ class ArrayDict(object):
         .. code-block:: python
 
             import h5py
-            from temporaldata import ArrayDict
+            from torch_brain.data import ArrayDict
 
             data = ArrayDict(
                 unit_id=np.array(["unit01", "unit02"]),
@@ -266,7 +266,7 @@ class ArrayDict(object):
         .. code-block:: python
 
             import h5py
-            from temporaldata import ArrayDict
+            from torch_brain.data import ArrayDict
 
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
@@ -442,7 +442,7 @@ class LazyArrayDict(ArrayDict):
         .. code-block:: python
 
             import h5py
-            from temporaldata import ArrayDict
+            from torch_brain.data import ArrayDict
 
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)

@@ -1,6 +1,6 @@
 import numpy as np
 
-from temporaldata import (
+from torch_brain.data import (
     Data,
     ArrayDict,
     Interval,

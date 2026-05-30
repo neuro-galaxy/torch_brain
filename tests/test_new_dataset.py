@@ -4,15 +4,15 @@ import pytest
 from datetime import datetime
 import numpy as np
 
-from temporaldata import (
+from torch_brain.data import (
     Data,
     Interval,
     IrregularTimeSeries,
     ArrayDict,
     RegularTimeSeries,
 )
-from brainsets import serialize_fn_map
-from brainsets.descriptions import (
+from torch_brain.data import serialize_fn_map
+from torch_brain.data import (
     BrainsetDescription,
     SessionDescription,
     SubjectDescription,

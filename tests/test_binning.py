@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from temporaldata import ArrayDict, Data, Interval, IrregularTimeSeries
+from torch_brain.data import ArrayDict, Data, Interval, IrregularTimeSeries
 
 from torch_brain.transforms.bin_spikes import BinSpikes
 from torch_brain.utils.binning import bin_spikes

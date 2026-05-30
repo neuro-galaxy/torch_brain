@@ -33,7 +33,7 @@ class Data(object):
     Example ::
 
         >>> import numpy as np
-        >>> from temporaldata import (
+        >>> from torch_brain.data import (
         ...     ArrayDict,
         ...     IrregularTimeSeries,
         ...     RegularTimeSeries,
@@ -197,7 +197,7 @@ class Data(object):
 
         Example ::
 
-            >>> from temporaldata import Data
+            >>> from torch_brain.data import Data
             >>> data = Data(domain=Interval(0., 4.))
 
             >>> data.absolute_start
@@ -316,7 +316,7 @@ class Data(object):
         .. code-block:: python
 
                 import h5py
-                from temporaldata import Data
+                from torch_brain.data import Data
 
                 data = Data(...)
 
@@ -362,7 +362,7 @@ class Data(object):
         .. code-block:: python
 
             import h5py
-            from temporaldata import Data
+            from torch_brain.data import Data
 
             with h5py.File("data.h5", "r") as f:
                 data = Data.from_hdf5(f)
@@ -432,7 +432,7 @@ class Data(object):
 
         .. code-block:: python
 
-            from temporaldata import Data
+            from torch_brain.data import Data
 
             # lazy with context manager (recommended)
             with Data.load("data.h5") as data:
@@ -483,7 +483,7 @@ class Data(object):
 
         .. code-block:: python
 
-                from temporaldata import Data
+                from torch_brain.data import Data
 
                 data = Data(...)
                 data.save("data.h5")

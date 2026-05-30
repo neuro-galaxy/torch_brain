@@ -2,7 +2,7 @@ from typing import Dict
 
 import torch
 from torch_brain.dataset import DatasetIndex
-from temporaldata import Interval
+from torch_brain.data import Interval
 
 
 class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):

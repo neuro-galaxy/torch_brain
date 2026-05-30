@@ -2,7 +2,7 @@ from typing import Any, Callable, List
 
 import numpy as np
 
-import temporaldata
+from torch_brain.data import Data
 
 
 class Compose:
@@ -17,7 +17,7 @@ class Compose:
     def __init__(self, transforms: List[Callable]):
         self.transforms = transforms
 
-    def __call__(self, data: temporaldata.Data) -> temporaldata.Data:
+    def __call__(self, data: Data) -> Data:
         for transform in self.transforms:
             data = transform(data)
         return data
@@ -49,7 +49,7 @@ class RandomChoice:
         total = sum(p)
         self.p = [prob / total for prob in p]
 
-    def __call__(self, data: temporaldata.Data) -> temporaldata.Data:
+    def __call__(self, data: Data) -> Data:
         idx = np.random.choice(len(self.transforms), p=self.p)
         transform = self.transforms[idx]
         return transform(data)
@@ -72,7 +72,7 @@ class ConditionalChoice:
         self.true_transform = true_transform
         self.false_transform = false_transform
 
-    def __call__(self, data: temporaldata.Data) -> temporaldata.Data:
+    def __call__(self, data: Data) -> Data:
         ret = self.condition(data)
         if not isinstance(ret, bool):
             raise ValueError(

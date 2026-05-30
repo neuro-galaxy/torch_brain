@@ -1,6 +1,6 @@
 import numpy as np
 
-from temporaldata import Data, ArrayDict, IrregularTimeSeries
+from torch_brain.data import Data, ArrayDict, IrregularTimeSeries
 from torch_brain.transforms.unit_dropout import TriangleDistribution, UnitDropout
 
 

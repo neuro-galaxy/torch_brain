@@ -3,7 +3,7 @@ import pytest
 import numpy as np
 import torch
 
-from temporaldata import Interval
+from torch_brain.data import Interval
 
 from torch_brain.samplers import (
     SequentialFixedWindowSampler,

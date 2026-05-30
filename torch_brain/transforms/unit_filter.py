@@ -3,7 +3,7 @@ from typing import Callable, Pattern, Union
 
 import numpy as np
 
-from temporaldata import ArrayDict, Data, IrregularTimeSeries, RegularTimeSeries
+from torch_brain.data import ArrayDict, Data, IrregularTimeSeries, RegularTimeSeries
 
 
 class UnitFilter:

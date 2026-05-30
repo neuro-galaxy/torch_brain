@@ -1,7 +1,7 @@
 from typing import Optional
 
 import numpy as np
-from temporaldata import IrregularTimeSeries
+from torch_brain.data import IrregularTimeSeries
 
 
 def bin_spikes(

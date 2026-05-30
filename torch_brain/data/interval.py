@@ -28,7 +28,7 @@ class Interval(ArrayDict):
     Example ::
 
         >>> import numpy as np
-        >>> from temporaldata import Interval
+        >>> from torch_brain.data import Interval
 
         >>> intervals = Interval(
         ...    start=[0., 1., 2.],
@@ -142,7 +142,7 @@ class Interval(ArrayDict):
         .. Example ::
 
             >>> import numpy as np
-            >>> from temporaldata import Interval
+            >>> from torch_brain.data import Interval
 
             >>> intervals = Interval(
             ...     start=[0., 1., 2.],
@@ -437,7 +437,7 @@ class Interval(ArrayDict):
         Examples:
             Split 10 intervals into 60/20/20 sets using integers:
 
-            >>> from temporaldata import Interval
+            >>> from torch_brain.data import Interval
             >>> intervals = Interval.linspace(0, 1, 10)
             >>> train, val, test = intervals.split([6, 2, 2])
             >>> print(len(train), len(val), len(test))
@@ -521,7 +521,7 @@ class Interval(ArrayDict):
 
         Example ::
 
-            >>> from temporaldata import Interval
+            >>> from torch_brain.data import Interval
             >>> import numpy as np
 
             >>> interval = Interval(
@@ -579,7 +579,7 @@ class Interval(ArrayDict):
 
         Example ::
 
-            >>> from temporaldata import Interval
+            >>> from torch_brain.data import Interval
 
             >>> interval = Interval.linspace(0., 10., 100)
 
@@ -653,7 +653,7 @@ class Interval(ArrayDict):
 
         Example ::
 
-            >>> from temporaldata import Interval
+            >>> from torch_brain.data import Interval
 
             >>> interval_list = [(0, 1), (1, 2), (2, 3)]
             >>> interval = Interval.from_list(interval_list)
@@ -676,7 +676,7 @@ class Interval(ArrayDict):
         .. code-block:: python
 
                 import h5py
-                from temporaldata import Interval
+                from torch_brain.data import Interval
 
                 interval = Interval(
                     start=np.array([0, 1, 2]),
@@ -725,7 +725,7 @@ class Interval(ArrayDict):
         .. code-block:: python
 
             import h5py
-            from temporaldata import Interval
+            from torch_brain.data import Interval
 
             with h5py.File("data.h5", "r") as f:
                 interval = Interval.from_hdf5(f)
@@ -1068,7 +1068,7 @@ class LazyInterval(Interval):
         .. code-block:: python
 
             import h5py
-            from temporaldata import ArrayDict
+            from torch_brain.data import ArrayDict
 
             with h5py
         """

@@ -3,7 +3,7 @@ from typing import List, Dict, Tuple
 import torch
 import torch.distributed as dist
 
-from temporaldata import Interval
+from torch_brain.data import Interval
 from torch_brain.dataset import DatasetIndex
 
 

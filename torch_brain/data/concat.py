@@ -21,7 +21,7 @@ def concat(objs, sort=True):
     Example ::
 
         >>> import numpy as np
-        >>> from temporaldata import IrregularTimeSeries, Interval, concat
+        >>> from torch_brain.data import IrregularTimeSeries, Interval, concat
 
         >>> ts1 = IrregularTimeSeries(
         ...     timestamps=np.array([0.0, 1.0]),

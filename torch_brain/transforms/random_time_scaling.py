@@ -1,7 +1,7 @@
 import copy
 import torch
 
-from temporaldata import IrregularTimeSeries, RegularTimeSeries, Interval, Data
+from torch_brain.data import IrregularTimeSeries, RegularTimeSeries, Interval, Data
 
 
 def rescale(data: Data, scale: float, offset: float):

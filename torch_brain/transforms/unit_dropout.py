@@ -3,7 +3,7 @@ from typing import Optional
 
 import numpy as np
 
-from temporaldata import Data, IrregularTimeSeries, RegularTimeSeries
+from torch_brain.data import Data, IrregularTimeSeries, RegularTimeSeries
 
 
 class TriangleDistribution:

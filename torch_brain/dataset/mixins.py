@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-from temporaldata import Data
 
+from torch_brain.data import Data
 from torch_brain.utils import np_string_prefix
 
 
