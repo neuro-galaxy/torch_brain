@@ -2,9 +2,8 @@ import datetime
 
 import pytest
 
-import brainsets
-import temporaldata
-from brainsets.descriptions import (
+import torch_brain
+from torch_brain.data import (
     BrainsetDescription,
     DeviceDescription,
     SessionDescription,
@@ -127,8 +126,7 @@ class TestBrainsetDescription:
             description="A test brainset",
         )
 
-        assert result.brainsets_version == brainsets.__version__
-        assert result.temporaldata_version == temporaldata.__version__
+        assert result.torch_brain_version == torch_brain.__version__
 
     def test_missing_required_argument_raises(self):
         with pytest.raises(TypeError):
@@ -182,28 +180,15 @@ class TestBrainsetDescription:
         with pytest.raises(ValueError, match=f"{field} cannot be an empty string"):
             BrainsetDescription(**kwargs)
 
-    def test_brainsets_version_kwarg_raises(self):
-        with pytest.raises(ValueError, match="Cannot set brainsets_version manually"):
+    def test_torch_brain_version_kwarg_raises(self):
+        with pytest.raises(ValueError, match="Cannot set torch_brain_version manually"):
             BrainsetDescription(
                 id="brainset_1",
                 origin_version="1.0.0",
                 derived_version="2.0.0",
                 source="https://example.com/data",
                 description="A test brainset",
-                brainsets_version="9.9.9",
-            )
-
-    def test_temporaldata_version_kwarg_raises(self):
-        with pytest.raises(
-            ValueError, match="Cannot set temporaldata_version manually"
-        ):
-            BrainsetDescription(
-                id="brainset_1",
-                origin_version="1.0.0",
-                derived_version="2.0.0",
-                source="https://example.com/data",
-                description="A test brainset",
-                temporaldata_version="9.9.9",
+                torch_brain_version="9.9.9",
             )
 
 

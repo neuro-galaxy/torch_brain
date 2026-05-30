@@ -13,10 +13,8 @@ __api_ref__ = {
 
 import datetime
 
-import temporaldata
-from temporaldata import Data
-
-import brainsets
+import torch_brain
+from .data import Data
 
 
 def _validate_string_type(v, name: str, allow_none: bool = False):
@@ -71,12 +69,9 @@ class BrainsetDescription(Data):
         _validate_string_type(source, "source")
         _validate_string_type(description, "description")
 
-        # brainsets_version, temporaldata_version need to set by us
-        if "brainsets_version" in kwargs:
-            raise ValueError("Cannot set brainsets_version manually")
-
-        if "temporaldata_version" in kwargs:
-            raise ValueError("Cannot set temporaldata_version manually")
+        # torch_brain_version needs to be set by us
+        if "torch_brain_version" in kwargs:
+            raise ValueError("Cannot set torch_brain_version manually")
 
         super().__init__(
             id=id,
@@ -84,8 +79,7 @@ class BrainsetDescription(Data):
             derived_version=derived_version,
             source=source,
             description=description,
-            brainsets_version=brainsets.__version__,
-            temporaldata_version=temporaldata.__version__,
+            torch_brain_version=torch_brain.__version__,
             **kwargs,
         )
 

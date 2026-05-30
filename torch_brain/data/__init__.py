@@ -1,9 +1,15 @@
-from importlib.metadata import version, PackageNotFoundError
 from .arraydict import ArrayDict, LazyArrayDict
 from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
 from .regular_ts import RegularTimeSeries, LazyRegularTimeSeries
 from .interval import Interval, LazyInterval
 from .data import Data
+from .descriptions import (
+    BrainsetDescription,
+    DeviceDescription,
+    SessionDescription,
+    SubjectDescription,
+)
+from .serialization import serialize_fn_map
 
 from .concat import concat
 
@@ -17,6 +23,10 @@ __all__ = [
     "Interval",
     "LazyInterval",
     "Data",
+    "BrainsetDescription",
+    "DeviceDescription",
+    "SessionDescription",
+    "SubjectDescription",
     "concat",
 ]
 
