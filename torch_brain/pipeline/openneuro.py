@@ -10,7 +10,6 @@ import sys
 import h5py
 import numpy as np
 import pandas as pd
-from temporaldata import Data, Interval
 
 try:
     from mne_bids import read_raw_bids
@@ -20,15 +19,17 @@ except ImportError:
     read_raw_bids = None
     MNE_BIDS_AVAILABLE = False
 
-from brainsets import serialize_fn_map
-from brainsets.descriptions import (
+from torch_brain.data import (
+    Data,
+    Interval,
     BrainsetDescription,
     DeviceDescription,
     SessionDescription,
     SubjectDescription,
+    serialize_fn_map,
 )
-from brainsets.pipeline import BrainsetPipeline
-from brainsets.utils.bids_utils import (
+from .pipeline import BrainsetPipeline
+from torch_brain.utils.bids import (
     build_bids_path,
     fetch_eeg_recordings,
     fetch_ieeg_recordings,
@@ -36,13 +37,13 @@ from brainsets.utils.bids_utils import (
     check_ieeg_recording_files_exist,
     get_subject_info,
 )
-from brainsets.utils.mne_utils import (
+from torch_brain.utils.mne import (
     extract_signal,
     extract_measurement_date,
     extract_channels,
 )
-from brainsets.utils.split import generate_string_kfold_assignment
-from brainsets.utils.openneuro import (
+from torch_brain.utils.split import generate_string_kfold_assignment
+from torch_brain.utils.openneuro import (
     construct_s3_url_from_path,
     download_dataset_description,
     download_recording,

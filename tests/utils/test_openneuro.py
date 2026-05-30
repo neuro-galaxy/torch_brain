@@ -6,13 +6,13 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch, call
 import pandas as pd
 
-from brainsets.utils.openneuro.openneuro_s3 import BOTO_AVAILABLE
+from torch_brain.utils.openneuro import BOTO_AVAILABLE
 
 pytestmark = pytest.mark.skipif(
     not BOTO_AVAILABLE, reason="boto3/botocore not installed"
 )
 
-from brainsets.utils.openneuro.openneuro_s3 import (
+from torch_brain.utils.openneuro import (
     ClientError,
     fetch_latest_snapshot_tag,
     fetch_species,
@@ -24,7 +24,6 @@ from brainsets.utils.openneuro.openneuro_s3 import (
     _graphql_query_openneuro,
     OPENNEURO_S3_BUCKET,
 )
-
 
 # ============================================================================
 # Shared Fixtures and Helpers
@@ -95,7 +94,7 @@ def graphql_species_response(species: str) -> dict:
 class TestFetchLatestSnapshotTag:
     """Tests for latest snapshot tag resolution via GraphQL."""
 
-    @patch("brainsets.utils.openneuro.openneuro_s3._graphql_query_openneuro")
+    @patch("torch_brain.utils.openneuro._graphql_query_openneuro")
     def test_returns_latest_snapshot_tag(self, mock_graphql):
         """Returns tag value from latestSnapshot in GraphQL response."""
         mock_graphql.return_value = graphql_ok_response("1.2.3")
@@ -104,7 +103,7 @@ class TestFetchLatestSnapshotTag:
 
         assert result == "1.2.3"
 
-    @patch("brainsets.utils.openneuro.openneuro_s3._graphql_query_openneuro")
+    @patch("torch_brain.utils.openneuro._graphql_query_openneuro")
     def test_queries_with_correct_dataset_id_variable(self, mock_graphql):
         """GraphQL query receives the expected datasetId variable."""
         mock_graphql.return_value = graphql_ok_response("1.2.3")
@@ -114,7 +113,7 @@ class TestFetchLatestSnapshotTag:
         call_args = mock_graphql.call_args
         assert call_args[0][1]["datasetId"] == "ds005085"
 
-    @patch("brainsets.utils.openneuro.openneuro_s3._graphql_query_openneuro")
+    @patch("torch_brain.utils.openneuro._graphql_query_openneuro")
     def test_raises_when_latest_snapshot_tag_missing(self, mock_graphql):
         """Raises RuntimeError when latestSnapshot.tag is missing."""
         mock_graphql.return_value = {"data": {"dataset": {"latestSnapshot": {}}}}
@@ -134,7 +133,7 @@ class TestFetchLatestSnapshotTag:
 class TestFetchAllFilenames:
     """Tests for fetching all filenames from a dataset."""
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_object_list")
+    @patch("torch_brain.utils.openneuro.get_object_list")
     def test_returns_filenames_when_non_empty(self, mock_get_object_list):
         """Returns list of filenames when dataset has files."""
         filenames = [
@@ -151,7 +150,7 @@ class TestFetchAllFilenames:
         assert result == filenames
         mock_get_object_list.assert_called_once_with(OPENNEURO_S3_BUCKET, "ds005085/")
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_object_list")
+    @patch("torch_brain.utils.openneuro.get_object_list")
     def test_raises_runtime_error_on_empty_dataset(self, mock_get_object_list):
         """RuntimeError is raised when no files are found."""
         mock_get_object_list.return_value = []
@@ -159,7 +158,7 @@ class TestFetchAllFilenames:
         with pytest.raises(RuntimeError, match="No files found"):
             fetch_all_filenames("ds005085")
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_object_list")
+    @patch("torch_brain.utils.openneuro.get_object_list")
     def test_raises_runtime_error_with_dataset_id_in_message(
         self, mock_get_object_list
     ):
@@ -178,7 +177,7 @@ class TestFetchAllFilenames:
 class TestFetchParticipantsTsv:
     """Tests for fetching and parsing participants.tsv."""
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_returns_indexed_dataframe_with_participant_id(
         self, mock_get_client, participants_tsv_bytes
     ):
@@ -200,7 +199,7 @@ class TestFetchParticipantsTsv:
         assert "age" in result.columns
         assert "sex" in result.columns
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_returns_none_when_participant_id_column_missing(
         self, mock_get_client, participants_tsv_bytes, caplog
     ):
@@ -218,7 +217,7 @@ class TestFetchParticipantsTsv:
         assert result is None
         assert "No participant_id column found" in caplog.text
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_returns_none_on_no_such_key_error(self, mock_get_client):
         """Returns None when participants.tsv does not exist (NoSuchKey)."""
         mock_client = MagicMock()
@@ -229,7 +228,7 @@ class TestFetchParticipantsTsv:
 
         assert result is None
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_returns_none_on_404_error(self, mock_get_client):
         """Returns None when participants.tsv returns 404."""
         mock_client = MagicMock()
@@ -240,7 +239,7 @@ class TestFetchParticipantsTsv:
 
         assert result is None
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_reraises_other_client_errors(self, mock_get_client):
         """Other ClientErrors are re-raised."""
         mock_client = MagicMock()
@@ -252,7 +251,7 @@ class TestFetchParticipantsTsv:
         with pytest.raises(ClientError):
             fetch_participants_tsv("ds005085")
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_parses_tsv_with_na_values(self, mock_get_client):
         """TSV parser respects na_values configuration."""
         mock_client = MagicMock()
@@ -309,7 +308,7 @@ class TestConstructS3UrlFromPath:
 class TestDownloadRecording:
     """Tests for recording download delegation."""
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.download_prefix_from_url")
+    @patch("torch_brain.utils.openneuro.download_prefix_from_url")
     def test_delegates_to_download_prefix_from_url(self, mock_download):
         """download_recording delegates to download_prefix_from_url."""
         s3_url = "s3://openneuro.org/ds005085/sub-01/eeg/file"
@@ -331,7 +330,7 @@ class TestDownloadRecording:
 class TestDownloadDatasetDescription:
     """Tests for dataset_description.json download and caching."""
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_short_circuits_when_file_exists(self, mock_get_client, tmp_path):
         """Returns existing file without downloading if already present."""
         target_file = tmp_path / "dataset_description.json"
@@ -342,7 +341,7 @@ class TestDownloadDatasetDescription:
         assert result == target_file
         mock_get_client.assert_not_called()
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_downloads_and_writes_file_on_success(self, mock_get_client, tmp_path):
         """Downloads and writes file when not already present."""
         mock_client = MagicMock()
@@ -357,7 +356,7 @@ class TestDownloadDatasetDescription:
         assert result.exists()
         assert result.read_bytes() == b'{"name": "test"}'
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_creates_parent_directories(self, mock_get_client, tmp_path):
         """Creates parent directories if they don't exist."""
         mock_client = MagicMock()
@@ -370,7 +369,7 @@ class TestDownloadDatasetDescription:
         assert result.parent.exists()
         assert result.exists()
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_raises_runtime_error_on_no_such_key(self, mock_get_client, tmp_path):
         """RuntimeError is raised when file doesn't exist on S3 (NoSuchKey)."""
         mock_client = MagicMock()
@@ -380,7 +379,7 @@ class TestDownloadDatasetDescription:
         with pytest.raises(RuntimeError, match="not found"):
             download_dataset_description("ds005085", tmp_path)
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_raises_runtime_error_on_404(self, mock_get_client, tmp_path):
         """RuntimeError is raised on 404 error."""
         mock_client = MagicMock()
@@ -390,7 +389,7 @@ class TestDownloadDatasetDescription:
         with pytest.raises(RuntimeError, match="not found"):
             download_dataset_description("ds005085", tmp_path)
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.get_cached_s3_client")
+    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_raises_runtime_error_on_other_client_error(
         self, mock_get_client, tmp_path
     ):
@@ -413,7 +412,7 @@ class TestDownloadDatasetDescription:
 class TestFetchSpecies:
     """Tests for OpenNeuro species fetching via GraphQL."""
 
-    @patch("brainsets.utils.openneuro.openneuro_s3._graphql_query_openneuro")
+    @patch("torch_brain.utils.openneuro._graphql_query_openneuro")
     def test_returns_homo_sapiens_for_human_alias(self, mock_graphql):
         """Normalizes human aliases to canonical homo sapiens."""
         mock_graphql.return_value = graphql_species_response("homo sapiens")
@@ -422,7 +421,7 @@ class TestFetchSpecies:
 
         assert result == "homo sapiens"
 
-    @patch("brainsets.utils.openneuro.openneuro_s3._graphql_query_openneuro")
+    @patch("torch_brain.utils.openneuro._graphql_query_openneuro")
     def test_returns_raw_non_human_species(self, mock_graphql):
         """Returns species value as provided by GraphQL."""
         mock_graphql.return_value = graphql_species_response("mus musculus")
@@ -431,7 +430,7 @@ class TestFetchSpecies:
 
         assert result == "mus musculus"
 
-    @patch("brainsets.utils.openneuro.openneuro_s3._graphql_query_openneuro")
+    @patch("torch_brain.utils.openneuro._graphql_query_openneuro")
     def test_queries_with_correct_variables(self, mock_graphql):
         """GraphQL is queried with the correct dataset ID."""
         mock_graphql.return_value = graphql_species_response("mus musculus")
@@ -450,7 +449,7 @@ class TestFetchSpecies:
 class TestGraphqlQueryOpenneuro:
     """Tests for GraphQL query execution and retry logic."""
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.requests.post")
+    @patch("torch_brain.utils.openneuro.requests.post")
     def test_succeeds_on_200_status(self, mock_post):
         """Returns response JSON on 200 status code."""
         expected_response = {"data": {"test": "value"}}
@@ -463,7 +462,7 @@ class TestGraphqlQueryOpenneuro:
         assert result == expected_response
 
     @patch("time.sleep")
-    @patch("brainsets.utils.openneuro.openneuro_s3.requests.post")
+    @patch("torch_brain.utils.openneuro.requests.post")
     def test_raises_on_non_200_status(self, mock_post, mock_sleep):
         """Raises exception on non-200 status code."""
         mock_post.return_value = MagicMock(status_code=500)
@@ -475,7 +474,7 @@ class TestGraphqlQueryOpenneuro:
         assert mock_sleep.call_count == 4
 
     @patch("time.sleep")
-    @patch("brainsets.utils.openneuro.openneuro_s3.requests.post")
+    @patch("torch_brain.utils.openneuro.requests.post")
     def test_retries_on_transient_failure_then_succeeds(self, mock_post, mock_sleep):
         """Retries on transient failure and succeeds on retry."""
         expected_response = {"data": {"test": "value"}}
@@ -491,7 +490,7 @@ class TestGraphqlQueryOpenneuro:
         assert mock_sleep.call_count == 1
 
     @patch("time.sleep")
-    @patch("brainsets.utils.openneuro.openneuro_s3.requests.post")
+    @patch("torch_brain.utils.openneuro.requests.post")
     def test_raises_after_max_attempts(self, mock_post, mock_sleep):
         """Raises exception after exhausting retry attempts."""
         mock_post.side_effect = Exception("Network error")
@@ -505,7 +504,7 @@ class TestGraphqlQueryOpenneuro:
         assert mock_sleep.call_count == 4
 
     @patch("time.sleep")
-    @patch("brainsets.utils.openneuro.openneuro_s3.requests.post")
+    @patch("torch_brain.utils.openneuro.requests.post")
     def test_exponential_backoff_timing(self, mock_post, mock_sleep):
         """Retry delays follow exponential backoff pattern."""
         mock_post.side_effect = Exception("Network error")
@@ -520,7 +519,7 @@ class TestGraphqlQueryOpenneuro:
         sleep_calls = [call_args[0][0] for call_args in mock_sleep.call_args_list]
         assert sleep_calls == [4, 8, 10, 10]
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.requests.post")
+    @patch("torch_brain.utils.openneuro.requests.post")
     def test_passes_query_and_variables_correctly(self, mock_post):
         """Query and variables are passed correctly to requests.post."""
         mock_post.return_value = MagicMock(status_code=200, json=lambda: {})
@@ -534,7 +533,7 @@ class TestGraphqlQueryOpenneuro:
         assert call_kwargs["json"]["query"] == query
         assert call_kwargs["json"]["variables"] == variables
 
-    @patch("brainsets.utils.openneuro.openneuro_s3.requests.post")
+    @patch("torch_brain.utils.openneuro.requests.post")
     def test_handles_none_variables(self, mock_post):
         """None variables are handled correctly."""
         mock_post.return_value = MagicMock(status_code=200, json=lambda: {})
