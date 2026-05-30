@@ -1,0 +1,39 @@
+######################################################
+# NLB MC Maze - Small (2022)
+######################################################
+
+DATASET = "mc_maze_small"
+DANDI_ID = "000140"
+FILENAME = "sub-Jenkins/sub-Jenkins_ses-small_desc-train_behavior+ecephys.nwb"
+
+RAW_DIR = config["RAW_DIR"]
+PROCESSED_DIR = config["PROCESSED_DIR"]
+COMPRESSED_DIR = config["COMPRESSED_DIR"]
+
+
+rule all:
+    input:
+        f"{PROCESSED_DIR}/{DATASET}/description.mpk"
+
+rule download_dataset:
+    output:
+        nwb_file = f"{RAW_DIR}/{DATASET}/{DANDI_ID}/{FILENAME}"
+    shell:
+        f"""
+        mkdir -p {RAW_DIR}/{DATASET}
+        dandi download -o {RAW_DIR}/{DATASET} -e refresh DANDI:000140/0.220113.0408
+        """
+
+rule prepare_data:
+    input:
+        py_script = f"brainsets/{DATASET}/prepare_data.py",
+        nwb_file = f"{RAW_DIR}/{DATASET}/{DANDI_ID}/{FILENAME}"
+    output:
+        description = f"{PROCESSED_DIR}/{DATASET}/description.mpk"
+    shell:
+        f"""
+        mkdir -p {PROCESSED_DIR}/{DATASET}
+        python brainsets/{DATASET}/prepare_data.py --input_dir {RAW_DIR}/{DATASET} --output_dir {PROCESSED_DIR}/{DATASET}
+        """
+
+include: "../freeze.smk"
