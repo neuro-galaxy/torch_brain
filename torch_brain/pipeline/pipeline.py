@@ -1,13 +1,3 @@
-__all__ = [
-    "BrainsetPipeline",
-]
-
-# Drives the generated API reference; see docs/source/api_reference.py.
-__api_ref__ = {
-    "description": None,
-    "sections": [{"autosummary": __all__}],
-}
-
 from abc import ABC, abstractmethod
 import sys
 from argparse import ArgumentParser, Namespace
@@ -18,6 +8,8 @@ import pandas as pd
 from rich.console import Console
 from contextlib import contextmanager
 import traceback
+
+from .runner import get_style
 
 
 class BrainsetPipeline(ABC):
@@ -41,30 +33,30 @@ class BrainsetPipeline(ABC):
         - The runner will automatically parse any extra CLI arguments using this parser.
         - The parsed arguments are passed to the :meth:`get_manifest()` as the `args` method parameter, and to the :meth:`download` and :meth:`process` methods via class attribute :attr:`args`.
 
-    Examples
-    --------
-    >>> from argparse import ArgumentParser
-    >>> parser = ArgumentParser()
-    >>> parser.add_argument("--redownload", action="store_true")
-    >>> parser.add_argument("--reprocess", action="store_true")
-    >>>
-    >>> class Pipeline(BrainsetPipeline):
-    ...     brainset_id = "my_brainset"
-    ...     parser = parser
-    ...
-    ...     @classmethod
-    ...     def get_manifest(cls, raw_dir, processed_dir, args):
-    ...         # Return DataFrame of assets to process
-    ...         return pd.DataFrame(...)
-    ...
-    ...     def download(self, manifest_item):
-    ...         # Download the asset
-    ...         # return filepath or handle of downloaded data
-    ...         ...
-    ...
-    ...     def process(self, download_output):
-    ...         # Process the downloaded data
-    ...         ...
+    Example:
+
+        >>> from argparse import ArgumentParser
+        >>> parser = ArgumentParser()
+        >>> parser.add_argument("--redownload", action="store_true")  # doctest: +SKIP
+        >>> parser.add_argument("--reprocess", action="store_true")  # doctest: +SKIP
+        >>>
+        >>> class Pipeline(BrainsetPipeline):
+        ...     brainset_id = "my_brainset"
+        ...     parser = parser
+        ...
+        ...     @classmethod
+        ...     def get_manifest(cls, raw_dir, processed_dir, args):
+        ...         # Return DataFrame of assets to process
+        ...         return pd.DataFrame(...)
+        ...
+        ...     def download(self, manifest_item):
+        ...         # Download the asset
+        ...         # return filepath or handle of downloaded data
+        ...         ...
+        ...
+        ...     def process(self, download_output):
+        ...         # Process the downloaded data
+        ...         ...
     """
 
     brainset_id: str
@@ -165,8 +157,6 @@ class BrainsetPipeline(ABC):
         """
         if self._tracker_handle is not None:
             self._tracker_handle.update_status.remote(self._asset_id, status)
-
-        from brainsets.runner import get_style
 
         Console().print(f"[bold][Status][/] [{get_style(status)}]{status}[/]")
 

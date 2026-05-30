@@ -14,7 +14,7 @@ from rich.live import Live
 from rich.console import Console
 import pandas as pd
 
-from brainsets.pipeline import BrainsetPipeline
+from .pipeline import BrainsetPipeline
 
 
 def import_pipeline_cls_from_file(pipeline_filepath: Path) -> Type[BrainsetPipeline]:
