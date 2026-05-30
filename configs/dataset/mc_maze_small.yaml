@@ -1,0 +1,15 @@
+- selection:
+    - dandiset: "mc_maze_small"
+  config:
+    multitask_readout:
+      - decoder_id: ARMVELOCITY2D
+        subtask_weights:
+          REACHING.RANDOM: 1.0
+          REACHING.HOLD: 1.0
+          REACHING.REACH: 50.0
+          REACHING.RETURN: 10.0
+          REACHING.INVALID: 1.0
+          REACHING.OUTLIER: 0.1
+        metrics:
+          - metric: r2
+            task: REACHING

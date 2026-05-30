@@ -1,0 +1,136 @@
+# Center-out reaching 
+- selection:
+  - dandiset: perich_miller_population_2018
+    sortsets:
+      - c_20131003
+      - c_20131022
+      - c_20131023
+      - c_20131031
+      - c_20131101
+      - c_20131203
+      - c_20131204
+      - c_20131219
+      - c_20131220
+      - c_20150309
+      - c_20150311
+      - c_20150312
+      - c_20150313
+      - c_20150319
+      - c_20150629
+      - c_20150630
+      - c_20150701
+      - c_20150703
+      - c_20150706
+      - c_20150707
+      - c_20150708
+      - c_20150709
+      - c_20150710
+      - c_20150713
+      - c_20150714
+      - c_20150715
+      - c_20150716
+      - c_20151103
+      - c_20151104
+      - c_20151106
+      - c_20151109
+      - c_20151110
+      - c_20151112
+      - c_20151113
+      - c_20151116
+      - c_20151117
+      - c_20151119
+      - c_20151120
+      - c_20151201
+      - c_20160909
+      - c_20160912
+      - c_20160914
+      - c_20160915
+      - c_20160919
+      - c_20160921
+      - c_20160923
+      - c_20160929
+      - c_20161005
+      - c_20161006
+      - c_20161007
+      - c_20161011
+      - c_20161013
+      - c_20161021
+      - j_20160405
+      - j_20160406
+      - j_20160407
+      - m_20140203
+      - m_20140217
+      - m_20140218
+      - m_20140303
+      - m_20140304
+      - m_20140306
+      - m_20140307
+      - m_20140626
+      - m_20140627
+      - m_20140929
+      - m_20141203
+      - m_20150511
+      - m_20150512
+      - m_20150610
+      - m_20150611
+      - m_20150612
+      - m_20150615
+      - m_20150616
+      - m_20150617
+      - m_20150623
+      - m_20150625
+      - m_20150626
+  config:
+    multitask_readout:
+      - decoder_id: CURSORVELOCITY2D
+        subtask_weights:
+          REACHING.RANDOM: 1.0
+          REACHING.HOLD: 0.1
+          REACHING.REACH: 5.0
+          REACHING.RETURN: 1.0
+          REACHING.INVALID: 0.1
+          REACHING.OUTLIER: 0.0
+        metrics:
+          - metric: r2
+            task: REACHING
+            subtask: REACHING.REACH
+
+# Random target reaching
+- selection:
+  - dandiset: perich_miller_population_2018
+    sortsets:
+    - c_20131009
+    - c_20131010
+    - c_20131011
+    - c_20131028
+    - c_20131029
+    - c_20131209
+    - c_20131210
+    - c_20131212
+    - c_20131213
+    - c_20131217
+    - c_20131218
+    - c_20150316
+    - c_20150317
+    - c_20150318
+    - c_20150320
+    - m_20140114
+    - m_20140115
+    - m_20140116
+    - m_20140214
+    - m_20140221
+    - m_20140224
+  config:
+    multitask_readout:
+      - decoder_id: CURSORVELOCITY2D
+        subtask_weights:
+          REACHING.RANDOM: 1.0
+          REACHING.HOLD: 0.1
+          REACHING.REACH: 5.0
+          REACHING.RETURN: 1.0
+          REACHING.INVALID: 0.1
+          REACHING.OUTLIER: 0.0
+        metrics:
+          - metric: r2
+            task: REACHING
+            subtask: REACHING.RANDOM
