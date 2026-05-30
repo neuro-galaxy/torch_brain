@@ -10,11 +10,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch, Mock, PropertyMock
 from argparse import Namespace
 
-from temporaldata import Data, Interval
-
-from brainsets.utils.openneuro.pipeline import (
-    OpenNeuroPipeline,
-)
+from torch_brain.data import Data, Interval
+from torch_brain.pipeline.openneuro import OpenNeuroPipeline
 
 # ============================================================================
 # Fixtures
@@ -368,7 +365,7 @@ class TestGetManifestPolicyValidation:
     """Tests for get_manifest policy validation."""
 
     @patch("sys.stdin.isatty", return_value=False)
-    @patch("brainsets.utils.openneuro.pipeline.fetch_all_filenames")
+    @patch("torch_brain.pipeline.openneuro.fetch_all_filenames")
     def test_get_manifest_raises_valueerror_on_prompt_non_interactive(
         self, mock_fetch_files, mock_isatty, eeg_pipeline_class, temp_dir
     ):
@@ -386,13 +383,13 @@ class TestGetManifestPolicyValidation:
             eeg_pipeline_class.get_manifest(temp_dir, args)
 
     @patch("sys.stdin.isatty", return_value=False)
-    @patch("brainsets.utils.openneuro.pipeline.fetch_all_filenames")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_eeg_recordings")
+    @patch("torch_brain.pipeline.openneuro.fetch_all_filenames")
+    @patch("torch_brain.pipeline.openneuro.fetch_eeg_recordings")
     @patch.object(OpenNeuroPipeline, "validate_dataset_id")
     @patch.object(OpenNeuroPipeline, "_validate_dataset_version")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_latest_snapshot_tag")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_species")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_participants_tsv")
+    @patch("torch_brain.pipeline.openneuro.fetch_latest_snapshot_tag")
+    @patch("torch_brain.pipeline.openneuro.fetch_species")
+    @patch("torch_brain.pipeline.openneuro.fetch_participants_tsv")
     def test_get_manifest_continues_on_continue_non_interactive(
         self,
         mock_part,
@@ -424,13 +421,13 @@ class TestGetManifestPolicyValidation:
             pass
 
     @patch("sys.stdin.isatty", return_value=False)
-    @patch("brainsets.utils.openneuro.pipeline.fetch_all_filenames")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_eeg_recordings")
+    @patch("torch_brain.pipeline.openneuro.fetch_all_filenames")
+    @patch("torch_brain.pipeline.openneuro.fetch_eeg_recordings")
     @patch.object(OpenNeuroPipeline, "validate_dataset_id")
     @patch.object(OpenNeuroPipeline, "_validate_dataset_version")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_latest_snapshot_tag")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_species")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_participants_tsv")
+    @patch("torch_brain.pipeline.openneuro.fetch_latest_snapshot_tag")
+    @patch("torch_brain.pipeline.openneuro.fetch_species")
+    @patch("torch_brain.pipeline.openneuro.fetch_participants_tsv")
     def test_get_manifest_continues_on_abort_non_interactive(
         self,
         mock_part,
@@ -490,13 +487,13 @@ class TestGetManifest:
 
     @patch.object(OpenNeuroPipeline, "validate_dataset_id")
     @patch.object(OpenNeuroPipeline, "_validate_dataset_version")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_latest_snapshot_tag")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_species")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_participants_tsv")
-    @patch("brainsets.utils.openneuro.pipeline.get_subject_info")
-    @patch("brainsets.utils.openneuro.pipeline.construct_s3_url_from_path")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_all_filenames")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_eeg_recordings")
+    @patch("torch_brain.pipeline.openneuro.fetch_latest_snapshot_tag")
+    @patch("torch_brain.pipeline.openneuro.fetch_species")
+    @patch("torch_brain.pipeline.openneuro.fetch_participants_tsv")
+    @patch("torch_brain.pipeline.openneuro.get_subject_info")
+    @patch("torch_brain.pipeline.openneuro.construct_s3_url_from_path")
+    @patch("torch_brain.pipeline.openneuro.fetch_all_filenames")
+    @patch("torch_brain.pipeline.openneuro.fetch_eeg_recordings")
     def test_get_manifest_eeg_success(
         self,
         mock_fetch_eeg,
@@ -570,13 +567,13 @@ class TestGetManifest:
 
     @patch.object(OpenNeuroPipeline, "validate_dataset_id")
     @patch.object(OpenNeuroPipeline, "_validate_dataset_version")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_latest_snapshot_tag")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_species")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_participants_tsv")
-    @patch("brainsets.utils.openneuro.pipeline.get_subject_info")
-    @patch("brainsets.utils.openneuro.pipeline.construct_s3_url_from_path")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_all_filenames")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_ieeg_recordings")
+    @patch("torch_brain.pipeline.openneuro.fetch_latest_snapshot_tag")
+    @patch("torch_brain.pipeline.openneuro.fetch_species")
+    @patch("torch_brain.pipeline.openneuro.fetch_participants_tsv")
+    @patch("torch_brain.pipeline.openneuro.get_subject_info")
+    @patch("torch_brain.pipeline.openneuro.construct_s3_url_from_path")
+    @patch("torch_brain.pipeline.openneuro.fetch_all_filenames")
+    @patch("torch_brain.pipeline.openneuro.fetch_ieeg_recordings")
     def test_get_manifest_ieeg_success(
         self,
         mock_fetch_ieeg,
@@ -649,8 +646,8 @@ class TestGetManifest:
             assert result.loc[recording_id, "s3_url"] == expected_s3_url
 
     @patch("sys.stdin.isatty", return_value=True)
-    @patch("brainsets.utils.openneuro.pipeline.fetch_all_filenames")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_eeg_recordings")
+    @patch("torch_brain.pipeline.openneuro.fetch_all_filenames")
+    @patch("torch_brain.pipeline.openneuro.fetch_eeg_recordings")
     def test_get_manifest_with_custom_openneuro_context(
         self,
         mock_fetch_eeg,
@@ -693,7 +690,7 @@ class TestGetManifest:
         assert "rec-001" in result.index
 
     @patch("sys.stdin.isatty", return_value=True)
-    @patch("brainsets.utils.openneuro.pipeline.fetch_all_filenames")
+    @patch("torch_brain.pipeline.openneuro.fetch_all_filenames")
     def test_get_manifest_raises_on_unknown_modality(
         self, mock_fetch_files, mock_isatty, temp_dir
     ):
@@ -715,8 +712,8 @@ class TestGetManifest:
             BadPipeline.get_manifest(temp_dir, args)
 
     @patch("sys.stdin.isatty", return_value=True)
-    @patch("brainsets.utils.openneuro.pipeline.fetch_all_filenames")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_eeg_recordings")
+    @patch("torch_brain.pipeline.openneuro.fetch_all_filenames")
+    @patch("torch_brain.pipeline.openneuro.fetch_eeg_recordings")
     def test_get_manifest_raises_on_no_recordings_found(
         self,
         mock_fetch_eeg,
@@ -736,8 +733,8 @@ class TestGetManifest:
             eeg_pipeline_class.get_manifest(temp_dir, args)
 
     @patch("sys.stdin.isatty", return_value=True)
-    @patch("brainsets.utils.openneuro.pipeline.fetch_all_filenames")
-    @patch("brainsets.utils.openneuro.pipeline.fetch_eeg_recordings")
+    @patch("torch_brain.pipeline.openneuro.fetch_all_filenames")
+    @patch("torch_brain.pipeline.openneuro.fetch_eeg_recordings")
     def test_get_manifest_raises_on_no_recordings_returned_by_fetch(
         self,
         mock_fetch_eeg,
@@ -774,12 +771,10 @@ class TestDownload:
 
     def test_download_creates_raw_dir(self, eeg_pipeline_instance, manifest_row):
         """download creates raw_dir if it doesn't exist."""
-        with patch("brainsets.utils.openneuro.pipeline.download_recording"):
-            with patch(
-                "brainsets.utils.openneuro.pipeline.download_dataset_description"
-            ):
+        with patch("torch_brain.pipeline.openneuro.download_recording"):
+            with patch("torch_brain.pipeline.openneuro.download_dataset_description"):
                 with patch(
-                    "brainsets.utils.openneuro.pipeline.check_eeg_recording_files_exist",
+                    "torch_brain.pipeline.openneuro.check_eeg_recording_files_exist",
                     return_value=False,
                 ):
                     eeg_pipeline_instance.download(manifest_row)
@@ -790,12 +785,10 @@ class TestDownload:
         self, eeg_pipeline_instance, manifest_row
     ):
         """download returns manifest_item with subject_id and recording_id."""
-        with patch("brainsets.utils.openneuro.pipeline.download_recording"):
-            with patch(
-                "brainsets.utils.openneuro.pipeline.download_dataset_description"
-            ):
+        with patch("torch_brain.pipeline.openneuro.download_recording"):
+            with patch("torch_brain.pipeline.openneuro.download_dataset_description"):
                 with patch(
-                    "brainsets.utils.openneuro.pipeline.check_eeg_recording_files_exist",
+                    "torch_brain.pipeline.openneuro.check_eeg_recording_files_exist",
                     return_value=False,
                 ):
                     result = eeg_pipeline_instance.download(manifest_row)
@@ -816,11 +809,11 @@ class TestDownload:
         )
 
         with patch(
-            "brainsets.utils.openneuro.pipeline.check_eeg_recording_files_exist",
+            "torch_brain.pipeline.openneuro.check_eeg_recording_files_exist",
             return_value=True,
         ):
             with patch(
-                "brainsets.utils.openneuro.pipeline.download_recording"
+                "torch_brain.pipeline.openneuro.download_recording"
             ) as mock_download:
                 result = pipeline.download(manifest_row)
 
@@ -838,11 +831,11 @@ class TestDownload:
         )
 
         with patch(
-            "brainsets.utils.openneuro.pipeline.check_ieeg_recording_files_exist",
+            "torch_brain.pipeline.openneuro.check_ieeg_recording_files_exist",
             return_value=True,
         ):
             with patch(
-                "brainsets.utils.openneuro.pipeline.download_recording"
+                "torch_brain.pipeline.openneuro.download_recording"
             ) as mock_download:
                 result = pipeline.download(manifest_row)
 
@@ -860,11 +853,9 @@ class TestDownload:
         )
 
         with patch(
-            "brainsets.utils.openneuro.pipeline.download_recording"
+            "torch_brain.pipeline.openneuro.download_recording"
         ) as mock_download:
-            with patch(
-                "brainsets.utils.openneuro.pipeline.download_dataset_description"
-            ):
+            with patch("torch_brain.pipeline.openneuro.download_dataset_description"):
                 result = pipeline.download(manifest_row)
 
         mock_download.assert_called_once()
@@ -872,11 +863,11 @@ class TestDownload:
     def test_download_raises_on_s3_error(self, eeg_pipeline_instance, manifest_row):
         """download raises RuntimeError on download failure."""
         with patch(
-            "brainsets.utils.openneuro.pipeline.download_recording",
+            "torch_brain.pipeline.openneuro.download_recording",
             side_effect=Exception("S3 error"),
         ):
             with patch(
-                "brainsets.utils.openneuro.pipeline.check_eeg_recording_files_exist",
+                "torch_brain.pipeline.openneuro.check_eeg_recording_files_exist",
                 return_value=False,
             ):
                 with pytest.raises(RuntimeError, match="Failed to download"):
@@ -971,7 +962,7 @@ class TestChannelRemapping:
 class TestProcessCommon:
     """Tests for process_common method."""
 
-    @patch("brainsets.utils.openneuro.pipeline.MNE_BIDS_AVAILABLE", False)
+    @patch("torch_brain.pipeline.openneuro.MNE_BIDS_AVAILABLE", False)
     def test_process_common_raises_when_mne_bids_unavailable(
         self, eeg_pipeline_instance
     ):
@@ -987,7 +978,7 @@ class TestProcessCommon:
         with pytest.raises(ImportError, match="mne-bids"):
             eeg_pipeline_instance.process_common(download_output)
 
-    @patch("brainsets.utils.openneuro.pipeline.read_raw_bids")
+    @patch("torch_brain.pipeline.openneuro.read_raw_bids")
     def test_process_common_skips_if_already_processed(
         self, mock_read_raw, eeg_pipeline_instance
     ):
@@ -1007,11 +998,11 @@ class TestProcessCommon:
         assert result is None
         mock_read_raw.assert_not_called()
 
-    @patch("brainsets.utils.openneuro.pipeline.build_bids_path")
-    @patch("brainsets.utils.openneuro.pipeline.read_raw_bids")
-    @patch("brainsets.utils.openneuro.pipeline.extract_signal")
-    @patch("brainsets.utils.openneuro.pipeline.extract_channels")
-    @patch("brainsets.utils.openneuro.pipeline.extract_measurement_date")
+    @patch("torch_brain.pipeline.openneuro.build_bids_path")
+    @patch("torch_brain.pipeline.openneuro.read_raw_bids")
+    @patch("torch_brain.pipeline.openneuro.extract_signal")
+    @patch("torch_brain.pipeline.openneuro.extract_channels")
+    @patch("torch_brain.pipeline.openneuro.extract_measurement_date")
     def test_process_common_creates_data_object(
         self,
         mock_meas_date,
@@ -1048,11 +1039,11 @@ class TestProcessCommon:
         assert isinstance(data, Data)
         assert isinstance(store_path, Path)
 
-    @patch("brainsets.utils.openneuro.pipeline.build_bids_path")
-    @patch("brainsets.utils.openneuro.pipeline.read_raw_bids")
-    @patch("brainsets.utils.openneuro.pipeline.extract_measurement_date")
-    @patch("brainsets.utils.openneuro.pipeline.extract_signal")
-    @patch("brainsets.utils.openneuro.pipeline.extract_channels")
+    @patch("torch_brain.pipeline.openneuro.build_bids_path")
+    @patch("torch_brain.pipeline.openneuro.read_raw_bids")
+    @patch("torch_brain.pipeline.openneuro.extract_measurement_date")
+    @patch("torch_brain.pipeline.openneuro.extract_signal")
+    @patch("torch_brain.pipeline.openneuro.extract_channels")
     def test_channel_and_type_remapping_and_ignore_channels(
         self,
         mock_extract_channels,
@@ -1221,7 +1212,7 @@ class TestProcess:
             "process_common",
             return_value=(mock_data, store_path),
         ):
-            with patch("brainsets.utils.openneuro.pipeline.h5py.File"):
+            with patch("torch_brain.pipeline.openneuro.h5py.File"):
                 eeg_pipeline_instance.process(download_output)
 
         mock_data.to_hdf5.assert_called_once()

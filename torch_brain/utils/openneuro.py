@@ -19,7 +19,7 @@ except ImportError:
     ClientError = Exception
     BOTO_AVAILABLE = False
 
-from brainsets.utils.s3_utils import (
+from torch_brain.utils.s3 import (
     download_prefix_from_url,
     get_cached_s3_client,
     get_object_list,
