@@ -1,16 +1,16 @@
-"""Tests for CLI commands in brainsets._cli module."""
+"""Tests for CLI commands in torch_brain.pipeline._cli module."""
 
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 
-from brainsets._cli.cli import cli
-from brainsets._cli.cli_completion import (
+from torch_brain.pipeline._cli.cli import cli
+from torch_brain.pipeline._cli.cli_completion import (
     _detect_shell,
     SHELL_COMPLETION_FILENAMES,
 )
-from brainsets.config import CONFIG_FILE
+from torch_brain.pipeline.config import CONFIG_FILE
 
 
 class TestDetectShell:
@@ -37,9 +37,12 @@ class TestInstallCompletion:
         comp_dir = tmp_path / "bash-completions"
 
         with (
-            patch("brainsets._cli.cli_completion._detect_shell", return_value="bash"),
+            patch(
+                "torch_brain.pipeline._cli.cli_completion._detect_shell",
+                return_value="bash",
+            ),
             patch.dict(
-                "brainsets._cli.cli_completion.SHELL_COMPLETION_DIRS",
+                "torch_brain.pipeline._cli.cli_completion.SHELL_COMPLETION_DIRS",
                 {"bash": comp_dir},
             ),
         ):
@@ -57,9 +60,12 @@ class TestInstallCompletion:
         comp_dir = tmp_path / "zfunc"
 
         with (
-            patch("brainsets._cli.cli_completion._detect_shell", return_value="zsh"),
+            patch(
+                "torch_brain.pipeline._cli.cli_completion._detect_shell",
+                return_value="zsh",
+            ),
             patch.dict(
-                "brainsets._cli.cli_completion.SHELL_COMPLETION_DIRS",
+                "torch_brain.pipeline._cli.cli_completion.SHELL_COMPLETION_DIRS",
                 {"zsh": comp_dir},
             ),
         ):
@@ -77,9 +83,12 @@ class TestInstallCompletion:
         comp_dir = tmp_path / "deep" / "nested" / "dir"
 
         with (
-            patch("brainsets._cli.cli_completion._detect_shell", return_value="bash"),
+            patch(
+                "torch_brain.pipeline._cli.cli_completion._detect_shell",
+                return_value="bash",
+            ),
             patch.dict(
-                "brainsets._cli.cli_completion.SHELL_COMPLETION_DIRS",
+                "torch_brain.pipeline._cli.cli_completion.SHELL_COMPLETION_DIRS",
                 {"bash": comp_dir},
             ),
         ):
@@ -100,7 +109,9 @@ class TestConfigCommand:
         processed_dir = str(tmp_path / "processed")
         mock_config = {"raw_dir": raw_dir, "processed_dir": processed_dir}
 
-        with patch("brainsets._cli.cli_config.load_config", return_value=mock_config):
+        with patch(
+            "torch_brain.pipeline._cli.cli_config.load_config", return_value=mock_config
+        ):
             result = runner.invoke(cli, ["config", "show"])
             assert result.exit_code == 0, f"CLI failed with: {result.output}"
             assert f"Config file: {CONFIG_FILE}" in result.output
@@ -111,7 +122,9 @@ class TestConfigCommand:
         """Test `brainsets config show` errors when no config exists."""
         runner = CliRunner()
 
-        with patch("brainsets._cli.cli_config.load_config", return_value=None):
+        with patch(
+            "torch_brain.pipeline._cli.cli_config.load_config", return_value=None
+        ):
             result = runner.invoke(cli, ["config", "show"])
             assert result.exit_code != 0
             assert "Config not found" in result.output
@@ -123,8 +136,13 @@ class TestConfigCommand:
         processed_dir = tmp_path / "processed"
 
         with (
-            patch("brainsets._cli.cli_config.load_config", return_value=None),
-            patch("brainsets._cli.cli_config.save_config", return_value=CONFIG_FILE),
+            patch(
+                "torch_brain.pipeline._cli.cli_config.load_config", return_value=None
+            ),
+            patch(
+                "torch_brain.pipeline._cli.cli_config.save_config",
+                return_value=CONFIG_FILE,
+            ),
         ):
             result = runner.invoke(
                 cli,
@@ -163,8 +181,13 @@ class TestPrepareCommand:
         runner = CliRunner()
 
         with (
-            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
-            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
+            ) as mock_subprocess,
         ):
             mock_subprocess.return_value = MagicMock(returncode=0)
             result = runner.invoke(cli, ["prepare", "pei_pandarinath_nlb_2021"])
@@ -180,18 +203,18 @@ class TestPrepareCommand:
             assert command[1] == "run"
             assert command[2] == "--directory"
             assert "pei_pandarinath_nlb_2021" in command[3]
-            assert "brainsets_pipelines" in command[3]
+            assert "pipelines" in command[3]
             assert command[4] == "--isolated"
             assert command[5] == "--no-project"
             assert command[6] == "--python"
             assert command[7] == "3.11"
             assert command[8] == "--with-editable"
-            assert ("brainsets" in command[9]) and ("file://" in command[9])
+            assert ("torch_brain" in command[9]) and ("file://" in command[9])
             assert command[10] == "--with"
             assert command[11] == "dandi==0.74.0"
             assert command[12] == "python"
             assert command[13] == "-m"
-            assert command[14] == "brainsets.runner"
+            assert command[14] == "torch_brain.pipeline.runner"
             assert "pipeline.py" in command[15]
             assert f"--raw-dir={mock_config['raw_dir']}" in command
             assert f"--processed-dir={mock_config['processed_dir']}" in command
@@ -206,7 +229,11 @@ class TestPrepareCommand:
         raw_dir.mkdir()
         processed_dir.mkdir()
 
-        with (patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,):
+        with (
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
+            ) as mock_subprocess,
+        ):
             mock_subprocess.return_value = MagicMock(returncode=0)
             result = runner.invoke(
                 cli,
@@ -236,8 +263,13 @@ class TestPrepareCommand:
         runner = CliRunner()
 
         with (
-            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
-            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
+            ) as mock_subprocess,
         ):
             mock_subprocess.return_value = MagicMock(returncode=0)
             result = runner.invoke(
@@ -258,8 +290,13 @@ class TestPrepareCommand:
 
         # --list passed if present in cli args
         with (
-            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
-            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
+            ) as mock_subprocess,
         ):
             mock_subprocess.return_value = MagicMock(returncode=0)
             result = runner.invoke(
@@ -275,8 +312,13 @@ class TestPrepareCommand:
 
         # --list not passed if absent in cli args
         with (
-            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
-            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
+            ) as mock_subprocess,
         ):
             mock_subprocess.return_value = MagicMock(returncode=0)
             result = runner.invoke(cli, ["prepare", "pei_pandarinath_nlb_2021"])
@@ -294,8 +336,13 @@ class TestPrepareCommand:
 
         # --single=test passed if "--single test" present in cli args
         with (
-            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
-            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
+            ) as mock_subprocess,
         ):
             mock_subprocess.return_value = MagicMock(returncode=0)
             result = runner.invoke(
@@ -314,8 +361,13 @@ class TestPrepareCommand:
 
         # --single=test passed if "-s test" test present in cli args
         with (
-            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
-            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
+            ) as mock_subprocess,
         ):
             mock_subprocess.return_value = MagicMock(returncode=0)
             result = runner.invoke(
@@ -334,8 +386,13 @@ class TestPrepareCommand:
 
         # --single not passed if absent in cli args
         with (
-            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
-            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
+            ) as mock_subprocess,
         ):
             mock_subprocess.return_value = MagicMock(returncode=0)
             result = runner.invoke(cli, ["prepare", "pei_pandarinath_nlb_2021"])
@@ -356,8 +413,13 @@ class TestPrepareCommand:
         runner = CliRunner()
 
         with (
-            patch("brainsets._cli.cli_prepare.load_config", return_value=mock_config),
-            patch("brainsets._cli.cli_prepare.subprocess.run") as mock_subprocess,
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
+            ) as mock_subprocess,
         ):
             mock_subprocess.return_value = MagicMock(returncode=0)
             result = runner.invoke(
