@@ -1,9 +1,10 @@
 import re
-from typing import Callable, Pattern, Union
+from collections.abc import Callable
+from re import Pattern
 
 import numpy as np
 
-from temporaldata import ArrayDict, Data, IrregularTimeSeries, RegularTimeSeries
+from torch_brain.data import ArrayDict, Data, IrregularTimeSeries, RegularTimeSeries
 
 
 class UnitFilter:
@@ -11,9 +12,9 @@ class UnitFilter:
     Drop units based on the `mask_fn` given in the constructor.
 
     Args:
-        mask_fn (Callable[[ArrayDict], np.ndarray]): A function that takes the unit ids and returns a mask to keep the units.
-        field (str): The field to apply the filter.
-        reset_index (bool, optional): If True, it will reset_index the unit index of the time series.
+        mask_fn: A function that takes the unit ids and returns a mask to keep the units.
+        field: The field to apply the filter.
+        reset_index: If True, it will reset_index the unit index of the time series.
     """
 
     def __init__(
@@ -61,15 +62,15 @@ class UnitFilterById(UnitFilter):
 
 
     Args:
-        pattern (Union[str, Pattern]): The regex pattern to match against the unit ids.
-        field (str): The field to apply the filter.
-        reset_index (bool, optional): If True, it will reset_index the unit index of the time series.
-        keep_matches (bool, optional): If True, units matching the pattern will be kept.
+        pattern: The regex pattern to match against the unit ids.
+        field: The field to apply the filter.
+        reset_index: If True, it will reset_index the unit index of the time series.
+        keep_matches: If True, units matching the pattern will be kept.
     """
 
     def __init__(
         self,
-        pattern: Union[str, Pattern],
+        pattern: str | Pattern,
         field: str,
         reset_index: bool = True,
         keep_matches: bool = True,

@@ -1,0 +1,248 @@
+# /// brainset-pipeline
+# python-version = "3.11"
+# dependencies = ["dandi==0.74.0"]
+# ///
+
+import datetime
+from argparse import ArgumentParser
+
+import h5py
+import numpy as np
+import pandas as pd
+from pynwb import NWBHDF5IO
+
+from torch_brain.data import (
+    BrainsetDescription,
+    Data,
+    DeviceDescription,
+    Interval,
+    RegularTimeSeries,
+    SessionDescription,
+    serialize_fn_map,
+)
+from torch_brain.pipeline import BrainsetPipeline
+from torch_brain.utils.dandi import (
+    download_file,
+    extract_spikes_from_nwbfile,
+    extract_subject_from_nwb,
+    get_nwb_asset_list,
+)
+
+parser = ArgumentParser()
+parser.add_argument("--redownload", action="store_true")
+parser.add_argument("--reprocess", action="store_true")
+
+
+class Pipeline(BrainsetPipeline):
+    brainset_id = "pei_pandarinath_nlb_2021"
+    dandiset_id = "DANDI:000140/0.220113.0408"
+    parser = parser
+
+    @classmethod
+    def get_manifest(cls, raw_dir, args) -> pd.DataFrame:
+        asset_list = get_nwb_asset_list(cls.dandiset_id)
+        manifest_list = [{"path": x.path, "url": x.download_url} for x in asset_list]
+
+        for m in manifest_list:
+            path = m["path"]
+            m["id"] = "jenkins_maze_test" if "test" in path else "jenkins_maze_train"
+
+        manifest = pd.DataFrame(manifest_list).set_index("id")
+
+        return manifest
+
+    def download(self, manifest_item):
+        self.update_status("DOWNLOADING")
+        fpath = download_file(
+            manifest_item.path,
+            manifest_item.url,
+            self.raw_dir,
+            overwrite=self.args.redownload,
+        )
+        return fpath
+
+    def process(self, fpath):
+
+        # intiantiate a DatasetBuilder which provides utilities for processing data
+        brainset_description = BrainsetDescription(
+            id=self.brainset_id,
+            origin_version="dandi/000140/0.220113.0408",
+            derived_version="2.0.0",
+            source="https://dandiarchive.org/dandiset/000140",
+            description="This dataset contains sorted unit spiking times and behavioral"
+            " data from a macaque performing a delayed reaching task. The experimental task"
+            " was a center-out reaching task with obstructing barriers forming a maze,"
+            " resulting in a variety of straight and curved reaches.",
+        )
+
+        # open file
+        self.update_status("Loading NWB")
+        io = NWBHDF5IO(fpath, "r")
+        nwbfile = io.read()
+
+        self.update_status("Extracting Metadata")
+        # extract subject metadata
+        # this dataset is from dandi, which has structured subject metadata, so we
+        # can use the helper function extract_subject_from_nwb
+        subject = extract_subject_from_nwb(nwbfile)
+
+        # extract experiment metadata
+        recording_date = nwbfile.session_start_time.strftime("%Y%m%d")
+        device_id = f"{subject.id}_{recording_date}"
+        session_id = f"{subject.id}_maze"
+        if "test" in str(fpath):
+            session_id += "_test"
+        else:
+            session_id += "_train"
+
+        store_path = self.processed_dir / f"{session_id}.h5"
+        if store_path.exists() and not self.args.reprocess:
+            self.update_status("Skipped Processing")
+            return
+
+        # register session
+        session_description = SessionDescription(
+            id=session_id,
+            recording_date=datetime.datetime.strptime(recording_date, "%Y%m%d"),
+            task="REACHING",
+        )
+
+        # register device
+        device_description = DeviceDescription(
+            id=device_id,
+            recording_tech="UTAH_ARRAY_SPIKES",
+        )
+
+        # extract spiking activity
+        # this data is from dandi, we can use our helper function
+        self.update_status("Extracting Spikes")
+        spikes, units = extract_spikes_from_nwbfile(
+            nwbfile,
+            recording_tech="UTAH_ARRAY_SPIKES",
+        )
+
+        # extract data about trial structure
+        self.update_status("Extracting Trials")
+        trials = extract_trials(nwbfile)
+
+        data = Data(
+            brainset=brainset_description,
+            session=session_description,
+            device=device_description,
+            # neural activity
+            spikes=spikes,
+            units=units,
+            # stimuli and behavior
+            trials=trials,
+            # domain
+            domain="auto",
+        )
+
+        if "test" not in str(fpath):
+            self.update_status("Creating Splits")
+            # extract behavior
+            data.hand, data.eye = extract_behavior(nwbfile, trials)
+
+            # report accuracy only on the evaluation intervals
+            data.nlb_eval_intervals = Interval(
+                start=trials.move_onset_time - 0.05,
+                end=trials.move_onset_time + 0.65,
+            )
+
+            # split and register trials into train, validation and test
+            train_trials, valid_trials = trials.select_by_mask(
+                trials.train_mask_nwb
+            ).split([0.8, 0.2], shuffle=True, random_seed=42)
+            test_trials = trials.select_by_mask(trials.test_mask_nwb)
+
+            data.train_domain = train_trials
+            data.valid_domain = valid_trials
+            data.test_domain = test_trials
+
+        # close file
+        io.close()
+
+        # save data to disk
+        with h5py.File(store_path, "w") as file:
+            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
+
+
+def extract_trials(nwbfile):
+    r"""Extract trial information from the NWB file. Trials that are flagged as
+    "to discard" or where the monkey failed are marked as invalid."""
+    trial_table = nwbfile.trials.to_dataframe()
+
+    # rename start and end time columns
+    trial_table = trial_table.rename(
+        columns={
+            "start_time": "start",
+            "stop_time": "end",
+            "split": "split_indicator",
+        }
+    )
+    trials = Interval.from_dataframe(trial_table)
+
+    # the dataset has pre-defined train/valid splits, we will use the valid split
+    # as our test
+    train_mask_nwb = trial_table.split_indicator.to_numpy() == "train"
+    test_mask_nwb = trial_table.split_indicator.to_numpy() == "val"
+
+    trials.train_mask_nwb = (
+        train_mask_nwb  # Naming with "_" since train_mask is reserved
+    )
+    trials.test_mask_nwb = test_mask_nwb  # Naming with "_" since test_mask is reserved
+
+    return trials
+
+
+def extract_behavior(nwbfile, trials):
+    """Extract behavior from the NWB file.
+
+    ..note::
+        Cursor position and target position are in the same frame of reference.
+        They are both of size (sequence_len, 2). Finger position can be either 3d or 6d,
+        depending on the sequence. # todo investigate more
+    """
+    # cursor, hand and eye share the same timestamps (verified)
+    raw_timestamps = nwbfile.processing["behavior"]["hand_vel"].timestamps[:]
+    raw_hand_pos = nwbfile.processing["behavior"]["hand_pos"].data[:]
+    raw_hand_vel = nwbfile.processing["behavior"]["hand_vel"].data[:]
+    raw_eye_pos = nwbfile.processing["behavior"]["eye_pos"].data[:]
+
+    # These samples are mostly uniformly sampled at 1000Hz,
+    # but have some missing points. Here we insert NaNs at
+    # the missing timesteps to regularize the timeseries
+    samp_rate = 1e3
+    start_time, end_time = raw_timestamps[0], raw_timestamps[-1]
+    num_timesteps = round((end_time - start_time) * samp_rate) + 1
+    raw_time_idx = np.round((raw_timestamps - start_time) * samp_rate).astype(int)
+    assert (np.diff(raw_time_idx) > 0).all()
+    # ^ this confirms there are no repeated timestamps
+    assert np.isclose(raw_time_idx / samp_rate, raw_timestamps - start_time).all()
+    # ^ this confirms that the raw_timestamps are indeed regular relative to start_time
+
+    hand_pos = np.full((num_timesteps, raw_hand_pos.shape[-1]), fill_value=np.nan)
+    hand_pos[raw_time_idx] = raw_hand_pos
+
+    hand_vel = np.full((num_timesteps, raw_hand_vel.shape[-1]), fill_value=np.nan)
+    hand_vel[raw_time_idx] = raw_hand_vel
+
+    eye_pos = np.full((num_timesteps, raw_eye_pos.shape[-1]), fill_value=np.nan)
+    eye_pos[raw_time_idx] = raw_eye_pos
+
+    hand = RegularTimeSeries(
+        sampling_rate=samp_rate,
+        pos=hand_pos,
+        vel=hand_vel,
+        domain="auto",
+        domain_start=start_time,
+    )
+
+    eye = RegularTimeSeries(
+        sampling_rate=samp_rate,
+        pos=eye_pos,
+        domain="auto",
+        domain_start=start_time,
+    )
+
+    return hand, eye

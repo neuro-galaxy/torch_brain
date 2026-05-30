@@ -2,9 +2,9 @@ name: Testing
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "vinam/merger" ] #TODO remove vinam_merger after merge
   pull_request:
-    branches: [ "*" ]
+    branches: [ "**" ]
 
 permissions:
   contents: read
@@ -33,10 +33,6 @@ jobs:
       run: |
         source venv/bin/activate
         uv pip install pytest-github-actions-annotate-failures
-    - name: Install brainsets
-      run: |
-        source venv/bin/activate
-        uv pip install git+https://github.com/neuro-galaxy/brainsets
     - name: Test with pytest
       run: |
         source venv/bin/activate
@@ -49,7 +45,7 @@ jobs:
     - name: Test documentation
       run: |
         source venv/bin/activate
-        pytest --doctest-modules torch_brain/ -v
+        pytest --doctest-modules torch_brain/ -v --ignore=torch_brain/pipeline/brainsets-pipelines/
     - name: Download sample dataset
       run: |
         source venv/bin/activate

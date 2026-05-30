@@ -42,31 +42,40 @@ Essentially, the rendered page would look like the following:
 |---------------------------------------------------------------------------------|
 
 Hooks will be automatically generated for each module and each section. For a module,
-e.g., `torch_brain.dataset`, the hook would be `dataset_ref`; for a
-section, e.g., "Mixins" under `torch_brain.dataset`, the hook would be
+e.g., `torch_brain.datasets`, the hook would be `dataset_ref`; for a
+section, e.g., "Mixins" under `torch_brain.datasets`, the hook would be
 `dataset_ref-mixins`. However, note that a better way is to refer using the :mod: directive,
-e.g., :mod:`torch_brain.dataset` for the module. Only in case that a section
+e.g., :mod:`torch_brain.datasets` for the module. Only in case that a section
 is not a particular submodule does the hook become useful.
 """
 
 
 # Modules to include in API reference.
 API_MODS = [
-    "torch_brain.dataset",
+    "torch_brain.batching",
+    "torch_brain.data",
+    "torch_brain.datasets",
+    "torch_brain.models",
+    "torch_brain.nn",
+    "torch_brain.pipeline",
+    "torch_brain.pipeline.openneuro",
     "torch_brain.samplers",
     "torch_brain.transforms",
-    "torch_brain.batching",
-    "torch_brain.nn",
-    "torch_brain.models",
     "torch_brain.utils",
-    "torch_brain.data",
+    "torch_brain.utils.bids",
+    "torch_brain.utils.dandi",
+    "torch_brain.utils.mne",
+    "torch_brain.utils.openneuro",
+    "torch_brain.utils.s3",
+    "torch_brain.utils.signal",
+    "torch_brain.utils.split",
+    "torch_brain.utils.stitcher",
 ]
 
 API_REFERENCE = {m: import_module(m).__api_ref__ for m in API_MODS}
 
 
 def build_api_rst():
-    import importlib
     import pathlib
 
     generated = pathlib.Path(__file__).parent / "generated"
@@ -94,7 +103,7 @@ def build_api_rst():
 
     for template in rst_templates:
         # Read the corresponding template file into jinja2
-        with open(template["template_path"], "r") as f:
+        with open(template["template_path"]) as f:
             t = jinja2.Template(f.read())
 
         # Render the template and write to the target

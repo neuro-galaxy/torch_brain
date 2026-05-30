@@ -1,10 +1,4 @@
-from importlib.metadata import version, PackageNotFoundError
-from . import data
-from . import nn
-from . import models
-from . import utils
-from . import transforms
-from . import samplers
+from importlib.metadata import PackageNotFoundError, version
 
 try:
     __version__ = version("torch_brain")

@@ -1,25 +1,28 @@
 import os
-import h5py
-import pytest
 from datetime import datetime
-import numpy as np
 
-from temporaldata import (
+import h5py
+import numpy as np
+import pytest
+
+from torch_brain.data import (
+    ArrayDict,
+    BrainsetDescription,
     Data,
     Interval,
     IrregularTimeSeries,
-    ArrayDict,
     RegularTimeSeries,
-)
-from brainsets import serialize_fn_map
-from brainsets.descriptions import (
-    BrainsetDescription,
     SessionDescription,
     SubjectDescription,
+    serialize_fn_map,
 )
-
-from torch_brain.dataset import Dataset, DatasetIndex, NestedDataset
-from torch_brain.dataset.mixins import SpikingDatasetMixin, MultiChannelDatasetMixin
+from torch_brain.datasets import (
+    Dataset,
+    DatasetIndex,
+    MultiChannelDatasetMixin,
+    NestedDataset,
+    SpikingDatasetMixin,
+)
 
 
 def create_spiking_data(brainset_id, subject_id, session_id, length):

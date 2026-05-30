@@ -1,23 +1,23 @@
-from typing import Any, Callable, List
+from collections.abc import Callable
 
 import numpy as np
 
-import temporaldata
+from torch_brain.data import Data
 
 
 class Compose:
     r"""Compose several transforms together. All transforms will be called sequentially,
-    in order, and must accept and return a single :obj:`temporaldata.Data` object, except
+    in order, and must accept and return a single :obj:`torch_brain.data.Data` object, except
     the last transform, which can return any object.
 
     Args:
-        transforms (list of callable): list of transforms to compose.
+        transforms: list of transforms to compose.
     """
 
-    def __init__(self, transforms: List[Callable]):
+    def __init__(self, transforms: list[Callable]):
         self.transforms = transforms
 
-    def __call__(self, data: temporaldata.Data) -> temporaldata.Data:
+    def __call__(self, data: Data) -> Data:
         for transform in self.transforms:
             data = transform(data)
         return data
@@ -29,12 +29,12 @@ class RandomChoice:
 
     Args:
         transforms: list of transformations
-        p (list of floats, optional): probability of each transform being picked.
+        p: probability of each transform being picked.
             If :obj:`p` doesn't sum to 1, it is automatically normalized. By default,
             all transforms have the same probability.
     """
 
-    def __init__(self, transforms: List[Callable], p: List[float] = None) -> None:
+    def __init__(self, transforms: list[Callable], p: list[float] = None):
         if p is None:
             p = [1] * len(transforms)
         elif len(p) != len(transforms):
@@ -49,7 +49,7 @@ class RandomChoice:
         total = sum(p)
         self.p = [prob / total for prob in p]
 
-    def __call__(self, data: temporaldata.Data) -> temporaldata.Data:
+    def __call__(self, data: Data) -> Data:
         idx = np.random.choice(len(self.transforms), p=self.p)
         transform = self.transforms[idx]
         return transform(data)
@@ -67,12 +67,12 @@ class ConditionalChoice:
 
     def __init__(
         self, condition: Callable, true_transform: Callable, false_transform: Callable
-    ) -> None:
+    ):
         self.condition = condition
         self.true_transform = true_transform
         self.false_transform = false_transform
 
-    def __call__(self, data: temporaldata.Data) -> temporaldata.Data:
+    def __call__(self, data: Data) -> Data:
         ret = self.condition(data)
         if not isinstance(ret, bool):
             raise ValueError(

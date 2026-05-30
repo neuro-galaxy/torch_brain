@@ -1,21 +1,20 @@
-import math
 import logging
-from typing import Dict
+import math
 from functools import cached_property
 
 import torch
 
-from temporaldata import Interval
-from torch_brain.dataset import DatasetIndex
+from torch_brain.data import Interval
+from torch_brain.datasets import DatasetIndex
 
 
 class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
     r"""Samples fixed-length windows randomly from a collection of time intervals.
 
     Given the :obj:`sampling_intervals` dictionary mapping session IDs to
-    :class:`temporaldata.Interval` objects, this sampler produces
-    :class:`~torch_brain.dataset.DatasetIndex` objects for indexing a
-    :class:`~torch_brain.dataset.Dataset`. Each call to :meth:`__iter__` applies a
+    :class:`torch_brain.data.Interval` objects, this sampler produces
+    :class:`~torch_brain.datasets.DatasetIndex` objects for indexing a
+    :class:`~torch_brain.datasets.Dataset`. Each call to :meth:`__iter__` applies a
     fresh random temporal jitter and re-shuffles the windows, so every epoch explores
     slightly different positions within each interval.
 
@@ -28,7 +27,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
     Args:
         sampling_intervals: Sampling intervals for each session.
             Typically obtained from
-            :meth:`~torch_brain.dataset.Dataset.get_sampling_intervals`.
+            :meth:`~torch_brain.datasets.Dataset.get_sampling_intervals`.
         window_length: Duration of each sampled window in seconds.
         generator: Optional RNG used for jitter and
             shuffling. If ``None`` (default), uses the default global PyTorch generator.
@@ -38,8 +37,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
 
     Example::
 
-        >>> import numpy as np
-        >>> from temporaldata import Interval
+        >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import RandomFixedWindowSampler
 
         >>> sampling_intervals = {
@@ -57,7 +55,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
     def __init__(
         self,
         *,
-        sampling_intervals: Dict[str, Interval],
+        sampling_intervals: dict[str, Interval],
         window_length: float,
         generator: torch.Generator | None = None,
         drop_short: bool = True,
@@ -76,7 +74,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
         total_short_dropped = 0.0
 
         for intervals in self.sampling_intervals.values():
-            for start, end in zip(intervals.start, intervals.end):
+            for start, end in zip(intervals.start, intervals.end, strict=True):
                 interval_length = end - start
                 if interval_length < self.window_length:
                     if self.drop_short:
@@ -104,7 +102,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
         return self._estimated_len
 
     def __iter__(self):
-        r"""Yields shuffled :class:`~torch_brain.dataset.DatasetIndex` objects with random temporal jitter."""
+        r"""Yields shuffled :class:`~torch_brain.datasets.DatasetIndex` objects with random temporal jitter."""
         if len(self) == 0.0:
             raise ValueError("All intervals are too short to sample from.")
 

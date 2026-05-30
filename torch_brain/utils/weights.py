@@ -1,5 +1,6 @@
 import numpy as np
-from temporaldata import Interval
+
+from torch_brain.data import Interval
 
 
 def isin_interval(timestamps: np.ndarray, interval: Interval) -> np.ndarray:

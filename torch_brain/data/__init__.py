@@ -1,18 +1,45 @@
-from . import sampler
-from . import collate
-from .dataset import Dataset
+"""
+**User guide.** See :ref:`data_guide` section for further details.
+"""
 
-__all__ = ["Dataset"]
+from .arraydict import ArrayDict, LazyArrayDict
+from .concat import concat
+from .data import Data
+from .descriptions import (
+    BrainsetDescription,
+    DeviceDescription,
+    SessionDescription,
+    SubjectDescription,
+)
+from .interval import Interval, LazyInterval
+from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
+from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries
+from .serialization import serialize_fn_map
 
-# see docs/source/api_reference.py
+__all__ = [
+    "ArrayDict",
+    "LazyArrayDict",
+    "IrregularTimeSeries",
+    "LazyIrregularTimeSeries",
+    "RegularTimeSeries",
+    "LazyRegularTimeSeries",
+    "Interval",
+    "LazyInterval",
+    "Data",
+    "BrainsetDescription",
+    "DeviceDescription",
+    "SessionDescription",
+    "SubjectDescription",
+    "concat",
+    "serialize_fn_map",
+]
+
+# Drives the generated API reference; see docs/source/api_reference.py.
 __api_ref__ = {
     "description": None,
     "sections": [
         {
-            "title": "torch_brain.data.dataset [DEPRECATED]",
-            "autosummary": [
-                "Dataset",
-            ],
+            "autosummary": __all__,
         },
     ],
 }

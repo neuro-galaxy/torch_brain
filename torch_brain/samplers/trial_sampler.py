@@ -1,8 +1,7 @@
-from typing import Dict
-
 import torch
-from torch_brain.dataset import DatasetIndex
-from temporaldata import Interval
+
+from torch_brain.data import Interval
+from torch_brain.datasets import DatasetIndex
 
 
 class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
@@ -11,15 +10,15 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
     Unlike :class:`RandomFixedWindowSampler` and :class:`SequentialFixedWindowSampler`,
     which slice continuous recordings into fixed-length windows, :class:`TrialSampler`
     treats each individual interval in :obj:`sampling_intervals` as a complete trial and
-    yields one :class:`~torch_brain.dataset.DatasetIndex` per trial. This is suited for
+    yields one :class:`~torch_brain.datasets.DatasetIndex` per trial. This is suited for
     trial-based experimental paradigms where each trial has a well-defined start and end
     time that should be preserved.
 
     Args:
         sampling_intervals: Sampling intervals for each session.
-            Each individual interval within the session's :class:`temporaldata.Interval`
+            Each individual interval within the session's :class:`torch_brain.data.Interval`
             object is treated as one trial. Typically obtained from
-            :meth:`~torch_brain.dataset.Dataset.get_sampling_intervals`.
+            :meth:`~torch_brain.datasets.Dataset.get_sampling_intervals`.
         shuffle: If ``False`` (default), trials are yielded in the order they appear in
             :obj:`sampling_intervals`.
             If ``True``, trials are yielded in a randomly shuffled order.
@@ -28,14 +27,13 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
 
     Example::
 
-        >>> from temporaldata import Interval
-        >>> import numpy as np
+        >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import TrialSampler
 
         >>> sampling_intervals = {
         ...     "session_1": Interval(
-        ...         start=np.array([0.0, 5.0, 10.0]),
-        ...         end=np.array([2.0, 8.0, 15.0]),
+        ...         start=[0.0, 5.0, 10.0],
+        ...         end=[2.0, 8.0, 15.0],
         ...     ),
         ... }
         >>> sampler = TrialSampler(
@@ -49,7 +47,7 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
     def __init__(
         self,
         *,
-        sampling_intervals: Dict[str, Interval],
+        sampling_intervals: dict[str, Interval],
         shuffle: bool = False,
         generator: torch.Generator | None = None,
     ):
@@ -62,11 +60,11 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
         return sum(len(intervals) for intervals in self.sampling_intervals.values())
 
     def __iter__(self):
-        r"""Yields one :class:`~torch_brain.dataset.DatasetIndex` per trial, optionally shuffled."""
+        r"""Yields one :class:`~torch_brain.datasets.DatasetIndex` per trial, optionally shuffled."""
         indices = [
             DatasetIndex(session_id, start, end)
             for session_id, intervals in self.sampling_intervals.items()
-            for start, end in zip(intervals.start, intervals.end)
+            for start, end in zip(intervals.start, intervals.end, strict=True)
         ]
 
         if self.shuffle:

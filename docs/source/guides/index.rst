@@ -2,8 +2,21 @@ User Guide
 ==========
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
-   installation
-   sampling/index
+   data/index
+
+.. toctree::
+   :maxdepth: 2
+
+   pipeline/index
+
+.. toctree::
+   :maxdepth: 2
+
+   training/index
+
+.. toctree::
+   :maxdepth: 2
+
    examples/index

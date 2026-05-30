@@ -2,6 +2,7 @@ import datetime
 import os
 import sys
 from pathlib import Path
+
 from sphinx.util.typing import restify
 
 sys.path.insert(0, os.path.abspath("."))
@@ -22,6 +23,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
+    "matplotlib.sphinxext.plot_directive",
     "myst_nb",
     "sphinx_autodoc_typehints",
     "sphinx_inline_tabs",
@@ -83,8 +85,6 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/", None),
     "numpy": ("http://docs.scipy.org/doc/numpy", None),
     "h5py": ("http://docs.h5py.org/en/latest/", None),
-    "temporaldata": ("https://temporaldata.readthedocs.io/en/latest/", None),
-    "brainsets": ("https://brainsets.readthedocs.io/en/latest/", None),
     "torch": ("https://pytorch.org/docs/stable", None),
 }
 
@@ -102,6 +102,15 @@ html_copy_source = False
 html_show_sourcelink = True
 html_favicon = "_static/torch_brain_logo.png"
 
+# matplotlib plot_directive: figures are generated at build time from the code
+# in each `.. plot::` block. We only want the rendered figure, not the source
+# (the surrounding pycon blocks already show the relevant code).
+plot_include_source = False
+plot_html_show_source_link = False
+plot_html_show_formats = False
+plot_formats = [("png", 110)]
+
+
 # Compile scss files into css files using sphinxcontrib-sass
 sass_src_dir, sass_out_dir = "scss", "generated/css/styles"
 sass_targets = {
@@ -111,8 +120,8 @@ sass_targets = {
 Path("generated/css/").mkdir(exist_ok=True, parents=True)
 
 
-from api_reference import build_api_rst
-import notebooks.nlb_maze_minimal_example.modify
+import notebooks.nlb_maze_minimal_example.modify  # noqa: E402
+from api_reference import build_api_rst  # noqa: E402
 
 build_api_rst()
 notebooks.nlb_maze_minimal_example.modify.main()

@@ -1,9 +1,8 @@
 import logging
-from typing import Optional
 
 import numpy as np
 
-from temporaldata import Data, IrregularTimeSeries, RegularTimeSeries
+from torch_brain.data import Data, IrregularTimeSeries, RegularTimeSeries
 
 
 class TriangleDistribution:
@@ -23,17 +22,17 @@ class TriangleDistribution:
         \end{cases}
 
     Args:
-        min_units (int): Minimum number of units to sample. If the population has fewer
+        min_units: Minimum number of units to sample. If the population has fewer
             units than this, all units will be kept.
-        mode_units (int): Mode of the distribution.
-        max_units (int): Maximum number of units to sample.
-        tail_right (int, optional): Right tail of the distribution. If None, it is set to
+        mode_units: Mode of the distribution.
+        max_units: Maximum number of units to sample.
+        tail_right: Right tail of the distribution. If None, it is set to
             `max_units`.
-        peak (float, optional): Height of the peak of the distribution.
-        M (float, optional): Normalization constant for the proposal distribution.
-        max_attempts (int, optional): Maximum number of attempts to sample from the
+        peak: Height of the peak of the distribution.
+        M: Normalization constant for the proposal distribution.
+        max_attempts: Maximum number of attempts to sample from the
             distribution.
-        seed (int, optional): Seed for the random number generator.
+        seed: Seed for the random number generator.
 
     .. image:: /_static/img/triangle_distribution.png
 
@@ -48,11 +47,11 @@ class TriangleDistribution:
         min_units: int = 20,
         mode_units: int = 100,
         max_units: int = 300,
-        tail_right: Optional[int] = None,
+        tail_right: int | None = None,
         peak: float = 4,
         M: int = 10,
         max_attempts: int = 100,
-        seed: Optional[int] = None,
+        seed: int | None = None,
     ):
         super().__init__()
         self.min_units = min_units
@@ -117,7 +116,7 @@ class UnitDropout:
     corresponding columns from the data.
 
     Args:
-        field (str, optional): Field to apply the dropout. Defaults to "spikes".
+        field: Field to apply the dropout. Defaults to "spikes".
         \*args, \*\*kwargs: Arguments to pass to the :class:`TriangleDistribution` constructor.
     """
 
