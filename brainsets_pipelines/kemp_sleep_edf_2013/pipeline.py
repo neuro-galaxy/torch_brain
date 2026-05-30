@@ -18,25 +18,26 @@ import mne
 import numpy as np
 import pandas as pd
 
-from brainsets import serialize_fn_map
-from brainsets.descriptions import (
+from torch_brain.data import (
+    Data,
+    Interval,
     BrainsetDescription,
     SubjectDescription,
     SessionDescription,
     DeviceDescription,
+    serialize_fn_map,
 )
-from brainsets.pipeline import BrainsetPipeline
-from brainsets.utils.split import (
+from torch_brain.pipeline import BrainsetPipeline
+from torch_brain.utils.split import (
     generate_stratified_folds,
     generate_string_kfold_assignment,
 )
-from brainsets.utils.s3_utils import get_cached_s3_client
-from brainsets.utils.mne_utils import (
+from torch_brain.utils.s3 import get_cached_s3_client
+from torch_brain.utils.mne import (
     extract_measurement_date,
     extract_signal,
     extract_channels,
 )
-from temporaldata import Data, Interval
 
 logging.basicConfig(level=logging.INFO)
 

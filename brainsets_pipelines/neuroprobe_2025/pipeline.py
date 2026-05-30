@@ -23,13 +23,16 @@ from argparse import ArgumentParser, Namespace
 from typing import Dict, List, Literal, Tuple, Optional, NamedTuple, get_args
 from tqdm import tqdm
 
-from brainsets.pipeline import BrainsetPipeline
-from temporaldata import ArrayDict, Data, Interval, RegularTimeSeries
-from brainsets.descriptions import (
+from torch_brain.pipeline import BrainsetPipeline
+from torch_brain.data import (
+    ArrayDict,
+    Data,
+    Interval,
+    RegularTimeSeries,
     BrainsetDescription,
     SubjectDescription,
+    serialize_fn_map,
 )
-from brainsets import serialize_fn_map
 
 logging.basicConfig(level=logging.INFO)
 

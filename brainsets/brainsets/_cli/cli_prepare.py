@@ -165,7 +165,7 @@ def prepare(
     command = [
         "python",
         "-m",
-        "brainsets.runner",
+        "torch_brain.pipeline.runner",
         str(pipeline_filepath),
         f"--raw-dir={raw_dir}",
         f"--processed-dir={processed_dir}",
@@ -216,17 +216,17 @@ def prepare(
         # If not already present in the inline dependencies list, make a best guess
         # at the install spec to use.
         # The typical case is for brainsets to not be in the inline dependencies list.
-        if not _brainsets_in_dependencies(deps):
-            brainsets_spec = _determine_brainsets_spec()
-            click.echo(f"Detected brainsets installation from {brainsets_spec}")
-            if brainsets_spec.startswith("file://"):
+        if not _torch_brain_in_dependencies(deps):
+            torch_brain_spec = _determine_torch_brain_spec()
+            click.echo(f"Detected torch_brain installation from {torch_brain_spec}")
+            if torch_brain_spec.startswith("file://"):
                 # UV can be weird about caching local packages
                 # So, if we want to recreate a local version of the package,
                 # it is safer to do so in editable mode, which does not go
                 # through UV's caching.
-                uv_prefix_command.extend(["--with-editable", brainsets_spec])
+                uv_prefix_command.extend(["--with-editable", torch_brain_spec])
             else:
-                deps.append(brainsets_spec)
+                deps.append(torch_brain_spec)
 
         if len(deps) > 0:
             uv_prefix_command.extend(["--with", ",".join(deps)])
@@ -256,19 +256,19 @@ def prepare(
         sys.exit(1)
 
 
-def _brainsets_in_dependencies(dependencies: list[str]) -> tuple[list[str], bool]:
-    """Check if any dependency refers to brainsets."""
+def _torch_brain_in_dependencies(dependencies: list[str]) -> bool:
+    """Check if any dependency refers to torch_brain."""
     for line in dependencies:
         stripped = line.strip()
-        if stripped and re.search(r"\bbrainsets\b", stripped, re.IGNORECASE):
+        if stripped and re.search(r"\btorch_brain\b", stripped, re.IGNORECASE):
             return True
 
     return False
 
 
-def _determine_brainsets_spec() -> str:
+def _determine_torch_brain_spec() -> str:
     """
-    Determine how to install brainsets when not specified in requirements.txt.
+    Determine how to install torch_brain when not specified in requirements.txt.
 
     Priority:
     1. Detect current installation source (git, local) from package metadata
@@ -276,29 +276,29 @@ def _determine_brainsets_spec() -> str:
     """
 
     # Try to detect if brainsets was installed via a URL or local file
-    url_source = _detect_brainsets_installation_url()
+    url_source = _detect_torch_brain_installation_url()
     if url_source:
         return url_source
 
     # Default: install from PyPI (latest or read version from installed package)
     try:
-        import brainsets
+        import torch_brain
 
-        return f"brainsets=={brainsets.__version__}"
+        return f"torch_brain=={torch_brain.__version__}"
     except (ImportError, AttributeError):
-        return "brainsets"
+        return "torch_brain"
 
 
-def _detect_brainsets_installation_url() -> Optional[str]:
+def _detect_torch_brain_installation_url() -> Optional[str]:
     """
-    Detect if the current brainsets package was installed via something like
+    Detect if the current torch_brain package was installed via something like
     pip install <url>.
     """
 
     from importlib.metadata import distribution, PackageNotFoundError
 
     try:
-        dist = distribution("brainsets")
+        dist = distribution("torch_brain")
     except PackageNotFoundError:
         return None
 
