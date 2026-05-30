@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import tempfile
 
-from temporaldata import ArrayDict, LazyArrayDict
+from torch_brain.data import ArrayDict, LazyArrayDict
 
 
 @pytest.fixture

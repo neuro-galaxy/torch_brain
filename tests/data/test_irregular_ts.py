@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 import pandas as pd
 import tempfile
-from temporaldata import IrregularTimeSeries, LazyIrregularTimeSeries, Interval
+from torch_brain.data import IrregularTimeSeries, LazyIrregularTimeSeries, Interval
 
 
 @pytest.fixture

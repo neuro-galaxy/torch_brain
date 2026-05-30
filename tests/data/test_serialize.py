@@ -2,7 +2,7 @@ import pytest
 import os
 import h5py
 import tempfile
-from temporaldata import Data
+from torch_brain.data import Data
 from enum import Enum
 
 

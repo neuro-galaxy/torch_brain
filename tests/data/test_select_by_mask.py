@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 import pytest
 
-from temporaldata import (
+from torch_brain.data import (
     ArrayDict,
     Interval,
     IrregularTimeSeries,

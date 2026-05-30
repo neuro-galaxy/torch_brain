@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 import pandas as pd
 import h5py
-from temporaldata import Interval, LazyInterval
+from torch_brain.data import Interval, LazyInterval
 
 
 @pytest.fixture

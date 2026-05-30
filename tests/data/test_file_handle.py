@@ -3,7 +3,7 @@ import os
 import h5py
 import numpy as np
 import tempfile
-from temporaldata import (
+from torch_brain.data import (
     IrregularTimeSeries,
     RegularTimeSeries,
     Interval,

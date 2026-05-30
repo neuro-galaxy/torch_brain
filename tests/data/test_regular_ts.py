@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from temporaldata import Interval, LazyRegularTimeSeries, RegularTimeSeries
+from torch_brain.data import Interval, LazyRegularTimeSeries, RegularTimeSeries
 
 
 @contextmanager
@@ -509,7 +509,10 @@ class TestFromGappyTimeseries:
             )
 
     def test_default_gap_value_passes_validation(self):
-        from temporaldata.regular_ts import _DEFAULT_GAP_VALUE, _validate_gap_value_dict
+        from torch_brain.data.regular_ts import (
+            _DEFAULT_GAP_VALUE,
+            _validate_gap_value_dict,
+        )
 
         _validate_gap_value_dict(_DEFAULT_GAP_VALUE)
 

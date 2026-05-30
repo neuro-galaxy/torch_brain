@@ -16,10 +16,9 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
-    "temporaldata>=0.1.4",
-    "numpy",
-    "torch~=2.0",
-    "pydantic~=2.0",
+    "numpy>=1.20.0",
+    "pandas>=1.0.0",
+    "h5py>=3.0.0",
     "rich",
 ]
 
@@ -33,7 +32,6 @@ dev = [
     "boto3",
     "tqdm",
     "pytest-cov",
-    "brainsets",
 ]
 docs = [
     "sphinx",
@@ -56,15 +54,5 @@ Homepage = "https://github.com/neuro-galaxy/torch_brain"
 Issues = "https://github.com/neuro-galaxy/torch_brain/issues"
 Documentation = "https://torch-brain.readthedocs.io/en/latest/"
 
-[tool.setuptools]
-packages = [
-    "torch_brain",
-    "torch_brain.batching",
-    "torch_brain.data",
-    "torch_brain.dataset",
-    "torch_brain.nn",
-    "torch_brain.models",
-    "torch_brain.utils",
-    "torch_brain.samplers",
-    "torch_brain.transforms",
-]
+[tool.setuptools.packages.find]
+include = ["torch_brain*"]

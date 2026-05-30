@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from temporaldata import IrregularTimeSeries, concat
+from torch_brain.data import IrregularTimeSeries, concat
 
 
 def test_irregular_timeseries_concat():
