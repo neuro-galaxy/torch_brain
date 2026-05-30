@@ -19,15 +19,16 @@ __api_ref__ = {
 
 
 import datetime
-import numpy as np
+import warnings
 from typing import Tuple, Literal
 
-from temporaldata import (
+import numpy as np
+
+from torch_brain.data import (
     ArrayDict,
     Interval,
     RegularTimeSeries,
 )
-import warnings
 
 try:
     import mne
@@ -300,10 +301,6 @@ def extract_signal(
     return RegularTimeSeries(
         signal=signal,
         sampling_rate=sfreq,
-        domain=Interval(
-            start=np.array([0.0]),
-            end=np.array([(len(signal) - 1) / sfreq]),
-        ),
     )
 
 

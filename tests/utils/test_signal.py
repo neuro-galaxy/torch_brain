@@ -1,10 +1,7 @@
 import numpy as np
 import pytest
-from brainsets.processing.signal import (
-    extract_bands,
-    cube_to_long,
-)
-from brainsets.utils.mne_utils import MNE_AVAILABLE
+from torch_brain.utils.signal import extract_bands, cube_to_long
+from torch_brain.utils.mne import MNE_AVAILABLE
 
 
 @pytest.mark.skipif(not MNE_AVAILABLE, reason="mne not installed")

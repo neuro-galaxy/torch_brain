@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from temporaldata import Data, Interval
-from brainsets.utils.split import (
+from torch_brain.data import Data, Interval
+from torch_brain.utils.split import (
     generate_stratified_folds,
     generate_string_kfold_assignment,
 )
