@@ -32,6 +32,11 @@ dev = [
     "boto3",
     "tqdm",
     "pytest-cov",
+    "scikit-learn>=1.6.1",
+    "mne~=1.11.0",
+    "boto3~=1.41.0",
+    "mne-bids",
+    "dandi",
 ]
 docs = [
     "sphinx",

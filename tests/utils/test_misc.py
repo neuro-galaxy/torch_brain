@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from brainsets.utils.misc_utils import calculate_sampling_rate
+from torch_brain.utils.misc import calculate_sampling_rate
 
 
 def test_uniform_timestamps():

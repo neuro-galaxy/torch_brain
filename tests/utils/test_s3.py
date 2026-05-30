@@ -2,13 +2,13 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from brainsets.utils.s3_utils import BOTO_AVAILABLE
+from torch_brain.utils.s3 import BOTO_AVAILABLE
 
 pytestmark = pytest.mark.skipif(
     not BOTO_AVAILABLE, reason="boto3/botocore not installed"
 )
 
-from brainsets.utils.s3_utils import (
+from torch_brain.utils.s3 import (
     UNSIGNED,
     ClientError,
     get_cached_s3_client,
@@ -23,7 +23,7 @@ class TestGetCachedS3Client:
     def setup_method(self):
         get_cached_s3_client.cache_clear()
 
-    @patch("brainsets.utils.s3_utils.boto3.client")
+    @patch("torch_brain.utils.s3.boto3.client")
     def test_returns_s3_client(self, mock_boto_client):
         mock_client = MagicMock()
         mock_boto_client.return_value = mock_client
@@ -35,7 +35,7 @@ class TestGetCachedS3Client:
         call_args = mock_boto_client.call_args
         assert call_args[0][0] == "s3"
 
-    @patch("brainsets.utils.s3_utils.boto3.client")
+    @patch("torch_brain.utils.s3.boto3.client")
     def test_config_uses_unsigned_signature(self, mock_boto_client):
         get_cached_s3_client()
 
@@ -43,7 +43,7 @@ class TestGetCachedS3Client:
         config = call_args[1]["config"]
         assert config.signature_version == UNSIGNED
 
-    @patch("brainsets.utils.s3_utils.boto3.client")
+    @patch("torch_brain.utils.s3.boto3.client")
     def test_config_with_custom_retry_mode(self, mock_boto_client):
         mock_client = MagicMock()
         mock_boto_client.return_value = mock_client
@@ -58,7 +58,7 @@ class TestGetCachedS3Client:
         assert config.retries["total_max_attempts"] == 3
         assert config.max_pool_connections == 20
 
-    @patch("brainsets.utils.s3_utils.boto3.client")
+    @patch("torch_brain.utils.s3.boto3.client")
     def test_config_with_adaptive_retry_mode(self, mock_boto_client):
         mock_client = MagicMock()
         mock_boto_client.return_value = mock_client
@@ -133,7 +133,7 @@ class TestListObjects:
         with pytest.raises(RuntimeError, match="Error listing objects"):
             get_object_list("test-bucket", "prefix/", s3_client=mock_client)
 
-    @patch("brainsets.utils.s3_utils.get_cached_s3_client")
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
     def test_uses_cached_client_when_none_provided(self, mock_get_client):
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
@@ -353,7 +353,7 @@ class TestDownloadPrefix:
                 s3_client=mock_client,
             )
 
-    @patch("brainsets.utils.s3_utils.get_cached_s3_client")
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
     def test_uses_cached_client_when_none_provided(self, mock_get_client, tmp_path):
         mock_client = MagicMock()
         mock_get_client.return_value = mock_client
@@ -374,7 +374,7 @@ class TestDownloadPrefix:
 
 class TestDownloadPrefixFromUrl:
 
-    @patch("brainsets.utils.s3_utils.download_prefix")
+    @patch("torch_brain.utils.s3.download_prefix")
     def test_parses_s3_url_correctly(self, mock_download, tmp_path):
         mock_download.return_value = [tmp_path / "file.edf"]
 
@@ -386,7 +386,7 @@ class TestDownloadPrefixFromUrl:
         mock_download.assert_called_once_with("my-bucket", "path/to/files/", tmp_path)
         assert result == [tmp_path / "file.edf"]
 
-    @patch("brainsets.utils.s3_utils.download_prefix")
+    @patch("torch_brain.utils.s3.download_prefix")
     def test_handles_url_without_trailing_slash(self, mock_download, tmp_path):
         mock_download.return_value = []
 
@@ -411,7 +411,7 @@ class TestDownloadPrefixFromUrl:
                 target_dir=tmp_path,
             )
 
-    @patch("brainsets.utils.s3_utils.download_prefix")
+    @patch("torch_brain.utils.s3.download_prefix")
     def test_strips_leading_slash_from_prefix(self, mock_download, tmp_path):
         mock_download.return_value = []
 
@@ -425,7 +425,7 @@ class TestDownloadPrefixFromUrl:
         assert call_args[1] == "path/to/data"
         assert not call_args[1].startswith("/")
 
-    @patch("brainsets.utils.s3_utils.download_prefix")
+    @patch("torch_brain.utils.s3.download_prefix")
     def test_handles_url_with_leading_slash_in_path(self, mock_download, tmp_path):
         mock_download.return_value = []
 

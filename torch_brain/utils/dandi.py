@@ -18,9 +18,7 @@ import numpy as np
 import pandas as pd
 from pynwb import NWBFile
 
-from temporaldata import ArrayDict, IrregularTimeSeries
-
-from brainsets.descriptions import SubjectDescription
+from torch_brain.data import ArrayDict, IrregularTimeSeries, SubjectDescription
 
 try:
     import dandi

@@ -3,13 +3,26 @@
 https://dx.doi.org/10.1088/1741-2560/12/3/036009
 """
 
+__all__ = [
+    "downsample_wideband",
+    "extract_bands",
+    "cube_to_long",
+]
+
+
+# Drives the generated API reference; see docs/source/api_reference.py.
+__api_ref__ = {
+    "description": None,
+    "sections": [{"autosummary": __all__}],
+}
+
 from typing import List, Tuple
 
 import numpy as np
 import tqdm
 from scipy import signal
 
-from temporaldata import Data, IrregularTimeSeries, ArrayDict
+from torch_brain.data import Data, IrregularTimeSeries, ArrayDict
 
 
 def downsample_wideband(

@@ -11,13 +11,13 @@ except ImportError:
     MNE_AVAILABLE = False
 
 try:
-    from brainsets.utils.mne_utils import (
+    from torch_brain.utils.mne import (
         extract_measurement_date,
         extract_signal,
         extract_channels,
         concatenate_recordings,
     )
-    from temporaldata import ArrayDict
+    from torch_brain.data import ArrayDict
 except ImportError:
     extract_measurement_date = None
     extract_signal = None
@@ -126,7 +126,7 @@ class TestExtractSignal:
         sfreq = 256.0
         mock_raw = create_mock_raw(n_samples=n_samples, sfreq=sfreq)
         result = extract_signal(mock_raw)
-        expected_end = (n_samples - 1) / sfreq
+        expected_end = n_samples / sfreq
         assert np.isclose(result.domain.end[0], expected_end)
 
     def test_raises_error_when_no_samples(self):
@@ -768,7 +768,7 @@ class TestConcatenateRecordings:
         mock_raw = create_mock_raw(n_channels=3, n_samples=1000, meas_date=meas_date)
         mock_raw.copy.return_value = mock_raw
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = mock_raw
             result = concatenate_recordings([mock_raw])
             mock_concat.assert_called_once()
@@ -784,7 +784,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_result = MagicMock()
             mock_concat.return_value = mock_result
             result = concatenate_recordings([mock_raw1, mock_raw2])
@@ -807,7 +807,7 @@ class TestConcatenateRecordings:
         mock_raw2.copy.return_value = mock_raw2
         mock_raw3.copy.return_value = mock_raw3
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_result = MagicMock()
             mock_concat.return_value = mock_result
             concatenate_recordings([mock_raw1, mock_raw2, mock_raw3])
@@ -837,7 +837,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             with pytest.warns(
                 UserWarning,
@@ -856,7 +856,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             result = concatenate_recordings(
                 [mock_raw1, mock_raw2], on_missing_meas_date="ignore"
@@ -871,7 +871,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             with pytest.warns(
                 UserWarning,
@@ -893,7 +893,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             result = concatenate_recordings([mock_raw1, mock_raw2])
             mock_concat.assert_called_once()
@@ -910,7 +910,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             result = concatenate_recordings([mock_raw1, mock_raw2])
             mock_concat.assert_called_once()
@@ -937,7 +937,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             with pytest.warns(UserWarning, match="Measurement days are not uniform"):
                 concatenate_recordings([mock_raw1, mock_raw2], on_mismatch="warn")
@@ -952,7 +952,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             concatenate_recordings([mock_raw1, mock_raw2], on_mismatch="ignore")
             mock_concat.assert_called_once()
@@ -980,7 +980,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             result = concatenate_recordings([mock_raw1, mock_raw2], on_gap="warn")
             mock_concat.assert_called_once()
@@ -1008,7 +1008,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             with pytest.warns(
                 UserWarning, match="Gap between recordings .* is greater than"
@@ -1025,7 +1025,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             concatenate_recordings([mock_raw1, mock_raw2], on_gap="ignore")
             mock_concat.assert_called_once()
@@ -1040,7 +1040,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_raw1
         mock_raw2.copy.return_value = mock_raw2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             with pytest.warns(
                 UserWarning, match="Gap between recordings .* is greater than"
@@ -1076,7 +1076,7 @@ class TestConcatenateRecordings:
         mock_raw1.copy.return_value = mock_copy1
         mock_raw2.copy.return_value = mock_copy2
 
-        with patch("brainsets.utils.mne_utils.mne.concatenate_raws") as mock_concat:
+        with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
             concatenate_recordings([mock_raw1, mock_raw2])
 
@@ -1088,10 +1088,10 @@ class TestConcatenateRecordings:
 class TestCheckMneAvailable:
     """Test that functions raise ImportError when MNE is not available."""
 
-    @patch("brainsets.utils.mne_utils.MNE_AVAILABLE", False)
+    @patch("torch_brain.utils.mne.MNE_AVAILABLE", False)
     def test_extract_measurement_date_raises_import_error(self):
         """Test that extract_measurement_date raises ImportError when MNE is unavailable."""
-        from brainsets.utils.mne_utils import extract_measurement_date
+        from torch_brain.utils.mne import extract_measurement_date
 
         mock_raw = MagicMock()
         with pytest.raises(
@@ -1099,10 +1099,10 @@ class TestCheckMneAvailable:
         ):
             extract_measurement_date(mock_raw)
 
-    @patch("brainsets.utils.mne_utils.MNE_AVAILABLE", False)
+    @patch("torch_brain.utils.mne.MNE_AVAILABLE", False)
     def test_extract_signal_raises_import_error(self):
         """Test that extract_signal raises ImportError when MNE is unavailable."""
-        from brainsets.utils.mne_utils import extract_signal
+        from torch_brain.utils.mne import extract_signal
 
         mock_raw = MagicMock()
         with pytest.raises(
@@ -1110,10 +1110,10 @@ class TestCheckMneAvailable:
         ):
             extract_signal(mock_raw)
 
-    @patch("brainsets.utils.mne_utils.MNE_AVAILABLE", False)
+    @patch("torch_brain.utils.mne.MNE_AVAILABLE", False)
     def test_extract_channels_raises_import_error(self):
         """Test that extract_channels raises ImportError when MNE is unavailable."""
-        from brainsets.utils.mne_utils import extract_channels
+        from torch_brain.utils.mne import extract_channels
 
         mock_raw = MagicMock()
         with pytest.raises(
@@ -1121,10 +1121,10 @@ class TestCheckMneAvailable:
         ):
             extract_channels(mock_raw)
 
-    @patch("brainsets.utils.mne_utils.MNE_AVAILABLE", False)
+    @patch("torch_brain.utils.mne.MNE_AVAILABLE", False)
     def test_concatenate_recordings_raises_import_error(self):
         """Test that concatenate_recordings raises ImportError when MNE is unavailable."""
-        from brainsets.utils.mne_utils import concatenate_recordings
+        from torch_brain.utils.mne import concatenate_recordings
 
         mock_raw = MagicMock()
         with pytest.raises(

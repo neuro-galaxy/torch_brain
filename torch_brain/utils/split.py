@@ -12,7 +12,8 @@ __api_ref__ = {
 import hashlib
 import numpy as np
 from typing import List
-from temporaldata import Interval, Data
+
+from torch_brain.data import Interval, Data
 
 
 def _create_interval_split(intervals: Interval, indices: np.ndarray) -> Interval:
