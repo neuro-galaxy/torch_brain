@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 import tempfile
 
-from brainsets._cli.cli_prepare import _read_inline_metadata
+from torch_brain.pipeline._cli.cli_prepare import _read_inline_metadata
 
 
 def _write_temp_script(content: str) -> Path:

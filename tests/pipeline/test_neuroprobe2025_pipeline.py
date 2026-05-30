@@ -4,9 +4,15 @@ from types import SimpleNamespace
 
 import h5py
 import numpy as np
-from temporaldata import RegularTimeSeries
 
-from brainsets_pipelines.neuroprobe_2025 import pipeline as neuroprobe_pipeline
+from torch_brain.data import RegularTimeSeries
+
+from _utils import add_pipelines_to_path
+
+add_pipelines_to_path()
+from neuroprobe_2025 import (  # ty:ignore[unresolved-import]
+    pipeline as neuroprobe_pipeline,
+)
 
 
 def test_extract_neural_data_uses_sample_index_timestamps(tmp_path):
