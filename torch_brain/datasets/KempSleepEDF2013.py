@@ -1,8 +1,8 @@
 from typing import Callable, Optional, Literal, get_args
 from pathlib import Path
-from torch_brain.utils import np_string_prefix
-from temporaldata import Data
 
+from torch_brain.utils import np_string_prefix
+from torch_brain.data import Data
 from torch_brain.dataset import Dataset
 
 from ._utils import get_processed_dir

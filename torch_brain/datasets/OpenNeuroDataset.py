@@ -4,10 +4,9 @@ import hashlib
 
 import numpy as np
 
-from temporaldata import Data, Interval
+from torch_brain.data import Data, Interval
 from torch_brain.dataset import MultiChannelDatasetMixin, Dataset
-
-from brainsets.utils.split import _get_integer_hash_from_string
+from torch_brain.utils.split import _get_integer_hash_from_string
 
 OpenNeuroSplitType = Literal["intrasession", "intersubject", "intersession"]
 

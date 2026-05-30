@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 
-from brainsets.datasets.OpenNeuroDataset import OpenNeuroDataset, OpenNeuroSplitType
+from .OpenNeuroDataset import OpenNeuroDataset, OpenNeuroSplitType
 
 
 class KlinzingSleepDS005555(OpenNeuroDataset):

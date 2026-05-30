@@ -12,10 +12,10 @@ class _RecordingGroup(list):
     Iterating or indexing works like a normal list.  Named sub-groups are
     accessible as attributes and are themselves ``_RecordingGroup`` instances::
 
-        >>> RECORDING_IDS.navigation          # all 42 nav sessions
-        >>> RECORDING_IDS.navigation.of       # 31 open-field sessions
-        >>> RECORDING_IDS.sleep               # 9 sleep sessions
-        >>> list(RECORDING_IDS)               # all 51 sessions
+        >>> RECORDING_IDS.navigation          # all 42 nav sessions # doctest: +SKIP
+        >>> RECORDING_IDS.navigation.of       # 31 open-field sessions # doctest: +SKIP
+        >>> RECORDING_IDS.sleep               # 9 sleep sessions # doctest: +SKIP
+        >>> list(RECORDING_IDS)               # all 51 sessions # doctest: +SKIP
     """
 
     def __init__(self, ids=None, **subgroups):

@@ -3,9 +3,9 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pytest
-from temporaldata import Interval
 
-from brainsets.datasets.Neuroprobe2025 import (
+from torch_brain.data import Interval
+from torch_brain.datasets.Neuroprobe2025 import (
     Neuroprobe2025,
     _from_recording_id,
     _to_recording_id,
