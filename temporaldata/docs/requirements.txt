@@ -1,0 +1,8 @@
+sphinx
+pydata-sphinx-theme
+myst-nb
+sphinx-autodoc-typehints
+sphinx-inline-tabs
+sphinx-design
+sphinx-copybutton
+sphinxcontrib-sass
