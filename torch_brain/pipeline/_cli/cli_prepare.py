@@ -15,7 +15,7 @@ except ModuleNotFoundError:  # Python <3.11
 
 from click.shell_completion import CompletionItem
 
-from brainsets.config import CONFIG_FILE, load_config
+from torch_brain.pipeline.config import CONFIG_FILE, load_config
 
 from .utils import (
     PIPELINES_PATH,

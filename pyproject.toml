@@ -61,3 +61,6 @@ Documentation = "https://torch-brain.readthedocs.io/en/latest/"
 
 [tool.setuptools.packages.find]
 include = ["torch_brain*"]
+
+[project.scripts]
+brainsets = "torch_brain.pipeline._cli:cli"

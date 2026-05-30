@@ -9,8 +9,6 @@ from rich.console import Console
 from contextlib import contextmanager
 import traceback
 
-from .runner import get_style
-
 
 class BrainsetPipeline(ABC):
     r"""Abstract base class for defining processing pipelines.
@@ -155,6 +153,8 @@ class BrainsetPipeline(ABC):
         Update the current status of the pipeline for a given asset.
         This will be shown on the terminal.
         """
+        from .runner import get_style
+
         if self._tracker_handle is not None:
             self._tracker_handle.update_status.remote(self._asset_id, status)
 

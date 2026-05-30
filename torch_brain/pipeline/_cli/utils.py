@@ -2,9 +2,8 @@ import os
 from typing import Union
 import click
 from pathlib import Path
-import brainsets_pipelines
 
-PIPELINES_PATH = Path(brainsets_pipelines.__path__[0])
+PIPELINES_PATH = Path(__file__).parents[3] / "brainsets_pipelines"
 
 
 def expand_path(path: Union[str, Path]) -> Path:
