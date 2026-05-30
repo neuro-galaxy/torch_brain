@@ -1,8 +1,13 @@
+import sys
+from pathlib import Path
 import numpy as np
 import pytest
-from temporaldata import Interval
+from torch_brain.data import Interval
 
-from brainsets_pipelines.vollan_moser_alternating_2025.pipeline import (
+from _utils import add_pipelines_to_path
+
+add_pipelines_to_path()
+from vollan_moser_alternating_2025.pipeline import (  # ty:ignore[unresolved-import]
     build_domain_from_timestamps,
     build_sleep_domain,
     extract_navigation_samples,
@@ -11,7 +16,6 @@ from brainsets_pipelines.vollan_moser_alternating_2025.pipeline import (
     LMT_POPULATIONS,
     LMT_VARIABLES,
 )
-
 
 # ---------------------------------------------------------------------------
 # build_domain_from_timestamps
