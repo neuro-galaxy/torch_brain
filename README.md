@@ -12,6 +12,10 @@
 
 **torch_brain** is a Python library for various deep learning models designed for neuroscience.
 
+> [!NOTE]
+> We have merged `temporaldata` and `brainsets` into `torch_brain`.
+> If you are migrating from v0.1.x, please see [this migration guide](howto/MIGRATE_TO_v0.2.md).
+
 ### Features
 + Multi-recording training
 + Optimized data loading with with on-demand data access -- only loads data when needed
@@ -28,15 +32,17 @@
 + More coming soon...
 
 ## Installation
-torch_brain is available for Python >= 3.10 and can be installed via pip.
-
-We recommend using a virtual environment to manage dependencies, and Python 3.10.
-
-To create and activate a new virtual environment with `venv`, run:
+**torch_brain** is available for Python >= 3.10. To install a stable release, do:
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows, use: .venv\Scripts\activate
-pip install torch_brain
+pip install torch torch_brain
+```
+
+If you only wish to work with `torch_brain.data`, and pipeline related modules,
+you can skip installing `torch`.
+
+To install the development version:
+```bash
+pip install git+https://github.com/neuro-galaxy/torch_brain
 ```
 
 ## Contributing
