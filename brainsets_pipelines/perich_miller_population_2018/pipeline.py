@@ -19,21 +19,23 @@ from scipy.ndimage import binary_dilation, binary_erosion
 from sklearn.model_selection import train_test_split
 import pandas as pd
 
-from temporaldata import Data, IrregularTimeSeries, Interval
-from brainsets.descriptions import (
+from torch_brain.data import (
+    Data,
+    IrregularTimeSeries,
+    Interval,
     BrainsetDescription,
     SessionDescription,
     DeviceDescription,
+    serialize_fn_map,
 )
-from brainsets.utils.dandi_utils import (
+from torch_brain.utils.dandi import (
     extract_spikes_from_nwbfile,
     extract_subject_from_nwb,
     download_file,
     get_nwb_asset_list,
 )
-from brainsets import serialize_fn_map
 
-from brainsets.pipeline import BrainsetPipeline
+from torch_brain.pipeline import BrainsetPipeline
 
 parser = ArgumentParser()
 parser.add_argument("--redownload", action="store_true")

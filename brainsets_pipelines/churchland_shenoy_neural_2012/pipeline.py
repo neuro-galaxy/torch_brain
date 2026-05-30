@@ -1,6 +1,9 @@
 # /// brainset-pipeline
 # python-version = "3.11"
-# dependencies = ["dandi==0.74.0"]
+# dependencies = [
+#     "dandi==0.74.0",
+#     "scipy>=1.10.1",
+# ]
 # ///
 
 import datetime
@@ -14,16 +17,19 @@ import numpy as np
 import pandas as pd
 from pynwb import NWBHDF5IO
 from scipy.ndimage import binary_dilation
-from temporaldata import ArrayDict, Data, Interval, IrregularTimeSeries
 
-from brainsets import serialize_fn_map
-from brainsets.descriptions import (
+from torch_brain.data import (
+    ArrayDict,
+    Data,
+    Interval,
+    IrregularTimeSeries,
     BrainsetDescription,
     DeviceDescription,
     SessionDescription,
+    serialize_fn_map,
 )
-from brainsets.pipeline import BrainsetPipeline
-from brainsets.utils.dandi_utils import (
+from torch_brain.pipeline import BrainsetPipeline
+from torch_brain.utils.dandi import (
     download_file,
     extract_subject_from_nwb,
     get_nwb_asset_list,

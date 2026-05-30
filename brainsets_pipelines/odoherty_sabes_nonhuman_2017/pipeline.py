@@ -14,23 +14,22 @@ from pathlib import Path
 import h5py
 import numpy as np
 import pandas as pd
-from temporaldata import (
+
+from torch_brain.data import (
     ArrayDict,
     Data,
     Interval,
     IrregularTimeSeries,
     RegularTimeSeries,
-)
-
-from brainsets import serialize_fn_map
-from brainsets.descriptions import (
+    serialize_fn_map,
     BrainsetDescription,
     DeviceDescription,
     SessionDescription,
     SubjectDescription,
 )
-from brainsets.pipeline import BrainsetPipeline
-from brainsets.utils.misc_utils import calculate_sampling_rate
+
+from torch_brain.pipeline import BrainsetPipeline
+from torch_brain.utils import calculate_sampling_rate
 
 logging.basicConfig(level=logging.INFO)
 

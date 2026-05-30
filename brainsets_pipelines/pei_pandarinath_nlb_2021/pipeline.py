@@ -9,23 +9,25 @@ import datetime
 import numpy as np
 import h5py
 from pynwb import NWBHDF5IO
-from temporaldata import Data, IrregularTimeSeries, Interval, RegularTimeSeries
 import pandas as pd
 
-from brainsets.descriptions import (
+from torch_brain.data import (
+    Data,
+    IrregularTimeSeries,
+    Interval,
+    RegularTimeSeries,
     BrainsetDescription,
     SessionDescription,
     DeviceDescription,
+    serialize_fn_map,
 )
-from brainsets.utils.dandi_utils import (
+from torch_brain.utils.dandi import (
     extract_spikes_from_nwbfile,
     extract_subject_from_nwb,
     get_nwb_asset_list,
     download_file,
 )
-from brainsets import serialize_fn_map
-
-from brainsets.pipeline import BrainsetPipeline
+from torch_brain.pipeline import BrainsetPipeline
 
 parser = ArgumentParser()
 parser.add_argument("--redownload", action="store_true")

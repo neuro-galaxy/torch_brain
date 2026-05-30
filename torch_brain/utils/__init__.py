@@ -1,8 +1,9 @@
 from .tokenizers import create_linspace_latent_tokens, create_start_end_unit_tokens
 from .weights import resolve_weights_based_on_interval_membership, isin_interval
-from .misc import np_string_prefix
+from .misc import np_string_prefix, calculate_sampling_rate
 from .binning import bin_spikes
-from .stitcher import stitch
+
+# from .stitcher import stitch
 
 
 def seed_everything(*args, **kwargs):

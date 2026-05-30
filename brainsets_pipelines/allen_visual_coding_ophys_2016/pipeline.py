@@ -34,14 +34,14 @@ from temporaldata import (
     RegularTimeSeries,
 )
 
-from brainsets import serialize_fn_map
-from brainsets.descriptions import (
+from torch_brain.data import (
     BrainsetDescription,
     DeviceDescription,
     SessionDescription,
     SubjectDescription,
+    serialize_fn_map,
 )
-from brainsets.pipeline import BrainsetPipeline
+from torch_brain.pipeline import BrainsetPipeline
 from split import generate_train_valid_test_splits
 
 logging.basicConfig(level=logging.INFO)

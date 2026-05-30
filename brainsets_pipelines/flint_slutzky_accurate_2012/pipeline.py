@@ -13,16 +13,19 @@ import numpy as np
 import pandas as pd
 import requests
 from scipy.io import loadmat
-from temporaldata import ArrayDict, Data, Interval, IrregularTimeSeries
 
-from brainsets import serialize_fn_map
-from brainsets.descriptions import (
+from torch_brain.data import (
+    ArrayDict,
+    Data,
+    Interval,
+    IrregularTimeSeries,
     BrainsetDescription,
     DeviceDescription,
     SessionDescription,
     SubjectDescription,
+    serialize_fn_map,
 )
-from brainsets.pipeline import BrainsetPipeline
+from torch_brain.pipeline import BrainsetPipeline
 
 parser = ArgumentParser()
 parser.add_argument("--redownload", action="store_true")
