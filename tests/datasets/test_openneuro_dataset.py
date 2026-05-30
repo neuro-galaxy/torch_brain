@@ -5,10 +5,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from unittest.mock import patch
-from temporaldata import Interval
 
-from brainsets.datasets.OpenNeuroDataset import OpenNeuroDataset
-from brainsets.utils.split import _get_integer_hash_from_string
+from torch_brain.data import Interval
+from torch_brain.datasets.OpenNeuroDataset import OpenNeuroDataset
+from torch_brain.utils.split import _get_integer_hash_from_string
 
 
 # ============================================================================
