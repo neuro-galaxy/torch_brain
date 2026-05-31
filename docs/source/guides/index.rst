@@ -6,5 +6,6 @@ User Guide
 
    installation
    data/index
+   pipeline/index
    sampling/index
    examples/index

@@ -1,15 +1,8 @@
-User Guide
-==========
+Working with Brainsets Pipelines
+================================
 
 .. toctree::
    :maxdepth: 1
-   :caption: Get Started
-
-   installation
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Tutorials
 
    using_existing_data
    prepare_data
