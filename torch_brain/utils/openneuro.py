@@ -4,6 +4,22 @@ This module provides functions for dataset validation, file listing,
 and downloading from OpenNeuro's S3 bucket.
 """
 
+__all__ = [
+    "OPENNEURO_S3_BUCKET",
+    "construct_s3_url_from_path",
+    "download_dataset_description",
+    "download_recording",
+    "fetch_latest_snapshot_tag",
+    "fetch_all_filenames",
+    "fetch_participants_tsv",
+    "fetch_species",
+]
+
+__api_ref__ = {
+    "description": None,
+    "sections": [{"autosummary": __all__}],
+}
+
 from io import BytesIO
 from pathlib import Path
 from typing import Optional

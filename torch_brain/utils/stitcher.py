@@ -1,3 +1,12 @@
+__all__ = [
+    "stitch",
+]
+
+__api_ref__ = {
+    "description": None,
+    "sections": [{"autosummary": __all__}],
+}
+
 import torch
 
 
