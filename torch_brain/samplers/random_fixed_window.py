@@ -39,7 +39,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
     Example::
 
         >>> import numpy as np
-        >>> from temporaldata import Interval
+        >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import RandomFixedWindowSampler
 
         >>> sampling_intervals = {

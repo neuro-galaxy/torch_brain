@@ -28,8 +28,8 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
 
     Example::
 
-        >>> from temporaldata import Interval
         >>> import numpy as np
+        >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import TrialSampler
 
         >>> sampling_intervals = {

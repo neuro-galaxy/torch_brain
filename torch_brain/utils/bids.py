@@ -642,10 +642,6 @@ def _is_bids_root(path: str | Path) -> bool:
     Returns:
         bool: True if the path is a valid BIDS root (i.e., it is a directory and has at least one BIDS subject entity).
               False otherwise.
-
-    Example:
-        >>> _is_bids_root("/path/to/bids/dataset")
-        True
     """
     _check_mne_bids_available("_is_bids_root")
 
@@ -684,12 +680,6 @@ def _validate_modality(modality: _ModalityLiteral) -> None:
 
     Raises:
         ValueError: If modality is not one of the supported values in _SUPPORTED_MODALITIES.
-
-    Examples:
-        >>> _validate_modality("eeg")  # No error
-        >>> _validate_modality("ieeg")  # No error
-        >>> _validate_modality("EEG")  # Raises ValueError
-        >>> _validate_modality("unsupported_modality")  # Raises ValueError
     """
     if modality not in _SUPPORTED_MODALITIES:
         raise ValueError(

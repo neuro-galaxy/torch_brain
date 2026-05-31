@@ -201,10 +201,10 @@ def construct_s3_url_from_path(
 
     Example:
         >>> construct_s3_url_from_path(
-        >>>     dataset_id="ds004019",
-        >>>     data_file_path="sub-01/ses-01/eeg/sub-01_ses-01_task-nap_run-1_eeg.edf",
-        >>>     recording_id="sub-01_ses-01_task-nap_run-1"
-        >>> )
+        ...     dataset_id="ds004019",
+        ...     data_file_path="sub-01/ses-01/eeg/sub-01_ses-01_task-nap_run-1_eeg.edf",
+        ...     recording_id="sub-01_ses-01_task-nap_run-1"
+        ... )
         's3://openneuro.org/ds004019/sub-01/ses-01/eeg/sub-01_ses-01_task-nap_run-1'
 
     Returns:
