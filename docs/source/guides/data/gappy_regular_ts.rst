@@ -149,7 +149,7 @@ additions specific to gappy series:
 Notice that the domain does *not* start at :math:`t = 3`, and
 the gap between :math:`t = 6` and :math:`t = 8` is preserved.
 
-.. figure:: ../_static/gappy-slice.png
+.. figure:: /_static/gappy-slice.png
    :width: 65%
    :align: center
 

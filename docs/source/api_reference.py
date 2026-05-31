@@ -52,6 +52,7 @@ is not a particular submodule does the hook become useful.
 
 # Modules to include in API reference.
 API_MODS = [
+    "torch_brain.data",
     "torch_brain.dataset",
     "torch_brain.samplers",
     "torch_brain.transforms",
