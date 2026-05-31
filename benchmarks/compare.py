@@ -93,7 +93,7 @@ def run_benchmark(source_dir: str | None, label: str) -> list[dict]:
     """Run benchmark.py, optionally overriding the import source."""
     env = os.environ.copy()
     if source_dir is not None:
-        env["TEMPORALDATA_SOURCE"] = source_dir
+        env["TORCH_BRAIN_SOURCE"] = source_dir
 
     print(f"Running benchmarks for {label}...")
     result = subprocess.run(
