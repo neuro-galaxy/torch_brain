@@ -72,3 +72,20 @@ include = ["torch_brain*"]
 
 [project.scripts]
 brainsets = "torch_brain.pipeline._cli:cli"
+
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.ty.src]
+include = ["torch_brain/data", "tests/data"]
+
+[tool.ty.rules]
+# Change these to "error" over time
+invalid-argument-type = "error"
+unresolved-attribute = "error"
+unsupported-operator = "ignore"
+invalid-return-type = "ignore"
+invalid-method-override = "ignore"
+invalid-assignment = "ignore"
+not-iterable = "ignore"
+invalid-parameter-default = "ignore"

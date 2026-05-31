@@ -146,7 +146,7 @@ class TestBrainsetDescription:
         }
         kwargs[field] = None
         with pytest.raises(ValueError, match=f"{field} must be a string"):
-            BrainsetDescription(**kwargs)  # type: ignore
+            BrainsetDescription(**kwargs)
 
     @pytest.mark.parametrize(
         "field",
@@ -162,7 +162,7 @@ class TestBrainsetDescription:
         }
         kwargs[field] = 123
         with pytest.raises(ValueError, match=f"{field} must be a string, got"):
-            BrainsetDescription(**kwargs)  # type: ignore
+            BrainsetDescription(**kwargs)
 
     @pytest.mark.parametrize(
         "field",
