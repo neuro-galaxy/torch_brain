@@ -2,7 +2,7 @@ TorchBrain documentation
 ========================
 
 **torch_brain** is a library for designing and training deep learning models on neural data.
-It provides `PyTorch <https://pytorch.org>`_-compatible interfaces like :ref:`Dataset <dataset_ref>`,
+It provides `PyTorch <https://pytorch.org>`_-compatible interfaces like :ref:`Dataset <datasets_ref>`,
 :ref:`Samplers <samplers_ref>`, :ref:`nn.Modules <nn_ref>`, and more to help you write your
 very own models and training scripts.
 

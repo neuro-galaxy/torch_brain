@@ -3,7 +3,7 @@ from pathlib import Path
 
 from torch_brain.utils import np_string_prefix
 from torch_brain.data import Data
-from torch_brain.dataset import Dataset
+from torch_brain.datasets import Dataset
 
 from ._utils import get_processed_dir
 

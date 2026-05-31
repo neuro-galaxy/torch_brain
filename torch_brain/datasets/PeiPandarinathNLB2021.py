@@ -1,7 +1,7 @@
 from typing import Callable, Optional, Literal
 from pathlib import Path
 
-from torch_brain.dataset import Dataset, SpikingDatasetMixin
+from torch_brain.datasets import Dataset, SpikingDatasetMixin
 
 from ._utils import get_processed_dir
 

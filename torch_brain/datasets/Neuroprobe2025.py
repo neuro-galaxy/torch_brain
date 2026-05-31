@@ -8,7 +8,7 @@ from typing import Callable, Literal, Optional, get_args
 import numpy as np
 
 from torch_brain.data import Data, Interval
-from torch_brain.dataset import Dataset, MultiChannelDatasetMixin
+from torch_brain.datasets import Dataset, MultiChannelDatasetMixin
 
 from ._utils import get_processed_dir
 

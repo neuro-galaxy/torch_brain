@@ -54,7 +54,7 @@ is not a particular submodule does the hook become useful.
 API_MODS = [
     "torch_brain.batching",
     "torch_brain.data",
-    "torch_brain.dataset",
+    "torch_brain.datasets",
     "torch_brain.models",
     "torch_brain.nn",
     "torch_brain.pipeline",

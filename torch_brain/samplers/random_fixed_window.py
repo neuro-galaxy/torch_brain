@@ -6,7 +6,7 @@ from functools import cached_property
 import torch
 
 from torch_brain.data import Interval
-from torch_brain.dataset import DatasetIndex
+from torch_brain.datasets import DatasetIndex
 
 
 class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):

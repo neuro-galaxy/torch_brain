@@ -6,7 +6,7 @@ import torch
 from temporaldata import Data, Interval
 from torch_brain.batching.collate import pad8
 from torch_brain.utils import isin_interval
-from torch_brain.dataset import DatasetIndex, Dataset
+from torch_brain.datasets import DatasetIndex, Dataset
 
 
 @dataclass(frozen=True)
