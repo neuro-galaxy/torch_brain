@@ -346,16 +346,16 @@ def extract_channels(
 
     Examples:
         >>> from mne.io import read_raw_edf
-        >>> raw = read_raw_edf("example.edf", preload=True)
-        >>> metadata = extract_channels(raw)
-        >>> print(metadata.keys())
+        >>> raw = read_raw_edf("example.edf", preload=True)  # doctest: +SKIP
+        >>> metadata = extract_channels(raw)  # doctest: +SKIP
+        >>> print(metadata.keys())  # doctest: +SKIP
         ['id', 'type', 'pos', 'bad']
 
         >>> # Remap channel names, types, and positions
-        >>> name_map = {"EEG F3-M2": "F3", "EEG F4-M1": "F4"}
-        >>> type_map = {"eeg": ["F3", "F4"]}
-        >>> pos_map = {"F3": np.array([0.0, 0.7, 0.0]), "F4": np.array([0.6, 0.7, 0.0])}
-        >>> metadata = extract_channels(raw, name_map, type_map, pos_map)
+        >>> name_map = {"EEG F3-M2": "F3", "EEG F4-M1": "F4"}  # doctest: +SKIP
+        >>> type_map = {"eeg": ["F3", "F4"]}  # doctest: +SKIP
+        >>> pos_map = {"F3": np.array([0.0, 0.7, 0.0]), "F4": np.array([0.6, 0.7, 0.0])}  # doctest: +SKIP
+        >>> metadata = extract_channels(raw, name_map, type_map, pos_map)  # doctest: +SKIP
     """
     _check_mne_available("extract_channels")
 

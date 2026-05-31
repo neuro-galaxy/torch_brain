@@ -153,18 +153,19 @@ def download_prefix(
 
     Examples:
         >>> # Basic usage
-        >>> download_prefix(
-                bucket="openneuro.org",
-                prefix="ds005555/sub-1/eeg/sub-1_task-Sleep",
-                target_dir=Path("~/data/raw/brainset_ds005555")
-            )
+        >>> download_prefix(  # doctest: +SKIP
+        ...     bucket="openneuro.org",
+        ...     prefix="ds005555/sub-1/eeg/sub-1_task-Sleep",
+        ...     target_dir=Path("~/data/raw/brainset_ds005555")
+        ... )
+
         >>> # Custom strip_prefix
-        >>> download_prefix(
-                bucket="fcp-indi",
-                prefix="data/Projects/EEG_Eyetracking_CMI_data/A00054400",
-                target_dir=Path("~/data/raw/brainset_ds005555"),
-                strip_prefix="data/Projects/"
-            )
+        >>> download_prefix(  # doctest: +SKIP
+        ...     bucket="fcp-indi",
+        ...     prefix="data/Projects/EEG_Eyetracking_CMI_data/A00054400",
+        ...     target_dir=Path("~/data/raw/brainset_ds005555"),
+        ...     strip_prefix="data/Projects/"
+        ... )
     """
     _check_boto_available("download_prefix")
     if s3_client is None:
