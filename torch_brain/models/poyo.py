@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from torch_brain.data import Data
 
 from torch_brain.batching import pad8, track_mask8
-from torch_brain.dataset import Dataset
+from torch_brain.datasets import Dataset
 from torch_brain.nn import (
     Embedding,
     InfiniteVocabEmbedding,

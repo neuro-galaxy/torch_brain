@@ -1,7 +1,7 @@
 from typing import Dict
 
 import torch
-from torch_brain.dataset import DatasetIndex
+from torch_brain.datasets import DatasetIndex
 from torch_brain.data import Interval
 
 

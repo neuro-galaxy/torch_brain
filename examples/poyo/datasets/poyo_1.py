@@ -6,7 +6,7 @@ from brainsets.datasets import (
     FlintSlutzkyAccurate2012,
     OdohertySabesNonhuman2017,
 )
-from torch_brain.dataset import SpikingDatasetMixin, NestedDataset
+from torch_brain.datasets import SpikingDatasetMixin, NestedDataset
 from datasets.poyo_mp import PoyoMPDataset
 from datasets.wrapper import PoyoReadoutConfig
 

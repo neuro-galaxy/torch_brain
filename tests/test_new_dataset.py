@@ -18,8 +18,13 @@ from torch_brain.data import (
     SubjectDescription,
 )
 
-from torch_brain.dataset import Dataset, DatasetIndex, NestedDataset
-from torch_brain.dataset.mixins import SpikingDatasetMixin, MultiChannelDatasetMixin
+from torch_brain.datasets import (
+    Dataset,
+    DatasetIndex,
+    NestedDataset,
+    SpikingDatasetMixin,
+    MultiChannelDatasetMixin,
+)
 
 
 def create_spiking_data(brainset_id, subject_id, session_id, length):
