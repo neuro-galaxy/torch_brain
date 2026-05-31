@@ -1,5 +1,15 @@
 """Base pipeline classes for OpenNeuro datasets."""
 
+__all__ = [
+    "OpenNeuroPipeline",
+]
+
+# Drives the generated API reference; see docs/source/api_reference.py.
+__api_ref__ = {
+    "description": None,
+    "sections": [{"autosummary": __all__}],
+}
+
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path

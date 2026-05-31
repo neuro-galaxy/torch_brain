@@ -52,15 +52,24 @@ is not a particular submodule does the hook become useful.
 
 # Modules to include in API reference.
 API_MODS = [
+    "torch_brain.batching",
     "torch_brain.data",
     "torch_brain.dataset",
+    "torch_brain.models",
+    "torch_brain.nn",
+    "torch_brain.pipeline",
+    "torch_brain.pipeline.openneuro",
     "torch_brain.samplers",
     "torch_brain.transforms",
-    "torch_brain.batching",
-    "torch_brain.nn",
-    "torch_brain.models",
     "torch_brain.utils",
-    "torch_brain.data",
+    "torch_brain.utils.bids",
+    "torch_brain.utils.dandi",
+    "torch_brain.utils.mne",
+    "torch_brain.utils.openneuro",
+    "torch_brain.utils.s3",
+    "torch_brain.utils.signal",
+    "torch_brain.utils.split",
+    "torch_brain.utils.stitcher",
 ]
 
 API_REFERENCE = {m: import_module(m).__api_ref__ for m in API_MODS}
