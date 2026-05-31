@@ -5,11 +5,11 @@ realistic lazy-loaded recording objects, IrregularTimeSeries/Interval
 inner-loop slicing, and Interval set operations at production-typical sizes.
 
 Usage:
-    uv run python benchmarks/benchmark.py
-    uv run python benchmarks/benchmark.py --json
-    uv run python benchmarks/benchmark.py --save results.jsonl
+    uv run python scripts/data_benchmarks/benchmark.py
+    uv run python scripts/data_benchmarks/benchmark.py --json
+    uv run python scripts/data_benchmarks/benchmark.py --save results.jsonl
 
-Set TEMPORALDATA_SOURCE to override where temporaldata is imported from
+Set TORCH_BRAIN_SOURCE to override where temporaldata is imported from
 (used by compare.py to benchmark code from arbitrary commits).
 """
 
@@ -25,14 +25,14 @@ import timeit
 import traceback
 
 _source = os.environ.get(
-    "TEMPORALDATA_SOURCE", os.path.join(os.path.dirname(__file__), "..")
+    "TORCH_BRAIN_SOURCE", os.path.join(os.path.dirname(__file__), "..")
 )
 sys.path.insert(0, _source)
 
 import h5py
 import numpy as np
 
-from temporaldata import (
+from torch_brain.data import (
     ArrayDict,
     Data,
     Interval,

@@ -5,9 +5,9 @@ runs the current benchmark.py against each, then displays a side-by-side
 comparison table.
 
 Usage:
-    uv run python benchmarks/compare.py                      # benchmark working tree
-    uv run python benchmarks/compare.py <commit>              # <commit> vs working tree
-    uv run python benchmarks/compare.py <commitA> <commitB>   # commitA vs commitB
+    uv run python scripts/data_benchmarks/compare.py                      # benchmark working tree
+    uv run python scripts/data_benchmarks/compare.py <commit>              # <commit> vs working tree
+    uv run python scripts/data_benchmarks/compare.py <commitA> <commitB>   # commitA vs commitB
 
 Options:
     --save PATH   Append comparison results as JSONL to PATH.
@@ -93,7 +93,7 @@ def run_benchmark(source_dir: str | None, label: str) -> list[dict]:
     """Run benchmark.py, optionally overriding the import source."""
     env = os.environ.copy()
     if source_dir is not None:
-        env["TEMPORALDATA_SOURCE"] = source_dir
+        env["TORCH_BRAIN_SOURCE"] = source_dir
 
     print(f"Running benchmarks for {label}...")
     result = subprocess.run(
@@ -171,9 +171,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Compare temporaldata benchmarks across git commits.",
         epilog="Examples:\n"
-        "  uv run python benchmarks/compare.py\n"
-        "  uv run python benchmarks/compare.py abc123\n"
-        "  uv run python benchmarks/compare.py abc123 def456\n",
+        "  uv run python scripts/data_benchmarks/compare.py\n"
+        "  uv run python scripts/data_benchmarks/compare.py abc123\n"
+        "  uv run python scripts/data_benchmarks/compare.py abc123 def456\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(

@@ -34,7 +34,7 @@ jobs:
 
       - name: Run benchmark comparison (main vs PR HEAD)
         run: |
-          uv run python benchmarks/compare.py origin/main HEAD | tee benchmark-report.txt
+          uv run python scripts/data_benchmarks/compare.py origin/main HEAD | tee benchmark-report.txt
 
       - name: Upsert PR benchmark comment
         uses: actions/github-script@v7
@@ -50,7 +50,7 @@ jobs:
             const body = `${marker}
             ## Benchmark comparison vs main
 
-            Baseline: \`origin/main\`  
+            Baseline: \`origin/main\`
             Target: \`HEAD\`
 
             \`\`\`text
