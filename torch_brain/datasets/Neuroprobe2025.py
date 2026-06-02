@@ -481,15 +481,13 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
             self.test_subject, bool
         ):
             raise TypeError(
-                "test_subject must be an int, got "
-                f"{type(self.test_subject).__name__}."
+                f"test_subject must be an int, got {type(self.test_subject).__name__}."
             )
         if not isinstance(self.test_session, Integral) or isinstance(
             self.test_session, bool
         ):
             raise TypeError(
-                "test_session must be an int, got "
-                f"{type(self.test_session).__name__}."
+                f"test_session must be an int, got {type(self.test_session).__name__}."
             )
 
         h5_regime = H5_REGIME_BY_REGIME[self.regime]

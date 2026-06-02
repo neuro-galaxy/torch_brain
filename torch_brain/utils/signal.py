@@ -81,9 +81,9 @@ def extract_bands(
         )
 
     target_Fs = 50
-    assert (
-        Fs % target_Fs == 0
-    ), "Sampling rate must be a multiple of the target frequency"
+    assert Fs % target_Fs == 0, (
+        "Sampling rate must be a multiple of the target frequency"
+    )
 
     assert lfps.shape[0] == ts.shape[0], "Time should be first dimension."
     info = mne.create_info(

@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Mapping, Sequence
-from typing import Any, Literal
-from collections.abc import Callable
-from pathlib import Path
 import warnings
+from collections.abc import Callable, Mapping, Sequence
+from pathlib import Path
+from typing import Any, Literal
 
 import h5py
 import numpy as np
 
 from .arraydict import ArrayDict, LazyArrayDict
-from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
-from .regular_ts import RegularTimeSeries, LazyRegularTimeSeries
 from .interval import Interval, LazyInterval
+from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
+from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries
 from .utils import _size_repr
 
 

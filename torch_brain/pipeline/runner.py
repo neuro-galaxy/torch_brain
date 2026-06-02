@@ -1,17 +1,17 @@
-import sys
-from typing import Any
-from argparse import ArgumentParser
+import logging
 import os
+import sys
 import time
+from argparse import ArgumentParser
 from collections import defaultdict
 from pathlib import Path
-import logging
+from typing import Any
+
+import pandas as pd
 import ray
 from ray.util.actor_pool import ActorPool
-
-from rich.live import Live
 from rich.console import Console
-import pandas as pd
+from rich.live import Live
 
 from .pipeline import BrainsetPipeline
 

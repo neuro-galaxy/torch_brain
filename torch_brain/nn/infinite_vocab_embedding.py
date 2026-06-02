@@ -86,9 +86,9 @@ class InfiniteVocabEmbedding(nn.Module):
             >>> embedding.weight.shape
             torch.Size([4, 64])
         """
-        assert (
-            self.vocab is None
-        ), f"Vocabulary already initialized, and has {len(self.vocab)} words. "
+        assert self.vocab is None, (
+            f"Vocabulary already initialized, and has {len(self.vocab)} words. "
+        )
         "If you want to add new words to the vocabulary, use extend_vocab() instead."
 
         # Create a mapping from words to indices

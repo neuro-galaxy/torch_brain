@@ -1,9 +1,6 @@
 from pathlib import Path
 
-import numpy as np
-
 from torch_brain.pipeline.config import CONFIG_FILE, load_config
-from torch_brain.data import Interval
 
 
 def get_processed_dir(path: Path = CONFIG_FILE) -> str:

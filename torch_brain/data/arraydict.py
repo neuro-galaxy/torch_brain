@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import copy
-from typing import List
 import logging
+from typing import List
 
 import h5py
 import numpy as np

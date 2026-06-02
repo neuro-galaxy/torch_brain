@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import copy
-from typing import List, Tuple, Union
 import logging
+from typing import List, Tuple, Union
 
 import h5py
 import numpy as np
 import pandas as pd
 
 from .arraydict import ArrayDict
-from .utils import _validate_select_by_mask_input
 from .typing import ArrayLike
+from .utils import _validate_select_by_mask_input
 
 
 class Interval(ArrayDict):

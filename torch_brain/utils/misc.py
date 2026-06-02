@@ -1,5 +1,5 @@
-from packaging import version
 import numpy as np
+from packaging import version
 
 
 def np_string_prefix(prefix: str, array: np.ndarray) -> np.ndarray:

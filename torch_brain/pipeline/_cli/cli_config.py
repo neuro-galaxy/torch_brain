@@ -1,9 +1,10 @@
-from typing import Optional
-import click
 from pathlib import Path
+from typing import Optional
+
+import click
 from prompt_toolkit import prompt
-from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.completion import PathCompleter
+from prompt_toolkit.shortcuts import CompleteStyle
 
 from torch_brain.pipeline.config import CONFIG_FILE, load_config, save_config
 

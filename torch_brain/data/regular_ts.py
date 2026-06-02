@@ -240,10 +240,7 @@ class RegularTimeSeries(ArrayDict):
 
         if end_id[-1] != n:
             raise RuntimeError(  # pragma: no cover
-                f"This should never happen. Debug info:\n"
-                f"{n=}\n"
-                f"{start_id=}\n"
-                f"{end_id=}\n"
+                f"This should never happen. Debug info:\n{n=}\n{start_id=}\n{end_id=}\n"
             )
 
         # Create an array that marks start of a True run by +1
@@ -883,9 +880,9 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert (
-            file.attrs["object"] == RegularTimeSeries.__name__
-        ), "object type mismatch"
+        assert file.attrs["object"] == RegularTimeSeries.__name__, (
+            "object type mismatch"
+        )
 
         obj = cls.__new__(cls)
         for key, value in file.items():
