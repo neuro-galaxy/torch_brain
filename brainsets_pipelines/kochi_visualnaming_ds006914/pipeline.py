@@ -8,7 +8,7 @@
 # ]
 # ///
 
-from brainsets.utils.openneuro import OpenNeuroPipeline
+from torch_brain.pipeline.openneuro import OpenNeuroPipeline
 
 
 class Pipeline(OpenNeuroPipeline):

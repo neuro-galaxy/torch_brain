@@ -26,23 +26,21 @@ from allensdk.core.brain_observatory_nwb_data_set import (
     EpochSeparationException,
     NoEyeTrackingException,
 )
-from temporaldata import (
+from split import generate_train_valid_test_splits
+
+from torch_brain.data import (
     ArrayDict,
+    BrainsetDescription,
     Data,
+    DeviceDescription,
     Interval,
     IrregularTimeSeries,
     RegularTimeSeries,
-)
-
-from torch_brain.data import (
-    BrainsetDescription,
-    DeviceDescription,
     SessionDescription,
     SubjectDescription,
     serialize_fn_map,
 )
 from torch_brain.pipeline import BrainsetPipeline
-from split import generate_train_valid_test_splits
 
 logging.basicConfig(level=logging.INFO)
 

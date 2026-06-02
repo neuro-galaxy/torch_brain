@@ -16,11 +16,11 @@ from scipy.io import loadmat
 
 from torch_brain.data import (
     ArrayDict,
+    BrainsetDescription,
     Data,
+    DeviceDescription,
     Interval,
     IrregularTimeSeries,
-    BrainsetDescription,
-    DeviceDescription,
     SessionDescription,
     SubjectDescription,
     serialize_fn_map,
@@ -664,7 +664,7 @@ def extract_theta_chunks(ds, domain):
     """Extract theta-cycle-binned timeseries from ``Dsession.thetaChunks``.
 
     This is on a **different timebase** to the 10 ms samples — one sample per
-    theta cycle (~6–10 Hz, so roughly 39k cycles for a typical session).
+    theta cycle (~6-10 Hz, so roughly 39k cycles for a typical session).
 
     Stored fields:
         ``id``   decoded internal direction value per theta cycle

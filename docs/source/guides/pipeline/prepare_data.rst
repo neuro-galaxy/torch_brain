@@ -17,7 +17,7 @@ Download the raw data from the source and place it in a directory, e.g. ``./data
 
 **3. Start with the prepare_data.py template**
 
-Write a ``prepare_data.py`` script to load the raw data from a single recording, extract all relevant data and save it as a :obj:`temporaldata.Data` object.
+Write a ``prepare_data.py`` script to load the raw data from a single recording, extract all relevant data and save it as a :obj:`torch_brain.data.Data` object.
 
 The following is an example ``prepare_data.py`` script that can serve as a template:
 
@@ -28,7 +28,7 @@ The following is an example ``prepare_data.py`` script that can serve as a templ
     import os
     import h5py
 
-    from temporaldata import Data
+    from torch_brain.data  import Data
     from brainsets import serialize_fn_map
 
     def main():
@@ -59,11 +59,11 @@ The sections below describe how to fill in the highlighted sections.
 
 
 **4. Add the experiment metadata**
-First, create a :obj:`BrainsetDescription <brainsets.descriptions.BrainsetDescription>` object to specify dataset-level metadata:
+First, create a :obj:`BrainsetDescription <torch_brain.data.BrainsetDescription>` object to specify dataset-level metadata:
 
 .. code-block:: python
 
-    from brainsets.descriptions import BrainsetDescription
+    from torch_brain.data import BrainsetDescription
 
     brainset_description = BrainsetDescription(
         id="my_dataset_2024",
@@ -121,11 +121,11 @@ Based on the file format for you raw data, use the necessary imports and code to
 
 **6. Extract Subject metadata**
 
-Create a :class:`~brainsets.descriptions.SubjectDescription` object to store metadata:
+Create a :class:`~torch_brain.data.SubjectDescription` object to store metadata:
 
 .. code-block:: python
 
-    from brainsets.descriptions import SubjectDescription
+    from torch_brain.data import SubjectDescription
 
     subject = SubjectDescription(
         id="subject_1",
@@ -145,11 +145,11 @@ Note that if you are using NWB files from the DANDI archive, you can use the hel
 
 **7. Extract Session metadata**
 
-Create a :class:`~brainsets.descriptions.SessionDescription` object to store metadata:
+Create a :class:`~torch_brain.data.SessionDescription` object to store metadata:
 
 .. code-block:: python
 
-    from brainsets.descriptions import SessionDescription
+    from torch_brain.data import SessionDescription
 
     session = SessionDescription(
         id="session_1",
@@ -158,11 +158,11 @@ Create a :class:`~brainsets.descriptions.SessionDescription` object to store met
 
 **8. Extract Device metadata**
 
-Create a :class:`~brainsets.descriptions.DeviceDescription` object to store metadata:
+Create a :class:`~torch_brain.data.DeviceDescription` object to store metadata:
 
 .. code-block:: python
 
-    from brainsets.descriptions import DeviceDescription
+    from torch_brain.data import DeviceDescription
 
     device = DeviceDescription(
         id="device_1",
@@ -179,7 +179,7 @@ the expected outputs are ``spikes``and ``units``.
     .. code-block:: python
 
         import numpy as np
-        from temporaldata import IrregularTimeSeries, ArrayDict
+        from torch_brain.data  import IrregularTimeSeries, ArrayDict
 
         spike_times = ... # np.ndarray of spike times of shape (n_spikes,)
         spike_clusters = ... # np.ndarray of cluster IDs of shape (n_spikes,)
@@ -215,7 +215,7 @@ the expected outputs are ``cursor``.
 
 .. code-block:: python
 
-    from temporaldata import IrregularTimeSeries
+    from torch_brain.data  import IrregularTimeSeries
 
     cursor = IrregularTimeSeries(
         timestamps=...,
@@ -227,11 +227,11 @@ the expected outputs are ``cursor``.
 
 **11. Extract Trial Information**
 
-If you are working with data that is structured into trials, extract the trial information using a :class:`~temporaldata.Interval`:
+If you are working with data that is structured into trials, extract the trial information using a :class:`~torch_brain.data.Interval`:
 
 .. code-block:: python
 
-    from temporaldata import Interval
+    from torch_brain.data  import Interval
 
     trials = Interval(
         start=...,
@@ -243,11 +243,11 @@ If you are working with data that is structured into trials, extract the trial i
 
 **12. Put it all together**
 
-Add all the metadata and data objects to a :obj:`temporaldata.Data` object:
+Add all the metadata and data objects to a :obj:`torch_brain.data.Data` object:
 
 .. code-block:: python
 
-    from temporaldata import Data
+    from torch_brain.data  import Data
 
     data = Data(
         # metadata

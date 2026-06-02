@@ -1,5 +1,5 @@
-from typing import Callable, Optional, Literal
 from pathlib import Path
+from typing import Callable, Literal, Optional
 
 from torch_brain.datasets import Dataset, SpikingDatasetMixin
 
@@ -32,7 +32,7 @@ class OdohertySabesNonhuman2017(SpikingDatasetMixin, Dataset):
 
     **Links**
 
-    - Paper: `O'Doherty and Sabes (2018) – Journal of Neural Engineering <https://pubmed.ncbi.nlm.nih.gov/29192609/>`_
+    - Paper: `O'Doherty and Sabes (2018) - Journal of Neural Engineering <https://pubmed.ncbi.nlm.nih.gov/29192609/>`_
     - Dataset: `Zenodo Record 3854034 <https://zenodo.org/records/3854034>`_
 
     **Reference**

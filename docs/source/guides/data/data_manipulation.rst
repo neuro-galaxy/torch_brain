@@ -1,19 +1,19 @@
 Data manipulation
 -----------------
 
-The **temporaldata** package provides several ways for manipulating data objects.
+The **torch_brain** with the module :obj:`torch_brain.data` provides several ways for manipulating data objects.
 
 Time-based Slicing
 ~~~~~~~~~~~~~~~~~~
 
-All temporal data objects, :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`, 
-:obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>`, :obj:`Interval <temporaldata.Interval>`, 
-as well as :obj:`Data <temporaldata.Data>` objects support time-based slicing through the ``.slice()`` method:
+All temporal data objects, :obj:`IrregularTimeSeries <torch_brain.data.IrregularTimeSeries>`, 
+:obj:`RegularTimeSeries <torch_brain.data.RegularTimeSeries>`, :obj:`Interval <torch_brain.data.Interval>`, 
+as well as :obj:`Data <torch_brain.data.Data>` objects support time-based slicing through the ``.slice()`` method:
 
 .. code-block:: python
 
     import numpy as np
-    from temporaldata import Data, Interval, IrregularTimeSeries, RegularTimeSeries
+    from torch_brain.data  import Data, Interval, IrregularTimeSeries, RegularTimeSeries
 
     # Create a complex data object
     user_session = Data(
@@ -83,11 +83,11 @@ are reset relative to the new start time. To keep the original timestamps, set `
     print(sliced_user_session.activities.end)  # [3.]
 
 
-For point-based objects, :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>` and :obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>`, the timestamps that are in [start, end) are included in the slice.
+For point-based objects, :obj:`IrregularTimeSeries <torch_brain.data.IrregularTimeSeries>` and :obj:`RegularTimeSeries <torch_brain.data.RegularTimeSeries>`, the timestamps that are in [start, end) are included in the slice.
 
-For interval-based objects, :obj:`Interval <temporaldata.Interval>`, the intervals that overlap with the slice window are kept.
+For interval-based objects, :obj:`Interval <torch_brain.data.Interval>`, the intervals that overlap with the slice window are kept.
 
-For :obj:`Data <temporaldata.Data>` objects, the slice operation propagates to all nested data objects.
+For :obj:`Data <torch_brain.data.Data>` objects, the slice operation propagates to all nested data objects.
 
 Under the hood, the slicing operation is performed using a hybrid of binary search and a 
 kd-tree algorithm on the timestamps, making it very fast.
@@ -100,15 +100,15 @@ Another way of manipulating data is through boolean masks. While slicing selects
 based on time windows, masking allows selecting data points or intervals based on other attributes. 
 For example, you may want to select only spikes from certain neurons, or intervals with specific properties.
 
-All temporal data objects, :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`, 
-:obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>`, and :obj:`Interval <temporaldata.Interval>` support masking through the ``.select_by_mask()`` method. 
+All temporal data objects, :obj:`IrregularTimeSeries <torch_brain.data.IrregularTimeSeries>`, 
+:obj:`RegularTimeSeries <torch_brain.data.RegularTimeSeries>`, and :obj:`Interval <torch_brain.data.Interval>` support masking through the ``.select_by_mask()`` method. 
 The mask must be a 1D boolean array matching the length of the first dimension of the data arrays:
 
 .. code-block:: python
 
     import numpy as np
 
-    from temporaldata import Interval, IrregularTimeSeries
+    from torch_brain.data  import Interval, IrregularTimeSeries
 
     data = Interval(
         start=np.array([0.0, 2.0, 4.5]),

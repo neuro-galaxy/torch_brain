@@ -1,8 +1,9 @@
-When to use temporaldata
+When to use :obj:`torch_brain.data`
 ------------------------
 
-**temporaldata** is a Python package for working with temporal data. In particular it is
+The module :obj:`torch_brain.data` is designed to work with temporal data. In particular it is
 designed for complex, multi-modal, multi-resolution data. 
+
 
 Working with temporal data in real-world applications presents several challenges:
 
@@ -27,7 +28,7 @@ Traditional approaches using simple array operations become cumbersome when deal
     # Difficult to align and slice across different timescales
     # How do we get corresponding data for a 5-second window?
 
-temporaldata provides a solution by:
+:obj:`torch_brain.data` provides a solution by:
 
 1. Offering flexible data structures that handle multi-resolution and irregular data naturally
 2. Providing efficient temporal indexing across all data streams

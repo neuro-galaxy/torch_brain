@@ -382,7 +382,7 @@ class TestFromGappyTimeseries:
         assert rts.b.shape == (4, 4)
         assert np.isnan(rts.b[2]).all()
         np.testing.assert_array_equal(rts.b[[0, 1, 3]], b)
-        # Domain excludes the gap at 11.0–11.5.
+        # Domain excludes the gap at 11.0-11.5.
         np.testing.assert_allclose(rts.domain.start, [10.0, 11.5])
         np.testing.assert_allclose(rts.domain.end, [11.0, 12.0])
 

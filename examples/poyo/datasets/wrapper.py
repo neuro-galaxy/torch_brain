@@ -1,12 +1,13 @@
-from typing import Callable
 from dataclasses import dataclass
+from typing import Callable
+
 import numpy as np
 import torch
 
-from temporaldata import Data, Interval
 from torch_brain.batching.collate import pad8
+from torch_brain.data import Interval
+from torch_brain.datasets import Dataset, DatasetIndex
 from torch_brain.utils import isin_interval
-from torch_brain.datasets import DatasetIndex, Dataset
 
 
 @dataclass(frozen=True)

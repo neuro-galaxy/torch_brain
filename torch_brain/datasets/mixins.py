@@ -7,7 +7,7 @@ from torch_brain.utils import np_string_prefix
 
 class SpikingDatasetMixin:
     """
-    Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing spiking data.
+    Mixin class for :class:`torch_brain.datasets.Dataset` subclasses containing spiking data.
 
     Provides:
         - ``get_unit_ids()`` for retrieving IDs of all included units.
@@ -63,7 +63,7 @@ class SpikingDatasetMixin:
 
 class CalciumImagingDatasetMixin:
     """
-    Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing calcium imaging data.
+    Mixin class for :class:`torch_brain.datasets.Dataset` subclasses containing calcium imaging data.
 
     Provides:
         - ``get_roi_ids()`` for retrieving IDs of all included ROIs.
@@ -91,7 +91,7 @@ class CalciumImagingDatasetMixin:
 
 class MultiChannelDatasetMixin:
     """
-    Mixin class for :class:`torch_brain.dataset.Dataset` subclasses containing
+    Mixin class for :class:`torch_brain.datasets.Dataset` subclasses containing
     multi-channel recordings (e.g., EEG, ECoG, EMG, sEEG, etc).
 
     Provides:

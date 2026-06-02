@@ -1,5 +1,5 @@
-from typing import Callable, Optional, Literal
 from pathlib import Path
+from typing import Callable, Literal, Optional
 
 from torch_brain.datasets import Dataset, SpikingDatasetMixin
 
@@ -218,7 +218,7 @@ class VollanMoserAlternating2025(SpikingDatasetMixin, Dataset):
               ``"of_novel"``.
             - A ``RECORDING_IDS`` sub-group for finer control::
 
-                  from brainsets.datasets.VollanMoserAlternating2025 import RECORDING_IDS
+                  from torch_brain.datasets.VollanMoserAlternating2025 import RECORDING_IDS
                   ds = VollanMoserAlternating2025(root, recording_ids=RECORDING_IDS.navigation.of)
 
         transform (Callable, optional): Data transformation to apply.

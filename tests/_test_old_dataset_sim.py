@@ -6,27 +6,19 @@ import numpy as np
 import pytest
 import yaml
 from dateutil import parser
+
 from torch_brain.data import (
     ArrayDict,
+    BrainsetDescription,
     Data,
+    DeviceDescription,
     Interval,
     IrregularTimeSeries,
+    SessionDescription,
+    SubjectDescription,
+    serialize_fn_map,
 )
-
-from torch_brain.data import Dataset
-
-try:
-    from brainsets import serialize_fn_map
-    from brainsets.descriptions import (
-        BrainsetDescription,
-        DeviceDescription,
-        SessionDescription,
-        SubjectDescription,
-    )
-
-    BRAINSETS_AVAILABLE = True
-except ImportError:
-    BRAINSETS_AVAILABLE = False
+from torch_brain.datasets import Dataset
 
 GABOR_POS_2D_MEAN = 10.0
 GABOR_POS_2D_STD = 1.0
@@ -34,7 +26,6 @@ RUNNING_SPEED_MEAN = 20.0
 RUNNING_SPEED_STD = 2.0
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 @pytest.fixture
 def dummy_data(tmp_path):
 
@@ -175,7 +166,6 @@ def dummy_data(tmp_path):
     return tmp_path
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_dataset_selection(dummy_data):
     include_config_1 = [{"selection": [{"brainset": "allen_neuropixels_mock_1"}]}]
     include_config_2 = [
@@ -229,7 +219,6 @@ def test_dataset_selection(dummy_data):
         assert len(ds.recording_dict) == 1
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_recording_data(dummy_data):
     ds = Dataset(
         dummy_data,
@@ -243,7 +232,6 @@ def test_get_recording_data(dummy_data):
     assert len(data.gabors) == 1000
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_subject_ids(dummy_data):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".yaml") as temp_config_file:
         yaml.dump(
@@ -265,7 +253,6 @@ def test_get_subject_ids(dummy_data):
         ]
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_sampling_intervals(dummy_data):
     ds = Dataset(
         dummy_data,
@@ -278,7 +265,6 @@ def test_get_sampling_intervals(dummy_data):
     assert "allen_neuropixels_mock_1/20100102_1" in intervals
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_unit_ids(dummy_data):
     ds = Dataset(
         dummy_data,
@@ -291,7 +277,6 @@ def test_get_unit_ids(dummy_data):
     assert "allen_neuropixels_mock_1/20100102_1/unit2" in unit_ids
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_recording_config_dict(dummy_data):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".yaml") as temp_config_file:
         config = [
@@ -317,7 +302,6 @@ def test_get_recording_config_dict(dummy_data):
         assert config_dict["allen_neuropixels_mock_1/20100102_1"]["test_param"] == 123
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_session_ids(dummy_data):
     ds = Dataset(
         dummy_data,
@@ -329,7 +313,6 @@ def test_get_session_ids(dummy_data):
     assert "allen_neuropixels_mock_1/20100102_1" in session_ids
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_recording_data(dummy_data):
     ds = Dataset(
         dummy_data,
@@ -349,7 +332,6 @@ def test_get_recording_data(dummy_data):
     assert hasattr(data, "spikes")
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_slice(dummy_data):
     ds = Dataset(
         dummy_data,
@@ -366,7 +348,6 @@ def test_get_slice(dummy_data):
     assert data.subject.id == "allen_neuropixels_mock_1/alice"
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_disable_data_leakage_check(dummy_data):
     ds = Dataset(
         dummy_data,
@@ -379,7 +360,6 @@ def test_disable_data_leakage_check(dummy_data):
     assert ds._check_for_data_leakage_flag == False
 
 
-@pytest.mark.skipif(not BRAINSETS_AVAILABLE, reason="brainsets not installed")
 def test_get_brainset_ids(dummy_data):
     include_config = [
         {

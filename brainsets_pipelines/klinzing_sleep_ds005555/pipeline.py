@@ -8,7 +8,7 @@
 # ]
 # ///
 
-from brainsets.utils.openneuro import OpenNeuroPipeline
+from torch_brain.pipeline.openneuro import OpenNeuroPipeline
 
 # The mappings below were obtained by following the schema
 # described in the dataset's README file.
