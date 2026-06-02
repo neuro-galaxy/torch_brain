@@ -23,7 +23,7 @@ In this guide you will learn:
 
 - what *sampling intervals* are, and how they tell a sampler where
   it is allowed to sample from,
-- how to get these sampling intervals from a :obj:`Dataset`,
+- how to get these sampling intervals from a :obj:`~torch_brain.datasets.Dataset`,
 - how to use the built-in samplers to generate fixed or variable length
   windows for training and evaluation,
 - and how the same setup scales seamlessly to datasets that contain
@@ -38,13 +38,13 @@ to sample data.
 In **torch_brain**, the primary way of sampling is using *continuous
 time* intervals. This is achieved with the following design:
 
-- :obj:`Dataset` tells the sampler where it is
+- :obj:`~torch_brain.datasets.Dataset` tells the sampler where it is
   allowed to sample from. This is achieved with the
-  :obj:`~Dataset.get_sampling_intervals` method.
+  :obj:`~torch_brain.datasets.Dataset.get_sampling_intervals` method.
 -  The sampler uses this information to create samples, which are
    effectively :math:`(t_{start}, t_{end})` pairs emitted as a
    :obj:`DatasetIndex` object.
--  :obj:`Dataset` uses this sample information to load and slice
+-  :obj:`~torch_brain.datasets.Dataset` uses this sample information to load and slice
    the data samples.
 
 .. figure:: static/overview.png
@@ -305,7 +305,7 @@ sample comes from — which recording, and which time window:
        start: float
        end: float
 
-These three fields are everything a :obj:`Dataset` needs to load a
+These three fields are everything a :obj:`~torch_brain.datasets.Dataset` needs to load a
 sample. Indexing the dataset with a :obj:`DatasetIndex` returns a
 :obj:`torch_brain.data.Data` object containing just that time slice of
 the underlying recording:
@@ -329,7 +329,7 @@ the underlying recording:
 
 This is the bridge between sampling and data loading: the sampler
 emits a stream of :obj:`DatasetIndex` objects, and the
-:obj:`Dataset` turns each one into a sliced
+:obj:`~torch_brain.datasets.Dataset` turns each one into a sliced
 :obj:`~torch_brain.data.Data` sample.
 
 
@@ -363,7 +363,7 @@ recordings:
     )}
 
 
-The same :obj:`~Dataset.get_sampling_intervals` method is used as before, and the
+The same :obj:`~torch_brain.datasets.Dataset.get_sampling_intervals` method is used as before, and the
 sampling intervals dictionary has three elements, corresponding to the
 three recordings.
 
@@ -409,7 +409,7 @@ For a worked end-to-end example that brings these together, see the
 :doc:`NLB Maze minimal example </generated/notebooks/nlb_maze_minimal_example>`.
 It walks through:
 
-- defining a custom :obj:`Dataset` with sampling intervals tailored
+- defining a custom :obj:`~torch_brain.datasets.Dataset` with sampling intervals tailored
   to your use case,
 - wiring a sampler into a :class:`~torch.utils.data.DataLoader`, and
 - iterating batches into a model for training and evaluation.
