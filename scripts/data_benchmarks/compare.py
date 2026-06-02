@@ -25,7 +25,7 @@ import tempfile
 import time
 
 BENCH_SCRIPT = os.path.join(os.path.dirname(__file__), "benchmark.py")
-REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
+REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 
 
 def resolve_commit(ref: str) -> str:
@@ -49,10 +49,10 @@ def short_hash(full_hash: str) -> str:
 
 
 def extract_source(commit: str) -> str:
-    """Extract temporaldata/ from a commit into a temp directory."""
+    """Extract torch_brain/ from a commit into a temp directory."""
     tmpdir = tempfile.mkdtemp(prefix="tdbench_")
     git_proc = subprocess.run(
-        ["git", "archive", commit, "--", "temporaldata/"],
+        ["git", "archive", commit, "--", "torch_brain/"],
         cwd=REPO_ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -169,7 +169,7 @@ def print_comparison(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare temporaldata benchmarks across git commits.",
+        description="Compare torch_brain.data benchmarks across git commits.",
         epilog="Examples:\n"
         "  uv run python scripts/data_benchmarks/compare.py\n"
         "  uv run python scripts/data_benchmarks/compare.py abc123\n"

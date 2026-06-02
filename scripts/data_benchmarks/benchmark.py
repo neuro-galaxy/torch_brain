@@ -25,7 +25,7 @@ import timeit
 import traceback
 
 _source = os.environ.get(
-    "TORCH_BRAIN_SOURCE", os.path.join(os.path.dirname(__file__), "..")
+    "TORCH_BRAIN_SOURCE", os.path.join(os.path.dirname(__file__), "..", "..")
 )
 sys.path.insert(0, _source)
 
