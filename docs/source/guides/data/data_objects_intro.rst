@@ -162,9 +162,9 @@ You can opt out of this by passing ``reset_origin=False``:
 
 Interval
 --------
-Our final *core* object is :obj:`Interval`, which represents finite-time
-periods and any metadata attached to them.
-A common use of this is to represent the trial structure of an experiment:
+Our final *core* object is :obj:`Interval`, which represents time-periods and
+any metadata attached to them. A common use of this is to represent the trial
+structure of an experiment:
 
 .. code-block:: pycon
 

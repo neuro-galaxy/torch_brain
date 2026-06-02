@@ -12,9 +12,9 @@ User Guide
    pipeline/index
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
-   sampling/index
+   training/index
 
 .. toctree::
    :maxdepth: 2

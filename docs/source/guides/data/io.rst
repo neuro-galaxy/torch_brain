@@ -36,12 +36,11 @@ To save a data object to disk, use the :obj:`~Data.save()` method:
    # Save to a HDF5 file on disk
    session.save("neural_data.h5")
 
-The data structure is preserved in the HDF5 file, including all attributes and metadata.
 
 Loading
 -------
 
-To load or read data from disk, use the :obj:`~Data.load()` method:
+To load our previously written data from disk, use :obj:`Data.load()`:
 
 .. code-block:: python
 
@@ -57,9 +56,8 @@ To load or read data from disk, use the :obj:`~Data.load()` method:
     unit1_spikes = session.spikes.select_by_mask(session.spikes.unit_id == 1)
     print(unit1_spikes.timestamps)  # [1.2, 3.1]
 
-The loaded objects maintain all the functionality of the original objects, allowing you to perform operations, slicing, and access all attributes.
+.. tip::
 
-Note that, when reading from an HDF5 file, the data is not loaded into memory immediately.
-Instead, it is loaded on demand when you access an attribute. This lazy loading mechanism
-allows you to work with large datasets without loading the entire file into memory at once.
-For more details, see :ref:`lazy_loading`.
+   Note that, when reading from an HDF5 file, the data is not loaded into memory
+   immediately. Instead, it is loaded on demand when you access an attribute.
+   We discuss this further in :ref:`lazy_loading`.

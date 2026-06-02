@@ -1,5 +1,5 @@
-Working with Brainsets Pipelines
-================================
+Data Pre-Processing Concepts
+============================
 
 .. toctree::
    :maxdepth: 1
