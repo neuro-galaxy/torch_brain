@@ -9,10 +9,10 @@ from typing import Any, Literal
 import h5py
 import numpy as np
 
-from .arraydict import ArrayDict
-from .interval import Interval
-from .irregular_ts import IrregularTimeSeries
-from .regular_ts import RegularTimeSeries
+from .arraydict import ArrayDict, LazyArrayDict  # noqa: F401
+from .interval import Interval, LazyInterval  # noqa: F401
+from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries  # noqa: F401
+from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries  # noqa: F401
 from .utils import _size_repr
 
 
