@@ -17,8 +17,7 @@ includes APIs optimized for *lazily loading* time-slices.
    :maxdepth: 1
    :caption: Get Started
 
-   .. getting_started
-   creating_objects
+   meet_data_objects
    data_manipulation
    io
 
