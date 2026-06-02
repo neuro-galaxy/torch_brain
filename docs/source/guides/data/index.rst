@@ -8,9 +8,9 @@ slicing and loading data chunks around trial-onsets.
 Self-supervised approaches, like masked autoencoding or contrastive learning,
 might instead involve randomly sampling fixed-duration chunks from anywhere
 within the recording.
+
 In TorchBrain, we want to support all of these use-cases without requiring
 re-processing or re-shaping of the underlying data on-disk.
-
 To achieve this, we created our own data format that stores data *temporally*
 and provides APIs optimized for *lazily loading* time-slices.
 
