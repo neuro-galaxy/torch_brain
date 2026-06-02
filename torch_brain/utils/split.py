@@ -10,10 +10,10 @@ __api_ref__ = {
 }
 
 import hashlib
-import numpy as np
-from typing import List
 
-from torch_brain.data import Interval, Data
+import numpy as np
+
+from torch_brain.data import Data, Interval
 
 
 def _create_interval_split(intervals: Interval, indices: np.ndarray) -> Interval:
@@ -31,7 +31,7 @@ def generate_stratified_folds(
     n_folds: int = 5,
     val_ratio: float = 0.2,
     seed: int = 42,
-) -> List[Data]:
+) -> list[Data]:
     """
     Generates stratified train/valid/test splits using a two-stage splitting process.
 
@@ -120,7 +120,7 @@ def generate_string_kfold_assignment(
     n_folds: int = 3,
     val_ratio: float = 0.2,
     seed: int = 42,
-) -> List[str]:
+) -> list[str]:
     """Generate deterministic per-fold train/valid/test assignments for one ID.
 
     The assignment is independent for each fold index ``k``, but follows a
@@ -175,7 +175,7 @@ def generate_string_kfold_assignment(
     hash_int = _get_integer_hash_from_string(base_str)
     bucket = hash_int % n_folds
 
-    assignments: List[str] = []
+    assignments: list[str] = []
     for k in range(n_folds):
         if bucket == k:
             assignments.append("test")

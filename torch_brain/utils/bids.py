@@ -24,20 +24,21 @@ __api_ref__ = {
 }
 
 
-from collections import defaultdict
-from typing import Optional, Literal
-from pathlib import Path
-import warnings
-import re
 import json
+import re
+import warnings
+from collections import defaultdict
+from pathlib import Path
+from typing import Literal
+
 import pandas as pd
 
 try:
     from mne_bids import (
+        BIDSPath,
         get_bids_path_from_fname,
         get_entities_from_fname,
         get_entity_vals,
-        BIDSPath,
     )
 
     MNE_BIDS_AVAILABLE = True
@@ -166,7 +167,7 @@ def fetch_ieeg_recordings(
 
 def group_recordings_by_entity(
     recordings: list[dict],
-    fixed_entities: Optional[list[str]] = None,
+    fixed_entities: list[str] | None = None,
 ) -> dict[str, list[dict]]:
     """Group BIDS-compliant recordings by specified fixed entities.
 
@@ -384,7 +385,7 @@ def load_json_sidecar(bids_path: BIDSPath) -> dict:
         raise FileNotFoundError(f"No JSON sidecar file found for {bids_path}.") from err
 
 
-def load_participants_tsv(bids_root: Path | str) -> Optional[pd.DataFrame]:
+def load_participants_tsv(bids_root: Path | str) -> pd.DataFrame | None:
     """Load participants.tsv data from a BIDS root directory.
 
     The participants.tsv file is a tab-delimited file containing information about all subjects
@@ -637,7 +638,7 @@ def _is_bids_root(path: str | Path) -> bool:
         This is checked using get_entity_vals(path, 'subject'), which searches for subject-level entities.
 
     Args:
-        path (str or Path): The path to check.
+        path: The path to check.
 
     Returns:
         bool: True if the path is a valid BIDS root (i.e., it is a directory and has at least one BIDS subject entity).

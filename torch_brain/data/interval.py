@@ -27,7 +27,6 @@ class Interval(ArrayDict):
 
     Example ::
 
-        >>> import numpy as np
         >>> from torch_brain.data import Interval
 
         >>> intervals = Interval(
@@ -123,7 +122,7 @@ class Interval(ArrayDict):
             self._timekeys.append(timekey)
 
     def __setattr__(self, name, value):
-        super(Interval, self).__setattr__(name, value)
+        super().__setattr__(name, value)
 
         if name == "start" or name == "end":
             value = self.__dict__[name]
@@ -141,7 +140,6 @@ class Interval(ArrayDict):
 
         .. Example ::
 
-            >>> import numpy as np
             >>> from torch_brain.data import Interval
 
             >>> intervals = Interval(
@@ -156,8 +154,7 @@ class Interval(ArrayDict):
             1.0 2.0
             2.0 3.0
         """
-        for s, e in zip(self.start, self.end):
-            yield (s, e)
+        yield from zip(self.start, self.end)
 
     def is_disjoint(self):
         r"""Returns :obj:`True` if the intervals are disjoint, i.e. if no two intervals
@@ -327,8 +324,8 @@ class Interval(ArrayDict):
 
         Example:
             >>> interval = Interval(
-            ...     start=np.array([0.0, 1.0, 2.0, 5.0, 5.5, 10.0]),
-            ...     end=np.array([1.0, 2.0, 3.0, 5.5, 7.0, 12.0]),
+            ...     start=[0.0, 1.0, 2.0, 5.0, 5.5, 10.0],
+            ...     end=[1.0, 2.0, 3.0, 5.5, 7.0, 12.0],
             ... )
             >>> coalesced = interval.coalesce()
             >>> coalesced.start
@@ -405,7 +402,7 @@ class Interval(ArrayDict):
 
     def split(
         self,
-        sizes: Union[List[int], List[float]],
+        sizes: list[int] | list[float],
         *,
         shuffle=False,
         random_seed=None,
@@ -522,12 +519,11 @@ class Interval(ArrayDict):
         Example ::
 
             >>> from torch_brain.data import Interval
-            >>> import numpy as np
 
             >>> interval = Interval(
-            ...     start=np.array([0.0, 20.0]),
-            ...     end=np.array([10.0, 30.0]),
-            ...     trial_id=np.array([1, 2])
+            ...     start=[0.0, 20.0],
+            ...     end=[10.0, 30.0],
+            ...     trial_id=[1, 2]
             ... )
             >>> subdivided = interval.subdivide(2.5)
             >>> subdivided
@@ -631,8 +627,8 @@ class Interval(ArrayDict):
         they will be skipped.
 
         Args:
-            df (pandas.DataFrame): DataFrame.
-            unsigned_to_long (bool, optional): Whether to automatically convert unsigned
+            df: DataFrame.
+            unsigned_to_long: Whether to automatically convert unsigned
               integers to int64 dtype. Defaults to :obj:`True`.
         """
         assert "start" in df.columns, f"Column 'start' not found in dataframe."
@@ -645,7 +641,7 @@ class Interval(ArrayDict):
         )
 
     @classmethod
-    def from_list(cls, interval_list: List[Tuple[float, float]]):
+    def from_list(cls, interval_list: list[tuple[float, float]]):
         r"""Create an :obj:`Interval` object from a list of (start, end) tuples.
 
         Args:
@@ -671,7 +667,7 @@ class Interval(ArrayDict):
         r"""Saves the data object to an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. code-block:: python
 
@@ -679,10 +675,10 @@ class Interval(ArrayDict):
                 from torch_brain.data import Interval
 
                 interval = Interval(
-                    start=np.array([0, 1, 2]),
-                    end=np.array([1, 2, 3]),
-                    go_cue_time=np.array([0.5, 1.5, 2.5]),
-                    drifting_gratins_dir=np.array([0, 45, 90]),
+                    start=[0, 1, 2],
+                    end=[1, 2, 3],
+                    go_cue_time=[0.5, 1.5, 2.5],
+                    drifting_gratins_dir=[0, 45, 90],
                     timekeys=["start", "end", "go_cue_time"],
                 )
 
@@ -716,7 +712,7 @@ class Interval(ArrayDict):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. note::
             This method will load all data in memory, if you would like to use lazy
@@ -920,7 +916,7 @@ class LazyInterval(Interval):
                     del self._lazy_ops, self._unicode_keys
 
                 return out
-        return super(LazyInterval, self).__getattribute__(name)
+        return super().__getattribute__(name)
 
     def select_by_mask(self, mask: np.ndarray):
         r"""Index all arrays with a boolean mask and return a copy.
@@ -1063,7 +1059,7 @@ class LazyInterval(Interval):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. code-block:: python
 

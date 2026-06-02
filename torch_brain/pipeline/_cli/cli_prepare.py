@@ -1,12 +1,11 @@
-import os
+import json
+import re
+import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+
 import click
-import subprocess
 from prompt_toolkit import prompt
-import re
-import json
 
 try:  # Python 3.11+
     import tomllib  # type: ignore[import-not-fount]
@@ -19,8 +18,8 @@ from torch_brain.pipeline.config import CONFIG_FILE, load_config
 
 from .utils import (
     PIPELINES_PATH,
-    get_available_brainsets,
     expand_path,
+    get_available_brainsets,
 )
 
 
@@ -105,8 +104,8 @@ def prepare(
     list_flag_: bool,
     single: str,
     use_active_env: bool,
-    raw_dir: Optional[str],
-    processed_dir: Optional[str],
+    raw_dir: str | None,
+    processed_dir: str | None,
     local: bool,
 ):
     """Download and process a single brainset.
@@ -289,13 +288,13 @@ def _determine_torch_brain_spec() -> str:
         return "torch_brain"
 
 
-def _detect_torch_brain_installation_url() -> Optional[str]:
+def _detect_torch_brain_installation_url() -> str | None:
     """
     Detect if the current torch_brain package was installed via something like
     pip install <url>.
     """
 
-    from importlib.metadata import distribution, PackageNotFoundError
+    from importlib.metadata import PackageNotFoundError, distribution
 
     try:
         dist = distribution("torch_brain")
@@ -309,7 +308,7 @@ def _detect_torch_brain_installation_url() -> Optional[str]:
 
     if direct_url_file:
         direct_url_path = Path(dist.locate_file(direct_url_file))
-        with open(direct_url_path, "r") as f:
+        with open(direct_url_path) as f:
             direct_url = json.load(f)
 
         url_info = direct_url.get("url", "")
@@ -334,7 +333,7 @@ _ALLOWED_INLINE_MD_KEYS = {
 }
 
 
-def _read_inline_metadata(filepath: Path) -> Optional[dict]:
+def _read_inline_metadata(filepath: Path) -> dict | None:
     """
     Extract and parse the inline metadata block of type '# /// brainset-pipeline' from the given script file.
 
@@ -346,7 +345,7 @@ def _read_inline_metadata(filepath: Path) -> Optional[dict]:
     Implementation adapted from reference implementation in PEP 723:
     https://peps.python.org/pep-0723/#reference-implementation
     """
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         script = f.read()
 
     REGEX = r"(?m)^# /// (?P<type>[a-zA-Z0-9-]+)$\s(?P<content>(^#(| .*)$\s)+)^# ///$"

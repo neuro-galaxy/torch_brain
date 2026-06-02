@@ -1,7 +1,7 @@
 import copy
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
 
 import h5py
 import numpy as np
@@ -86,10 +86,10 @@ class Dataset(torch.utils.data.Dataset):
     def __init__(
         self,
         dataset_dir: str | Path,
-        recording_ids: Optional[list[str]] = None,
-        transform: Optional[Callable] = None,
+        recording_ids: list[str] | None = None,
+        transform: Callable | None = None,
         keep_files_open: bool = True,
-        namespace_attributes: Optional[list[str]] = None,
+        namespace_attributes: list[str] | None = None,
     ):
 
         dataset_dir = Path(dataset_dir)

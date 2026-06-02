@@ -81,7 +81,7 @@ class IrregularTimeSeries(ArrayDict):
         self,
         timestamps: ArrayLike,
         *,
-        timekeys: List[str] | None = None,
+        timekeys: list[str] | None = None,
         domain: Interval | Literal["auto"],
         **kwargs: ArrayLike,
     ):
@@ -151,7 +151,7 @@ class IrregularTimeSeries(ArrayDict):
             object.__setattr__(self, "_domain", value)
             return
 
-        super(IrregularTimeSeries, self).__setattr__(name, value)
+        super().__setattr__(name, value)
 
         if name == "timestamps":
             value = self.__dict__[name]
@@ -276,7 +276,7 @@ class IrregularTimeSeries(ArrayDict):
     def from_dataframe(
         cls,
         df: pd.DataFrame,
-        domain: Union[str, Interval] = "auto",
+        domain: str | Interval = "auto",
         unsigned_to_long: bool = True,
     ):
         r"""Create an :obj:`IrregularTimeseries` object from a pandas DataFrame.
@@ -290,7 +290,7 @@ class IrregularTimeSeries(ArrayDict):
             df: DataFrame.
             unsigned_to_long: Whether to automatically convert unsigned
               integers to int64 dtype. Defaults to :obj:`True`.
-            domain (optional): The domain over which the time
+            domain: The domain over which the time
                 series is defined. If set to :obj:`"auto"`, the domain will be
                 automatically the interval defined by the minimum and maximum
                 timestamps. Defaults to :obj:`"auto"`.
@@ -308,7 +308,7 @@ class IrregularTimeSeries(ArrayDict):
         r"""Saves the data object to an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. warning::
             If the time series is not sorted, it will be automatically sorted in place.
@@ -319,8 +319,8 @@ class IrregularTimeSeries(ArrayDict):
             from torch_brain.data import IrregularTimeseries
 
             data = IrregularTimeseries(
-                unit_index=np.array([0, 0, 1, 0, 1, 2]),
-                timestamps=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+                unit_index=[0, 0, 1, 0, 1, 2],
+                timestamps=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
                 waveforms=np.zeros((6, 48)),
                 domain="auto",
             )
@@ -378,7 +378,7 @@ class IrregularTimeSeries(ArrayDict):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. note::
             This method will load all data in memory, if you would like to use lazy
@@ -520,7 +520,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                         del self._timestamp_indices_1s
 
                 return out
-        return super(LazyIrregularTimeSeries, self).__getattribute__(name)
+        return super().__getattribute__(name)
 
     def select_by_mask(self, mask: np.ndarray):
         r"""Index all arrays with a boolean mask and return a copy.
@@ -689,7 +689,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. code-block:: python
 

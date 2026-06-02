@@ -647,7 +647,7 @@ def _transpose_type_channels_mapping(
     corresponding type for each channel.
 
     Args:
-        type_channels_mapping (dict[str, list[str]] | None): Mapping from channel types to lists of channel names.
+        type_channels_mapping: Mapping from channel types to lists of channel names.
             Example: {"eeg": ["C3", "C4"], "eog": ["EOG1"]}
 
     Returns:

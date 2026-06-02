@@ -9,9 +9,9 @@ class Embedding(nn.Embedding):
     :math:`\mathcal{N}(0, \text{init_scale})`.
 
     Args:
-        num_embeddings (int): size of the dictionary of embeddings
-        embedding_dim (int): the size of each embedding vector
-        init_scale (float, optional): standard deviation of the normal distribution used
+        num_embeddings: size of the dictionary of embeddings
+        embedding_dim: the size of each embedding vector
+        init_scale: standard deviation of the normal distribution used
             for the initialization. Defaults to 0.02, which is the default value used in
             most transformer models
         **kwargs: Additional arguments. Refer to the documentation of

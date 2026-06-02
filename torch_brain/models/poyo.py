@@ -1,15 +1,14 @@
 import inspect
 import logging
 from pathlib import Path
-from typing import Dict, List
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_brain.data import Data
 
 from torch_brain.batching import pad8, track_mask8
+from torch_brain.data import Data
 from torch_brain.datasets import Dataset
 from torch_brain.nn import (
     Embedding,
@@ -174,7 +173,7 @@ class POYO(nn.Module):
         output_timestamps: torch.Tensor,
         output_mask: torch.Tensor | None = None,
         unpack_output: bool = False,
-    ) -> torch.Tensor | List[torch.Tensor]:
+    ) -> torch.Tensor | list[torch.Tensor]:
         """Forward pass of the POYO model.
 
         The model processes input spike sequences through its encoder-processor-decoder
@@ -260,7 +259,7 @@ class POYO(nn.Module):
 
         return output
 
-    def tokenize(self, data: Data) -> Dict:
+    def tokenize(self, data: Data) -> dict:
         r"""Tokenizer used to tokenize Data for the POYO model.
 
         This tokenizer can be called as a transform. If you are applying multiple

@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Literal, Optional
+from typing import Literal
 
 from torch_brain.datasets import Dataset, SpikingDatasetMixin
 
@@ -208,8 +209,8 @@ class VollanMoserAlternating2025(SpikingDatasetMixin, Dataset):
     Dataset: `EBRAINS <https://search.kg.ebrains.eu/instances/4080b78d-edc5-4ae4-8144-7f6de79930ea>`_.
 
     Args:
-        root (str, optional): Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
-        recording_ids (list[str] or str, optional): Recording IDs to load.
+        root: Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
+        recording_ids: Recording IDs to load.
             Defaults to all sessions.  Can be:
 
             - A **list** of individual recording IDs.
@@ -221,8 +222,8 @@ class VollanMoserAlternating2025(SpikingDatasetMixin, Dataset):
                   from torch_brain.datasets.VollanMoserAlternating2025 import RECORDING_IDS
                   ds = VollanMoserAlternating2025(root, recording_ids=RECORDING_IDS.navigation.of)
 
-        transform (Callable, optional): Data transformation to apply.
-        dirname (str, optional): Subdirectory for the dataset. Defaults to "vollan_moser_alternating_2025".
+        transform: Data transformation to apply.
+        dirname: Subdirectory for the dataset. Defaults to "vollan_moser_alternating_2025".
     """
 
     # Map string shorthands to RECORDING_IDS sub-groups.
@@ -239,9 +240,9 @@ class VollanMoserAlternating2025(SpikingDatasetMixin, Dataset):
 
     def __init__(
         self,
-        root: Optional[str] = None,
-        recording_ids: Optional[list[str] or str] = None,
-        transform: Optional[Callable] = None,
+        root: str | None = None,
+        recording_ids: list[str] or str | None = None,
+        transform: Callable | None = None,
         dirname: str = "vollan_moser_alternating_2025",
         **kwargs,
     ):
@@ -268,7 +269,7 @@ class VollanMoserAlternating2025(SpikingDatasetMixin, Dataset):
 
     def get_sampling_intervals(
         self,
-        split: Optional[Literal["train", "valid", "test"]] = None,
+        split: Literal["train", "valid", "test"] | None = None,
     ):
         domain_key = "domain" if split is None else f"{split}_domain"
         return {

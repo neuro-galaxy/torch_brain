@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import re
+from collections.abc import Callable
 from numbers import Integral
 from pathlib import Path
-import re
-from typing import Callable, Literal, Optional, get_args
+from typing import Literal, get_args
 
 import numpy as np
 
@@ -213,9 +214,9 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
 
     def __init__(
         self,
-        root: Optional[str] = None,
-        recording_ids: Optional[list[str]] = None,
-        transform: Optional[Callable] = None,
+        root: str | None = None,
+        recording_ids: list[str] | None = None,
+        transform: Callable | None = None,
         *,
         subset_tier: SubsetTier | None = None,
         test_subject: int | None = None,

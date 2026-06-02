@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Literal, Optional
+from typing import Literal
 
 from torch_brain.datasets import Dataset, SpikingDatasetMixin
 
@@ -44,20 +45,20 @@ class ChurchlandShenoyNeural2012(SpikingDatasetMixin, Dataset):
     Version 0.251218.1714.
 
     Args:
-        root (str, optional): Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
-        recording_ids (list[str], optional): List of recording IDs to load.
-        transform (Callable, optional): Data transformation to apply.
-        split_type (str, optional): Which split type to use. Defaults to "cursor_velocity".
-        dirname (str, optional): Subdirectory for the dataset. Defaults to "churchland_shenoy_neural_2012".
+        root: Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
+        recording_ids: List of recording IDs to load.
+        transform: Data transformation to apply.
+        split_type: Which split type to use. Defaults to "cursor_velocity".
+        dirname: Subdirectory for the dataset. Defaults to "churchland_shenoy_neural_2012".
 
     """
 
     def __init__(
         self,
-        root: Optional[str] = None,
-        recording_ids: Optional[list[str]] = None,
-        transform: Optional[Callable] = None,
-        split_type: Optional[Literal["cursor_velocity"]] = "cursor_velocity",
+        root: str | None = None,
+        recording_ids: list[str] | None = None,
+        transform: Callable | None = None,
+        split_type: Literal["cursor_velocity"] | None = "cursor_velocity",
         dirname: str = "churchland_shenoy_neural_2012",
         **kwargs,
     ):
@@ -76,7 +77,7 @@ class ChurchlandShenoyNeural2012(SpikingDatasetMixin, Dataset):
 
     def get_sampling_intervals(
         self,
-        split: Optional[Literal["train", "valid", "test"]] = None,
+        split: Literal["train", "valid", "test"] | None = None,
     ):
         domain_key = "domain" if split is None else f"{split}_domain"
         ans = {}

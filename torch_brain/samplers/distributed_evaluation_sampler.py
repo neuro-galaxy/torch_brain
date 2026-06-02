@@ -30,7 +30,6 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
 
     Example::
 
-        >>> import numpy as np
         >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import SequentialFixedWindowSampler, DistributedEvaluationSamplerWrapper
 

@@ -49,7 +49,7 @@ def config(ctx, raw_dir, processed_dir):
     type=click.Path(file_okay=False, dir_okay=True),
     required=False,
 )
-def set_config(raw_dir: Optional[Path], processed_dir: Optional[Path]):
+def set_config(raw_dir: Path | None, processed_dir: Path | None):
     """Set raw and processed data directories."""
 
     # Get missing args from user prompts

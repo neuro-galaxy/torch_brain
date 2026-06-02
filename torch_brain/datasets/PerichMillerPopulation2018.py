@@ -1,5 +1,6 @@
-from typing import Callable, Optional, Literal
+from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
 
 from torch_brain.datasets import Dataset, SpikingDatasetMixin
 
@@ -39,17 +40,17 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
     Dataset: `Dandiset 000688 <https://doi.org/10.48324/dandi.000688/0.250122.1735>`_.
 
     Args:
-        root (str, optional): Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
-        recording_ids (list[str], optional): List of recording IDs to load.
-        transform (Callable, optional): Data transformation to apply.
-        dirname (str, optional): Subdirectory for the dataset. Defaults to "perich_miller_population_2018".
+        root: Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
+        recording_ids: List of recording IDs to load.
+        transform: Data transformation to apply.
+        dirname: Subdirectory for the dataset. Defaults to "perich_miller_population_2018".
     """
 
     def __init__(
         self,
-        root: Optional[str] = None,
-        recording_ids: Optional[list[str]] = None,
-        transform: Optional[Callable] = None,
+        root: str | None = None,
+        recording_ids: list[str] | None = None,
+        transform: Callable | None = None,
         dirname: str = "perich_miller_population_2018",
         **kwargs,
     ):
@@ -67,7 +68,7 @@ class PerichMillerPopulation2018(SpikingDatasetMixin, Dataset):
 
     def get_sampling_intervals(
         self,
-        split: Optional[Literal["train", "valid", "test"]] = None,
+        split: Literal["train", "valid", "test"] | None = None,
     ):
         domain_key = "domain" if split is None else f"{split}_domain"
         return {

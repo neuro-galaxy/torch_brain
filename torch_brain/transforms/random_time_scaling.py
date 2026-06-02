@@ -8,9 +8,9 @@ def rescale(data: Data, scale: float, offset: float):
     r"""Rescale the time axis of the data by a factor and offset.
 
     Args:
-        data (Data): The data to rescale.
-        scale (float): The scaling factor.
-        offset (float): The offset.
+        data: The data to rescale.
+        scale: The scaling factor.
+        offset: The offset.
     """
     out = data.__class__.__new__(data.__class__)
 

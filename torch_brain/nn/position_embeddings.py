@@ -35,7 +35,7 @@ class SinusoidalTimeEmbedding(nn.Module):
         r"""Convert raw timestamps to sinusoidal embeddings
 
         Args:
-            timestamps (torch.Tensor): timestamps tensor
+            timestamps: timestamps tensor
         """
         angles = timestamps[..., None] * self.omega  # (...,) x (F,)-> (..., F)
         return torch.cat((angles.sin(), angles.cos()), dim=-1)  # (..., D)

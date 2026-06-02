@@ -1,11 +1,9 @@
-import warnings
-from collections.abc import Iterable
-from typing import List, Union
 from collections import OrderedDict
+from collections.abc import Iterable
 
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 from torch.nn.parameter import UninitializedParameter
 
 
@@ -42,8 +40,8 @@ class InfiniteVocabEmbedding(nn.Module):
     .. warning:: If you are only interested in loading a subset of words from a checkpoint, do not call :meth:`initialize_vocab()`, first load the checkpoint then use :meth:`subset_vocab`.
 
     Args:
-        embedding_dim (int): Embedding dimension.
-        init_scale (float): The standard deviation of the normal distribution used to
+        embedding_dim: Embedding dimension.
+        init_scale: The standard deviation of the normal distribution used to
             initialize the embedding matrix. Default is 0.02.
     """
 
@@ -63,7 +61,7 @@ class InfiniteVocabEmbedding(nn.Module):
             self._hook_vocab_on_load_state_dict, with_module=False
         )
 
-    def initialize_vocab(self, vocab: List[str]):
+    def initialize_vocab(self, vocab: list[str]):
         r"""Initialize the vocabulary with a list of words. This method should be called
         only once, and before the model is trained. If you would like to add new words
         to the vocabulary, use :obj:`extend_vocab()` instead.
@@ -71,7 +69,7 @@ class InfiniteVocabEmbedding(nn.Module):
         .. note:: A special word "NA" will always be in the vocabulary, and is assigned the index 0. 0 is used for padding.
 
         Args:
-            vocab (List[str]): A list of words to initialize the vocabulary.
+            vocab: A list of words to initialize the vocabulary.
 
         Example ::
 
@@ -109,14 +107,14 @@ class InfiniteVocabEmbedding(nn.Module):
 
         self.initialize_parameters(len(self.vocab))
 
-    def extend_vocab(self, vocab: List[str], exist_ok=False):
+    def extend_vocab(self, vocab: list[str], exist_ok=False):
         r"""Extend the vocabulary with a list of words. If a word already exists in the
         vocabulary, an error will be raised. The embeddings for the new words will be
         initialized randomly, and new ids will be assigned to the new words.
 
         Args:
-            vocab (List[str]): A list of words to add to the vocabulary.
-            exist_ok (bool): If True, the method will not raise an error if the new words
+            vocab: A list of words to add to the vocabulary.
+            exist_ok: If True, the method will not raise an error if the new words
                 already exist in the vocabulary and will skip them. Default is False.
 
         Example ::
@@ -191,7 +189,7 @@ class InfiniteVocabEmbedding(nn.Module):
         )
         return self
 
-    def subset_vocab(self, vocab: List[str], inplace=True):
+    def subset_vocab(self, vocab: list[str], inplace=True):
         r"""Select a subset of the vocabulary. The embeddings for the selected words
         will be copied from the original embeddings, and the ids for the selected words
         will be updated accordingly.
@@ -199,8 +197,8 @@ class InfiniteVocabEmbedding(nn.Module):
         An error will be raised if one of the words does not exist in the vocabulary.
 
         Args:
-            vocab (List[str]): A list of words to select from the vocabulary.
-            inplace (bool): If True, the method will modify the vocabulary and the weight
+            vocab: A list of words to select from the vocabulary.
+            inplace: If True, the method will modify the vocabulary and the weight
                 matrix in place. If False, a new InfiniteVocabEmbedding will be returned
                 with the selected words. Default is True.
 
@@ -261,11 +259,11 @@ class InfiniteVocabEmbedding(nn.Module):
             new_embedding.weight.data = embeddings_for_selected_words
             return new_embedding
 
-    def tokenizer(self, words: Union[str, List[str]]):
+    def tokenizer(self, words: str | list[str]):
         r"""Convert a word or a list of words to their token indices.
 
         Args:
-            words (Union[str, List[str]]): A word or a list of words.
+            words: A word or a list of words.
 
         Returns:
             Union[int, List[int]]: A token index or a list of token indices.
@@ -296,7 +294,7 @@ class InfiniteVocabEmbedding(nn.Module):
         r"""Convert a token index to a word.
 
         Args:
-            index (int): A token index.
+            index: A token index.
 
         Returns:
             str: A word.
