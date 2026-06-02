@@ -1,5 +1,5 @@
-Representing and Storing Neural Data
-====================================
+Representing Neural Data
+========================
 
 NeuroAI training pipelines typically requires accessing time-based slices of
 the neural recording.
@@ -18,7 +18,6 @@ includes APIs optimized for *lazily loading* time-slices.
    :caption: Get Started
 
    meet_data_objects
-   data_manipulation
    io
 
 
