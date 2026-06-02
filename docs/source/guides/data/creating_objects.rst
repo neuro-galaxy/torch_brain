@@ -1,3 +1,5 @@
+.. currentmodule:: torch_brain.data
+
 Meet the Data Objects
 =====================
 
@@ -14,10 +16,9 @@ Here we'll look at the different ways to create and interact with each type of o
 
 ArrayDict
 ---------
-:obj:`~torch_brain.data.ArrayDict` is a simple container for
-arbitrary arrays that share the same *first* dimension.
-By itself, this object is not meant to store *temporal* attributes, but
-forms the base for all other objects in our library.
+:obj:`ArrayDict` is a simple container for arbitrary arrays that share the same
+*first* dimension. By itself, this object is not meant to store *temporal*
+attributes, but forms the base for all other objects in our library.
 
 .. code-block:: pycon
 
@@ -46,9 +47,9 @@ forms the base for all other objects in our library.
 
 RegularTimeSeries
 -----------------
-:obj:`~torch_brain.data.RegularTimeSeries` is the first time-oriented data
-object we will look at. As the name suggests, it is meant to store time-series
-that are regularly sampled.
+:obj:`RegularTimeSeries` is the first time-oriented data object we will look
+at. As the name suggests, it is meant to store time-series that are regularly
+sampled.
 
 .. code-block:: pycon
 
@@ -100,9 +101,9 @@ Since our signals are sampled at 100Hz, we should get 100 samples.
    array([-0.07094018,  1.1442879 ,  1.26022563,  1.57259098, ..., ])
 
 
-:obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`
--------------------------------------------------------------
-An :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>` represents event-based or irregularly sampled time series data, it is also well suited for time series with missing data.
+IrregularTimeSeries
+-------------------
+An :obj:`IrregularTimeSeries` represents event-based or irregularly sampled time series data, it is also well suited for time series with missing data.
 
 .. tab:: Generic
 
