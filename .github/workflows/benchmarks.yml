@@ -38,7 +38,7 @@ jobs:
         id: benchmark
         run: |
           set -o pipefail
-          uv run python scripts/data_benchmarks/compare.py "origin/$BASE_REF" HEAD 2>&1 | tee benchmark-report.txt
+          uv run python scripts/data_benchmarks/compare.py "origin/$BASE_REF" HEAD | tee benchmark-report.txt
 
       - name: Upsert PR benchmark comment
         if: ${{ !cancelled() && hashFiles('benchmark-report.txt') != '' }}

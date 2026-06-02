@@ -110,7 +110,7 @@ def run_benchmark(source_dir: str | None, label: str) -> list[dict] | None:
     if source_dir is not None:
         env["TORCH_BRAIN_SOURCE"] = source_dir
 
-    print(f"Running benchmarks for {label}...")
+    print(f"Running benchmarks for {label}...", file=sys.stderr)
     result = subprocess.run(
         [sys.executable, BENCH_SCRIPT, "--json"],
         capture_output=True,
