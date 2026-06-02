@@ -1,9 +1,9 @@
 When to use :obj:`torch_brain.data`
 ------------------------
 
-The module :obj:`torch_brain.data` in **torch_brain** is design to work with temporal data. In particular it is
+The module :obj:`torch_brain.data` is designed to work with temporal data. In particular it is
 designed for complex, multi-modal, multi-resolution data. 
-The **torch_brain** with 
+
 
 Working with temporal data in real-world applications presents several challenges:
 
