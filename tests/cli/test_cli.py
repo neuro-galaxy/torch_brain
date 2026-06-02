@@ -1,14 +1,14 @@
 """Tests for CLI commands in torch_brain.pipeline._cli module."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 
 from torch_brain.pipeline._cli.cli import cli
 from torch_brain.pipeline._cli.cli_completion import (
-    _detect_shell,
     SHELL_COMPLETION_FILENAMES,
+    _detect_shell,
 )
 from torch_brain.pipeline.config import CONFIG_FILE
 

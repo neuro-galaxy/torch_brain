@@ -1,9 +1,11 @@
-import pytest
 import os
-import h5py
 import tempfile
-from torch_brain.data import Data
 from enum import Enum
+
+import h5py
+import pytest
+
+from torch_brain.data import Data
 
 
 @pytest.fixture

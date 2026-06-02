@@ -1,8 +1,7 @@
-from typing import Callable
+from collections.abc import Callable
 
 from datasets.poyo_mp import PoyoMPDataset
 from datasets.wrapper import PoyoReadoutConfig
-
 from torch_brain.data import Data
 from torch_brain.datasets import (
     ChurchlandShenoyNeural2012,

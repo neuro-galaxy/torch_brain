@@ -122,7 +122,7 @@ class POYO(nn.Module):
 
         # process layers
         self.proc_layers = nn.ModuleList([])
-        for i in range(depth):
+        for _ in range(depth):
             self.proc_layers.append(
                 nn.Sequential(
                     RotarySelfAttention(

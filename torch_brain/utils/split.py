@@ -61,11 +61,11 @@ def generate_stratified_folds(
     """
     try:
         from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
-    except ImportError:
+    except ImportError as err:
         raise ImportError(
             "This function requires the scikit-learn library which you can install with "
             "`pip install scikit-learn`"
-        )
+        ) from err
 
     if not hasattr(intervals, stratify_by):
         raise ValueError(

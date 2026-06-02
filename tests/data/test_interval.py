@@ -1,13 +1,15 @@
-import pytest
+import h5py
 import numpy as np
 import pandas as pd
-import h5py
+import pytest
+
 from torch_brain.data import Interval, LazyInterval
 
 
 @pytest.fixture
 def test_filepath(request):
-    import os, tempfile
+    import os
+    import tempfile
 
     tmpfile = tempfile.NamedTemporaryFile(suffix=".h5", delete=False)
     filepath = tmpfile.name
@@ -155,11 +157,11 @@ def test_lazy_interval(test_filepath):
 
         assert data.__class__ == LazyInterval
 
-        data.end
+        _ = data.end
         assert data.__class__ == LazyInterval
 
-        data.go_cue_time
-        data.drifting_gratings_dir
+        _ = data.go_cue_time
+        _ = data.drifting_gratings_dir
         # final attribute was accessed, the object should automatically convert to ArrayDict
         assert data.__class__ == Interval
 
@@ -405,7 +407,8 @@ def test_split():
 
 
 def test_and():
-    op = lambda x, y: x & y
+    def op(x, y):
+        return x & y
 
     I1 = Interval.from_list([(1.0, 2.3)])
     I2 = Interval.from_list([(1.7, 6.9)])
@@ -462,7 +465,8 @@ def test_and():
 
 
 def test_or():
-    op = lambda x, y: x | y
+    def op(x, y):
+        return x | y
 
     I1 = Interval.from_list([(1.0, 2.3)])
     I2 = Interval.from_list([(1.7, 6.9)])
@@ -525,7 +529,8 @@ def test_or():
 
 
 def test_difference():
-    op = lambda x, y: x.difference(y)
+    def op(x, y):
+        return x.difference(y)
 
     I1 = Interval.from_list([(1.0, 2.3)])
     I2 = Interval.from_list([(1.7, 6.9)])
@@ -620,7 +625,9 @@ def easy_symmetric_check(I1, I2, Iexp, op):
 
 
 def test_and_edge_cases():
-    op = lambda x, y: x & y
+    def op(x, y):
+        return x & y
+
     empty = Interval(np.array([]), np.array([]))
 
     # both empty
@@ -656,7 +663,9 @@ def test_and_edge_cases():
 
 
 def test_or_edge_cases():
-    op = lambda x, y: x | y
+    def op(x, y):
+        return x | y
+
     empty = Interval(np.array([]), np.array([]))
 
     # both empty
@@ -726,7 +735,9 @@ def test_overlapping_input_raises():
 
 
 def test_difference_edge_cases():
-    op = lambda x, y: x.difference(y)
+    def op(x, y):
+        return x.difference(y)
+
     empty = Interval(np.array([]), np.array([]))
 
     # both empty
@@ -789,52 +800,52 @@ def test_dilate():
 def test_is_dijoint_is_sorted():
     # Test sorted and disjoint interval
     sorted_disjoint = Interval(np.array([1.0, 3.0, 5.0]), np.array([2.0, 4.0, 6.0]))
-    assert sorted_disjoint.is_disjoint() == True
-    assert sorted_disjoint.is_sorted() == True
+    assert sorted_disjoint.is_disjoint()
+    assert sorted_disjoint.is_sorted()
 
     # Test not sorted but disjoint interval
     unsorted_disjoint = Interval(np.array([3.0, 1.0, 5.0]), np.array([4.0, 2.0, 6.0]))
-    assert unsorted_disjoint.is_disjoint() == True
-    assert unsorted_disjoint.is_sorted() == False
+    assert unsorted_disjoint.is_disjoint()
+    assert not unsorted_disjoint.is_sorted()
 
     # Test not sorted and not disjoint interval
     unsorted_overlapping = Interval(
         np.array([3.0, 1.0, 2.0]), np.array([5.0, 4.0, 6.0])
     )
-    assert unsorted_overlapping.is_disjoint() == False
-    assert unsorted_overlapping.is_sorted() == False
+    assert not unsorted_overlapping.is_disjoint()
+    assert not unsorted_overlapping.is_sorted()
 
     # Test sorted but not disjoint interval
     sorted_overlapping = Interval(np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0]))
-    assert sorted_overlapping.is_disjoint() == False
-    assert sorted_overlapping.is_sorted() == True
+    assert not sorted_overlapping.is_disjoint()
+    assert sorted_overlapping.is_sorted()
 
     # Test edge case: interval of one point
     point_interval = Interval(np.array([1.0, 1.0, 3.0]), np.array([1.0, 3.0, 3.0]))
-    assert point_interval.is_disjoint() == True
-    assert point_interval.is_sorted() == True
+    assert point_interval.is_disjoint()
+    assert point_interval.is_sorted()
 
     # Test edge case: mixed point and non-point intervals
     mixed_interval = Interval(
         np.array([1.0, 2.0, 3.0, 4.0]), np.array([1.0, 2.5, 3.0, 5.0])
     )
-    assert mixed_interval.is_disjoint() == True
-    assert mixed_interval.is_sorted() == True
+    assert mixed_interval.is_disjoint()
+    assert mixed_interval.is_sorted()
 
     # Test edge case: adjacent intervals
     adjacent_interval = Interval(np.array([1.0, 2.0, 3.0]), np.array([2.0, 3.0, 4.0]))
-    assert adjacent_interval.is_disjoint() == True
-    assert adjacent_interval.is_sorted() == True
+    assert adjacent_interval.is_disjoint()
+    assert adjacent_interval.is_sorted()
 
     # Test interval object with one interval
     single_interval = Interval(np.array([1.0]), np.array([2.0]))
-    assert single_interval.is_disjoint() == True
-    assert single_interval.is_sorted() == True
+    assert single_interval.is_disjoint()
+    assert single_interval.is_sorted()
 
     # Test empty interval
     empty_interval = Interval(np.array([]), np.array([]))
-    assert empty_interval.is_disjoint() == True
-    assert empty_interval.is_sorted() == True
+    assert empty_interval.is_disjoint()
+    assert empty_interval.is_sorted()
 
 
 class TestIntervalCoalesce:

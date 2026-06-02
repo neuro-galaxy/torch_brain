@@ -7,10 +7,8 @@
 # ///
 
 import datetime
-import os
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from typing import Optional
 
 import h5py
 import numpy as np
@@ -20,11 +18,11 @@ from scipy.ndimage import binary_dilation
 
 from torch_brain.data import (
     ArrayDict,
+    BrainsetDescription,
     Data,
+    DeviceDescription,
     Interval,
     IrregularTimeSeries,
-    BrainsetDescription,
-    DeviceDescription,
     SessionDescription,
     serialize_fn_map,
 )
@@ -49,7 +47,7 @@ class Pipeline(BrainsetPipeline):
     def get_manifest(
         cls,
         raw_dir: Path,
-        args: Optional[Namespace],
+        args: Namespace | None,
     ) -> pd.DataFrame:
         asset_list = get_nwb_asset_list(cls.dandiset_id)
         manifest_list = [{"path": x.path, "url": x.download_url} for x in asset_list]
@@ -542,12 +540,12 @@ def extract_spikes(nwbfile, trials, artifact_dict):
             spikes_times = np.concatenate(spikes_times_blocks)
 
             obs_intervals = nwbfile.units[i].obs_intervals[i]
-            assert np.allclose(
-                obs_intervals[:, 0], trial_table["start_time"]
-            ), f"Unit {i}"
-            assert np.allclose(
-                obs_intervals[:, 1], trial_table["stop_time"]
-            ), f"Unit {i}"
+            assert np.allclose(obs_intervals[:, 0], trial_table["start_time"]), (
+                f"Unit {i}"
+            )
+            assert np.allclose(obs_intervals[:, 1], trial_table["stop_time"]), (
+                f"Unit {i}"
+            )
 
         else:
             if len(artifact_index) != 0:

@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 
 import click
-from prompt_toolkit import prompt
 
 try:  # Python 3.11+
     import tomllib  # type: ignore[import-not-fount]
@@ -240,7 +239,7 @@ def prepare(
         click.echo(f"Command: {command}")
 
     try:
-        process = subprocess.run(
+        subprocess.run(
             command,
             check=True,
             capture_output=False,

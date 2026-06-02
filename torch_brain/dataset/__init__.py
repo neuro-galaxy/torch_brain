@@ -2,7 +2,7 @@
 
 import warnings
 
-from torch_brain.datasets import (
+from torch_brain.datasets import (  # noqa: F401
     CalciumImagingDatasetMixin,
     Dataset,
     DatasetIndex,

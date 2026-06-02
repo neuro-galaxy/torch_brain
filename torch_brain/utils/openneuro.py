@@ -295,7 +295,6 @@ def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
 
     def _retry(max_attempts=5, initial_wait=4, max_wait=10):
         def decorator(func):
-            import random
             import time
 
             def wrapper(*args, **kwargs):
@@ -304,7 +303,7 @@ def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
                 while True:
                     try:
                         return func(*args, **kwargs)
-                    except Exception as e:
+                    except Exception:
                         attempt += 1
                         if attempt >= max_attempts:
                             raise

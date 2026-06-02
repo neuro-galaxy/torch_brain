@@ -6,36 +6,32 @@
 # ]
 # ///
 
-from argparse import ArgumentParser
-from typing import NamedTuple
-from pynwb import NWBHDF5IO
-
 import datetime
-import h5py
+from argparse import ArgumentParser
 
+import h5py
 import numpy as np
+import pandas as pd
 from pynwb import NWBHDF5IO
 from scipy.ndimage import binary_dilation, binary_erosion
 from sklearn.model_selection import train_test_split
-import pandas as pd
 
 from torch_brain.data import (
-    Data,
-    IrregularTimeSeries,
-    Interval,
     BrainsetDescription,
-    SessionDescription,
+    Data,
     DeviceDescription,
+    Interval,
+    IrregularTimeSeries,
+    SessionDescription,
     serialize_fn_map,
 )
+from torch_brain.pipeline import BrainsetPipeline
 from torch_brain.utils.dandi import (
+    download_file,
     extract_spikes_from_nwbfile,
     extract_subject_from_nwb,
-    download_file,
     get_nwb_asset_list,
 )
-
-from torch_brain.pipeline import BrainsetPipeline
 
 parser = ArgumentParser()
 parser.add_argument("--redownload", action="store_true")

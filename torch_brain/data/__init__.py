@@ -27,6 +27,7 @@ __all__ = [
     "SessionDescription",
     "SubjectDescription",
     "concat",
+    "serialize_fn_map",
 ]
 
 # Drives the generated API reference; see docs/source/api_reference.py.

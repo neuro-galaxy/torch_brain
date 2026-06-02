@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 import click
 from prompt_toolkit import prompt

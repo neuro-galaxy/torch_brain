@@ -54,8 +54,7 @@ def extract_source(commit: str) -> str:
     git_proc = subprocess.run(
         ["git", "archive", commit, "--", "temporaldata/"],
         cwd=REPO_ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if git_proc.returncode != 0:
@@ -72,8 +71,7 @@ def extract_source(commit: str) -> str:
     tar_proc = subprocess.run(
         ["tar", "xf", "-", "-C", tmpdir],
         input=git_proc.stdout,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if tar_proc.returncode != 0:

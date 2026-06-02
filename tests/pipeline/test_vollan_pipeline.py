@@ -1,20 +1,16 @@
-import sys
-from pathlib import Path
 import numpy as np
 import pytest
-from torch_brain.data import Interval
-
 from _utils import add_pipelines_to_path
 
 add_pipelines_to_path()
-from vollan_moser_alternating_2025.pipeline import (  # ty:ignore[unresolved-import]
+from vollan_moser_alternating_2025.pipeline import (  # noqa: E402  # ty:ignore[unresolved-import]
+    LMT_POPULATIONS,
+    LMT_VARIABLES,
     build_domain_from_timestamps,
     build_sleep_domain,
     extract_navigation_samples,
     extract_navigation_units_and_spikes,
     extract_theta_chunks,
-    LMT_POPULATIONS,
-    LMT_VARIABLES,
 )
 
 # ---------------------------------------------------------------------------

@@ -74,11 +74,11 @@ def extract_bands(
     """
     try:
         import mne
-    except ImportError:
+    except ImportError as err:
         raise ImportError(
             "This function requires the MNE library which you can install with "
             "`pip install mne`"
-        )
+        ) from err
 
     target_Fs = 50
     assert Fs % target_Fs == 0, (

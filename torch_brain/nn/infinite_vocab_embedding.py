@@ -382,8 +382,8 @@ class InfiniteVocabEmbedding(nn.Module):
             # incoming_vocab and self.vocab might have the same keys but in a different order
             # reorder incoming_vocab to match self.vocab, and get the remapping indices
             remap_indices = []
-            for word, index in self.vocab.items():
-                if not word in incoming_vocab:
+            for word, _ in self.vocab.items():
+                if word not in incoming_vocab:
                     raise ValueError(
                         f"Vocabulary mismatch: word {word} is missing. If "
                         "you would like to add new words, or a new "
@@ -420,6 +420,4 @@ class InfiniteVocabEmbedding(nn.Module):
         return F.embedding(input, self.weight, self.padding_idx)
 
     def extra_repr(self) -> str:
-        return "embedding_dim={}, num_embeddings={}".format(
-            self.embedding_dim, len(self.vocab) if self.vocab is not None else 0
-        )
+        return f"embedding_dim={self.embedding_dim}, num_embeddings={len(self.vocab) if self.vocab is not None else 0}"

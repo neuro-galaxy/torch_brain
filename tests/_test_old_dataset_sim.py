@@ -219,7 +219,7 @@ def test_dataset_selection(dummy_data):
         assert len(ds.recording_dict) == 1
 
 
-def test_get_recording_data(dummy_data):
+def test_get_recording_data_lengths(dummy_data):
     ds = Dataset(
         dummy_data,
         split=None,
@@ -355,9 +355,9 @@ def test_disable_data_leakage_check(dummy_data):
         recording_id="allen_neuropixels_mock_1/20100102_1",
     )
 
-    assert ds._check_for_data_leakage_flag == True
+    assert ds._check_for_data_leakage_flag
     ds.disable_data_leakage_check()
-    assert ds._check_for_data_leakage_flag == False
+    assert not ds._check_for_data_leakage_flag
 
 
 def test_get_brainset_ids(dummy_data):

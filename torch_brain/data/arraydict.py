@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import List
 
 import h5py
 import numpy as np
@@ -238,12 +237,12 @@ class ArrayDict:
                 try:
                     # convert string arrays to fixed length ASCII bytes
                     value = value.astype("S")
-                except UnicodeEncodeError:
+                except UnicodeEncodeError as err:
                     raise NotImplementedError(
                         f"Unable to convert column '{key}' from numpy 'U' string type "
                         "to fixed-length ASCII (np.dtype('S')). HDF5 does not support "
                         "numpy 'U' strings."
-                    )
+                    ) from err
                 # keep track of the keys of the arrays that were originally unicode
                 _unicode_keys.append(key)
             file.create_dataset(key, data=value)
@@ -356,7 +355,7 @@ class LazyArrayDict(ArrayDict):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        if not name in ["__dict__", "keys"]:
+        if name not in ["__dict__", "keys"]:
             # intercept attribute calls. this is where data that is not loaded is loaded
             # and when any lazy operations are applied
             if name in self.keys():

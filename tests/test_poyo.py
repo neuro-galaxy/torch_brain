@@ -1,7 +1,8 @@
+from pathlib import Path
+
+import boto3
 import pytest
 import torch
-from pathlib import Path
-import boto3
 from botocore import UNSIGNED
 from botocore.config import Config
 from tqdm import tqdm

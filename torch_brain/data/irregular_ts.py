@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import List, Literal, Union
+from typing import Literal
 
 import h5py
 import numpy as np
@@ -156,7 +156,7 @@ class IrregularTimeSeries(ArrayDict):
         if name == "timestamps":
             value = self.__dict__[name]
             assert value.ndim == 1, "timestamps must be 1D."
-            assert ~np.isnan(value).any(), f"timestamps cannot contain NaNs."
+            assert ~np.isnan(value).any(), "timestamps cannot contain NaNs."
             if value.dtype != np.float64:
                 logging.warning(f"{name} is of type {value.dtype} not of type float64.")
             self._sorted = None
@@ -340,12 +340,12 @@ class IrregularTimeSeries(ArrayDict):
                 try:
                     # convert string arrays to fixed length ASCII bytes
                     value = value.astype("S")
-                except UnicodeEncodeError:
+                except UnicodeEncodeError as err:
                     raise NotImplementedError(
                         f"Unable to convert column '{key}' from numpy 'U' string type "
                         "to fixed-length ASCII (np.dtype('S')). HDF5 does not support "
                         "numpy 'U' strings."
-                    )
+                    ) from err
                 # keep track of the keys of the arrays that were originally unicode
                 _unicode_keys.append(key)
             file.create_dataset(key, data=value)
@@ -463,7 +463,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        if not name in ["__dict__", "keys"]:
+        if name not in ["__dict__", "keys"]:
             # intercept attribute calls
             if name in self.keys():
                 # out could either be a numpy array or a reference to a h5py dataset

@@ -47,9 +47,7 @@ def concat(objs, sort=True):
     obj_type = type(objs[0])
     if any(not isinstance(obj, obj_type) for obj in objs):
         raise ValueError(
-            "All objects must be of the same type, got: {}".format(
-                [type(obj) for obj in objs]
-            )
+            f"All objects must be of the same type, got: {[type(obj) for obj in objs]}"
         )
 
     if obj_type == IrregularTimeSeries:
@@ -60,15 +58,11 @@ def concat(objs, sort=True):
         for obj in objs:
             if set(obj.keys()) != set(keys):
                 raise ValueError(
-                    "All objects must have the same keys, got {} and {}".format(
-                        keys, obj.keys()
-                    )
+                    f"All objects must have the same keys, got {keys} and {obj.keys()}"
                 )
             if set(obj.timekeys()) != set(timekeys):
                 raise ValueError(
-                    "All objects must have the same timekeys, got {} and {}".format(
-                        timekeys, obj.timekeys()
-                    )
+                    f"All objects must have the same timekeys, got {timekeys} and {obj.timekeys()}"
                 )
 
         obj_concat_dict = {}

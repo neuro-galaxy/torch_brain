@@ -66,11 +66,11 @@ def _validate_gap_value_matches_array_dtype(v, array: np.ndarray, name: str):
 
         try:
             dst = src.astype(array.dtype)
-        except RuntimeWarning as _:
+        except RuntimeWarning as err:
             raise ValueError(
                 f"gap_value={v} cannot be losslessly stored in {name!r}; "
                 f"cannot cast {src.dtype!r} into {array.dtype!r}"
-            )
+            ) from err
 
     if not np.array_equal(src, dst, equal_nan=True):
         raise ValueError(
@@ -738,7 +738,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        if not name in ["__dict__", "keys"]:
+        if name not in ["__dict__", "keys"]:
             # intercept attribute calls
             if name in self.keys():
                 out = self.__dict__[name]

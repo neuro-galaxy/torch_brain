@@ -64,7 +64,7 @@ def extract_measurement_date(
     _check_mne_available("extract_measurement_date")
     ans = recording_data.info["meas_date"]
     if ans is None:
-        warnings.warn("No measurement date found, using None")
+        warnings.warn("No measurement date found, using None", stacklevel=2)
     return ans
 
 
@@ -203,7 +203,8 @@ def concatenate_recordings(
         elif on_missing_meas_date == "warn":
             warnings.warn(
                 "One or more recordings have missing measurement dates (meas_date=None). "
-                "Concatenating in input order; measurement date validation and temporal sorting will be skipped."
+                "Concatenating in input order; measurement date validation and temporal sorting will be skipped.",
+                stacklevel=2,
             )
         # For both 'warn' and 'ignore', skip the date-based validation and sort by input order
         copies = []
@@ -221,7 +222,7 @@ def concatenate_recordings(
         if on_mismatch == "raise":
             raise ValueError(msg)
         elif on_mismatch == "warn":
-            warnings.warn(msg)
+            warnings.warn(msg, stacklevel=2)
 
     # Sort recordings by measurement date
     indexed_recordings = [
@@ -233,7 +234,7 @@ def concatenate_recordings(
     )
 
     # Validate that gap between consecutive recordings is within max_gap
-    for (idx1, rec1, date1), (idx2, rec2, date2) in zip(
+    for (idx1, rec1, date1), (idx2, _rec2, date2) in zip(
         sorted_recordings, sorted_recordings[1:]
     ):
         # Gap is the difference between the meas_date (date2) of the next recording (rec2)
@@ -247,7 +248,7 @@ def concatenate_recordings(
             if on_gap == "raise":
                 raise ValueError(msg)
             elif on_gap == "warn":
-                warnings.warn(msg)
+                warnings.warn(msg, stacklevel=2)
 
     copies = []
     for _, rec, _ in sorted_recordings:
@@ -281,7 +282,8 @@ def extract_signal(
     if ignore_channels is not None:
         warnings.warn(
             "The 'ignore_channels' argument was passed to extract_signal. "
-            "Ensure you also pass the same value to extract_channels to maintain consistency."
+            "Ensure you also pass the same value to extract_channels to maintain consistency.",
+            stacklevel=2,
         )
 
     sfreq = recording_data.info["sfreq"]
@@ -361,7 +363,8 @@ def extract_channels(
     if ignore_channels is not None:
         warnings.warn(
             "The 'ignore_channels' argument was passed to extract_channels. "
-            "Ensure you also pass the same value to extract_signal to maintain consistency."
+            "Ensure you also pass the same value to extract_signal to maintain consistency.",
+            stacklevel=2,
         )
 
     if not isinstance(recording_data, mne.io.BaseRaw):
@@ -438,7 +441,9 @@ def extract_channels(
             if montage is not None:
                 channel_pos_mapping = montage.get_positions()["ch_pos"]
         except Exception as e:
-            warnings.warn(f"Could not extract channel positions from montage: {e}")
+            warnings.warn(
+                f"Could not extract channel positions from montage: {e}", stacklevel=2
+            )
 
     if channel_pos_mapping is not None:
         channel_pos = np.array(
@@ -501,7 +506,8 @@ def _validate_channel_names_mapping(
 
     if not any([ch_name in channel_names_mapping.keys() for ch_name in raw_ch_names]):
         warnings.warn(
-            f"Some channel names in the raw data are not present in the mapping keys: {set(raw_ch_names) - set(channel_names_mapping.keys())}"
+            f"Some channel names in the raw data are not present in the mapping keys: {set(raw_ch_names) - set(channel_names_mapping.keys())}",
+            stacklevel=2,
         )
 
     mapping_keys_set = set(channel_names_mapping.keys())

@@ -78,9 +78,11 @@ brainsets = "torch_brain.pipeline._cli:cli"
 
 [tool.ruff]
 target-version = "py310"
+exclude = ["brainsets", "temporaldata"]
 
 [tool.ruff.lint]
-select = ["I"]
+select = ["I", "F", "UP", "B", "E"]
+ignore = ["E501", "B905"]
 
 [tool.ty.environment]
 python-version = "3.10"

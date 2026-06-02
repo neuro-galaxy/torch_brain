@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+
 from torch_brain.utils.misc import calculate_sampling_rate
 
 

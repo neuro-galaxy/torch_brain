@@ -1,10 +1,12 @@
-import pytest
 import os
+import tempfile
+
 import h5py
 import numpy as np
 import pandas as pd
-import tempfile
-from torch_brain.data import IrregularTimeSeries, LazyIrregularTimeSeries, Interval
+import pytest
+
+from torch_brain.data import Interval, IrregularTimeSeries, LazyIrregularTimeSeries
 
 
 @pytest.fixture
@@ -233,11 +235,11 @@ def test_lazy_irregular_timeseries(test_filepath):
 
         assert data.__class__ == LazyIrregularTimeSeries
 
-        data.timestamps
+        _ = data.timestamps
         assert data.__class__ == LazyIrregularTimeSeries
 
-        data.waveforms
-        data.values
+        _ = data.waveforms
+        _ = data.values
         # final attribute was accessed, the object should automatically convert to ArrayDict
         assert data.__class__ == IrregularTimeSeries
 

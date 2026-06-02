@@ -1,5 +1,6 @@
 from .binning import bin_spikes
-from .misc import calculate_sampling_rate, np_string_prefix
+from .misc import calculate_sampling_rate as calculate_sampling_rate
+from .misc import np_string_prefix
 from .tokenizers import create_linspace_latent_tokens, create_start_end_unit_tokens
 from .weights import isin_interval, resolve_weights_based_on_interval_membership
 

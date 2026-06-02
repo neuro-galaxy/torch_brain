@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import copy
 import warnings
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
 
 import h5py
 import numpy as np
 
-from .arraydict import ArrayDict, LazyArrayDict
-from .interval import Interval, LazyInterval
-from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
-from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries
+from .arraydict import ArrayDict
+from .interval import Interval
+from .irregular_ts import IrregularTimeSeries
+from .regular_ts import RegularTimeSeries
 from .utils import _size_repr
 
 
@@ -130,7 +130,7 @@ class Data:
         if domain == "auto":
             # the domain is the union of the domains of the attributes
             domain = Interval(np.array([]), np.array([]))
-            for key, value in kwargs.items():
+            for _, value in kwargs.items():
                 if isinstance(value, (IrregularTimeSeries, RegularTimeSeries)):
                     domain = domain | value.domain
                 if isinstance(value, Interval):
@@ -564,10 +564,10 @@ class Data:
         for c in components:
             try:
                 out = getattr(out, c)
-            except AttributeError:
+            except AttributeError as err:
                 raise AttributeError(
                     f"Could not resolve {path} in data (specifically, at level {c})"
-                )
+                ) from err
         return out
 
     def set_nested_attribute(self, path: str, value: Any) -> Data:
@@ -592,10 +592,10 @@ class Data:
         for c in components[:-1]:
             try:
                 obj = getattr(obj, c)
-            except AttributeError:
+            except AttributeError as err:
                 raise AttributeError(
                     f"Could not resolve {path} in data (specifically, at level {c})"
-                )
+                ) from err
 
         setattr(obj, components[-1], value)
         return self
