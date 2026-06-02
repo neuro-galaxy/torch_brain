@@ -11,8 +11,8 @@ ArrayDict
 ---------
 :obj:`ArrayDict` is a simple container for arbitrary arrays *that share the same
 first dimension*.
-This data structure is useful for storing things like metadata assosciated with
-different recording channels, or any data in a tabular form.
+This data structure is useful for storing things like metadata associated with
+different recording channels, or any other data in a tabular form.
 
 .. code-block:: pycon
 
@@ -33,8 +33,8 @@ different recording channels, or any data in a tabular form.
      position=[3, 2]
    )
 
-   >>> # Access any attributes
-   >>> channels.brain_region
+   >>> # Access any attribute
+   >>> channels.position
    array([[0. , 1. ],
           [0.1, 0.9],
           [1.2, 3.2]])
@@ -72,11 +72,11 @@ sampled. This could be anything from behavior measurements to EEG signals.
    >>> behavior.timestamps
    array([0.  , 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, ...])
 
-Here, we have created a 10-second long collection of behavioral measurements
-(hand velocity, eye position, and pupil size), in the *same* data object.
-This allows us to get time-slices of the entire set of signals!
+Here, we have created a 10-second-long collection of behavioral measurements
+(hand velocity, eye position, and pupil size) inside the *same* data object.
+This allows us to get time-slices of the entire set of signals at once.
 
-Let's get a slice starting at 2 seconds and ending at 4 seconds.
+Let's grab a slice starting at 2 seconds and ending at 4 seconds.
 Since our signals are sampled at 100Hz, we should get 200 samples.
 
 .. code-block:: pycon
@@ -99,7 +99,8 @@ Since our signals are sampled at 100Hz, we should get 200 samples.
 IrregularTimeSeries
 -------------------
 An :obj:`IrregularTimeSeries` represents event-based or irregularly sampled
-time series data, it is also well suited for representing events and spike-trains.
+time-series data, and is well suited for things like discrete events and
+spike-trains.
 
 .. code-block:: pycon
 
@@ -122,7 +123,8 @@ time series data, it is also well suited for representing events and spike-train
    ... )
 
 IrregularTimeSeries objects can also be time-sliced.
-In this example, slicing ``spikes`` from 2 to 4 seconds should give us 2 spikes.
+In this example, slicing ``spikes`` from 2 to 4 seconds should give us the
+2 spikes that fall within that window.
 
 .. code-block:: pycon
 
@@ -141,8 +143,8 @@ In this example, slicing ``spikes`` from 2 to 4 seconds should give us 2 spikes.
    >>> sliced.unit_id
    array([2, 1])
 
-Notice how slicing *shifted* the timestamps by the start-time of the slice.
-You can choose to avoid this, by using ``reset_origin=False``:
+Notice how slicing *shifted* the timestamps so that the slice starts at zero.
+You can opt out of this by passing ``reset_origin=False``:
 
 .. code-block:: pycon
 
@@ -160,10 +162,9 @@ You can choose to avoid this, by using ``reset_origin=False``:
 
 Interval
 --------
-Our final *core* object is :obj:`Interval`, which is meant to represent
-finite-time periods and their attached metadata.
-A common example of this would be represent the trial-structure of
-an experiment:
+Our final *core* object is :obj:`Interval`, which represents finite-time
+periods and any metadata attached to them.
+A common use of this is to represent the trial structure of an experiment:
 
 .. code-block:: pycon
 
@@ -183,12 +184,13 @@ an experiment:
      outcome=[3]
    )
 
-What this represents is that within time :math:`[0, 1)`, stimulus was
-``'left'``, and the outcome was ``'correct'``; within time :math:`[2, 3)`,
-stimulus was ``'right'`` and outcome was ``'error'``, and so on.
+This says that during the interval :math:`[0, 1)` the stimulus was ``'left'``
+and the outcome was ``'correct'``; during :math:`[2, 3)` the stimulus was
+``'right'`` and the outcome was ``'error'``, and so on.
 
-That is, *pairs* of start and end timestamps describe the boundaries of the period
-and other attributes act as metadata for what happened within the boundaries.
+In other words, each *pair* of start and end timestamps describes the boundary
+of a period, and the remaining attributes act as metadata for what happened
+within that period.
 
 Trials can also be sliced:
 
@@ -206,8 +208,8 @@ Trials can also be sliced:
 
 Data
 ----
-:obj:`Data` objects are meant to act as containers for all four kinds of objects
-we discussed above:
+:obj:`Data` objects act as containers for all four types of objects we
+discussed above:
 
 .. code-block:: pycon
 
@@ -218,11 +220,11 @@ we discussed above:
    ...     spikes=spikes,
    ...     behavior=behavior,
    ...     trials=trials,
-   ...     domain="auto",  # don't worry about this right now, setting domain to "auto" is the correct choice most of the times
+   ...     domain="auto",  # don't worry about this for now; "auto" is the right choice most of the time
    ... )
 
 Let's say this ``data`` object represents one entire neural recording.
-The magic of this data container is that it can be sliced *as a whole!*
+The nice thing about this container is that it can be sliced *as a whole*:
 
 .. code-block:: pycon
 
@@ -255,14 +257,15 @@ The magic of this data container is that it can be sliced *as a whole!*
    >>> sliced.spikes.timestamps
    array([0.3, 1.1])  # same as the IrregularTimeSeries example above
 
-The data slice also remembers the time at which it was sliced
+The sliced object also remembers the absolute time at which it was sliced:
 
 .. code-block:: pycon
 
    >>> sliced.absolute_start
    2.0
 
-The sliced data object is just another :obj:`Data` object. Which means you can slice it again:
+The sliced data object is itself just another :obj:`Data` object, which means
+you can slice it again:
 
 .. code-block:: pycon
 
@@ -295,8 +298,8 @@ The sliced data object is just another :obj:`Data` object. Which means you can s
      ),
    )
 
-You can also store a few other objects in :obj:`Data`: numpy arrays and python
-primitives (scalar, lists, tuples, string, etc.)
-Additionally, :obj:`Data` objects can be *nested*, that is a :obj:`Data` object
-can store another :obj:`Data` object. This allows you to organize your data in a
-heirarchy.
+You can also store a few other things in :obj:`Data`: numpy arrays and Python
+primitives (scalars, lists, tuples, strings, etc.).
+Additionally, :obj:`Data` objects can be *nested* — a :obj:`Data` object can
+itself contain another :obj:`Data` object — which lets you organize your data
+in a hierarchy.
