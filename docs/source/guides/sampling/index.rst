@@ -43,7 +43,7 @@ time* intervals. This is achieved with the following design:
   :obj:`~torch_brain.datasets.Dataset.get_sampling_intervals` method.
 -  The sampler uses this information to create samples, which are
    effectively :math:`(t_{start}, t_{end})` pairs emitted as a
-   :obj:`DatasetIndex` object.
+   :obj:`~torch_brain.datasets.DatasetIndex` object.
 -  :obj:`~torch_brain.datasets.Dataset` uses this sample information to load and slice
    the data samples.
 
@@ -64,7 +64,7 @@ time* intervals. This is achieved with the following design:
 
 Datasets in **torch_brain** typically contain multiple recordings, and
 so we define sampling intervals as *dictionaries* keyed by the recording
-IDs. Each entry is a :obj:`torch_brain.data.Interval` object that specifies
+IDs. Each entry is a :obj:`~torch_brain.data.Interval` object that specifies
 the valid start and end sampling times for that recording:
 
 .. code:: python
@@ -294,7 +294,7 @@ From a sample to a data slice
 -----------------------------
 
 All three samplers above emit the same kind of object: a
-:obj:`DatasetIndex`. It is a small dataclass that records *where* a
+:obj:`~torch_brain.datasets.DatasetIndex`. It is a small dataclass that records *where* a
 sample comes from — which recording, and which time window:
 
 .. code:: python
@@ -306,8 +306,8 @@ sample comes from — which recording, and which time window:
        end: float
 
 These three fields are everything a :obj:`~torch_brain.datasets.Dataset` needs to load a
-sample. Indexing the dataset with a :obj:`DatasetIndex` returns a
-:obj:`torch_brain.data.Data` object containing just that time slice of
+sample. Indexing the dataset with a :obj:`~torch_brain.datasets.DatasetIndex` returns a
+:obj:`~torch_brain.data.Data` object containing just that time slice of
 the underlying recording:
 
 .. code:: pycon
@@ -328,7 +328,7 @@ the underlying recording:
     0.0, 1.0, 660.13
 
 This is the bridge between sampling and data loading: the sampler
-emits a stream of :obj:`DatasetIndex` objects, and the
+emits a stream of :obj:`~torch_brain.datasets.DatasetIndex` objects, and the
 :obj:`~torch_brain.datasets.Dataset` turns each one into a sliced
 :obj:`~torch_brain.data.Data` sample.
 
