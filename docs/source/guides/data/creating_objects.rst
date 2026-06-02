@@ -1,7 +1,7 @@
 Creating Objects
 ================
 
-The **temporaldata** package provides several ways to create data objects. Here we'll look at the different ways to create each type of object.
+The **torch_brain** with the module :obj:`torch_brain.data` provides several ways to create data objects. Here we'll look at the different ways to create each type of object.
 
 .. note::
    All timestamps should be expressed in seconds. Sampling rates are specified in Hz (samples per second).
@@ -433,7 +433,7 @@ There is no need to set a ``domain`` for :obj:`Interval <torch_brain.data.Interv
 
 :obj:`Data <torch_brain.data.Data>`
 -------------------------------
-The :obj:`Data <torch_brain.data.Data>` class is a container that holds and organizes all temporaldata objects, including other :obj:`Data <torch_brain.data.Data>` objects, strings, numbers, floats, numpy arrays, and more.
+The :obj:`Data <torch_brain.data.Data>` class is a container that holds and organizes all :obj:`torch_brain.data` objects, including other :obj:`Data <torch_brain.data.Data>` objects, strings, numbers, floats, numpy arrays, and more.
 
 .. tab:: Generic
 

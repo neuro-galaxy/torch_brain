@@ -4,39 +4,38 @@
 #   "mne~=1.11.0",
 #   "boto3~=1.41.0",
 #   "scikit-learn==1.7.2",
-#   "temporaldata@git+https://github.com/neuro-galaxy/temporaldata@main",
 # ]
 # ///
 
+import logging
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import Optional, Tuple
 
 import h5py
-import logging
 import mne
 import numpy as np
 import pandas as pd
 
 from torch_brain.data import (
-    Data,
-    Interval,
     BrainsetDescription,
-    SubjectDescription,
-    SessionDescription,
+    Data,
     DeviceDescription,
+    Interval,
+    SessionDescription,
+    SubjectDescription,
     serialize_fn_map,
 )
 from torch_brain.pipeline import BrainsetPipeline
+from torch_brain.utils.mne import (
+    extract_channels,
+    extract_measurement_date,
+    extract_signal,
+)
+from torch_brain.utils.s3 import get_cached_s3_client
 from torch_brain.utils.split import (
     generate_stratified_folds,
     generate_string_kfold_assignment,
-)
-from torch_brain.utils.s3 import get_cached_s3_client
-from torch_brain.utils.mne import (
-    extract_measurement_date,
-    extract_signal,
-    extract_channels,
 )
 
 logging.basicConfig(level=logging.INFO)

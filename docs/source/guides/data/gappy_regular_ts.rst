@@ -1,4 +1,4 @@
-.. currentmodule:: temporaldata
+.. currentmodule:: data
 
 Gappy RegularTimeSeries
 =======================

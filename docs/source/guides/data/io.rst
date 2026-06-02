@@ -1,7 +1,7 @@
 I/O Operations
 --------------
 
-All data objects in **temporaldata** can be saved to and loaded from HDF5 files. This provides an efficient way to store and retrieve large datasets.
+All data objects in :obj:`torch_brain.data` can be saved to and loaded from HDF5 files. This provides an efficient way to store and retrieve large datasets.
 
 
 Writing

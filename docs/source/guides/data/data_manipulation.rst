@@ -1,7 +1,7 @@
 Data manipulation
 -----------------
 
-The **temporaldata** package provides several ways for manipulating data objects.
+The **torch_brain** with the module :obj:`torch_brain.data` provides several ways for manipulating data objects.
 
 Time-based Slicing
 ~~~~~~~~~~~~~~~~~~

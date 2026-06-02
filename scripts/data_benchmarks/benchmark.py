@@ -9,7 +9,7 @@ Usage:
     uv run python scripts/data_benchmarks/benchmark.py --json
     uv run python scripts/data_benchmarks/benchmark.py --save results.jsonl
 
-Set TORCH_BRAIN_SOURCE to override where temporaldata is imported from
+Set TORCH_BRAIN_SOURCE to override where torch_brain.data is imported from
 (used by compare.py to benchmark code from arbitrary commits).
 """
 
@@ -382,7 +382,7 @@ BENCHMARKS = [
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Run temporaldata benchmarks.")
+    parser = argparse.ArgumentParser(description="Run torch_brain.data benchmarks.")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
     parser.add_argument(
         "--save", type=str, default=None, help="Append results to a JSONL file"
