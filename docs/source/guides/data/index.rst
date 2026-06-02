@@ -22,7 +22,7 @@ from disk, what lazy-loading means, and more.
 
    data_objects_intro
    io
-   lazy_loading
+   domain
    gappy_regular_ts
    interval_operations
    advanced_interval_operations
