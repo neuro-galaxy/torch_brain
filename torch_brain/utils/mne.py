@@ -20,13 +20,12 @@ __api_ref__ = {
 
 import datetime
 import warnings
-from typing import Tuple, Literal
+from typing import Literal
 
 import numpy as np
 
 from torch_brain.data import (
     ArrayDict,
-    Interval,
     RegularTimeSeries,
 )
 

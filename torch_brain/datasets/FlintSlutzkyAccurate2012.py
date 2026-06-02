@@ -1,5 +1,5 @@
-from typing import Callable, Optional, Literal
 from pathlib import Path
+from typing import Callable, Literal, Optional
 
 from torch_brain.datasets import Dataset, SpikingDatasetMixin
 
@@ -32,7 +32,7 @@ class FlintSlutzkyAccurate2012(SpikingDatasetMixin, Dataset):
 
     **Links**
 
-    - Paper: `Flint et al. (2012) – Journal of Neural Engineering <https://doi.org/10.1088/1741-2560/9/4/046006>`_
+    - Paper: `Flint et al. (2012) - Journal of Neural Engineering <https://doi.org/10.1088/1741-2560/9/4/046006>`_
     - Dataset: `CRCNS Flint 2012 dataset <https://portal.nersc.gov/project/crcns/download/dream/data_sets/Flint_2012>`_
 
     **Reference**

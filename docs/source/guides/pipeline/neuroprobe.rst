@@ -157,7 +157,7 @@ Visual tasks
 
 **Label mode.** Neuroprobe supports both binary and multiclass classification.
 Use ``label_mode="multiclass"`` when constructing
-:class:`~brainsets.datasets.Neuroprobe2025` to load multiclass splits.
+:class:`~torch_brain.datasets.Neuroprobe2025` to load multiclass splits.
 
 **Regimes (split types).** Neuroprobe defines three evaluation regimes that test
 different levels of generalization:
@@ -191,13 +191,13 @@ evaluation protocol and leaderboard reporting guidelines.
 Loading benchmark splits
 ------------------------
 
-The :class:`~brainsets.datasets.Neuroprobe2025` class handles split resolution
+The :class:`~torch_brain.datasets.Neuroprobe2025` class handles split resolution
 automatically. Specify the benchmark parameters to get the correct train/test
 partition:
 
 .. code-block:: python
 
-    from brainsets.datasets import Neuroprobe2025
+    from torch_brain.datasets import Neuroprobe2025
 
     train_ds = Neuroprobe2025(
         subset_tier="lite",
@@ -227,7 +227,7 @@ folds:
 
 .. code-block:: python
 
-    from brainsets.datasets import Neuroprobe2025
+    from torch_brain.datasets import Neuroprobe2025
 
     for fold in range(Neuroprobe2025.num_folds_for_regime("SS-SM")):
         train_ds = Neuroprobe2025(
@@ -253,7 +253,7 @@ folds:
 Accessing neural data and labels
 ---------------------------------
 
-Each recording exposes sEEG data as a :obj:`~temporaldata.RegularTimeSeries`
+Each recording exposes sEEG data as a :obj:`~torch_brain.data.RegularTimeSeries`
 sampled at 2048 Hz, along with split-specific sampling intervals and
 channel inclusion masks:
 
@@ -270,7 +270,7 @@ The ``interval.label`` array contains class labels for each trial window
 (binary or multiclass, depending on ``label_mode``).
 
 Channel metadata (electrode names, coordinates, inclusion masks) is available
-via :meth:`~brainsets.datasets.Neuroprobe2025.get_channel_metadata`:
+via :meth:`~torch_brain.datasets.Neuroprobe2025.get_channel_metadata`:
 
 .. code-block:: python
 
@@ -288,7 +288,7 @@ If you want access to full continuous recordings without benchmark splits
 
 .. code-block:: python
 
-    from brainsets.datasets import Neuroprobe2025
+    from torch_brain.datasets import Neuroprobe2025
 
     ds = Neuroprobe2025(recording_ids=["sub_1_trial001", "sub_2_trial004"])
 
@@ -304,8 +304,8 @@ pairs. Here is a minimal skeleton:
 
 .. code-block:: python
 
-    from brainsets.datasets import Neuroprobe2025
-    from brainsets.datasets.Neuroprobe2025 import (
+    from torch_brain.datasets import Neuroprobe2025
+    from torch_brain.datasets.Neuroprobe2025 import (
         VALID_TASKS,
         NEUROPROBE_LITE_SUBJECT_TRIALS,
     )

@@ -1,5 +1,5 @@
-from brainsets.datasets import PeiPandarinathNLB2021
-from temporaldata import Data
+from torch_brain.data import Data
+from torch_brain.datasets import PeiPandarinathNLB2021
 
 from .wrapper import PoyoReadoutConfig
 

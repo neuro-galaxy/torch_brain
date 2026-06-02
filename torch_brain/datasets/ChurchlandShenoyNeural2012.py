@@ -1,5 +1,5 @@
-from typing import Callable, Optional, Literal
 from pathlib import Path
+from typing import Callable, Literal, Optional
 
 from torch_brain.datasets import Dataset, SpikingDatasetMixin
 
@@ -32,7 +32,7 @@ class ChurchlandShenoyNeural2012(SpikingDatasetMixin, Dataset):
 
     **Links**
 
-    - Paper: `Churchland et al. (2012) – Nature <https://www.nature.com/articles/nature11129>`_
+    - Paper: `Churchland et al. (2012) - Nature <https://www.nature.com/articles/nature11129>`_
     - Dataset: `Dandiset 000070 <https://dandiarchive.org/dandiset/000070>`_
 
     **Reference**

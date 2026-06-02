@@ -1,15 +1,15 @@
 Creating Objects
 ================
 
-The **temporaldata** package provides several ways to create data objects. Here we'll look at the different ways to create each type of object.
+The **torch_brain** with the module :obj:`torch_brain.data` provides several ways to create data objects. Here we'll look at the different ways to create each type of object.
 
 .. note::
    All timestamps should be expressed in seconds. Sampling rates are specified in Hz (samples per second).
 
 
-:obj:`ArrayDict <temporaldata.ArrayDict>`
+:obj:`ArrayDict <torch_brain.data.ArrayDict>`
 -----------------------------------------
-An :obj:`ArrayDict <temporaldata.ArrayDict>` is a simple container for numpy arrays that share the same first dimension. There are several ways to create one:
+An :obj:`ArrayDict <torch_brain.data.ArrayDict>` is a simple container for numpy arrays that share the same first dimension. There are several ways to create one:
 
 Direct initialization with arrays:
 
@@ -18,7 +18,7 @@ Direct initialization with arrays:
     .. code-block:: python
 
         import numpy as np
-        from temporaldata import ArrayDict
+        from torch_brain.data  import ArrayDict
 
         # Create with keyword arguments
         data = ArrayDict(
@@ -32,7 +32,7 @@ Direct initialization with arrays:
     .. code-block:: python
 
         import numpy as np
-        from temporaldata import ArrayDict
+        from torch_brain.data  import ArrayDict
 
         # Create with keyword arguments
         data = ArrayDict(
@@ -48,7 +48,7 @@ From a pandas DataFrame:
     .. code-block:: python
 
         import pandas as pd
-        from temporaldata import ArrayDict
+        from torch_brain.data  import ArrayDict
 
         df = pd.DataFrame({
             'name': ["Alice", "Bob", "Charlie"],
@@ -62,7 +62,7 @@ From a pandas DataFrame:
     .. code-block:: python
 
         import pandas as pd
-        from temporaldata import ArrayDict
+        from torch_brain.data  import ArrayDict
 
         df = pd.DataFrame({
             'unit_id': [1, 2, 3],
@@ -71,15 +71,15 @@ From a pandas DataFrame:
         })
         data = ArrayDict.from_dataframe(df)
 
-:obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`
+:obj:`IrregularTimeSeries <torch_brain.data.IrregularTimeSeries>`
 -------------------------------------------------------------
-An :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>` represents event-based or irregularly sampled time series data, it is also well suited for time series with missing data.
+An :obj:`IrregularTimeSeries <torch_brain.data.IrregularTimeSeries>` represents event-based or irregularly sampled time series data, it is also well suited for time series with missing data.
 
 .. tab:: Generic
 
     .. code-block:: python
 
-        from temporaldata import IrregularTimeSeries, Interval
+        from torch_brain.data  import IrregularTimeSeries, Interval
 
         # Create with timestamps and additional data
         events = IrregularTimeSeries(
@@ -94,7 +94,7 @@ An :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>` represents even
 
     .. code-block:: python
 
-        from temporaldata import IrregularTimeSeries, Interval
+        from torch_brain.data  import IrregularTimeSeries, Interval
 
         # Create with timestamps and additional data
         spikes = IrregularTimeSeries(
@@ -145,7 +145,7 @@ Note the distinction between **durations** and **times**: Only include attribute
 Choosing ``domain``
 ^^^^^^^^^^^^^^^^^^^
 
-The ``domain`` parameter specifies the time range over which the time series is defined. It is an :obj:`Interval <temporaldata.Interval>` object that defines the start and end times of the data.
+The ``domain`` parameter specifies the time range over which the time series is defined. It is an :obj:`Interval <torch_brain.data.Interval>` object that defines the start and end times of the data.
 
 For example, if you have event data from 0 to 10 seconds, but all events occur between 2-8 seconds, setting ``domain=Interval(start=0, end=10)`` makes it explicit that the recording spans the full 10 seconds:
 
@@ -153,7 +153,7 @@ For example, if you have event data from 0 to 10 seconds, but all events occur b
 
     .. code-block:: python
 
-        from temporaldata import IrregularTimeSeries, Interval
+        from torch_brain.data  import IrregularTimeSeries, Interval
         
         # Events only occur between 2-8 seconds
         events = IrregularTimeSeries(
@@ -166,7 +166,7 @@ For example, if you have event data from 0 to 10 seconds, but all events occur b
 
     .. code-block:: python
 
-        from temporaldata import IrregularTimeSeries, Interval
+        from torch_brain.data  import IrregularTimeSeries, Interval
         
         # Spikes only occur between 2-8 seconds
         spikes = IrregularTimeSeries(
@@ -183,7 +183,7 @@ It is also useful for when the data is not contiguous, where you have a chunk of
 
     .. code-block:: python
 
-        from temporaldata import IrregularTimeSeries, Interval
+        from torch_brain.data  import IrregularTimeSeries, Interval
         # Recording with a gap between 4-6 seconds
         events = IrregularTimeSeries(
             timestamps=np.array([1.2, 2.3, 3.8, 6.4, 7.1, 8.9]),
@@ -198,7 +198,7 @@ It is also useful for when the data is not contiguous, where you have a chunk of
 
     .. code-block:: python
 
-        from temporaldata import IrregularTimeSeries, Interval
+        from torch_brain.data  import IrregularTimeSeries, Interval
         
         # Recording with a gap between 4-6 seconds
         spikes = IrregularTimeSeries(
@@ -216,7 +216,7 @@ Finally, you can also set ``domain="auto"`` to infer the domain from the data, a
 
     .. code-block:: python
 
-        from temporaldata import IrregularTimeSeries
+        from torch_brain.data  import IrregularTimeSeries
         
         # Recording with auto-inferred domain
         events = IrregularTimeSeries(
@@ -232,7 +232,7 @@ Finally, you can also set ``domain="auto"`` to infer the domain from the data, a
 
     .. code-block:: python
 
-        from temporaldata import IrregularTimeSeries
+        from torch_brain.data  import IrregularTimeSeries
         
         # Recording with auto-inferred domain
         spikes = IrregularTimeSeries(
@@ -248,16 +248,16 @@ Finally, you can also set ``domain="auto"`` to infer the domain from the data, a
 
 
 
-:obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>`
+:obj:`RegularTimeSeries <torch_brain.data.RegularTimeSeries>`
 ---------------------------------------------------------
-A :obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>` represents uniformly sampled time series data. There is no need to provide
+A :obj:`RegularTimeSeries <torch_brain.data.RegularTimeSeries>` represents uniformly sampled time series data. There is no need to provide
 ``timestamps`` as they are infered from the sampling rate.
 
 .. tab:: Generic
 
     .. code-block:: python
 
-        from temporaldata import RegularTimeSeries
+        from torch_brain.data  import RegularTimeSeries
 
         # Create with sampling rate and data
         sensor_data = RegularTimeSeries(
@@ -274,7 +274,7 @@ A :obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>` represents uniformly
 
     .. code-block:: python
 
-        from temporaldata import RegularTimeSeries
+        from torch_brain.data  import RegularTimeSeries
 
         # Create with sampling rate and data
         lfp = RegularTimeSeries(
@@ -289,7 +289,7 @@ A :obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>` represents uniformly
 
 Choosing ``domain``
 ^^^^^^^^^^^^^^^^^^^
-:obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>` does not need a ``domain``
+:obj:`RegularTimeSeries <torch_brain.data.RegularTimeSeries>` does not need a ``domain``
 argument. The domain is always computed automatically as
 :math:`[t_0,\ t_0 + N / f_s)`, where :math:`t_0` is ``domain_start``, :math:`N` is the
 number of samples, and :math:`f_s` is ``sampling_rate``, so that its boundaries stay
@@ -300,13 +300,13 @@ examples above.
 
     Passing ``domain="auto"`` is still accepted for backward compatibility but
     emits a :class:`DeprecationWarning` and will be removed in a future version.
-    Passing a custom :obj:`Interval <temporaldata.Interval>` raises ``ValueError``.
+    Passing a custom :obj:`Interval <torch_brain.data.Interval>` raises ``ValueError``.
 
 
-Converting to :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`
+Converting to :obj:`IrregularTimeSeries <torch_brain.data.IrregularTimeSeries>`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-It is easy to convert a :obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>` to an :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>` using the :meth:`to_irregular` method:
+It is easy to convert a :obj:`RegularTimeSeries <torch_brain.data.RegularTimeSeries>` to an :obj:`IrregularTimeSeries <torch_brain.data.IrregularTimeSeries>` using the :meth:`to_irregular` method:
 
 .. code-block:: python
 
@@ -316,15 +316,15 @@ It is easy to convert a :obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>
 
 
 
-:obj:`Interval <temporaldata.Interval>`
+:obj:`Interval <torch_brain.data.Interval>`
 ---------------------------------------
-An :obj:`Interval <temporaldata.Interval>` represents time periods. The only required attributes are ``start`` and ``end``.
+An :obj:`Interval <torch_brain.data.Interval>` represents time periods. The only required attributes are ``start`` and ``end``.
 
 .. tab:: Generic
 
     .. code-block:: python
 
-        from temporaldata import Interval
+        from torch_brain.data  import Interval
 
         # Create with start/end times and additional data
         meetings = Interval(
@@ -339,7 +339,7 @@ An :obj:`Interval <temporaldata.Interval>` represents time periods. The only req
 
     .. code-block:: python
 
-        from temporaldata import Interval
+        from torch_brain.data  import Interval
 
         # Create with start/end times and additional data
         trials = Interval(
@@ -397,7 +397,7 @@ When you have a single interval, you can simply provide float values:
 Choosing ``timekeys``
 ^^^^^^^^^^^^^^^^^^^^^
 
-Like for :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`, the ``timekeys`` parameter specifies which attributes represent timestamps that should be adjusted during temporal operations.
+Like for :obj:`IrregularTimeSeries <torch_brain.data.IrregularTimeSeries>`, the ``timekeys`` parameter specifies which attributes represent timestamps that should be adjusted during temporal operations.
 
 .. tab:: Generic
 
@@ -428,18 +428,18 @@ Like for :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`, the ``ti
 No ``domain``
 ^^^^^^^^^^^^^
 
-There is no need to set a ``domain`` for :obj:`Interval <temporaldata.Interval>` objects, as the intervals themselves represent their own domain.
+There is no need to set a ``domain`` for :obj:`Interval <torch_brain.data.Interval>` objects, as the intervals themselves represent their own domain.
 
 
-:obj:`Data <temporaldata.Data>`
+:obj:`Data <torch_brain.data.Data>`
 -------------------------------
-The :obj:`Data <temporaldata.Data>` class is a container that holds and organizes all temporaldata objects, including other :obj:`Data <temporaldata.Data>` objects, strings, numbers, floats, numpy arrays, and more.
+The :obj:`Data <torch_brain.data.Data>` class is a container that holds and organizes all :obj:`torch_brain.data` objects, including other :obj:`Data <torch_brain.data.Data>` objects, strings, numbers, floats, numpy arrays, and more.
 
 .. tab:: Generic
 
     .. code-block:: python
 
-        from temporaldata import Data
+        from torch_brain.data  import Data
 
         # Create a complex data object
         user_session = Data(
@@ -467,7 +467,7 @@ The :obj:`Data <temporaldata.Data>` class is a container that holds and organize
 
     .. code-block:: python
 
-        from temporaldata import Data
+        from torch_brain.data  import Data
 
         # Create a complex data object
         session = Data(

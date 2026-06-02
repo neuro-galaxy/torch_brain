@@ -1,7 +1,7 @@
 I/O Operations
 --------------
 
-All data objects in **temporaldata** can be saved to and loaded from HDF5 files. This provides an efficient way to store and retrieve large datasets.
+All data objects in :obj:`torch_brain.data` can be saved to and loaded from HDF5 files. This provides an efficient way to store and retrieve large datasets.
 
 
 Writing
@@ -14,7 +14,7 @@ To save a data object to disk, use the ``save`` method:
 
     .. code-block:: python
 
-        from temporaldata import RegularTimeSeries, IrregularTimeSeries, Data, Interval
+        from torch_brain.data  import RegularTimeSeries, IrregularTimeSeries, Data, Interval
         import numpy as np
 
         # Create a complex data object
@@ -39,7 +39,7 @@ To save a data object to disk, use the ``save`` method:
 
     .. code-block:: python
 
-        from temporaldata import RegularTimeSeries, IrregularTimeSeries, Data, Interval
+        from torch_brain.data  import RegularTimeSeries, IrregularTimeSeries, Data, Interval
         import numpy as np
 
         # Create a complex data object

@@ -2,8 +2,8 @@ import click
 
 from .cli_completion import install_completion
 from .cli_config import config
-from .cli_prepare import prepare
 from .cli_list import cli_list
+from .cli_prepare import prepare
 
 
 @click.group()
@@ -21,8 +21,8 @@ def cli():
     A command line interface for downloading and preparing brainsets.
 
     \b
-    Documentation: https://brainsets.readthedocs.io/en/latest
-    Project page: https://github.com/neuro-galaxy/brainsets
+    Documentation: TODO
+    Project page: TODO
     """
     pass
 

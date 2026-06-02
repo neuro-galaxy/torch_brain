@@ -8,7 +8,8 @@
 # ]
 # ///
 
-from brainsets.utils.openneuro import OpenNeuroPipeline
+
+from torch_brain.pipeline.openneuro import OpenNeuroPipeline
 
 TYPE_CHANNELS_REMAPPING = {"EEG": [f"E{i}" for i in range(1, 129)] + ["Cz"]}
 

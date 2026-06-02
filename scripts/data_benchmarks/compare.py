@@ -1,6 +1,6 @@
-"""Compare temporaldata benchmarks across git commits.
+"""Compare torch_brain.data benchmarks across git commits.
 
-Extracts temporaldata source from arbitrary commits via `git archive` and
+Extracts torch_brain.data source from arbitrary commits via `git archive` and
 runs the current benchmark.py against each, then displays a side-by-side
 comparison table.
 

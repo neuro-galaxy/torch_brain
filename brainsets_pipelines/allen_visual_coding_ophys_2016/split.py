@@ -1,6 +1,8 @@
 import logging
+
 import numpy as np
-from temporaldata import Interval
+
+from torch_brain.data import Interval
 
 
 def split_one_epoch(
