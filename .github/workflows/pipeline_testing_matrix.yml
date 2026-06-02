@@ -2,9 +2,9 @@ name: Pipeline Testing Matrix
 
 on:
   push:
-    branches: [ "main" , "vinam/merger"] #TODO remove vinam_merger after merge
+    branches: [ "main" , "vinam/merger" ] #TODO remove vinam_merger after merge
   pull_request:
-    branches: [ "*" ]
+    branches: [ "**" ]
 
 permissions:
   contents: read

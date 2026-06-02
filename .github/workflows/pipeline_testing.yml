@@ -2,9 +2,9 @@ name: Pipeline Testing
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "vinam/merger" ] #TODO remove vinam_merger after merge
   pull_request:
-    branches: [ "*" ]
+    branches: [ "**" ]
 
 permissions:
   contents: read
