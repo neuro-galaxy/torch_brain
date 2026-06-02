@@ -47,6 +47,7 @@ dev = [
     "boto3~=1.41.0",
     "mne-bids",
     "dandi",
+    "ty",
 ]
 docs = [
     "sphinx",
