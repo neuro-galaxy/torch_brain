@@ -4,6 +4,10 @@ Meet the Data Objects
 The :obj:`torch_brain.data` module defines several key of data objects.
 Here we'll look at the different ways to create and interact with each type of object.
 
+.. contents:: Contents
+   :depth: 1
+   :local:
+
 .. .. note::
 ..    All timestamps should be expressed in seconds. Sampling rates are specified in Hz (samples per second).
 
@@ -64,10 +68,20 @@ that are regularly sampled.
      pupil_size=[1000]
    )
 
+   >>> # length represents the number of timepoints
+   >>> len(behavior)
+   1000
+
+   >>> # timestamps are automatically created from the sampling rate
+   >>> behavior.timestamps
+   array([0.  , 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, ...])
+
 Here, we have created a 10-second long collection of behavioral measurements
 (hand velocity, eye position, and pupil size), in the *same* data object.
 This allows us to get time-slices of the entire set of signals!
-Let's get a slice starting at 2 seconds and ending at 3 seconds:
+
+Let's get a slice starting at 2 seconds and ending at 3 seconds.
+Since our signals are sampled at 100Hz, we should get 100 samples.
 
 .. code-block:: pycon
 
@@ -79,7 +93,7 @@ Let's get a slice starting at 2 seconds and ending at 3 seconds:
      pupil_size=[100]
    )
 
-   >>> len(sliced.pupil_size)
+   >>> len(sliced)
    100
 
    >>> sliced.pupil_size
