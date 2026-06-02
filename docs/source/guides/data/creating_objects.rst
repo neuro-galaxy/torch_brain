@@ -22,9 +22,9 @@ Direct initialization with arrays:
 
         # Create with keyword arguments
         data = ArrayDict(
-            name=np.array(["Alice", "Bob", "Charlie"]), 
-            age=np.array([25, 30, 35]),
-            scores=np.array([[85, 90], [92, 88], [78, 95]])
+            name=["Alice", "Bob", "Charlie"] 
+            age=[25, 30, 35]
+            scores=[[85, 90], [92, 88], [78, 95]]
         )
 
 .. tab:: Neuroscience
@@ -36,8 +36,8 @@ Direct initialization with arrays:
 
         # Create with keyword arguments
         data = ArrayDict(
-            unit_id=np.array([1, 2, 3]),
-            brain_region=np.array(['V1', 'V2', 'V1']),
+            unit_id=[1, 2, 3]
+            brain_region=['V1', 'V2', 'V1']
             waveforms=np.random.randn(3, 32)  # 32 timepoints per waveform
         )
 
@@ -83,9 +83,9 @@ An :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>` represents even
 
         # Create with timestamps and additional data
         events = IrregularTimeSeries(
-            timestamps=np.array([1.2, 2.3, 3.1]),
-            event_type=np.array(['click', 'scroll', 'click']),
-            user_id=np.array([1, 2, 1]),
+            timestamps=[1.2, 2.3, 3.1]
+            event_type=['click', 'scroll', 'click']
+            user_id=[1, 2, 1]
             timekeys=['timestamps'],
             domain=Interval(start=0, end=4)
         )
@@ -98,9 +98,9 @@ An :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>` represents even
 
         # Create with timestamps and additional data
         spikes = IrregularTimeSeries(
-            timestamps=np.array([1.2, 2.3, 3.1]),
-            unit_id=np.array([1, 2, 1]),
-            amplitude=np.array([0.5, 0.7, 0.6]),
+            timestamps=[1.2, 2.3, 3.1]
+            unit_id=[1, 2, 1]
+            amplitude=[0.5, 0.7, 0.6]
             waveforms=np.random.randn(3, 32),
             timekeys=['timestamps'],
             domain=Interval(start=0, end=4)
@@ -119,10 +119,10 @@ Include any attributes that represent absolute times, this will ensure that when
 
         # Both timestamps and response_times are time attributes
         trials = IrregularTimeSeries(
-            timestamps=np.array([1.0, 3.0, 5.0]),      # stimulus onset times
-            response_times=np.array([1.5, 3.8, 5.7]),  # response times
-            accuracy=np.array([1, 0, 1]),              # not a time attribute
-            reaction_time=np.array([0.5, 0.8, 0.7]),   # duration between timestamps and response_times
+            timestamps=[1.0, 3.0, 5.0]      # stimulus onset times
+            response_times=[1.5, 3.8, 5.7]  # response times
+            accuracy=[1, 0, 1]              # not a time attribute
+            reaction_time=[0.5, 0.8, 0.7]   # duration between timestamps and response_times
             timekeys=['timestamps', 'response_times']
         )
 
@@ -132,10 +132,10 @@ Include any attributes that represent absolute times, this will ensure that when
 
         # Both timestamps and response_times are time attributes 
         trials = IrregularTimeSeries(
-            timestamps=np.array([1.0, 3.0, 5.0]),      # stimulus onset times
-            response_times=np.array([1.5, 3.8, 5.7]),  # response times
-            spike_rate=np.array([45.2, 32.1, 67.8]),   # not a time attribute
-            reaction_time=np.array([0.5, 0.8, 0.7]),   # duration between timestamps and response_times
+            timestamps=[1.0, 3.0, 5.0]      # stimulus onset times
+            response_times=[1.5, 3.8, 5.7]  # response times
+            spike_rate=[45.2, 32.1, 67.8]   # not a time attribute
+            reaction_time=[0.5, 0.8, 0.7]   # duration between timestamps and response_times
             timekeys=['timestamps', 'response_times']
         )
 
@@ -157,8 +157,8 @@ For example, if you have event data from 0 to 10 seconds, but all events occur b
         
         # Events only occur between 2-8 seconds
         events = IrregularTimeSeries(
-            timestamps=np.array([2.1, 3.4, 7.8]),
-            event_type=np.array(['click', 'scroll', 'click']),
+            timestamps=[2.1, 3.4, 7.8]
+            event_type=['click', 'scroll', 'click']
             domain=Interval(start=0, end=10)  # But recording is 0-10 seconds
         )
 
@@ -170,8 +170,8 @@ For example, if you have event data from 0 to 10 seconds, but all events occur b
         
         # Spikes only occur between 2-8 seconds
         spikes = IrregularTimeSeries(
-            timestamps=np.array([2.1, 3.4, 7.8]),
-            amplitude=np.array([0.5, 0.7, 0.6]),
+            timestamps=[2.1, 3.4, 7.8]
+            amplitude=[0.5, 0.7, 0.6]
             domain=Interval(start=0, end=10)  # But recording is 0-10 seconds
         )
 
@@ -186,11 +186,11 @@ It is also useful for when the data is not contiguous, where you have a chunk of
         from temporaldata import IrregularTimeSeries, Interval
         # Recording with a gap between 4-6 seconds
         events = IrregularTimeSeries(
-            timestamps=np.array([1.2, 2.3, 3.8, 6.4, 7.1, 8.9]),
-            event_type=np.array(['click', 'scroll', 'click', 'scroll', 'click', 'scroll']),
+            timestamps=[1.2, 2.3, 3.8, 6.4, 7.1, 8.9]
+            event_type=['click', 'scroll', 'click', 'scroll', 'click', 'scroll']
             domain=Interval(
-                start=np.array([0.0, 6.0]),  # Two intervals
-                end=np.array([4.0, 10.0])    # Gap between 4-6 seconds
+                start=[0.0, 6.0]  # Two intervals
+                end=[4.0, 10.0]    # Gap between 4-6 seconds
             )
         )
 
@@ -202,11 +202,11 @@ It is also useful for when the data is not contiguous, where you have a chunk of
         
         # Recording with a gap between 4-6 seconds
         spikes = IrregularTimeSeries(
-            timestamps=np.array([1.2, 2.3, 3.8, 6.4, 7.1, 8.9]),
-            amplitude=np.array([0.5, 0.7, 0.6, 0.8, 0.4, 0.6]),
+            timestamps=[1.2, 2.3, 3.8, 6.4, 7.1, 8.9]
+            amplitude=[0.5, 0.7, 0.6, 0.8, 0.4, 0.6]
             domain=Interval(
-                start=np.array([0.0, 6.0]),  # Two intervals  
-                end=np.array([4.0, 10.0])    # Gap between 4-6 seconds
+                start=[0.0, 6.0]  # Two intervals  
+                end=[4.0, 10.0]    # Gap between 4-6 seconds
             )
         )
 
@@ -220,8 +220,8 @@ Finally, you can also set ``domain="auto"`` to infer the domain from the data, a
         
         # Recording with auto-inferred domain
         events = IrregularTimeSeries(
-            timestamps=np.array([1.2, 2.3, 3.8, 6.4, 7.1, 8.9]),
-            event_type=np.array(['click', 'scroll', 'click', 'scroll', 'click', 'scroll']),
+            timestamps=[1.2, 2.3, 3.8, 6.4, 7.1, 8.9]
+            event_type=['click', 'scroll', 'click', 'scroll', 'click', 'scroll']
             domain="auto"
         )
 
@@ -236,8 +236,8 @@ Finally, you can also set ``domain="auto"`` to infer the domain from the data, a
         
         # Recording with auto-inferred domain
         spikes = IrregularTimeSeries(
-            timestamps=np.array([1.2, 2.3, 3.8, 6.4, 7.1, 8.9]),
-            amplitude=np.array([0.5, 0.7, 0.6, 0.8, 0.4, 0.6]),
+            timestamps=[1.2, 2.3, 3.8, 6.4, 7.1, 8.9]
+            amplitude=[0.5, 0.7, 0.6, 0.8, 0.4, 0.6]
             domain="auto"
         )
 
@@ -328,10 +328,10 @@ An :obj:`Interval <temporaldata.Interval>` represents time periods. The only req
 
         # Create with start/end times and additional data
         meetings = Interval(
-            start=np.array([0, 60, 120]),
-            end=np.array([45, 105, 180]),
-            title=np.array(['Team Sync', 'Planning', 'Review']),
-            room=np.array(['A101', 'B202', 'A101']),
+            start=[0, 60, 120]
+            end=[45, 105, 180]
+            title=['Team Sync', 'Planning', 'Review']
+            room=['A101', 'B202', 'A101']
             timekeys=['start', 'end']
         )
 
@@ -343,10 +343,10 @@ An :obj:`Interval <temporaldata.Interval>` represents time periods. The only req
 
         # Create with start/end times and additional data
         trials = Interval(
-            start=np.array([0, 2, 4]),
-            end=np.array([1, 3, 5]),
-            stimulus=np.array(['left', 'right', 'left']),
-            outcome=np.array(['correct', 'error', 'correct']),
+            start=[0, 2, 4]
+            end=[1, 3, 5]
+            stimulus=['left', 'right', 'left']
+            outcome=['correct', 'error', 'correct']
             timekeys=['start', 'end']
         )
 
@@ -405,10 +405,10 @@ Like for :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`, the ``ti
 
         # start, end, and event_time are time attributes
         segments = Interval(
-            start=np.array([1.0, 3.0, 5.0]),      # segment start times
-            end=np.array([2.0, 4.0, 6.0]),        # segment end times
-            event_time=np.array([1.5, 3.5, 5.5]), # important event within segment
-            label=np.array(['A', 'B', 'C']),      # not a time attribute
+            start=[1.0, 3.0, 5.0]      # segment start times
+            end=[2.0, 4.0, 6.0]        # segment end times
+            event_time=[1.5, 3.5, 5.5] # important event within segment
+            label=['A', 'B', 'C']      # not a time attribute
             timekeys=['start', 'end', 'event_time']
         )
 
@@ -418,10 +418,10 @@ Like for :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`, the ``ti
 
         # start, end, and go_cue are time attributes
         trials = Interval(
-            start=np.array([1.0, 3.0, 5.0]),      # trial start times
-            end=np.array([2.0, 4.0, 6.0]),        # trial end times
-            go_cue=np.array([1.2, 3.3, 5.1]),     # go cue presentation time
-            condition=np.array(['cue1', 'cue2', 'cue1']),  # not a time attribute
+            start=[1.0, 3.0, 5.0]      # trial start times
+            end=[2.0, 4.0, 6.0]        # trial end times
+            go_cue=[1.2, 3.3, 5.1]     # go cue presentation time
+            condition=['cue1', 'cue2', 'cue1']  # not a time attribute
             timekeys=['start', 'end', 'go_cue']
         )
 
@@ -444,8 +444,8 @@ The :obj:`Data <temporaldata.Data>` class is a container that holds and organize
         # Create a complex data object
         user_session = Data(
             clicks=IrregularTimeSeries(
-                timestamps=np.array([1.2, 2.3, 3.1]),
-                position=np.array([[100,200], [150,300], [200,150]]),
+                timestamps=[1.2, 2.3, 3.1]
+                position=[[100,200], [150,300], [200,150]]
                 domain=Interval(start=0, end=4)
             ),
             sensor=RegularTimeSeries(
@@ -453,9 +453,9 @@ The :obj:`Data <temporaldata.Data>` class is a container that holds and organize
                 accelerometer=np.random.randn(400, 3),
             ),
             activities=Interval(
-                start=np.array([0, 2]),
-                end=np.array([1, 3]),
-                activity=np.array(['typing', 'scrolling'])
+                start=[0, 2]
+                end=[1, 3]
+                activity=['typing', 'scrolling']
             ),
 
             user_id='user123',
@@ -472,22 +472,22 @@ The :obj:`Data <temporaldata.Data>` class is a container that holds and organize
         # Create a complex data object
         session = Data(
             spikes=IrregularTimeSeries(
-                timestamps=np.array([1.2, 2.3, 3.1]),
-                unit_id=np.array([1, 2, 1]),
+                timestamps=[1.2, 2.3, 3.1]
+                unit_id=[1, 2, 1]
                 domain=Interval(start=0, end=4)
             ),
             units=ArrayDict(
-                unit_id=np.array([1, 2, 1]),
-                brain_region=np.array(['V1', 'V2', 'V1']),
+                unit_id=[1, 2, 1]
+                brain_region=['V1', 'V2', 'V1']
             ),
             lfp=RegularTimeSeries(
                 sampling_rate=1000,
                 raw=np.random.randn(4000, 3),
             ),
             trials=Interval(
-                start=np.array([0, 2]),
-                end=np.array([1, 3]),
-                condition=np.array(['A', 'B'])
+                start=[0, 2]
+                end=[1, 3]
+                condition=['A', 'B']
             ),
             subject_id='mouse1',
             date='2023-01-01',

@@ -11,10 +11,10 @@ First, let's create some simple intervals:
     import numpy as np
 
     # Create two intervals: [1, 8] and [12, 18]
-    interval1 = Interval(start=np.array([1., 12.]),end=np.array([8., 18.]))
+    interval1 = Interval(start=[1., 12.]end=[8., 18.])
     
     # Create three intervals: [2, 5], [7, 10], and [14, 17]
-    interval2 = Interval(start=np.array([2., 7., 14.]), end=np.array([5., 10., 17.]))
+    interval2 = Interval(start=[2., 7., 14.] end=[5., 10., 17.])
 
 Typically for most operations that involve multiple :obj:`Interval <temporaldata.Interval>` objects, 
 each :obj:`Interval <temporaldata.Interval>` object must be disjoint and sorted.
@@ -102,7 +102,7 @@ The dilation operation (``.dilate()``) expands each interval by a specified amou
 .. code-block:: python
 
     # Create three intervals: [1, 5], [10, 13.5], and [14, 18]
-    interval = Interval(start=np.array([1.0, 10.0, 14.0]), end=np.array([5.0, 13.5, 18.]))
+    interval = Interval(start=[1.0, 10.0, 14.0] end=[5.0, 13.5, 18.])
     
     # Dilate by 0.5 on each side
     dilated = interval.dilate(0.5)
@@ -131,7 +131,7 @@ The coalesce operation (``.coalesce()``) merges overlapping or touching interval
 
     # Create four intervals [1, 6], [6.1, 11], [11.3, 14.5], and [14.5, 17.8]
     interval = Interval(
-        start=np.array([1., 6.1, 11.3, 14.5]), end=np.array([6., 11., 14.5, 17.8])
+        start=[1., 6.1, 11.3, 14.5] end=[6., 11., 14.5, 17.8]
     )
 
     
@@ -153,7 +153,7 @@ You can combine coalesce with dilate to merge intervals within a certain distanc
 .. code-block:: python
 
     # Create two intervals [1, 2.5], and [3, 4]
-    interval = Interval(start=np.array([1., 3.]), end=np.array([2.5, 4.]))
+    interval = Interval(start=[1., 3.] end=[2.5, 4.])
     
     # Merge intervals within distance 0.5
     merged = interval.dilate(0.5).coalesce()

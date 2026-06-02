@@ -18,8 +18,8 @@ as well as :obj:`Data <temporaldata.Data>` objects support time-based slicing th
     # Create a complex data object
     user_session = Data(
         clicks=IrregularTimeSeries(
-            timestamps=np.array([1.2, 2.3, 3.1]),
-            position=np.array([[100, 200], [150, 300], [200, 150]]),
+            timestamps=[1.2, 2.3, 3.1]
+            position=[[100, 200], [150, 300], [200, 150]]
             domain=Interval(start=0, end=4),
         ),
         sensor=RegularTimeSeries(
@@ -27,9 +27,9 @@ as well as :obj:`Data <temporaldata.Data>` objects support time-based slicing th
             accelerometer=np.random.randn(400, 3),
         ),
         activities=Interval(
-            start=np.array([0.0, 2.0, 4.5]),
-            end=np.array([1.0, 3.0, 6.0]),
-            activity=np.array(["typing", "scrolling", "typing"]),
+            start=[0.0, 2.0, 4.5]
+            end=[1.0, 3.0, 6.0]
+            activity=["typing", "scrolling", "typing"]
         ),
         user_id="user123",
         device="laptop",
@@ -111,9 +111,9 @@ The mask must be a 1D boolean array matching the length of the first dimension o
     from temporaldata import Interval, IrregularTimeSeries
 
     data = Interval(
-        start=np.array([0.0, 2.0, 4.5]),
-        end=np.array([1.0, 3.0, 6.0]),
-        activity=np.array(["typing", "scrolling", "typing"]),
+        start=[0.0, 2.0, 4.5]
+        end=[1.0, 3.0, 6.0]
+        activity=["typing", "scrolling", "typing"]
     )
 
     # Create a boolean mask
@@ -129,8 +129,8 @@ The mask must be a 1D boolean array matching the length of the first dimension o
 
 
     data = IrregularTimeSeries(
-        timestamps=np.array([1.2, 2.3, 3.8, 6.4, 7.1, 8.9]),
-        amplitude=np.array([0.5, 0.7, 0.6, 0.8, 0.4, 0.6]),
+        timestamps=[1.2, 2.3, 3.8, 6.4, 7.1, 8.9]
+        amplitude=[0.5, 0.7, 0.6, 0.8, 0.4, 0.6]
         domain="auto",
     )
 

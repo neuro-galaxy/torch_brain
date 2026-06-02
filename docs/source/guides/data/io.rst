@@ -20,8 +20,8 @@ To save a data object to disk, use the ``save`` method:
         # Create a complex data object
         user_session = Data(
             clicks=IrregularTimeSeries(
-                timestamps=np.array([1.2, 2.3, 3.1]),
-                position=np.array([[100,200], [150,300], [200,150]]),
+                timestamps=[1.2, 2.3, 3.1]
+                position=[[100,200], [150,300], [200,150]]
                 domain=Interval(start=0, end=4)
             ),
             sensor=RegularTimeSeries(
@@ -45,8 +45,8 @@ To save a data object to disk, use the ``save`` method:
         # Create a complex data object
         session = Data(
             spikes=IrregularTimeSeries(
-                timestamps=np.array([1.2, 2.3, 3.1]),
-                unit_id=np.array([1, 2, 1]),
+                timestamps=[1.2, 2.3, 3.1]
+                unit_id=[1, 2, 1]
                 domain=Interval(start=0, end=4)
             ),
             lfp=RegularTimeSeries(
