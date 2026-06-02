@@ -1,11 +1,13 @@
 TorchBrain documentation
 ========================
 
-**torch_brain** is a library for writing deep learning training pipelines and models
+**TorchBrain** is a library for writing training pipelines and deep learning models
 focused on neural data.
-It provides `PyTorch <https://pytorch.org>`_-compatible interfaces like :ref:`Dataset <datasets_ref>`,
+Our goals is to provide `PyTorch <https://pytorch.org>`_-compatible interfaces like :ref:`Dataset <datasets_ref>`,
 :ref:`Samplers <samplers_ref>`, :ref:`nn.Modules <nn_ref>`, and more to help you write your
 very own models and training scripts.
+To achieve efficient training, TorchBrain defines its own light-weight data format.
+, which allows for arbitrary time-slicing of neural recordings.
 
 If you encounter any bugs or have feature requests, please submit them to our
 `GitHub Issues page <https://github.com/neuro-galaxy/torch_brain/issues>`_.

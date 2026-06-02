@@ -1,75 +1,45 @@
-Creating Objects
-================
+Meet the Data Objects
+=====================
 
-The **temporaldata** package provides several ways to create data objects. Here we'll look at the different ways to create each type of object.
+The :obj:`torch_brain.data` module defines several kinds of data objects.
+Here we'll look at the different ways to create and interact with each type of object.
 
-.. note::
-   All timestamps should be expressed in seconds. Sampling rates are specified in Hz (samples per second).
+.. .. note::
+..    All timestamps should be expressed in seconds. Sampling rates are specified in Hz (samples per second).
 
 
-:obj:`ArrayDict <temporaldata.ArrayDict>`
------------------------------------------
-An :obj:`ArrayDict <temporaldata.ArrayDict>` is a simple container for numpy arrays that share the same first dimension. There are several ways to create one:
+ArrayDict
+---------
+:obj:`~torch_brain.data.ArrayDict` is a simple container for
+arbitrary arrays that share the same *first* dimension.
+By itself, this object is not meant to store *temporal* attributes, but
+forms the base for all other objects in our library.
 
-Direct initialization with arrays:
+.. code-block:: pycon
 
-.. tab:: Generic
+   >>> from torch_brain.data import ArrayDict
 
-    .. code-block:: python
+   >>> # Create an ArrayDict with any attributes you want
+   >>> channels = ArrayDict(
+   ...     channel_id=[1, 2, 3],
+   ...     brain_region=['V1', 'V2', 'V1'],
+   ...     position=[[0., 1.], [0.1, 0.9], [1.2, 3.2]]
+   ... )
 
-        import numpy as np
-        from temporaldata import ArrayDict
+   >>> # Printing the object shows the shapes of the underlying data
+   >>> channels
+   ArrayDict(
+     channel_id=[3],
+     brain_region=[3],
+     position=[3, 2]
+   )
 
-        # Create with keyword arguments
-        data = ArrayDict(
-            name=np.array(["Alice", "Bob", "Charlie"]), 
-            age=np.array([25, 30, 35]),
-            scores=np.array([[85, 90], [92, 88], [78, 95]])
-        )
+   >>> # Access any attributes
+   >>> channels.brain_region
+   array([[0. , 1. ],
+          [0.1, 0.9],
+          [1.2, 3.2]])
 
-.. tab:: Neuroscience
-
-    .. code-block:: python
-
-        import numpy as np
-        from temporaldata import ArrayDict
-
-        # Create with keyword arguments
-        data = ArrayDict(
-            unit_id=np.array([1, 2, 3]),
-            brain_region=np.array(['V1', 'V2', 'V1']),
-            waveforms=np.random.randn(3, 32)  # 32 timepoints per waveform
-        )
-
-From a pandas DataFrame:
-
-.. tab:: Generic
-
-    .. code-block:: python
-
-        import pandas as pd
-        from temporaldata import ArrayDict
-
-        df = pd.DataFrame({
-            'name': ["Alice", "Bob", "Charlie"],
-            'age': [25, 30, 35],
-            'score': [85, 92, 78]
-        })
-        data = ArrayDict.from_dataframe(df)
-
-.. tab:: Neuroscience
-
-    .. code-block:: python
-
-        import pandas as pd
-        from temporaldata import ArrayDict
-
-        df = pd.DataFrame({
-            'unit_id': [1, 2, 3],
-            'brain_region': ['V1', 'V2', 'V1'],
-            'firing_rate': [10.5, 8.2, 15.7]
-        })
-        data = ArrayDict.from_dataframe(df)
 
 :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`
 -------------------------------------------------------------
@@ -130,7 +100,7 @@ Include any attributes that represent absolute times, this will ensure that when
 
     .. code-block:: python
 
-        # Both timestamps and response_times are time attributes 
+        # Both timestamps and response_times are time attributes
         trials = IrregularTimeSeries(
             timestamps=np.array([1.0, 3.0, 5.0]),      # stimulus onset times
             response_times=np.array([1.5, 3.8, 5.7]),  # response times
@@ -154,7 +124,7 @@ For example, if you have event data from 0 to 10 seconds, but all events occur b
     .. code-block:: python
 
         from temporaldata import IrregularTimeSeries, Interval
-        
+
         # Events only occur between 2-8 seconds
         events = IrregularTimeSeries(
             timestamps=np.array([2.1, 3.4, 7.8]),
@@ -167,7 +137,7 @@ For example, if you have event data from 0 to 10 seconds, but all events occur b
     .. code-block:: python
 
         from temporaldata import IrregularTimeSeries, Interval
-        
+
         # Spikes only occur between 2-8 seconds
         spikes = IrregularTimeSeries(
             timestamps=np.array([2.1, 3.4, 7.8]),
@@ -199,13 +169,13 @@ It is also useful for when the data is not contiguous, where you have a chunk of
     .. code-block:: python
 
         from temporaldata import IrregularTimeSeries, Interval
-        
+
         # Recording with a gap between 4-6 seconds
         spikes = IrregularTimeSeries(
             timestamps=np.array([1.2, 2.3, 3.8, 6.4, 7.1, 8.9]),
             amplitude=np.array([0.5, 0.7, 0.6, 0.8, 0.4, 0.6]),
             domain=Interval(
-                start=np.array([0.0, 6.0]),  # Two intervals  
+                start=np.array([0.0, 6.0]),  # Two intervals
                 end=np.array([4.0, 10.0])    # Gap between 4-6 seconds
             )
         )
@@ -217,7 +187,7 @@ Finally, you can also set ``domain="auto"`` to infer the domain from the data, a
     .. code-block:: python
 
         from temporaldata import IrregularTimeSeries
-        
+
         # Recording with auto-inferred domain
         events = IrregularTimeSeries(
             timestamps=np.array([1.2, 2.3, 3.8, 6.4, 7.1, 8.9]),
@@ -233,7 +203,7 @@ Finally, you can also set ``domain="auto"`` to infer the domain from the data, a
     .. code-block:: python
 
         from temporaldata import IrregularTimeSeries
-        
+
         # Recording with auto-inferred domain
         spikes = IrregularTimeSeries(
             timestamps=np.array([1.2, 2.3, 3.8, 6.4, 7.1, 8.9]),
@@ -310,7 +280,7 @@ It is easy to convert a :obj:`RegularTimeSeries <temporaldata.RegularTimeSeries>
 
 .. code-block:: python
 
-    # Convert RegularTimeSeries to IrregularTimeSeries 
+    # Convert RegularTimeSeries to IrregularTimeSeries
     irregular_data = regular_data.to_irregular()
 
 
@@ -357,7 +327,7 @@ Intervals can also be created from a list of tuples using :meth:`from_list`:
 
     # Create from list of (start, end) tuples
     intervals = Interval.from_list([
-        (0, 1), 
+        (0, 1),
         (1, 2),
         (2, 3)
     ])
@@ -367,7 +337,7 @@ Or from a pandas DataFrame using :meth:`from_dataframe`:
 .. code-block:: python
 
     import pandas as pd
-    
+
     # Create from DataFrame with 'start' and 'end' columns
     df = pd.DataFrame({
         'start': [0, 1, 2],
@@ -383,7 +353,7 @@ Or using :meth:`linspace` or :meth:`arange` to create evenly spaced intervals:
     # Create 5 evenly spaced intervals from 0 to 10
     intervals = Interval.linspace(0, 10, 5)
 
-    # Create intervals with step size 2 from 0 to 10 
+    # Create intervals with step size 2 from 0 to 10
     intervals = Interval.arange(0, 10, 2)
 
 When you have a single interval, you can simply provide float values:
@@ -497,5 +467,5 @@ The :obj:`Data <temporaldata.Data>` class is a container that holds and organize
 Choosing ``domain``
 ^^^^^^^^^^^^^^^^^^^
 
-The recommended way to set the domain is to set ``domain="auto"``, which will infer the domain from the data. 
+The recommended way to set the domain is to set ``domain="auto"``, which will infer the domain from the data.
 Note that ``domain`` is not required when the data object does not contain any time-based data.
