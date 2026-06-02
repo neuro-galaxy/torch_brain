@@ -2,10 +2,9 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
 
-from torch_brain.datasets.dataset import Dataset
-from torch_brain.datasets.mixins import CalciumImagingDatasetMixin
-
 from ._utils import get_processed_dir
+from .dataset import Dataset
+from .mixins import CalciumImagingDatasetMixin
 
 
 class AllenVisualCodingOphys2016(CalciumImagingDatasetMixin, Dataset):

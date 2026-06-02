@@ -34,7 +34,7 @@ class RandomChoice:
             all transforms have the same probability.
     """
 
-    def __init__(self, transforms: list[Callable], p: list[float] = None) -> None:
+    def __init__(self, transforms: list[Callable], p: list[float] = None):
         if p is None:
             p = [1] * len(transforms)
         elif len(p) != len(transforms):
@@ -67,7 +67,7 @@ class ConditionalChoice:
 
     def __init__(
         self, condition: Callable, true_transform: Callable, false_transform: Callable
-    ) -> None:
+    ):
         self.condition = condition
         self.true_transform = true_transform
         self.false_transform = false_transform
