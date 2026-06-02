@@ -1,7 +1,7 @@
 Meet the Data Objects
 =====================
 
-The :obj:`torch_brain.data` module defines several kinds of data objects.
+The :obj:`torch_brain.data` module defines several key of data objects.
 Here we'll look at the different ways to create and interact with each type of object.
 
 .. .. note::
@@ -39,6 +39,51 @@ forms the base for all other objects in our library.
    array([[0. , 1. ],
           [0.1, 0.9],
           [1.2, 3.2]])
+
+RegularTimeSeries
+-----------------
+:obj:`~torch_brain.data.RegularTimeSeries` is the first time-oriented data
+object we will look at. As the name suggests, it is meant to store time-series
+that are regularly sampled.
+
+.. code-block:: pycon
+
+   >>> import numpy as np
+   >>> from torch_brain.data import RegularTimeSeries
+
+   >>> behavior = RegularTimeSeries(
+   ...     sampling_rate=100.0,  # in Hz
+   ...     hand_vel=np.random.randn(1000, 2),
+   ...     eye_pos=np.random.randn(1000, 2),
+   ...     pupil_size=np.random.randn(1000),
+   ... )
+   >>> behavior
+   RegularTimeSeries(
+     hand_vel=[1000, 2],
+     eye_pos=[1000, 2],
+     pupil_size=[1000]
+   )
+
+Here, we have created a 10-second long collection of behavioral measurements
+(hand velocity, eye position, and pupil size), in the *same* data object.
+This allows us to get time-slices of the entire set of signals!
+Let's get a slice starting at 2 seconds and ending at 3 seconds:
+
+.. code-block:: pycon
+
+   >>> sliced = behavior.slice(2., 3.)
+   >>> sliced
+   RegularTimeSeries(
+     hand_vel=[100, 2],
+     eye_pos=[100, 2],
+     pupil_size=[100]
+   )
+
+   >>> len(sliced.pupil_size)
+   100
+
+   >>> sliced.pupil_size
+   array([-0.07094018,  1.1442879 ,  1.26022563,  1.57259098, ..., ])
 
 
 :obj:`IrregularTimeSeries <temporaldata.IrregularTimeSeries>`
