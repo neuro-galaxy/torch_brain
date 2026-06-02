@@ -51,8 +51,7 @@ class BrainsetDescription(Data):
     derived_version: str
     source: str
     description: str
-    brainsets_version: str
-    temporaldata_version: str
+    torch_brain_version: str
 
     def __init__(
         self,
