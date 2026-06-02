@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Literal, get_args
 
 from torch_brain.data import Data
-from torch_brain.datasets import Dataset
+from torch_brain.datasets.dataset import Dataset
 from torch_brain.utils import np_string_prefix
 
 from ._utils import get_processed_dir

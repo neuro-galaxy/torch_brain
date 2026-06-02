@@ -5,7 +5,8 @@ from typing import Literal, get_args
 import numpy as np
 
 from torch_brain.data import Data, Interval
-from torch_brain.datasets import Dataset, MultiChannelDatasetMixin
+from torch_brain.datasets.dataset import Dataset
+from torch_brain.datasets.mixins import MultiChannelDatasetMixin
 from torch_brain.utils.split import _get_integer_hash_from_string
 
 OpenNeuroSplitType = Literal["intrasession", "intersubject", "intersession"]

@@ -5,7 +5,7 @@ from torch_brain.transforms.unit_dropout import TriangleDistribution, UnitDropou
 
 
 def test_distro():
-    for _i in range(100):
+    for _ in range(100):
         num_units = TriangleDistribution(
             min_units=100, mode_units=150, max_units=200
         ).sample(196)
@@ -20,7 +20,7 @@ def test_spikes():
     np.random.shuffle(unit_index)
     types = np.zeros(100)
 
-    for _i in range(100):
+    for _ in range(100):
         data = Data(
             spikes=IrregularTimeSeries(
                 timestamps=timestamps,
