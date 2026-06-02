@@ -1,10 +1,10 @@
 """Unit tests for OpenNeuroDataset class."""
 
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import numpy as np
 import pytest
-from unittest.mock import patch
 
 from torch_brain.data import Interval
 from torch_brain.datasets.OpenNeuroDataset import OpenNeuroDataset
@@ -175,7 +175,8 @@ def _make_recording(
 @pytest.fixture
 def mock_parent_init():
     """Patch parent Dataset.__init__ to avoid filesystem access and set recording_ids."""
-    with patch("torch_brain.dataset.Dataset.__init__", return_value=None):
+    # TODO check if this is correct
+    with patch("torch_brain.datasets.Dataset.__init__", return_value=None):
         yield
 
 

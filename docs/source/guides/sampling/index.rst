@@ -1,6 +1,6 @@
 .. _sampling_guide:
 
-.. currentmodule:: torch_brain.dataset
+.. currentmodule:: torch_brain.samplers
 
 Data Sampling
 =============
@@ -64,7 +64,7 @@ time* intervals. This is achieved with the following design:
 
 Datasets in **torch_brain** typically contain multiple recordings, and
 so we define sampling intervals as *dictionaries* keyed by the recording
-IDs. Each entry is a :obj:`temporaldata.Interval` object that specifies
+IDs. Each entry is a :obj:`torch_brain.data.Interval` object that specifies
 the valid start and end sampling times for that recording:
 
 .. code:: python
@@ -79,11 +79,11 @@ These intervals do not have to be contiguous, and can be of any length.
 
 Many **brainsets** provide default train/validation/test sampling
 intervals. For example, let’s load a single recording in the
-:obj:`~brainsets.datasets.PerichMillerPopulation2018` dataset.
+:obj:`~torch_brain.datasets.PerichMillerPopulation2018` dataset.
 
 .. code:: pycon
 
-    >>> from brainsets.datasets import PerichMillerPopulation2018
+    >>> from torch_brain.datasets import PerichMillerPopulation2018
 
     >>> dataset = PerichMillerPopulation2018(
     ...     root="./data/processed",
@@ -307,7 +307,7 @@ sample comes from — which recording, and which time window:
 
 These three fields are everything a :obj:`Dataset` needs to load a
 sample. Indexing the dataset with a :obj:`DatasetIndex` returns a
-:obj:`temporaldata.Data` object containing just that time slice of
+:obj:`torch_brain.data.Data` object containing just that time slice of
 the underlying recording:
 
 .. code:: pycon
@@ -330,7 +330,7 @@ the underlying recording:
 This is the bridge between sampling and data loading: the sampler
 emits a stream of :obj:`DatasetIndex` objects, and the
 :obj:`Dataset` turns each one into a sliced
-:obj:`~temporaldata.Data` sample.
+:obj:`~torch_brain.data.Data` sample.
 
 
 Sampling from multiple recordings

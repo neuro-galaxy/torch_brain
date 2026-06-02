@@ -1,7 +1,7 @@
 Creating an OpenNeuroPipeline
 =============================
 
-.. py:currentmodule:: brainsets.utils.openneuro
+.. py:currentmodule:: torch_brain.pipeline.openneuro
 .. |OpenNeuroPipeline| replace:: :class:`OpenNeuroPipeline`
 
 This guide shows you how to build a pipeline that automatically downloads, processes, and standardizes publicly available datasets from `OpenNeuro <https://openneuro.org/>`_. 
@@ -33,7 +33,8 @@ Here's a working minimal pipeline:
 
 .. code-block:: python
 
-    from brainsets.utils.openneuro import OpenNeuroPipeline
+    from torch_brain.pipeline.openneuro import OpenNeuroPipeline
+
 
     class Pipeline(OpenNeuroPipeline):
         modality = "eeg"  # or "ieeg"
@@ -78,7 +79,7 @@ The Five Required Attributes
 Every object extending |OpenNeuroPipeline| **must** have these five attributes:
 
 
-1. ``modality`` – EEG or iEEG?
+1. ``modality`` - EEG or iEEG?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Set ``modality`` to ``"eeg"`` for scalp/wearable EEG datasets or ``"ieeg"`` for intracranial datasets. This drives BIDS recording discovery from OpenNeuro S3.
@@ -89,7 +90,7 @@ Set ``modality`` to ``"eeg"`` for scalp/wearable EEG datasets or ``"ieeg"`` for 
     modality = "ieeg"  # intracranial EEG / ECoG
 
 
-2. ``dataset_id`` – Which OpenNeuro dataset?
+2. ``dataset_id`` - Which OpenNeuro dataset?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The dataset identifier must use strict OpenNeuro format: ``ds`` followed by exactly 6 digits.
@@ -107,7 +108,7 @@ The dataset identifier must use strict OpenNeuro format: ``ds`` followed by exac
    Dataset ID validation happens internally during pipeline initialization. Invalid IDs raise an error before data discovery.
 
 
-3. ``brainset_id`` – Your unique name
+3. ``brainset_id`` - Your unique name
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A descriptive ID for your processed brainset. This should be unique within the ``brainsets_pipelines/`` directory and should be a valid Python identifier. Recommended naming scheme:
@@ -120,7 +121,7 @@ A descriptive ID for your processed brainset. This should be unique within the `
     #                              └─ dataset ID
 
 
-4. ``origin_version`` – The dataset version you used
+4. ``origin_version`` - The dataset version you used
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Set ``origin_version`` to the exact version of the OpenNeuro dataset you used when building and testing your pipeline:
@@ -222,7 +223,7 @@ Set ``origin_version`` to the exact version of the OpenNeuro dataset you used wh
 
 ----
 
-5. ``derived_version`` – Your processing pipeline version
+5. ``derived_version`` - Your processing pipeline version
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Set ``derived_version`` to track the version of **your processing pipeline and its output**:

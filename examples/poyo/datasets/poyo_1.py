@@ -1,14 +1,16 @@
 from typing import Callable
-from temporaldata import Data
 
-from brainsets.datasets import (
-    ChurchlandShenoyNeural2012,
-    FlintSlutzkyAccurate2012,
-    OdohertySabesNonhuman2017,
-)
-from torch_brain.datasets import SpikingDatasetMixin, NestedDataset
 from datasets.poyo_mp import PoyoMPDataset
 from datasets.wrapper import PoyoReadoutConfig
+
+from torch_brain.data import Data
+from torch_brain.datasets import (
+    ChurchlandShenoyNeural2012,
+    FlintSlutzkyAccurate2012,
+    NestedDataset,
+    OdohertySabesNonhuman2017,
+    SpikingDatasetMixin,
+)
 
 
 class Poyo1Dataset(SpikingDatasetMixin, NestedDataset):

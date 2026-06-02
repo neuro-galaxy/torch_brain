@@ -1,18 +1,17 @@
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from typing import Literal
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-from tqdm import tqdm
-import torch
-from torch import nn
-from torch.utils.data import DataLoader
-from sklearn.metrics import r2_score
-
-from temporaldata import Interval
-from torch_brain.utils import bin_spikes
-from torch_brain.samplers import TrialSampler
-from torch_brain.datasets import DatasetIndex
-from brainsets.datasets import PeiPandarinathNLB2021
 
 import models
+import torch
+from sklearn.metrics import r2_score
+from torch import nn
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from torch_brain.data import Interval
+from torch_brain.datasets import DatasetIndex, PeiPandarinathNLB2021
+from torch_brain.samplers import TrialSampler
+from torch_brain.utils import bin_spikes
 
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument("--model", default="GRU", choices=["Linear", "GRU", "TCN"])
@@ -24,7 +23,7 @@ parser.add_argument("--lr", default=1e-3, type=float, help="Learning rate")
 args = parser.parse_args()
 
 
-# brainsets ships loaders for a collection of public neuro datasets.
+# We ships loaders for a collection of public neuro datasets.
 # PeiPandarinathNLB2021 handles file I/O for the NLB Maze dataset.
 #
 # We subclass this dataset to define two things on top of its file I/O:

@@ -1,7 +1,7 @@
 Creating a BrainsetPipeline
 ===========================
 
-.. py:currentmodule:: brainsets.pipeline
+.. py:currentmodule:: torch_brain.pipeline
 .. |BrainsetPipeline| replace:: :class:`BrainsetPipeline`
 .. |get_manifest| replace:: :meth:`get_manifest <BrainsetPipeline.get_manifest>`
 .. |download| replace:: :meth:`download <BrainsetPipeline.download>`
@@ -31,7 +31,7 @@ If you are brand new to the brainsets CLI, start with
 `Using the brainsets CLI <using_existing_data.html>`__ to learn how to run existing pipelines.
 
 
-Step 1 – Create a pipeline directory
+Step 1 - Create a pipeline directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A pipeline lives in a directory containing at least a ``pipeline.py`` file::
@@ -46,10 +46,10 @@ supporting files (helper modules, session lists, etc.) in the same directory.
 
 The ``brainsets prepare`` command reads the metadata, creates an isolated environment
 with the specified dependencies (using `uv <https://github.com/astral-sh/uv>`_), and
-runs ``pipeline.py`` through :mod:`brainsets.runner`.
+runs ``pipeline.py`` through :mod:`torch_brain.pipeline.runner`.
 
 
-Step 2 – Subclass :class:`BrainsetPipeline`
+Step 2 - Subclass :class:`BrainsetPipeline`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Inside ``pipeline.py`` define your pipeline class. At minimum you must set a
@@ -70,7 +70,7 @@ Pipelines can also expose custom CLI arguments by attaching an
     from argparse import ArgumentParser
     import pandas as pd
 
-    from brainsets.pipeline import BrainsetPipeline
+    from torch_brain.pipeline import BrainsetPipeline
 
 
     parser = ArgumentParser()
@@ -97,11 +97,11 @@ If your pipeline requires specific dependencies or a specific Python version,
 add an inline metadata block at the very top of ``pipeline.py`` (see
 :ref:`declaring-dependencies` below).
 
-The `Perich & Miller (2018) pipeline <https://github.com/neuro-galaxy/brainsets/blob/main/brainsets_pipelines/perich_miller_population_2018/pipeline.py>`__
+The `Perich & Miller (2018) pipeline <https://github.com/neuro-galaxy/torch_brain/blob/main/brainsets_pipelines/perich_miller_population_2018/pipeline.py>`__
 is a complete example that uses all of these hooks.
 
 
-Step 3 – Gather and enumerate metadata with :meth:`get_manifest`
+Step 3 - Gather and enumerate metadata with :meth:`get_manifest`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 |get_manifest| constructs the manifest—a table describing every session your pipeline
@@ -149,7 +149,7 @@ Tips:
 * Respect user arguments (for example, allowing the CLI to filter sessions).
 
 
-Step 4 – Download each session
+Step 4 - Download each session
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The |download| method receives one row of the manifest at a time.
@@ -181,11 +181,11 @@ Key things to remember:
 * Call ``self.update_status(...)`` to emit status updates visible in the CLI log.
 
 
-Step 5 – Process into :obj:`Data` objects
+Step 5 - Process into :obj:`Data` objects
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 |process| receives the object returned by |download|, converts
-it into processed :obj:`temporaldata.Data` object(s), and stores these inside ``self.processed_dir``.
+it into processed :obj:`torch_brain.data.Data` object(s), and stores these inside ``self.processed_dir``.
 
 .. code-block:: python
 
@@ -222,7 +222,7 @@ Best practices:
 * Call ``self.update_status(...)`` to emit status updates visible in the CLI log.
 
 
-Step 6 – Run the pipeline with the CLI
+Step 6 - Run the pipeline with the CLI
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Once your class is in place you can run it through the CLI.
@@ -304,4 +304,4 @@ Specialized Pipeline Base Classes
 
 For common data sources, brainsets provides specialized base classes:
 
-* :doc:`Creating an OpenNeuro Pipeline <openneuro_pipeline>` – Build pipelines for publicly available datasets on `OpenNeuro <https://openneuro.org/>`_.
+* :doc:`Creating an OpenNeuro Pipeline <openneuro_pipeline>` - Build pipelines for publicly available datasets on `OpenNeuro <https://openneuro.org/>`_.

@@ -1,5 +1,5 @@
-from brainsets.datasets import PerichMillerPopulation2018
-from temporaldata import Data
+from torch_brain.data import Data
+from torch_brain.datasets import PerichMillerPopulation2018
 
 from .wrapper import PoyoReadoutConfig
 

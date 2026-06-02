@@ -1,4 +1,4 @@
-"""Benchmark suite for temporaldata.
+"""Benchmark suite for torch_brain.data.
 
 Benchmarks are modeled on real torch_brain workloads: Data.slice() on
 realistic lazy-loaded recording objects, IrregularTimeSeries/Interval

@@ -12,8 +12,9 @@ __api_ref__ = {
 }
 
 
-from typing import Literal
 from pathlib import Path
+from typing import Literal
+
 import numpy as np
 import pandas as pd
 from pynwb import NWBFile
@@ -38,7 +39,7 @@ def _check_dandi_available(func_name: str) -> None:
 
 
 def extract_subject_from_nwb(nwbfile: NWBFile):
-    r"""Extract a :obj:`SubjectDescription <brainsets.descriptions.SubjectDescription>` from an NWBFile
+    r"""Extract a :obj:`SubjectDescription <torch_brain.data.SubjectDescription>` from an NWBFile
 
     The resultant description will include ``id``, ``species``, and ``sex``
 
@@ -46,7 +47,7 @@ def extract_subject_from_nwb(nwbfile: NWBFile):
         nwbfile: An open NWB file handle
 
     Returns:
-        A :obj:`SubjectDescription <brainsets.descriptions.SubjectDescription>`
+        A :obj:`SubjectDescription <torch_brain.data.SubjectDescription>`
     """
 
     # DANDI has requirements for metadata included in `subject`

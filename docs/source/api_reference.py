@@ -42,10 +42,10 @@ Essentially, the rendered page would look like the following:
 |---------------------------------------------------------------------------------|
 
 Hooks will be automatically generated for each module and each section. For a module,
-e.g., `torch_brain.dataset`, the hook would be `dataset_ref`; for a
-section, e.g., "Mixins" under `torch_brain.dataset`, the hook would be
+e.g., `torch_brain.datasets`, the hook would be `dataset_ref`; for a
+section, e.g., "Mixins" under `torch_brain.datasets`, the hook would be
 `dataset_ref-mixins`. However, note that a better way is to refer using the :mod: directive,
-e.g., :mod:`torch_brain.dataset` for the module. Only in case that a section
+e.g., :mod:`torch_brain.datasets` for the module. Only in case that a section
 is not a particular submodule does the hook become useful.
 """
 

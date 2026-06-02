@@ -2,6 +2,7 @@ import datetime
 import os
 import sys
 from pathlib import Path
+
 from sphinx.util.typing import restify
 
 sys.path.insert(0, os.path.abspath("."))
@@ -83,8 +84,6 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/", None),
     "numpy": ("http://docs.scipy.org/doc/numpy", None),
     "h5py": ("http://docs.h5py.org/en/latest/", None),
-    "temporaldata": ("https://temporaldata.readthedocs.io/en/latest/", None),
-    "brainsets": ("https://brainsets.readthedocs.io/en/latest/", None),
     "torch": ("https://pytorch.org/docs/stable", None),
 }
 
@@ -111,8 +110,8 @@ sass_targets = {
 Path("generated/css/").mkdir(exist_ok=True, parents=True)
 
 
-from api_reference import build_api_rst
 import notebooks.nlb_maze_minimal_example.modify
+from api_reference import build_api_rst
 
 build_api_rst()
 notebooks.nlb_maze_minimal_example.modify.main()

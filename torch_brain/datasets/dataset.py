@@ -1,13 +1,14 @@
 import copy
 from dataclasses import dataclass
-from typing import Optional, Callable, Any
 from pathlib import Path
+from typing import Callable, Optional
+
 import h5py
 import numpy as np
 import torch
 
-from torch_brain.utils import np_string_prefix
 from torch_brain.data import Data, Interval
+from torch_brain.utils import np_string_prefix
 
 
 @dataclass
@@ -19,7 +20,7 @@ class DatasetIndex:
         start: Start time of the interval (in seconds or appropriate time units).
         end: End time of the interval (in seconds or appropriate time units).
         _namespace: Optional namespace prefix for attribute namespacing. Used internally by
-            :class:`torch_brain.dataset.NestedDataset` to handle nested namespaced attributes.
+            :class:`torch_brain.datasets.NestedDataset` to handle nested namespaced attributes.
     """
 
     recording_id: str
@@ -122,14 +123,14 @@ class Dataset(torch.utils.data.Dataset):
         return self._recording_ids
 
     def get_recording(self, recording_id: str, _namespace: str = "") -> Data:
-        """Get lazy-loaded :class:`temporaldata.Data` object for a recording.
+        """Get lazy-loaded :class:`torch_brain.data.Data` object for a recording.
 
         Args:
             recording_id: The ID of the recording to load (same as from :meth:`recording_ids`).
             _namespace: Optional namespace prefix to apply to attributes.
 
         Returns:
-            Lazy :class:`temporaldata.Data` object containing the full recording.
+            Lazy :class:`torch_brain.data.Data` object containing the full recording.
         """
         if hasattr(self, "_data_objects"):
             data = copy.deepcopy(self._data_objects[recording_id])
@@ -152,7 +153,7 @@ class Dataset(torch.utils.data.Dataset):
             index: Container for the recording ID and time interval.
 
         Returns:
-            :class:`temporaldata.Data` object containing the sliced time interval, optionally transformed.
+            :class:`torch_brain.data.Data` object containing the sliced time interval, optionally transformed.
         """
         data = self.get_recording(index.recording_id, index._namespace)
         sample = data.slice(index.start, index.end)
@@ -189,7 +190,7 @@ class Dataset(torch.utils.data.Dataset):
             namespace: The namespace prefix to prepend (e.g., "experiment1/").
 
         Returns:
-            The modified :class:`temporaldata.Data` object (same instance, modified in-place).
+            The modified :class:`torch_brain.data.Data` object (same instance, modified in-place).
         """
         if not self.namespace_attributes:
             return data

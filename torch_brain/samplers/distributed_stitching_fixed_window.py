@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple
+from typing import Dict, List, Tuple
 
 import torch
 import torch.distributed as dist
@@ -30,7 +30,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
     Args:
         sampling_intervals: Sampling intervals for each session.
             Typically obtained from
-            :meth:`~torch_brain.dataset.Dataset.get_sampling_intervals`.
+            :meth:`~torch_brain.datasets.Dataset.get_sampling_intervals`.
         batch_size: Number of windows per batch, used by the stitcher to track
             sequence boundaries within a batch.
         window_length: Duration of each sliding window in seconds.
@@ -120,7 +120,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
 
         Returns:
             Tuple of ``(indices, sequence_index)`` where ``indices`` is the list of
-            :class:`~torch_brain.dataset.DatasetIndex` objects for this rank and
+            :class:`~torch_brain.datasets.DatasetIndex` objects for this rank and
             ``sequence_index`` is a :class:`torch.Tensor` mapping each window to its
             parent interval index.
         """
@@ -186,7 +186,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         return indices, sequence_index
 
     def __iter__(self):
-        r"""Yields :class:`~torch_brain.dataset.DatasetIndex` objects assigned to this rank."""
+        r"""Yields :class:`~torch_brain.datasets.DatasetIndex` objects assigned to this rank."""
         return iter(self.indices)
 
     def __len__(self) -> int:

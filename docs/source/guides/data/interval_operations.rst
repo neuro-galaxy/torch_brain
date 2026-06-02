@@ -1,13 +1,13 @@
 Interval Operations
 ===================
 
-The :obj:`Interval <temporaldata.Interval>` class provides several operations to manipulate and combine interval objects.
+The :obj:`Interval <torch_brain.data.Interval>` class provides several operations to manipulate and combine interval objects.
 
 First, let's create some simple intervals:
 
 .. code-block:: python
 
-    from temporaldata import Interval
+    from torch_brain.data  import Interval
     import numpy as np
 
     # Create two intervals: [1, 8] and [12, 18]
@@ -16,8 +16,8 @@ First, let's create some simple intervals:
     # Create three intervals: [2, 5], [7, 10], and [14, 17]
     interval2 = Interval(start=np.array([2., 7., 14.]), end=np.array([5., 10., 17.]))
 
-Typically for most operations that involve multiple :obj:`Interval <temporaldata.Interval>` objects, 
-each :obj:`Interval <temporaldata.Interval>` object must be disjoint and sorted.
+Typically for most operations that involve multiple :obj:`Interval <torch_brain.data.Interval>` objects, 
+each :obj:`Interval <torch_brain.data.Interval>` object must be disjoint and sorted.
 
 You can check these conditions using:
 
@@ -31,8 +31,8 @@ You can check these conditions using:
 Intersection
 ------------
 
-The intersection operation (``&``) returns a new :obj:`Interval <temporaldata.Interval>` 
-containing only the overlapping time periods between two :obj:`Interval <temporaldata.Interval>` objects.
+The intersection operation (``&``) returns a new :obj:`Interval <torch_brain.data.Interval>` 
+containing only the overlapping time periods between two :obj:`Interval <torch_brain.data.Interval>` objects.
 
 .. image:: /_static/intersection.png
    :width: 800
@@ -51,7 +51,7 @@ containing only the overlapping time periods between two :obj:`Interval <tempora
 Union
 -----
 
-The union operation (``|``) returns a new :obj:`Interval <temporaldata.Interval>` 
+The union operation (``|``) returns a new :obj:`Interval <torch_brain.data.Interval>` 
 containing the union of all intervals in both objects.
 
 .. image:: /_static/union.png
@@ -72,7 +72,7 @@ containing the union of all intervals in both objects.
 Difference
 ----------
 
-The difference operation (``.difference()``) returns a new :obj:`Interval <temporaldata.Interval>` containing time periods that are in the first interval but not in the second interval.
+The difference operation (``.difference()``) returns a new :obj:`Interval <torch_brain.data.Interval>` containing time periods that are in the first interval but not in the second interval.
 
 .. image:: /_static/difference.png
    :width: 800

@@ -14,7 +14,7 @@ To save a data object to disk, use the ``save`` method:
 
     .. code-block:: python
 
-        from temporaldata import RegularTimeSeries, IrregularTimeSeries, Data, Interval
+        from torch_brain.data  import RegularTimeSeries, IrregularTimeSeries, Data, Interval
         import numpy as np
 
         # Create a complex data object
@@ -39,7 +39,7 @@ To save a data object to disk, use the ``save`` method:
 
     .. code-block:: python
 
-        from temporaldata import RegularTimeSeries, IrregularTimeSeries, Data, Interval
+        from torch_brain.data  import RegularTimeSeries, IrregularTimeSeries, Data, Interval
         import numpy as np
 
         # Create a complex data object

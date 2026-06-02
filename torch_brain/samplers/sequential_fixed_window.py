@@ -1,6 +1,6 @@
 import logging
-from typing import List, Dict
 from functools import cached_property
+from typing import Dict, List
 
 import torch
 
@@ -12,8 +12,8 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
     r"""Samples fixed-length windows sequentially in a deterministic, reproducible order.
 
     Given the :obj:`sampling_intervals` dictionary mapping session IDs to
-    :class:`temporaldata.Interval` objects, this sampler produces
-    :class:`~torch_brain.dataset.DatasetIndex` objects in a fixed order. Windows are
+    :class:`torch_brain.data.Interval` objects, this sampler produces
+    :class:`~torch_brain.datasets.DatasetIndex` objects in a fixed order. Windows are
     stepped through each interval using a configurable :obj:`step` size, making this
     sampler well-suited for evaluation where full coverage and reproducibility are
     required.
@@ -24,7 +24,7 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
     Args:
         sampling_intervals: Sampling intervals for each session.
             Typically obtained from
-            :meth:`~torch_brain.dataset.Dataset.get_sampling_intervals`.
+            :meth:`~torch_brain.datasets.Dataset.get_sampling_intervals`.
         window_length: Duration of each sampled window in seconds.
         step: Step size between the start of consecutive windows in
             seconds. If ``None`` (default), sets :obj:`step` to :obj:`window_length` (non-overlapping
@@ -118,5 +118,5 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
         return len(self._indices)
 
     def __iter__(self):
-        r"""Yields :class:`~torch_brain.dataset.DatasetIndex` objects in sequential order."""
+        r"""Yields :class:`~torch_brain.datasets.DatasetIndex` objects in sequential order."""
         yield from self._indices
