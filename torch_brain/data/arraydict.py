@@ -114,7 +114,7 @@ class ArrayDict:
             ...     waveform_mean=np.random.rand(2, 48),
             ... )
 
-            >>> units_subset = units.select_by_mask([True, False])
+            >>> units_subset = units.select_by_mask(np.array([True, False]))
             >>> units_subset
             ArrayDict(
               unit_id=[1],

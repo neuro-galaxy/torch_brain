@@ -565,7 +565,7 @@ class RegularTimeSeries(ArrayDict):
 
             >>> # 4 samples at 100 Hz, the 0.02s sample is missing.
             >>> rts = RegularTimeSeries.from_gappy_timeseries(
-            ...     ts=[0.0, 0.01, 0.03, 0.04],
+            ...     timestamps=[0.0, 0.01, 0.03, 0.04],
             ...     sampling_rate=100.0,
             ...     raw=[1.0, 2.0, 3.0, 4.0],
             ... )
