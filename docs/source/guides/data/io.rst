@@ -4,9 +4,9 @@ Saving and (Lazy) Loading Data
 ==============================
 
 :obj:`Data` objects can be saved to and loaded from `HDF5 <https://en.wikipedia.org/wiki/Hierarchical_Data_Format>`_
-files. HDF5 is a specialized data format that allows streaming data chunks from
-disk without loading it all in memory (RAM), thus providing an efficient way to
-work with large datasets.
+files. HDF5 is a specialized data format that allows streaming chunks of data
+from disk without loading all of it into memory (RAM), giving us an efficient
+way to work with large datasets.
 
 
 Saving
@@ -41,8 +41,8 @@ To save a data object to disk, use the :obj:`~Data.save()` method:
 Loading
 -------
 
-To load our previously written data from disk, use :obj:`Data.load()`.
-Let's first load the data "non-lazily" by using ``lazy=False``:
+To load data back from disk, use :obj:`Data.load()`.
+Let's first load it "non-lazily" by passing ``lazy=False``:
 
 .. code-block:: pycon
 
@@ -70,27 +70,28 @@ Let's first load the data "non-lazily" by using ``lazy=False``:
       ),
     )
 
-By setting, ``lazy=False``, we instantly load the entire data into memory.
-This quickly becomes infeasible for datasets of reasonable size (a few 100GBs
-to a few TBs). To address this, we introduce our *Lazy Loading* feature.
+By setting ``lazy=False``, we load the entire dataset into memory upfront.
+This quickly becomes infeasible for datasets of any real size (a few hundred GBs
+to a few TBs). To address this, we provide a *Lazy Loading* mode.
 
 
 Lazy Loading
 ------------
 
-Under lazy-loading,
+Under lazy-loading:
 
-- Data is read from disk only when attributes are accessed.
-  Once an attribute is accessed, it is then kept in memory.
+- Data is read from disk only when an attribute is accessed.
 
-- Slicing is also done lazily, where only attributes that you access will
-  be sliced whenever you access them.
+- Slicing is also deferred: only the attributes you access get sliced, and
+  only at the moment you access them. Importantly, only the sliced portion is
+  read from disk, not the whole array. So slicing a small window out of a
+  huge recording is cheap, both in terms of disk I/O and memory usage.
 
-- Same goes for masking (via methods such as :obj:`ArrayDict.select_by_mask()`).
-  Actual masking is deferred until attributes are actually requested.
+- The same goes for masking (via methods such as :obj:`ArrayDict.select_by_mask()`):
+  the masking is deferred until the attribute is actually requested.
 
 
-To load data in lazy mode, simply omit the ``lazy=False`` flag that we used above:
+To load data in lazy mode, simply omit the ``lazy=False`` flag we used above:
 
 .. code-block:: pycon
 
@@ -109,8 +110,10 @@ To load data in lazy mode, simply omit the ``lazy=False`` flag that we used abov
      ),
    )
 
-The presence of ``<HDF5 dataset...>`` indicates that the arrays are yet
-to be loaded. Let's see what happens when we access ``eye_pos``:
+First note that the internal objects are :obj:`LazyRegularTimeSeries` and
+:obj:`LazyIrregularTimeSeries`. Secondly, the presence of ``<HDF5 dataset...>``
+indicates that the arrays are yet to be loaded. Let's see what happens when we
+access ``eye_pos``:
 
 .. code-block:: pycon
 
@@ -132,5 +135,55 @@ to be loaded. Let's see what happens when we access ``eye_pos``:
      ),
    )
 
-We can see that ``eye_pos`` has now been loaded, and the remaining attributes
-are still lazy.
+We can see that ``eye_pos`` has been loaded, and the remaining attributes
+are still lazy. If we access both ``hand_vel`` and ``pupil_size``, ``behavior``
+will then turn into a :obj:`RegularTimeSeries` object:
+
+.. code-block:: pycon
+
+   >>> session.behavior.hand_vel
+   array([[ 1.86527056e-01,  1.54714182e-01],
+          [ 2.75861600e-01, -5.30891532e-01],
+          ...
+   >>> session.behavior.pupil_size
+   array([ 1.66121169e-01,  2.06565774e-01, -7.85847571e-01, ...])
+
+   >>> session
+   Data(
+     behavior=RegularTimeSeries(
+       eye_pos=[400, 2],
+       hand_vel=[400, 2],
+       pupil_size=[400]
+     ),
+     spikes=LazyIrregularTimeSeries(
+       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
+       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+     ),
+   )
+
+We can also slice a lazy object:
+
+.. code-block:: pycon
+
+   >>> sliced = session.slice(2., 4.)
+   >>> sliced
+   Data(
+     behavior=RegularTimeSeries(
+       eye_pos=[200, 2],
+       hand_vel=[200, 2],
+       pupil_size=[200]
+     ),
+     spikes=LazyIrregularTimeSeries(  # Note that this remains lazy!!
+       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
+       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+     ),
+   )
+
+   >>> sliced.spikes.timestamps
+   array([0.3, 1.1])
+
+Here, ``spikes`` stayed lazy after slicing. When we finally access
+``sliced.spikes.timestamps``, only the two timestamps that fall within the
+:math:`[2, 4)` window are read from disk and not the full timestamps array.
+This is what makes lazy loading efficient: you only pay for the slice you ask for.
+

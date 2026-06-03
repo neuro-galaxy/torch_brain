@@ -1,4 +1,4 @@
-.. currentmodule:: data
+.. currentmodule:: torch_brain.data
 
 Gappy RegularTimeSeries
 =======================
@@ -46,7 +46,7 @@ a configurable gap value.
 
 .. code-block:: pycon
 
-    >>> from torch_brain.data  import RegularTimeSeries
+    >>> from torch_brain.data import RegularTimeSeries
 
     >>> # Signal sampled at 1 Hz but a few samples dropped: t = 3, 6, 7
     >>> ts = [0., 1., 2., 4., 5., 8., 9.,]
