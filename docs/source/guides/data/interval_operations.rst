@@ -137,7 +137,8 @@ The coalesce operation is useful for:
 - Simplifying interval representations
 
 There are multiple edge cases that can occur when performing interval
-operations. For more details, see :ref:`advanced_interval_operations`.
+operations. For more details, see the :ref:`interval_ops_edge_cases`
+section below.
 
 Introspection
 -------------
@@ -166,4 +167,92 @@ checks return ``True``:
 
 The set operations above (intersection, union, and difference) require their
 inputs to be disjoint and sorted, and will raise a ``ValueError`` otherwise, so
-these methods are handy for validating an :obj:`Interval` before.
+these methods are handy for validating an :obj:`Interval` before relying on it.
+
+
+.. _interval_ops_edge_cases:
+
+Edge Cases
+----------
+
+Interval operations also handle a number of edge cases gracefully. Here we walk
+through a few of them.
+
+Adjacent Intervals
+~~~~~~~~~~~~~~~~~~~
+
+When two intervals are exactly adjacent (the end of one equals the start of the
+next), the union operation merges them into a single interval:
+
+.. code-block:: pycon
+
+   >>> # Two adjacent intervals [1, 2) and [2, 3)
+   >>> adjacent = Interval(start=[1., 2.], end=[2., 3.])
+
+   >>> # Union merges them into [1, 3)
+   >>> merged = adjacent | adjacent
+   >>> merged.start, merged.end
+   (array([1.]), array([3.]))
+
+Point Intervals
+~~~~~~~~~~~~~~~
+
+Intervals where the start equals the end (i.e. zero-duration "point" intervals)
+are handled gracefully:
+
+.. code-block:: pycon
+
+   >>> # A point interval at t = 2
+   >>> point = Interval(start=[2.], end=[2.])
+
+   >>> # Intersecting with an interval that contains that point
+   >>> other = Interval(start=[1.], end=[3.])
+   >>> intersection = point & other
+   >>> intersection.start, intersection.end
+   (array([2.]), array([2.]))
+
+Empty Intervals
+~~~~~~~~~~~~~~~
+
+Operations involving an empty interval (one with no time periods) return the
+results you'd expect:
+
+.. code-block:: pycon
+
+   >>> # An empty interval
+   >>> empty = Interval(start=[], end=[])
+   >>> some_interval = Interval(start=[1.], end=[2.])
+
+   >>> # Intersection with an empty interval is empty
+   >>> len(empty & some_interval)
+   0
+
+   >>> # Union with an empty interval returns the non-empty interval
+   >>> union = empty | some_interval
+   >>> union.start, union.end
+   (array([1.]), array([2.]))
+
+Non-disjoint or Unsorted Inputs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As mentioned above, the set operations require their inputs to be disjoint and
+sorted. If they aren't, the operation raises a ``ValueError``:
+
+.. code-block:: pycon
+
+   >>> # [1, 3) and [2, 4) overlap, so this interval is not disjoint
+   >>> overlapping = Interval(start=[1., 2.], end=[3., 4.])
+   >>> overlapping & some_interval
+   Traceback (most recent call last):
+       ...
+   ValueError: left Interval object must be disjoint.
+
+   >>> # Coalesce into a disjoint interval first, then the operation works
+   >>> fixed = overlapping | overlapping
+   >>> result = fixed & some_interval
+   >>> result.start, result.end
+   (array([1.]), array([2.]))
+
+These edge cases are worth keeping in mind when working with intervals,
+especially in data-processing pipelines where unexpected interval patterns can
+arise.
