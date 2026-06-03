@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from .OpenNeuroDataset import OpenNeuroDataset, OpenNeuroSplitType
 
@@ -19,10 +19,10 @@ class KlinzingSleepDS005555(OpenNeuroDataset):
     restricted to specific recordings via recording_ids.
 
     Args:
-        root (str): Root directory containing processed Klinzing Sleep artifacts.
-        split_type (OpenNeuroSplitType): Dataset split strategy, e.g. train/valid/test as designated by the workflow.
-        recording_ids (list[str], optional): List of explicit recording IDs to load. If omitted, the dataset uses split-based recording selection.
-        transform (Callable, optional): Optional transform to apply to each sample.
+        root: Root directory containing processed Klinzing Sleep artifacts.
+        split_type: Dataset split strategy, e.g. train/valid/test as designated by the workflow.
+        recording_ids: List of explicit recording IDs to load. If omitted, the dataset uses split-based recording selection.
+        transform: Optional transform to apply to each sample.
         **kwargs: Additional keyword arguments forwarded to OpenNeuroDataset.
 
     **References**
@@ -34,8 +34,8 @@ class KlinzingSleepDS005555(OpenNeuroDataset):
         self,
         root: str,
         split_type: OpenNeuroSplitType,
-        recording_ids: Optional[list[str]] = None,
-        transform: Optional[Callable] = None,
+        recording_ids: list[str] | None = None,
+        transform: Callable | None = None,
         **kwargs,
     ):
         dataset_dir = "klinzing_sleep_ds005555"

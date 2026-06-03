@@ -3,11 +3,10 @@
 # dependencies = ["zenodo_get==2.0.0"]
 # ///
 
-import os
 import datetime
 import hashlib
 import logging
-import subprocess
+import os
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -17,17 +16,16 @@ import pandas as pd
 
 from torch_brain.data import (
     ArrayDict,
+    BrainsetDescription,
     Data,
+    DeviceDescription,
     Interval,
     IrregularTimeSeries,
     RegularTimeSeries,
-    serialize_fn_map,
-    BrainsetDescription,
-    DeviceDescription,
     SessionDescription,
     SubjectDescription,
+    serialize_fn_map,
 )
-
 from torch_brain.pipeline import BrainsetPipeline
 from torch_brain.utils import calculate_sampling_rate
 
@@ -45,7 +43,7 @@ class Pipeline(BrainsetPipeline):
     @classmethod
     def get_manifest(cls, raw_dir, args) -> pd.DataFrame:
         # list files to download
-        r_fd = os.popen(f"zenodo_get -w - 3854034")
+        r_fd = os.popen("zenodo_get -w - 3854034")
         manifest_out = r_fd.read()
         exit_code = r_fd.close()
         if exit_code is not None and exit_code != 0:
@@ -57,7 +55,7 @@ class Pipeline(BrainsetPipeline):
             raise RuntimeError("zenodo_get (md5) failed")
 
         # parse md5sums
-        with open(raw_dir / "md5sums.txt", "r") as f:
+        with open(raw_dir / "md5sums.txt") as f:
             md5sums = {}
             for line in f:
                 line = line.strip()
@@ -225,7 +223,7 @@ def extract_behavior(h5file):
 
     cursor_pos = h5file["cursor_pos"][:].T
     finger_pos = h5file["finger_pos"][:].T
-    target_pos = h5file["target_pos"][:].T
+    h5file["target_pos"][:].T  # noqa: B018
     timestamps = h5file["t"][:][0]
 
     expected_period = 0.004

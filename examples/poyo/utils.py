@@ -1,14 +1,15 @@
-import os
 import logging
+import os
 import random
-from omegaconf import DictConfig
+
 import numpy as np
 import torch
+from omegaconf import DictConfig
+from optim import SparseLamb
 from torch import Tensor
 
-from torch_brain.utils.stitcher import stitch
 from torch_brain.models import POYO
-from optim import SparseLamb
+from torch_brain.utils.stitcher import stitch
 
 log = logging.getLogger(__name__)
 
@@ -97,7 +98,7 @@ def create_optim(model: POYO, steps_per_epoch: int, cfg: DictConfig):
     log.info(
         f"Optim: max_lr={max_lr}, "
         f"# Embedding params={sum(p.numel() for p in emb_params):,}, "
-        f"# Non-Embedding params={sum(p.numel()for p in nonemb_params):,}"
+        f"# Non-Embedding params={sum(p.numel() for p in nonemb_params):,}"
     )
     return optim, scheduler
 

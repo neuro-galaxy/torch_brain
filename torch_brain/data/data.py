@@ -1,22 +1,22 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Mapping, Sequence
-from typing import Any, Dict, List, Literal, Tuple, Union, Callable, Optional, Type
-from pathlib import Path
 import warnings
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, Literal
 
 import h5py
 import numpy as np
 
-from .arraydict import ArrayDict, LazyArrayDict
-from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
-from .regular_ts import RegularTimeSeries, LazyRegularTimeSeries
-from .interval import Interval, LazyInterval
+from .arraydict import ArrayDict, LazyArrayDict  # noqa: F401
+from .interval import Interval, LazyInterval  # noqa: F401
+from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries  # noqa: F401
+from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries  # noqa: F401
 from .utils import _size_repr
 
 
-class Data(object):
+class Data:
     r"""A flexible container for other data objects such as
     :obj:`ArrayDict`, :obj:`RegularTimeSeries`, :obj:`IrregularTimeSeries`,
     and :obj:`Interval` objects, as well as nested :obj:`Data` objects and
@@ -44,8 +44,8 @@ class Data(object):
         >>> data = Data(
         ...     session_id="session_0",
         ...     spikes=IrregularTimeSeries(
-        ...         timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
-        ...         unit_index=np.array([0, 0, 1, 0, 1, 2]),
+        ...         timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+        ...         unit_index=[0, 0, 1, 0, 1, 2],
         ...         waveforms=np.zeros((6, 48)),
         ...         domain=Interval(0., 3.),
         ...     ),
@@ -54,14 +54,14 @@ class Data(object):
         ...         sampling_rate=250.,
         ...     ),
         ...     units=ArrayDict(
-        ...         id=np.array(["unit_0", "unit_1", "unit_2"]),
-        ...         brain_region=np.array(["M1", "M1", "PMd"]),
+        ...         id=["unit_0", "unit_1", "unit_2"],
+        ...         brain_region=["M1", "M1", "PMd"],
         ...     ),
         ...     trials=Interval(
-        ...         start=np.array([0, 1, 2]),
-        ...         end=np.array([1, 2, 3]),
-        ...         go_cue_time=np.array([0.5, 1.5, 2.5]),
-        ...         drifting_gratings_dir=np.array([0, 45, 90]),
+        ...         start=[0, 1, 2],
+        ...         end=[1, 2, 3],
+        ...         go_cue_time=[0.5, 1.5, 2.5],
+        ...         drifting_gratings_dir=[0, 45, 90],
         ...     ),
         ...     drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
         ...     domain=Interval(0., 4.),
@@ -119,18 +119,18 @@ class Data(object):
 
     _absolute_start = 0.0
     _domain = None
-    _file: Optional[h5py.File] = None
+    _file: h5py.File | None = None
 
     def __init__(
         self,
         *,
-        domain: Union[Interval, Literal["auto"], None] = None,
+        domain: Interval | Literal["auto"] | None = None,
         **kwargs,
     ):
         if domain == "auto":
             # the domain is the union of the domains of the attributes
             domain = Interval(np.array([]), np.array([]))
-            for key, value in kwargs.items():
+            for _, value in kwargs.items():
                 if isinstance(value, (IrregularTimeSeries, RegularTimeSeries)):
                     domain = domain | value.domain
                 if isinstance(value, Interval):
@@ -299,7 +299,7 @@ class Data(object):
         info = info.rstrip()
         return f"{cls}(\n{info}\n)"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         r"""Returns a dictionary of stored key/value pairs."""
         out_dict = {k: v for k, v in self.__dict__.items() if k != "_file"}
         return copy.deepcopy(out_dict)
@@ -311,7 +311,7 @@ class Data(object):
         data object.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. code-block:: python
 
@@ -356,7 +356,7 @@ class Data(object):
         data object.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
 
         .. code-block:: python
@@ -410,7 +410,7 @@ class Data(object):
         return self._file
 
     @classmethod
-    def load(cls, path: Union[Path, str], lazy: bool = True) -> Data:
+    def load(cls, path: Path | str, lazy: bool = True) -> Data:
         r"""Loads the :class:`Data` object from an HDF5 file given its file path.
 
         When ``lazy=True`` (default), the underlying HDF5 file remains open and
@@ -475,7 +475,7 @@ class Data(object):
         if strict:
             raise RuntimeError("No file handle is open")
 
-    def save(self, path: Union[Path, str]):
+    def save(self, path: Path | str):
         r"""Saves the data object to an HDF5 file at the given path.
 
         Args:
@@ -541,7 +541,7 @@ class Data(object):
         )
         return True
 
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         r"""Returns a list of all attribute names."""
         return list(filter(lambda x: not x.startswith("_"), self.__dict__))
 
@@ -564,10 +564,10 @@ class Data(object):
         for c in components:
             try:
                 out = getattr(out, c)
-            except AttributeError:
+            except AttributeError as err:
                 raise AttributeError(
                     f"Could not resolve {path} in data (specifically, at level {c})"
-                )
+                ) from err
         return out
 
     def set_nested_attribute(self, path: str, value: Any) -> Data:
@@ -592,10 +592,10 @@ class Data(object):
         for c in components[:-1]:
             try:
                 obj = getattr(obj, c)
-            except AttributeError:
+            except AttributeError as err:
                 raise AttributeError(
                     f"Could not resolve {path} in data (specifically, at level {c})"
-                )
+                ) from err
 
         setattr(obj, components[-1], value)
         return self
@@ -661,7 +661,7 @@ class Data(object):
 
 def _serialize(
     elem,
-    serialize_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    serialize_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     r"""
     General serialization function that handles object types that are not supported

@@ -1,15 +1,17 @@
-import pytest
 import os
+import tempfile
+
 import h5py
 import numpy as np
-import tempfile
+import pytest
+
 from torch_brain.data import (
     ArrayDict,
-    IrregularTimeSeries,
-    RegularTimeSeries,
-    Interval,
-    LazyInterval,
     Data,
+    Interval,
+    IrregularTimeSeries,
+    LazyInterval,
+    RegularTimeSeries,
 )
 
 
@@ -103,10 +105,10 @@ def test_materialize(test_filepath):
     for key in data.keys():
         obj = getattr(data, key)
         if isinstance(obj, (Data, RegularTimeSeries, IrregularTimeSeries, Interval)):
-            assert (
-                "Lazy" not in obj.__class__.__name__
-            ), f"{key} is still a Lazy object: {obj.__class__.__name__}"
+            assert "Lazy" not in obj.__class__.__name__, (
+                f"{key} is still a Lazy object: {obj.__class__.__name__}"
+            )
 
-    assert not isinstance(
-        data.domain, LazyInterval
-    ), f"data.domain is still a LazyInterval object"
+    assert not isinstance(data.domain, LazyInterval), (
+        "data.domain is still a LazyInterval object"
+    )

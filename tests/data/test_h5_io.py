@@ -1,14 +1,16 @@
-import pytest
 import os
+import tempfile
+
 import h5py
 import numpy as np
-import tempfile
+import pytest
+
 from torch_brain.data import (
-    RegularTimeSeries,
-    IrregularTimeSeries,
-    Interval,
     Data,
+    Interval,
+    IrregularTimeSeries,
     LazyInterval,
+    RegularTimeSeries,
 )
 
 
@@ -187,72 +189,72 @@ class TestNestedDataLazyPropagation:
         """Test that lazy=True loads intervals as LazyInterval in nested Data."""
         with h5py.File(nested_data_filepath, "r") as f:
             loaded = Data.from_hdf5(f, lazy=True)
-            assert isinstance(
-                loaded.nested.interval, LazyInterval
-            ), "Level 1: interval should be LazyInterval when lazy=True"
-            assert isinstance(
-                loaded.nested.nested_level2.interval, LazyInterval
-            ), "Level 2: interval should be LazyInterval when lazy=True"
+            assert isinstance(loaded.nested.interval, LazyInterval), (
+                "Level 1: interval should be LazyInterval when lazy=True"
+            )
+            assert isinstance(loaded.nested.nested_level2.interval, LazyInterval), (
+                "Level 2: interval should be LazyInterval when lazy=True"
+            )
 
     def test_lazy_true_domain(self, nested_data_filepath):
         """Test that lazy=True loads domains as LazyInterval in nested Data."""
         with h5py.File(nested_data_filepath, "r") as f:
             loaded = Data.from_hdf5(f, lazy=True)
-            assert isinstance(
-                loaded.nested.domain, LazyInterval
-            ), "Level 1: domain should be LazyInterval when lazy=True"
-            assert isinstance(
-                loaded.nested.nested_level2.domain, LazyInterval
-            ), "Level 2: domain should be LazyInterval when lazy=True"
+            assert isinstance(loaded.nested.domain, LazyInterval), (
+                "Level 1: domain should be LazyInterval when lazy=True"
+            )
+            assert isinstance(loaded.nested.nested_level2.domain, LazyInterval), (
+                "Level 2: domain should be LazyInterval when lazy=True"
+            )
 
     def test_lazy_false_interval(self, nested_data_filepath):
         """Test that lazy=False loads intervals as regular Interval in nested Data."""
         with h5py.File(nested_data_filepath, "r") as f:
             loaded = Data.from_hdf5(f, lazy=False)
-            assert (
-                type(loaded.nested.interval) == Interval
-            ), f"Level 1: interval should be Interval when lazy=False, got {type(loaded.nested.interval)}"
-            assert not isinstance(
-                loaded.nested.interval, LazyInterval
-            ), "Level 1: interval should NOT be LazyInterval when lazy=False"
-            assert (
-                type(loaded.nested.nested_level2.interval) == Interval
-            ), f"Level 2: interval should be Interval when lazy=False, got {type(loaded.nested.nested_level2.interval)}"
-            assert not isinstance(
-                loaded.nested.nested_level2.interval, LazyInterval
-            ), "Level 2: interval should NOT be LazyInterval when lazy=False"
+            assert type(loaded.nested.interval) is Interval, (
+                f"Level 1: interval should be Interval when lazy=False, got {type(loaded.nested.interval)}"
+            )
+            assert not isinstance(loaded.nested.interval, LazyInterval), (
+                "Level 1: interval should NOT be LazyInterval when lazy=False"
+            )
+            assert type(loaded.nested.nested_level2.interval) is Interval, (
+                f"Level 2: interval should be Interval when lazy=False, got {type(loaded.nested.nested_level2.interval)}"
+            )
+            assert not isinstance(loaded.nested.nested_level2.interval, LazyInterval), (
+                "Level 2: interval should NOT be LazyInterval when lazy=False"
+            )
 
     def test_lazy_false_domain(self, nested_data_filepath):
         """Test that lazy=False loads domains as regular Interval in nested Data."""
         with h5py.File(nested_data_filepath, "r") as f:
             loaded = Data.from_hdf5(f, lazy=False)
-            assert (
-                type(loaded.nested.domain) == Interval
-            ), f"Level 1: domain should be Interval when lazy=False, got {type(loaded.nested.domain)}"
-            assert not isinstance(
-                loaded.nested.domain, LazyInterval
-            ), "Level 1: domain should NOT be LazyInterval when lazy=False"
-            assert (
-                type(loaded.nested.nested_level2.domain) == Interval
-            ), f"Level 2: domain should be Interval when lazy=False, got {type(loaded.nested.nested_level2.domain)}"
-            assert not isinstance(
-                loaded.nested.nested_level2.domain, LazyInterval
-            ), "Level 2: domain should NOT be LazyInterval when lazy=False"
+            assert type(loaded.nested.domain) is Interval, (
+                f"Level 1: domain should be Interval when lazy=False, got {type(loaded.nested.domain)}"
+            )
+            assert not isinstance(loaded.nested.domain, LazyInterval), (
+                "Level 1: domain should NOT be LazyInterval when lazy=False"
+            )
+            assert type(loaded.nested.nested_level2.domain) is Interval, (
+                f"Level 2: domain should be Interval when lazy=False, got {type(loaded.nested.nested_level2.domain)}"
+            )
+            assert not isinstance(loaded.nested.nested_level2.domain, LazyInterval), (
+                "Level 2: domain should NOT be LazyInterval when lazy=False"
+            )
 
     def test_materialize_converts_lazy(self, nested_data_filepath):
         """Test that materialize() converts LazyInterval to Interval in nested Data."""
         with h5py.File(nested_data_filepath, "r") as f:
             loaded = Data.from_hdf5(f, lazy=True)
             loaded.materialize()
-            assert (
-                type(loaded.nested.interval) == Interval
-            ), "Level 1: interval should be Interval after materialize()"
-            assert not isinstance(
-                loaded.nested.interval, LazyInterval
-            ), "Level 1: interval should NOT be LazyInterval after materialize()"
-            assert (
-                type(loaded.nested.domain) == Interval
-            ), "Level 1: domain should be Interval after materialize()"
-            assert not isinstance(
-                loaded.nested.domain, LazyInterval
-            ), "Level 1: domain should NOT be LazyInterval after materialize()"
+            assert type(loaded.nested.interval) is Interval, (
+                "Level 1: interval should be Interval after materialize()"
+            )
+            assert not isinstance(loaded.nested.interval, LazyInterval), (
+                "Level 1: interval should NOT be LazyInterval after materialize()"
+            )
+            assert type(loaded.nested.domain) is Interval, (
+                "Level 1: domain should be Interval after materialize()"
+            )
+            assert not isinstance(loaded.nested.domain, LazyInterval), (
+                "Level 1: domain should NOT be LazyInterval after materialize()"
+            )

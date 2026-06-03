@@ -1,5 +1,5 @@
 import datetime
-from typing import Callable
+from collections.abc import Callable
 
 
 def datetime_serialize_fn(obj, serialize_fn_map=None):

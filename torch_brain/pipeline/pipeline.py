@@ -1,13 +1,14 @@
-from abc import ABC, abstractmethod
 import sys
-from argparse import ArgumentParser, Namespace
-from typing import Optional, NamedTuple, Any
-from pathlib import Path
-import ray.actor
-import pandas as pd
-from rich.console import Console
-from contextlib import contextmanager
 import traceback
+from abc import ABC, abstractmethod
+from argparse import ArgumentParser, Namespace
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Any, NamedTuple
+
+import pandas as pd
+import ray.actor
+from rich.console import Console
 
 
 class BrainsetPipeline(ABC):
@@ -59,7 +60,7 @@ class BrainsetPipeline(ABC):
 
     brainset_id: str
     """Unique identifier for the brainset. Must be set by the Pipeline subclass."""
-    parser: Optional[ArgumentParser] = None
+    parser: ArgumentParser | None = None
     """Optional :obj:`argparse.ArgumentParser` object for pipeline-specific
     command-line arguments.
     If set by a subclass, the runner will automatically parse any extra
@@ -67,7 +68,7 @@ class BrainsetPipeline(ABC):
     passed to `get_manifest()` as a method argument, and to the `download()` and
     `process()` methods via `self.args`.
     """
-    args: Optional[Namespace]
+    args: Namespace | None
     """Pipeline-specific arguments parsed from the command line. Set by the runner
     if :attr:`parser` is defined by subclass.
     """
@@ -86,8 +87,8 @@ class BrainsetPipeline(ABC):
         self,
         raw_dir: Path,
         processed_dir: Path,
-        args: Optional[Namespace],
-        tracker_handle: Optional[ray.actor.ActorHandle] = None,
+        args: Namespace | None,
+        tracker_handle: ray.actor.ActorHandle | None = None,
         download_only: bool = False,
     ):
         self.raw_dir = raw_dir
@@ -101,7 +102,7 @@ class BrainsetPipeline(ABC):
     def get_manifest(
         cls,
         raw_dir: Path,
-        args: Optional[Namespace],
+        args: Namespace | None,
     ) -> pd.DataFrame:
         r"""Returns a :obj:`pandas.DataFrame`, which is a table of assets to be
         downloaded and processed. Each row will be passed individually to the

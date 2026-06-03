@@ -110,8 +110,8 @@ sass_targets = {
 Path("generated/css/").mkdir(exist_ok=True, parents=True)
 
 
-import notebooks.nlb_maze_minimal_example.modify
-from api_reference import build_api_rst
+import notebooks.nlb_maze_minimal_example.modify  # noqa: E402
+from api_reference import build_api_rst  # noqa: E402
 
 build_api_rst()
 notebooks.nlb_maze_minimal_example.modify.main()

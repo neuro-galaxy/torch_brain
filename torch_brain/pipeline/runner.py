@@ -1,23 +1,22 @@
-import sys
-from typing import Type
-from argparse import ArgumentParser
-import os
-import time
-from collections import defaultdict
-from typing import Dict, Any, List
-from pathlib import Path
 import logging
+import os
+import sys
+import time
+from argparse import ArgumentParser
+from collections import defaultdict
+from pathlib import Path
+from typing import Any
+
+import pandas as pd
 import ray
 from ray.util.actor_pool import ActorPool
-
-from rich.live import Live
 from rich.console import Console
-import pandas as pd
+from rich.live import Live
 
 from .pipeline import BrainsetPipeline
 
 
-def import_pipeline_cls_from_file(pipeline_filepath: Path) -> Type[BrainsetPipeline]:
+def import_pipeline_cls_from_file(pipeline_filepath: Path) -> type[BrainsetPipeline]:
     import importlib.util
 
     spec = importlib.util.spec_from_file_location("pipeline_module", pipeline_filepath)
@@ -29,7 +28,7 @@ def import_pipeline_cls_from_file(pipeline_filepath: Path) -> Type[BrainsetPipel
 @ray.remote
 class StatusTracker:
     def __init__(self):
-        self.statuses: Dict[Any, str] = {}
+        self.statuses: dict[Any, str] = {}
 
     def update_status(self, id: Any, status: str):
         self.statuses[id] = status
@@ -49,7 +48,7 @@ def get_style(status: str) -> str:
         return "yellow"
 
 
-def generate_status_table(status_dict: Dict[Any, str]) -> str:
+def generate_status_table(status_dict: dict[Any, str]) -> str:
     # Sort files for a consistent display
     sorted_files = sorted(status_dict.keys())
 
@@ -71,7 +70,7 @@ def generate_status_table(status_dict: Dict[Any, str]) -> str:
 
 
 @ray.remote
-def run_pool_in_background(actor_pool: ActorPool, work_items: List[Any]):
+def run_pool_in_background(actor_pool: ActorPool, work_items: list[Any]):
     results_generator = actor_pool.map_unordered(
         lambda actor, task: actor._run_item_on_parallel_worker.remote(task),
         work_items,

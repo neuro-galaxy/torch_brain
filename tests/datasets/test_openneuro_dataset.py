@@ -486,7 +486,7 @@ class TestHashAssignmentSensitivity:
             recording_ids=["rec-001"],
             seed=99,
         )
-        rec = _make_recording("rec-001", subject_id="sub-xyz")
+        _make_recording("rec-001", subject_id="sub-xyz")
 
         assignment_42 = _expected_hash_assignment(
             "sub-xyz", seed=42, split_ratios=ds_seed42.split_ratios

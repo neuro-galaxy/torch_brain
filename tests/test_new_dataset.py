@@ -1,29 +1,27 @@
 import os
-import h5py
-import pytest
 from datetime import datetime
+
+import h5py
 import numpy as np
+import pytest
 
 from torch_brain.data import (
+    ArrayDict,
+    BrainsetDescription,
     Data,
     Interval,
     IrregularTimeSeries,
-    ArrayDict,
     RegularTimeSeries,
-)
-from torch_brain.data import serialize_fn_map
-from torch_brain.data import (
-    BrainsetDescription,
     SessionDescription,
     SubjectDescription,
+    serialize_fn_map,
 )
-
 from torch_brain.datasets import (
     Dataset,
     DatasetIndex,
+    MultiChannelDatasetMixin,
     NestedDataset,
     SpikingDatasetMixin,
-    MultiChannelDatasetMixin,
 )
 
 

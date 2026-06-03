@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-import math
-from typing import Any
-import warnings
 import copy
+import math
+import warnings
+from typing import Any
 
 import h5py
 import numpy as np
 
 from .arraydict import ArrayDict
-from .typing import ArrayLike
 from .interval import Interval
 from .irregular_ts import IrregularTimeSeries
+from .typing import ArrayLike
 
 _NP_DTYPE_KINDS = {"b", "i", "u", "f", "c", "m", "M", "O", "S", "U", "V"}
 # ^ From https://numpy.org/doc/2.2/reference/generated/numpy.dtype.kind.html
@@ -66,11 +66,11 @@ def _validate_gap_value_matches_array_dtype(v, array: np.ndarray, name: str):
 
         try:
             dst = src.astype(array.dtype)
-        except RuntimeWarning as _:
+        except RuntimeWarning as err:
             raise ValueError(
                 f"gap_value={v} cannot be losslessly stored in {name!r}; "
                 f"cannot cast {src.dtype!r} into {array.dtype!r}"
-            )
+            ) from err
 
     if not np.array_equal(src, dst, equal_nan=True):
         raise ValueError(
@@ -240,10 +240,7 @@ class RegularTimeSeries(ArrayDict):
 
         if end_id[-1] != n:
             raise RuntimeError(  # pragma: no cover
-                f"This should never happen. Debug info:\n"
-                f"{n=}\n"
-                f"{start_id=}\n"
-                f"{end_id=}\n"
+                f"This should never happen. Debug info:\n{n=}\n{start_id=}\n{end_id=}\n"
             )
 
         # Create an array that marks start of a True run by +1
@@ -444,7 +441,7 @@ class RegularTimeSeries(ArrayDict):
         r"""Saves the data object to an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. code-block:: python
 
@@ -475,7 +472,7 @@ class RegularTimeSeries(ArrayDict):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. note::
             This method will load all data in memory, if you would like to use lazy
@@ -567,10 +564,10 @@ class RegularTimeSeries(ArrayDict):
             >>> from torch_brain.data import RegularTimeSeries
 
             >>> # 4 samples at 100 Hz, the 0.02s sample is missing.
-            >>> ts = np.array([0.0, 0.01, 0.03, 0.04])
-            >>> raw = np.array([1.0, 2.0, 3.0, 4.0])
             >>> rts = RegularTimeSeries.from_gappy_timeseries(
-            ...     ts, sampling_rate=100.0, raw=raw,
+            ...     timestamps=[0.0, 0.01, 0.03, 0.04],
+            ...     sampling_rate=100.0,
+            ...     raw=[1.0, 2.0, 3.0, 4.0],
             ... )
             >>> rts.raw
             array([ 1.,  2., nan,  3.,  4.])
@@ -741,7 +738,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        if not name in ["__dict__", "keys"]:
+        if name not in ["__dict__", "keys"]:
             # intercept attribute calls
             if name in self.keys():
                 out = self.__dict__[name]
@@ -766,7 +763,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
                     del self._lazy_ops
 
                 return out
-        return super(LazyRegularTimeSeries, self).__getattribute__(name)
+        return super().__getattribute__(name)
 
     def slice(
         self,
@@ -873,7 +870,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. code-block:: python
 
@@ -883,9 +880,9 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert (
-            file.attrs["object"] == RegularTimeSeries.__name__
-        ), "object type mismatch"
+        assert file.attrs["object"] == RegularTimeSeries.__name__, (
+            "object type mismatch"
+        )
 
         obj = cls.__new__(cls)
         for key, value in file.items():

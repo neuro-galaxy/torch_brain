@@ -25,14 +25,14 @@ import timeit
 import traceback
 
 _source = os.environ.get(
-    "TORCH_BRAIN_SOURCE", os.path.join(os.path.dirname(__file__), "..")
+    "TORCH_BRAIN_SOURCE", os.path.join(os.path.dirname(__file__), "..", "..")
 )
 sys.path.insert(0, _source)
 
-import h5py
-import numpy as np
+import h5py  # noqa: E402
+import numpy as np  # noqa: E402
 
-from torch_brain.data import (
+from torch_brain.data import (  # noqa: E402
     ArrayDict,
     Data,
     Interval,

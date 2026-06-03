@@ -25,7 +25,7 @@ import tempfile
 import time
 
 BENCH_SCRIPT = os.path.join(os.path.dirname(__file__), "benchmark.py")
-REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
+REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 
 
 def resolve_commit(ref: str) -> str:
@@ -49,13 +49,18 @@ def short_hash(full_hash: str) -> str:
 
 
 def extract_source(commit: str) -> str:
-    """Extract temporaldata/ from a commit into a temp directory."""
+    """Extract torch_brain/data/ from a commit into a temp directory.
+
+    Only the data subpackage is extracted, and a stub torch_brain/__init__.py
+    is written so that ``from torch_brain.data import ...`` resolves to the
+    extracted code without triggering the full package's imports (which may
+    pull in heavy dependencies like torch).
+    """
     tmpdir = tempfile.mkdtemp(prefix="tdbench_")
     git_proc = subprocess.run(
-        ["git", "archive", commit, "--", "temporaldata/"],
+        ["git", "archive", commit, "--", "torch_brain/data/"],
         cwd=REPO_ROOT,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if git_proc.returncode != 0:
@@ -65,15 +70,13 @@ def extract_source(commit: str) -> str:
                 f"Error: git archive failed for {short_hash(commit)}: "
                 f"{git_proc.stderr.decode(errors='replace').strip()}"
             ),
-            file=sys.stderr,
         )
         sys.exit(1)
 
     tar_proc = subprocess.run(
         ["tar", "xf", "-", "-C", tmpdir],
         input=git_proc.stdout,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if tar_proc.returncode != 0:
@@ -83,19 +86,29 @@ def extract_source(commit: str) -> str:
                 f"Error: tar extraction failed for {short_hash(commit)}: "
                 f"{tar_proc.stderr.decode(errors='replace').strip()}"
             ),
-            file=sys.stderr,
         )
         sys.exit(1)
+
+    # Write a minimal stub so `import torch_brain` succeeds without
+    # pulling in the real package's __init__.py and its heavy deps.
+    pkg_init = os.path.join(tmpdir, "torch_brain", "__init__.py")
+    with open(pkg_init, "w") as f:
+        f.write("")
+
     return tmpdir
 
 
-def run_benchmark(source_dir: str | None, label: str) -> list[dict]:
-    """Run benchmark.py, optionally overriding the import source."""
+def run_benchmark(source_dir: str | None, label: str) -> list[dict] | None:
+    """Run benchmark.py, optionally overriding the import source.
+
+    Returns the results list, or ``None`` if the benchmark subprocess failed
+    (e.g. import errors in the extracted source from an older commit).
+    """
     env = os.environ.copy()
     if source_dir is not None:
         env["TORCH_BRAIN_SOURCE"] = source_dir
 
-    print(f"Running benchmarks for {label}...")
+    print(f"Running benchmarks for {label}...", file=sys.stderr)
     result = subprocess.run(
         [sys.executable, BENCH_SCRIPT, "--json"],
         capture_output=True,
@@ -103,16 +116,16 @@ def run_benchmark(source_dir: str | None, label: str) -> list[dict]:
         env=env,
     )
     if result.returncode != 0:
-        print(f"Benchmark run failed for {label}:", file=sys.stderr)
-        print(result.stderr, file=sys.stderr)
-        sys.exit(1)
+        print(f"Benchmark run FAILED for {label}:")
+        print(result.stderr)
+        return None
 
     try:
         data = json.loads(result.stdout)
     except json.JSONDecodeError:
-        print(f"Failed to parse JSON output for {label}:", file=sys.stderr)
-        print(result.stdout[:500], file=sys.stderr)
-        sys.exit(1)
+        print(f"Failed to parse JSON output for {label}:")
+        print(result.stdout[:500])
+        return None
 
     return data["results"]
 
@@ -169,7 +182,7 @@ def print_comparison(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare temporaldata benchmarks across git commits.",
+        description="Compare torch_brain.data benchmarks across git commits.",
         epilog="Examples:\n"
         "  uv run python scripts/data_benchmarks/compare.py\n"
         "  uv run python scripts/data_benchmarks/compare.py abc123\n"
@@ -188,10 +201,14 @@ def main():
         parser.error("At most 2 commit refs can be provided.")
 
     tmpdirs: list[str] = []
+    had_failures = False
     try:
         if len(args.commits) == 0:
             results = run_benchmark(None, "working tree")
-            print_single(results, "working tree")
+            if results is None:
+                had_failures = True
+            else:
+                print_single(results, "working tree")
             save_record = {
                 "baseline": "working-tree",
                 "target": None,
@@ -208,7 +225,18 @@ def main():
 
             results_a = run_benchmark(tmpdir, label_a)
             results_b = run_benchmark(None, "working tree")
-            print_comparison(results_a, results_b, label_a, "working tree")
+
+            if results_a is None or results_b is None:
+                had_failures = True
+            if results_a is not None and results_b is not None:
+                print_comparison(results_a, results_b, label_a, "working tree")
+            elif results_b is not None:
+                print(f"\n  WARNING: baseline ({label_a}) benchmark failed.")
+                print_single(results_b, "working tree")
+            elif results_a is not None:
+                print("\n  WARNING: target (working tree) benchmark failed.")
+                print_single(results_a, label_a)
+
             save_record = {
                 "baseline": label_a,
                 "target": "working-tree",
@@ -229,7 +257,18 @@ def main():
 
             results_a = run_benchmark(tmpdir_a, label_a)
             results_b = run_benchmark(tmpdir_b, label_b)
-            print_comparison(results_a, results_b, label_a, label_b)
+
+            if results_a is None or results_b is None:
+                had_failures = True
+            if results_a is not None and results_b is not None:
+                print_comparison(results_a, results_b, label_a, label_b)
+            elif results_b is not None:
+                print(f"\n  WARNING: baseline ({label_a}) benchmark failed.")
+                print_single(results_b, label_b)
+            elif results_a is not None:
+                print(f"\n  WARNING: target ({label_b}) benchmark failed.")
+                print_single(results_a, label_a)
+
             save_record = {
                 "baseline": label_a,
                 "target": label_b,
@@ -246,6 +285,9 @@ def main():
     finally:
         for d in tmpdirs:
             shutil.rmtree(d, ignore_errors=True)
+
+    if had_failures:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

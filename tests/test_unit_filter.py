@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from torch_brain.data import ArrayDict, Data, IrregularTimeSeries
-from torch_brain.transforms.unit_filter import UnitFilter, UnitFilterById
+from torch_brain.transforms.unit_filter import UnitFilterById
 
 logger = logging.getLogger(__name__)
 

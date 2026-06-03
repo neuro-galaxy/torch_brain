@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+import re
+from collections.abc import Callable
 from numbers import Integral
 from pathlib import Path
-import re
-from typing import Callable, Literal, Optional, get_args
+from typing import Literal, get_args
 
 import numpy as np
 
 from torch_brain.data import Data, Interval
-from torch_brain.datasets import Dataset, MultiChannelDatasetMixin
 
 from ._utils import get_processed_dir
+from .dataset import Dataset
+from .mixins import MultiChannelDatasetMixin
 
 SubsetTier = Literal["full", "lite", "nano"]
 LabelMode = Literal["binary", "multiclass"]
@@ -213,9 +215,9 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
 
     def __init__(
         self,
-        root: Optional[str] = None,
-        recording_ids: Optional[list[str]] = None,
-        transform: Optional[Callable] = None,
+        root: str | None = None,
+        recording_ids: list[str] | None = None,
+        transform: Callable | None = None,
         *,
         subset_tier: SubsetTier | None = None,
         test_subject: int | None = None,
@@ -480,15 +482,13 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
             self.test_subject, bool
         ):
             raise TypeError(
-                "test_subject must be an int, got "
-                f"{type(self.test_subject).__name__}."
+                f"test_subject must be an int, got {type(self.test_subject).__name__}."
             )
         if not isinstance(self.test_session, Integral) or isinstance(
             self.test_session, bool
         ):
             raise TypeError(
-                "test_session must be an int, got "
-                f"{type(self.test_session).__name__}."
+                f"test_session must be an int, got {type(self.test_session).__name__}."
             )
 
         h5_regime = H5_REGIME_BY_REGIME[self.regime]

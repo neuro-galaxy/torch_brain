@@ -30,7 +30,6 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
 
     Example::
 
-        >>> import numpy as np
         >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import SequentialFixedWindowSampler, DistributedEvaluationSamplerWrapper
 
@@ -101,9 +100,9 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
         Raises:
             AssertionError: If :meth:`set_params` has not been called yet.
         """
-        assert (
-            self._check_params()
-        ), "Rank and num_replicas must be set before using the distributed sampler."
+        assert self._check_params(), (
+            "Rank and num_replicas must be set before using the distributed sampler."
+        )
         indices = list(self.sampler)
         indices = indices[self.rank : len(indices) : self.num_replicas]
         return iter(indices)

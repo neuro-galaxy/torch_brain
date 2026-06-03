@@ -1,14 +1,22 @@
 import logging
-from tqdm import tqdm
-from omegaconf import DictConfig
-import hydra
-from hydra.utils import instantiate
 
-import pandas as pd
+import hydra
 import numpy as np
+import pandas as pd
 import torch
 import torchmetrics
 import wandb
+from datasets.wrapper import PoyoDatasetWrapper
+from hydra.utils import instantiate
+from omegaconf import DictConfig
+from tqdm import tqdm
+from utils import (
+    BehaviorStitcher,
+    create_optim,
+    move_to_device,
+    seed_everything,
+    weighted_mse_loss_fn,
+)
 
 from torch_brain.batching import collate
 from torch_brain.models import POYO
@@ -16,15 +24,6 @@ from torch_brain.samplers import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
 )
-
-from utils import (
-    seed_everything,
-    move_to_device,
-    BehaviorStitcher,
-    create_optim,
-    weighted_mse_loss_fn,
-)
-from datasets.wrapper import PoyoDatasetWrapper
 
 
 @hydra.main(version_base="1.3", config_path="./configs")
@@ -90,7 +89,6 @@ def main(cfg: DictConfig):
     # Train loop
     step = 0
     for epoch in tqdm(range(cfg.epochs), desc="Epoch"):
-
         # Train epoch
         model.train()
         loader_pbar = tqdm(train_loader, leave=False)

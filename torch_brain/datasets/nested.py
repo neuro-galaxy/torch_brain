@@ -1,7 +1,8 @@
-from typing import Optional, Iterable, Mapping, Callable
+from collections.abc import Callable, Iterable, Mapping
 
-from torch_brain.utils import np_string_prefix
 from torch_brain.data import Data, Interval
+from torch_brain.utils import np_string_prefix
+
 from .dataset import Dataset, DatasetIndex
 from .mixins import SpikingDatasetMixin
 
@@ -36,7 +37,7 @@ class NestedDataset(Dataset):
     def __init__(
         self,
         datasets: Iterable[Dataset] | Mapping[str, Dataset],
-        transform: Optional[Callable] = None,
+        transform: Callable | None = None,
     ):
         if isinstance(datasets, Mapping):
             dataset_dict = datasets

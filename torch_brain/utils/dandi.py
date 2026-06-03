@@ -22,7 +22,7 @@ from pynwb import NWBFile
 from torch_brain.data import ArrayDict, IrregularTimeSeries, SubjectDescription
 
 try:
-    import dandi
+    import dandi  # noqa: F401
 
     DANDI_AVAILABLE = True
 except ImportError:

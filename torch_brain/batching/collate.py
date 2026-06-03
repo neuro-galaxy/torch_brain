@@ -1,6 +1,6 @@
 import copy
 from collections import namedtuple
-from typing import Callable, Dict, List, Optional, Tuple, Type, Union
+from collections.abc import Callable
 
 import numpy as np
 import torch
@@ -22,7 +22,7 @@ def pad(obj):
     return PaddedObject(obj)
 
 
-def track_mask(input: Union[torch.Tensor, np.ndarray]):
+def track_mask(input: torch.Tensor | np.ndarray):
     r"""Wrap an array or tensor to specify that its padding mask should be tracked.
 
     Args:
@@ -34,7 +34,7 @@ def track_mask(input: Union[torch.Tensor, np.ndarray]):
 def pad_collate_tensor_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     # todo this will be more optimal than any code we'll write? it's in C++
     return torch.nn.utils.rnn.pad_sequence(batch, batch_first=True, padding_value=0)
@@ -47,7 +47,7 @@ pad_collate_fn_map[torch.Tensor] = pad_collate_tensor_fn
 def pad_collate_object_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     return _collate([e.obj for e in batch], collate_fn_map=pad_collate_fn_map)
 
@@ -67,7 +67,7 @@ def pad8(obj):
     return Padded8Object(obj)
 
 
-def track_mask8(input: Union[torch.Tensor, np.ndarray]):
+def track_mask8(input: torch.Tensor | np.ndarray):
     r"""Wrap an array or tensor to specify that its padding mask should be tracked. This
     is used in conjunction with :obj:`pad8`.
 
@@ -80,7 +80,7 @@ def track_mask8(input: Union[torch.Tensor, np.ndarray]):
 def pad8_collate_tensor_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     max_len = max([elem.shape[0] for elem in batch])
 
@@ -104,7 +104,7 @@ pad8_collate_fn_map[torch.Tensor] = pad8_collate_tensor_fn
 def pad8_collate_object_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     return _collate([e.obj for e in batch], collate_fn_map=pad8_collate_fn_map)
 
@@ -121,7 +121,7 @@ def pad2d(obj):
     return Padded2dObject(obj)
 
 
-def track_mask2d(input: Union[torch.Tensor, np.ndarray]):
+def track_mask2d(input: torch.Tensor | np.ndarray):
     r"""Wrap an array or tensor to specify that its padding mask should be tracked. This
     is used in conjunction with :obj:`pad2d`.
 
@@ -138,7 +138,7 @@ def track_mask2d(input: Union[torch.Tensor, np.ndarray]):
 def pad2d_collate_tensor_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     if any(elem.ndim < 2 for elem in batch):
         raise ValueError("All tensors must have at least 2 dimensions.")
@@ -159,7 +159,7 @@ pad2d_collate_fn_map[torch.Tensor] = pad2d_collate_tensor_fn
 def pad2d_collate_object_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     return _collate([e.obj for e in batch], collate_fn_map=pad2d_collate_fn_map)
 
@@ -176,7 +176,7 @@ def pad2d8(obj):
     return Padded2d8Object(obj)
 
 
-def track_mask2d8(input: Union[torch.Tensor, np.ndarray]):
+def track_mask2d8(input: torch.Tensor | np.ndarray):
     r"""Wrap an array or tensor to specify that its padding mask should be tracked. This
     is used in conjunction with :obj:`pad2d8`.
 
@@ -193,7 +193,7 @@ def track_mask2d8(input: Union[torch.Tensor, np.ndarray]):
 def pad2d8_collate_tensor_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     if any(elem.ndim < 2 for elem in batch):
         raise ValueError("All tensors must have at least 2 dimensions.")
@@ -216,7 +216,7 @@ pad2d8_collate_fn_map[torch.Tensor] = pad2d8_collate_tensor_fn
 def pad2d8_collate_object_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     return _collate([e.obj for e in batch], collate_fn_map=pad2d8_collate_fn_map)
 
@@ -247,7 +247,7 @@ def chain(obj, allow_missing_keys: bool = False):
     return ChainObject(obj, allow_missing_keys)
 
 
-def track_batch(input: Union[torch.Tensor, np.ndarray]):
+def track_batch(input: torch.Tensor | np.ndarray):
     r"""Wrap an array or tensor to track the batch_index.
 
     Args:
@@ -259,7 +259,7 @@ def track_batch(input: Union[torch.Tensor, np.ndarray]):
 def chain_collate_str_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     # No-op.
     return batch
@@ -268,7 +268,7 @@ def chain_collate_str_fn(
 def chain_collate_tensor_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     return torch.cat(batch, dim=0)
 
@@ -276,7 +276,7 @@ def chain_collate_tensor_fn(
 def chain_batch_tracker_collate_tensor_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     return _collate(
         [i * e.obj for i, e in enumerate(batch)],
@@ -293,7 +293,7 @@ chain_collate_fn_map[ChainBatchTrackerObject] = chain_batch_tracker_collate_tens
 def chain_collate_object_fn(
     batch,
     *,
-    collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
 ):
     allow_missing_keys = batch[0].allow_missing_keys
     # check that flag is consistent

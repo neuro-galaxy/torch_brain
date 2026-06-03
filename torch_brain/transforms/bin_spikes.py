@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 
 from torch_brain.data import Data, RegularTimeSeries
@@ -30,7 +28,7 @@ class BinSpikes:
         bin_size: float,
         spikes_attribute: str = "spikes",
         units_attribute: str = "units",
-        max_spikes: Optional[int] = None,
+        max_spikes: int | None = None,
         right: bool = True,
         eps: float = 1e-3,
         dtype: np.dtype = np.int32,

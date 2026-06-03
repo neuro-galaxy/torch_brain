@@ -1,6 +1,5 @@
-from typing import Optional
-
 import numpy as np
+
 from torch_brain.data import IrregularTimeSeries
 
 
@@ -8,7 +7,7 @@ def bin_spikes(
     spikes: IrregularTimeSeries,
     num_units: int,
     bin_size: float,
-    max_spikes: Optional[int] = None,
+    max_spikes: int | None = None,
     right: bool = True,
     eps: float = 1e-3,
     dtype: np.dtype = np.int32,
