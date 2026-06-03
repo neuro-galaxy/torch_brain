@@ -1,6 +1,6 @@
 # torch_brain Context
 
-Core framework for neural population decoding and processing from electrophysiological recordings.
+End-to-end Deep Learning framework for creating training pipelines and models for neural data.
 
 ## Language
 
