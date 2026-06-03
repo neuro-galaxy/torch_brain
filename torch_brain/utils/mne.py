@@ -235,7 +235,7 @@ def concatenate_recordings(
 
     # Validate that gap between consecutive recordings is within max_gap
     for (idx1, rec1, date1), (idx2, _rec2, date2) in zip(
-        sorted_recordings, sorted_recordings[1:], strict=True
+        sorted_recordings, sorted_recordings[1:], strict=False
     ):
         # Gap is the difference between the meas_date (date2) of the next recording (rec2)
         # and the last time point of the previous recording (rec1), offset by its meas_date (date1).
