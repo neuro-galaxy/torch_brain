@@ -2,7 +2,6 @@ Install TorchBrain
 ==================
 
 **torch_brain** is available for Python >= 3.10.
-
 To install the latest stable release, run::
 
     pip install torch torch_brain
