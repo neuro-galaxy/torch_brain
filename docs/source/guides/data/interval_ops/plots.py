@@ -44,6 +44,8 @@ def plot_intersection():
     for spine in ("top", "left", "right"):
         ax.spines[spine].set_visible(False)
 
+    plt.tight_layout()
+
 
 def plot_union():
     interval1 = Interval(start=[1.0, 12.0], end=[8.0, 18.0])
@@ -67,6 +69,8 @@ def plot_union():
     for spine in ("top", "left", "right"):
         ax.spines[spine].set_visible(False)
 
+    plt.tight_layout()
+
 
 def plot_difference():
     interval1 = Interval(start=[1.0, 12.0], end=[8.0, 18.0])
@@ -89,6 +93,8 @@ def plot_difference():
     ax.set_axisbelow(True)  # force grid below objects
     for spine in ("top", "left", "right"):
         ax.spines[spine].set_visible(False)
+
+    plt.tight_layout()
 
 
 def plot_dilation():
