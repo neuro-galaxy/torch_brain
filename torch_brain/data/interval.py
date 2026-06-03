@@ -153,7 +153,7 @@ class Interval(ArrayDict):
             1.0 2.0
             2.0 3.0
         """
-        yield from zip(self.start, self.end)
+        yield from zip(self.start, self.end, strict=True)
 
     def is_disjoint(self):
         r"""Returns :obj:`True` if the intervals are disjoint, i.e. if no two intervals
@@ -541,7 +541,7 @@ class Interval(ArrayDict):
         subdivided_intervals_ends = []
         original_indices = []
 
-        for i, (start, end) in enumerate(zip(self.start, self.end)):
+        for i, (start, end) in enumerate(zip(self.start, self.end, strict=True)):
             subdivided = Interval.arange(
                 start, end, step=step, include_end=not drop_short
             )
@@ -656,7 +656,7 @@ class Interval(ArrayDict):
             >>> interval.start, interval.end
             (array([0., 1., 2.]), array([1., 2., 3.]))
         """
-        start, end = zip(*interval_list)  # Unzip the list of tuples
+        start, end = zip(*interval_list, strict=True)  # Unzip the list of tuples
         return cls(
             start=np.array(start, dtype=np.float64),
             end=np.array(end, dtype=np.float64),

@@ -36,7 +36,7 @@ dev = [
     "scipy>=1.10.1",
     "pytest<9",
     "pre-commit>=3.5.0",
-    "omegaconf",  # TODO: only needed for old Dataset, remove after cleanup
+    "omegaconf",           # TODO: only needed for old Dataset, remove after cleanup
     "flake8",
     "boto3",
     "tqdm",
@@ -62,7 +62,7 @@ docs = [
     "sphinx-design",
     "sphinx-copybutton",
     "sphinxcontrib-sass",
-    "omegaconf",  # TODO: only needed for old Dataset, remove after cleanup
+    "omegaconf",                # TODO: only needed for old Dataset, remove after cleanup
 ]
 
 [project.urls]
@@ -82,7 +82,7 @@ exclude = ["brainsets", "temporaldata"] # TODO: remove after cleanup
 
 [tool.ruff.lint]
 select = ["I", "F", "UP", "B", "E"]
-ignore = ["E501", "B905"]
+ignore = ["E501"]
 
 [tool.ty.environment]
 python-version = "3.10"

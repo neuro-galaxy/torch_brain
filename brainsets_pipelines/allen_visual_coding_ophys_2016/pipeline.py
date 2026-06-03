@@ -551,7 +551,9 @@ def extract_stimulus_epochs(nwbfile):
 
     epoch_dict = (
         df.groupby("stimulus")
-        .apply(lambda x: list(zip(timestamps[x.start], timestamps[x.end])))
+        .apply(
+            lambda x: list(zip(timestamps[x.start], timestamps[x.end], strict=True))
+        )
         .to_dict()
     )
 

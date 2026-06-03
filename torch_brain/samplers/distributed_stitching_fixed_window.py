@@ -125,7 +125,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         all_intervals = []
         interval_sizes = []
         for session_name, intervals in self.sampling_intervals.items():
-            for start, end in zip(intervals.start, intervals.end):
+            for start, end in zip(intervals.start, intervals.end, strict=True):
                 if end - start >= self.window_length:
                     # calculate number of windows in this interval
                     num_windows = (

@@ -377,7 +377,7 @@ def split_intervals(data):
     intervals = Interval.linspace(task_domain.start[0], task_domain.end[-1], 10)
     if len(data.no_movement_segments) > 0:
         task_ratio = []
-        for start, end in zip(intervals.start, intervals.end):
+        for start, end in zip(intervals.start, intervals.end, strict=True):
             intersection = task_domain & Interval(start, end)
             duration = np.sum(intersection.end - intersection.start)
             task_ratio.append(duration / (end - start))

@@ -235,7 +235,7 @@ def concatenate_recordings(
 
     # Validate that gap between consecutive recordings is within max_gap
     for (idx1, rec1, date1), (idx2, _rec2, date2) in zip(
-        sorted_recordings, sorted_recordings[1:]
+        sorted_recordings, sorted_recordings[1:], strict=True
     ):
         # Gap is the difference between the meas_date (date2) of the next recording (rec2)
         # and the last time point of the previous recording (rec1), offset by its meas_date (date1).
@@ -426,7 +426,7 @@ def extract_channels(
             channel_types_mapping.get(
                 ch_name, ch_type
             ).lower()  # to be compatible with MNE's channel type validation
-            for ch_name, ch_type in zip(raw_ch_names, raw_ch_types)
+            for ch_name, ch_type in zip(raw_ch_names, raw_ch_types, strict=True)
         ],
         dtype="U",
     )
@@ -449,7 +449,7 @@ def extract_channels(
         channel_pos = np.array(
             [
                 channel_pos_mapping.get(ch_name, ch_pos)
-                for ch_name, ch_pos in zip(raw_ch_names, channel_pos)
+                for ch_name, ch_pos in zip(raw_ch_names, channel_pos, strict=True)
             ]
         )
 
@@ -583,7 +583,8 @@ def _validate_channel_types_mapping(
 
     if channel_types_mapping is None:
         return {
-            ch_name: ch_type for ch_name, ch_type in zip(raw_ch_names, raw_ch_types)
+            ch_name: ch_type
+            for ch_name, ch_type in zip(raw_ch_names, raw_ch_types, strict=True)
         }
 
     # Apply the mapping to the raw channel names and types
@@ -594,7 +595,7 @@ def _validate_channel_types_mapping(
                 channel_names_mapping.get(ch_name, ch_name), ch_type
             ),
         )
-        for ch_name, ch_type in zip(raw_ch_names, raw_ch_types)
+        for ch_name, ch_type in zip(raw_ch_names, raw_ch_types, strict=True)
     }
 
 

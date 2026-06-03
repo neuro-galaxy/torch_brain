@@ -48,7 +48,9 @@ class NestedDataset(Dataset):
                     "Duplicate dataset class names found in provided datasets."
                     " Please use a dictionary instead to specify dataset names explicitly."
                 )
-            dataset_dict = {name: ds for name, ds in zip(dataset_names, datasets)}
+            dataset_dict = {
+                name: ds for name, ds in zip(dataset_names, datasets, strict=True)
+            }
         else:
             raise TypeError(
                 f"datasets must be a list/tuple or a dict-like object"

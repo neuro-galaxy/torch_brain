@@ -64,7 +64,7 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
         indices = [
             DatasetIndex(session_id, start, end)
             for session_id, intervals in self.sampling_intervals.items()
-            for start, end in zip(intervals.start, intervals.end)
+            for start, end in zip(intervals.start, intervals.end, strict=True)
         ]
 
         if self.shuffle:

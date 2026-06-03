@@ -30,7 +30,7 @@ def samples_in_sampling_intervals(samples, sampling_intervals):
                 [
                     (s.start >= start) and (s.end <= end)
                     for start, end in zip(
-                        allowed_intervals.start, allowed_intervals.end
+                        allowed_intervals.start, allowed_intervals.end, strict=True
                     )
                 ]
             )
