@@ -72,7 +72,7 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
         total_short_dropped = 0.0
 
         for session_name, intervals in self.sampling_intervals.items():
-            for start, end in zip(intervals.start, intervals.end):
+            for start, end in zip(intervals.start, intervals.end, strict=True):
                 interval_length = end - start
                 if interval_length < self.window_length:
                     if self.drop_short:

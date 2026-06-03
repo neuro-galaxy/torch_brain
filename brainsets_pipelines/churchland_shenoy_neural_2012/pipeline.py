@@ -231,7 +231,9 @@ def extract_trials(nwbfile, session_id):
         # we split the trial table into epochs
         trial_table_list = [
             trial_table.iloc[start_idx:end_idx].copy()
-            for start_idx, end_idx in zip(epoch_start_indices, epoch_end_indices)
+            for start_idx, end_idx in zip(
+                epoch_start_indices, epoch_end_indices, strict=True
+            )
         ]
 
         # we estimate the start and end of each epoch
@@ -409,7 +411,9 @@ def extract_behavior(nwbfile, artifact_dict):
     def compute_gradient(data, timestamps, domain_start_index, domain_end_index):
         gradient = []
         # compute the velocity
-        for start_index, end_index in zip(domain_start_index, domain_end_index):
+        for start_index, end_index in zip(
+            domain_start_index, domain_end_index, strict=True
+        ):
             data_slice = data[start_index : end_index + 1]
             timestamps_slice = timestamps[start_index : end_index + 1]
 

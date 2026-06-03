@@ -98,7 +98,7 @@ class InfiniteVocabEmbedding(nn.Module):
             # check that all words are unique
             if len(vocab) != len(set(vocab)):
                 raise ValueError("Vocabulary contains duplicate words")
-            self.vocab = OrderedDict(zip(vocab, range(1, len(vocab) + 1)))
+            self.vocab = OrderedDict(zip(vocab, range(1, len(vocab) + 1), strict=True))
             assert "NA" not in self.vocab, "NA is a reserved word"
             self.vocab["NA"] = 0
             self.vocab.move_to_end("NA", last=False)
@@ -160,7 +160,11 @@ class InfiniteVocabEmbedding(nn.Module):
         # update tokenizer
         self.vocab.update(
             OrderedDict(
-                zip(new_words, range(len(self.vocab), len(self.vocab) + len(new_words)))
+                zip(
+                    new_words,
+                    range(len(self.vocab), len(self.vocab) + len(new_words)),
+                    strict=True,
+                )
             )
         )
 
