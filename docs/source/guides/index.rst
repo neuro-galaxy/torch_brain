@@ -6,6 +6,7 @@ User Guide
 
    installation
    data/index
-   pipeline/index
+   brainsets/index
+   benchmarks/index
    sampling/index
    examples/index

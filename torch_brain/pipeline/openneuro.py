@@ -118,7 +118,7 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
         implement dataset-specific processing logic.
 
     **Documentation can be found in the official brainsets docs:**
-    See [Creating an OpenNeuro Pipeline](https://brainsets.readthedocs.io/en/latest/concepts/openneuro_pipeline.html) for the complete guide on building OpenNeuro pipelines.
+    See [Creating an OpenNeuro Pipeline](https://torch-brain.readthedocs.io/en/latest/guides/brainsets/specialized_pipelines/openneuro.html) for the complete guide on building OpenNeuro pipelines.
 
     """
 
