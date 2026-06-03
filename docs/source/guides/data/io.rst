@@ -1,7 +1,7 @@
 .. currentmodule:: torch_brain.data
 
-Saving and (Lazy) Loading Data
-==============================
+Saving and Loading Data
+=======================
 
 :obj:`Data` objects can be saved to and loaded from `HDF5 <https://en.wikipedia.org/wiki/Hierarchical_Data_Format>`_
 files. HDF5 is a specialized data format that allows streaming chunks of data

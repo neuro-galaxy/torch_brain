@@ -1,5 +1,7 @@
-Representing Neural Data
-========================
+.. _data_guide:
+
+The Data Format
+===============
 
 NeuroAI training pipelines typically require accessing time-based slices of
 neural recordings.

@@ -8,5 +8,4 @@ Data Pre-Processing Concepts
    prepare_data
    create_pipeline
    openneuro_pipeline
-   neuroprobe
 

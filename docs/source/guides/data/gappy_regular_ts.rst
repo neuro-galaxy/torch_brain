@@ -1,7 +1,7 @@
 .. currentmodule:: torch_brain.data
 
-Gappy RegularTimeSeries
-=======================
+Regular Time Series with Gaps
+=============================
 
 Some signals are *almost* regular: they are sampled at a fixed rate, but have
 missing samples or chunks of samples. Behavioral streams in neuroscience
