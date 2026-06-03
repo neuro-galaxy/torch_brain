@@ -1,7 +1,5 @@
 from .arraydict import ArrayDict, LazyArrayDict
-from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
-from .regular_ts import RegularTimeSeries, LazyRegularTimeSeries
-from .interval import Interval, LazyInterval
+from .concat import concat
 from .data import Data
 from .descriptions import (
     BrainsetDescription,
@@ -9,9 +7,10 @@ from .descriptions import (
     SessionDescription,
     SubjectDescription,
 )
+from .interval import Interval, LazyInterval
+from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
+from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries
 from .serialization import serialize_fn_map
-
-from .concat import concat
 
 __all__ = [
     "ArrayDict",
@@ -28,6 +27,7 @@ __all__ = [
     "SessionDescription",
     "SubjectDescription",
     "concat",
+    "serialize_fn_map",
 ]
 
 # Drives the generated API reference; see docs/source/api_reference.py.

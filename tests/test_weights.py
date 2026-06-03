@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from torch_brain.data import Data, Interval
 
+from torch_brain.data import Data, Interval
 from torch_brain.utils.weights import resolve_weights_based_on_interval_membership
 
 

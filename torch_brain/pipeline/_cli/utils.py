@@ -1,12 +1,12 @@
 import os
-from typing import Union
-import click
 from pathlib import Path
+
+import click
 
 PIPELINES_PATH = Path(__file__).parents[3] / "brainsets_pipelines"
 
 
-def expand_path(path: Union[str, Path]) -> Path:
+def expand_path(path: str | Path) -> Path:
     """
     Convert string path to absolute Path, expanding environment variables and user.
     """

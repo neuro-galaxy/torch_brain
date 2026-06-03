@@ -1,12 +1,11 @@
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
 CONFIG_FILE = Path.home() / ".brainsets.yaml"
 
 
-def load_config(path: Path = CONFIG_FILE) -> Optional[dict]:
+def load_config(path: Path = CONFIG_FILE) -> dict | None:
     """Load and validate the brainsets config file.
 
     Returns the config dict, or ``None`` if the file is missing or invalid.
@@ -15,7 +14,7 @@ def load_config(path: Path = CONFIG_FILE) -> Optional[dict]:
         return None
 
     try:
-        with open(path, "r") as f:
+        with open(path) as f:
             config = yaml.safe_load(f)
     except (OSError, yaml.YAMLError):
         return None

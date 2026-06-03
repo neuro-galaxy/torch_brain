@@ -1,13 +1,15 @@
-import pytest
 import os
+import tempfile
+
 import h5py
 import numpy as np
-import tempfile
+import pytest
+
 from torch_brain.data import (
+    Data,
+    Interval,
     IrregularTimeSeries,
     RegularTimeSeries,
-    Interval,
-    Data,
 )
 
 

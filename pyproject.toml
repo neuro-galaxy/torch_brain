@@ -35,7 +35,6 @@ dev = [
     "torch~=2.0",
     "scipy>=1.10.1",
     "pytest<9",
-    "black==24.2.0",
     "pre-commit>=3.5.0",
     "omegaconf",  # TODO: only needed for old Dataset, remove after cleanup
     "flake8",
@@ -48,6 +47,7 @@ dev = [
     "mne-bids",
     "dandi",
     "ty",
+    "ruff",
 ]
 docs = [
     "sphinx",
@@ -75,6 +75,14 @@ include = ["torch_brain*"]
 
 [project.scripts]
 brainsets = "torch_brain.pipeline._cli:cli"
+
+[tool.ruff]
+target-version = "py310"
+exclude = ["brainsets", "temporaldata"] # TODO: remove after cleanup
+
+[tool.ruff.lint]
+select = ["I", "F", "UP", "B", "E"]
+ignore = ["E501", "B905"]
 
 [tool.ty.environment]
 python-version = "3.10"

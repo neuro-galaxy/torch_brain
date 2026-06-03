@@ -4,13 +4,12 @@ from types import SimpleNamespace
 
 import h5py
 import numpy as np
+from _utils import add_pipelines_to_path
 
 from torch_brain.data import RegularTimeSeries
 
-from _utils import add_pipelines_to_path
-
 add_pipelines_to_path()
-from neuroprobe_2025 import (  # ty:ignore[unresolved-import]
+from neuroprobe_2025 import (  # noqa: E402  # ty:ignore[unresolved-import]
     pipeline as neuroprobe_pipeline,
 )
 

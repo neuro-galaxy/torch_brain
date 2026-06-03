@@ -1,12 +1,14 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Literal, Optional, get_args
-import hashlib
+from typing import Literal, get_args
 
 import numpy as np
 
 from torch_brain.data import Data, Interval
-from torch_brain.datasets import MultiChannelDatasetMixin, Dataset
 from torch_brain.utils.split import _get_integer_hash_from_string
+
+from .dataset import Dataset
+from .mixins import MultiChannelDatasetMixin
 
 OpenNeuroSplitType = Literal["intrasession", "intersubject", "intersession"]
 
@@ -27,9 +29,9 @@ class OpenNeuroDataset(MultiChannelDatasetMixin, Dataset):
         dataset_dir: Relative dataset directory within the root path.
         split_type: The split strategy to use, must be one of
             'intrasession', 'intersubject', or 'intersession'.
-        recording_ids (Optional[list[str]]): List of recording IDs to include,
+        recording_ids: List of recording IDs to include,
             or None to use all available recordings.
-        transform (Optional[Callable]): Optional sample transform.
+        transform: Optional sample transform.
         uniquify_channel_ids_with_subject: Whether to prefix channel IDs with
             ``subject.id`` via ``MultiChannelDatasetMixin``.
             Defaults to ``False``.
@@ -51,8 +53,8 @@ class OpenNeuroDataset(MultiChannelDatasetMixin, Dataset):
         root: str,
         dataset_dir: str,
         split_type: OpenNeuroSplitType,
-        recording_ids: Optional[list[str]] = None,
-        transform: Optional[Callable] = None,
+        recording_ids: list[str] | None = None,
+        transform: Callable | None = None,
         uniquify_channel_ids_with_subject: bool = False,
         uniquify_channel_ids_with_session: bool = True,
         split_ratios: tuple[float, float, float] = (0.8, 0.1, 0.1),
@@ -107,7 +109,7 @@ class OpenNeuroDataset(MultiChannelDatasetMixin, Dataset):
 
     def get_sampling_intervals(
         self,
-        split: Optional[Literal["train", "val", "test"]] = None,
+        split: Literal["train", "val", "test"] | None = None,
     ) -> dict[str, Interval]:
         """
         Retrieve the sampling intervals for each recording according to the specified split.

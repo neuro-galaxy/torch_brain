@@ -1,9 +1,10 @@
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Literal, Optional
-
-from torch_brain.datasets import Dataset, SpikingDatasetMixin
+from typing import Literal
 
 from ._utils import get_processed_dir
+from .dataset import Dataset
+from .mixins import SpikingDatasetMixin
 
 
 class OdohertySabesNonhuman2017(SpikingDatasetMixin, Dataset):
@@ -42,20 +43,20 @@ class OdohertySabesNonhuman2017(SpikingDatasetMixin, Dataset):
     `Zenodo Dataset <https://doi.org/10.5281/zenodo.788569>`_.
 
     Args:
-        root (str, optional): Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
-        recording_ids (list[str], optional): List of recording IDs to load.
-        transform (Callable, optional): Data transformation to apply.
-        split_type (str, optional): Which split type to use. Defaults to "cursor_velocity".
-        dirname (str, optional): Subdirectory for the dataset. Defaults to "odoherty_sabes_nonhuman_2017".
+        root: Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
+        recording_ids: List of recording IDs to load.
+        transform: Data transformation to apply.
+        split_type: Which split type to use. Defaults to "cursor_velocity".
+        dirname: Subdirectory for the dataset. Defaults to "odoherty_sabes_nonhuman_2017".
 
     """
 
     def __init__(
         self,
-        root: Optional[str] = None,
-        recording_ids: Optional[list[str]] = None,
-        transform: Optional[Callable] = None,
-        split_type: Optional[Literal["cursor_velocity"]] = "cursor_velocity",
+        root: str | None = None,
+        recording_ids: list[str] | None = None,
+        transform: Callable | None = None,
+        split_type: Literal["cursor_velocity"] | None = "cursor_velocity",
         dirname: str = "odoherty_sabes_nonhuman_2017",
         **kwargs,
     ):
@@ -74,7 +75,7 @@ class OdohertySabesNonhuman2017(SpikingDatasetMixin, Dataset):
 
     def get_sampling_intervals(
         self,
-        split: Optional[Literal["train", "valid", "test"]] = None,
+        split: Literal["train", "valid", "test"] | None = None,
     ):
         domain_key = "domain" if split is None else f"{split}_domain"
         ans = {}

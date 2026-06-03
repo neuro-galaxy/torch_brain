@@ -1,15 +1,16 @@
-"""Deprecated. Use torch_brain.datasets instead """
+"""Deprecated. Use torch_brain.datasets instead"""
 
-from torch_brain.datasets import (
+import warnings
+
+from torch_brain.datasets import (  # noqa: F401
+    CalciumImagingDatasetMixin,
     Dataset,
     DatasetIndex,
+    MultiChannelDatasetMixin,
     NestedDataset,
     NestedSpikingDataset,
     SpikingDatasetMixin,
-    CalciumImagingDatasetMixin,
-    MultiChannelDatasetMixin,
 )
-import warnings
 
 warnings.warn(
     "All components in moduel torch_brain.dataset have been moved to "

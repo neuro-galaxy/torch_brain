@@ -1,14 +1,14 @@
 """Unit tests for OpenNeuro Pipeline classes."""
 
-import pytest
+import datetime
+from argparse import Namespace
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import mne
 import numpy as np
 import pandas as pd
-import mne
-import datetime
-
-from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock, PropertyMock
-from argparse import Namespace
+import pytest
 
 from torch_brain.data import Data, Interval
 from torch_brain.pipeline.openneuro import OpenNeuroPipeline
@@ -856,7 +856,7 @@ class TestDownload:
             "torch_brain.pipeline.openneuro.download_recording"
         ) as mock_download:
             with patch("torch_brain.pipeline.openneuro.download_dataset_description"):
-                result = pipeline.download(manifest_row)
+                pipeline.download(manifest_row)
 
         mock_download.assert_called_once()
 

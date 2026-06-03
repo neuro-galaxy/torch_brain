@@ -1,4 +1,5 @@
 import numpy as np
+
 from torch_brain.data import Interval
 
 

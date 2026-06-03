@@ -172,7 +172,6 @@ class TestLazyMaskIsCopied:
 
 
 class TestNewDomainIsNotShallowCopy:
-
     def test_irregular_ts(self):
         data = _make_irregular()
         masked = data.select_by_mask(np.array([True, False, True]))
@@ -182,7 +181,6 @@ class TestNewDomainIsNotShallowCopy:
 
 
 class TestPrivateAttribsAreDeepCopied:
-
     def test_array_dict(self):
         data = _make_array_dict()
         data._private = np.array([0, 1])
@@ -206,7 +204,6 @@ class TestPrivateAttribsAreDeepCopied:
 
 
 class TestRegularTimeSeriesNotImplemented:
-
     def test_raises_not_implemented(self):
         data = RegularTimeSeries(value=np.zeros(4), sampling_rate=1.0)
         with pytest.raises(NotImplementedError):
@@ -233,29 +230,29 @@ class TestCachedSorted:
             timestamps=np.array([0.0, 1.0, 0.5, 2.0]),
             domain="auto",
         )
-        assert data.is_sorted() == False
+        assert not data.is_sorted()
 
         # If original data is unsorted
         masked = data.select_by_mask(np.array([True, False, True, True]))
-        assert masked._sorted == None
-        assert masked.is_sorted() == True
+        assert masked._sorted is None
+        assert masked.is_sorted()
 
         # If original data is sorted
         masked2 = masked.select_by_mask(np.array([True, False, True]))
-        assert masked2._sorted == True
+        assert masked2._sorted
 
     def test_interval(self):
         data = Interval(
             start=np.array([0.0, 1.0, 0.5, 2.0]),
             end=np.array([0.1, 1.1, 0.6, 2.1]),
         )
-        assert data.is_sorted() == False
+        assert not data.is_sorted()
 
         # If original data is unsorted
         masked = data.select_by_mask(np.array([True, False, True, True]))
-        assert masked._sorted == None
-        assert masked.is_sorted() == True
+        assert masked._sorted is None
+        assert masked.is_sorted()
 
         # If original data is sorted
         masked2 = masked.select_by_mask(np.array([True, False, True]))
-        assert masked2._sorted == True
+        assert masked2._sorted

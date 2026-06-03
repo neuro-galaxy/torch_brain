@@ -24,20 +24,21 @@ __api_ref__ = {
 }
 
 
-from collections import defaultdict
-from typing import Optional, Literal
-from pathlib import Path
-import warnings
-import re
 import json
+import re
+import warnings
+from collections import defaultdict
+from pathlib import Path
+from typing import Literal
+
 import pandas as pd
 
 try:
     from mne_bids import (
+        BIDSPath,
         get_bids_path_from_fname,
         get_entities_from_fname,
         get_entity_vals,
-        BIDSPath,
     )
 
     MNE_BIDS_AVAILABLE = True
@@ -166,7 +167,7 @@ def fetch_ieeg_recordings(
 
 def group_recordings_by_entity(
     recordings: list[dict],
-    fixed_entities: Optional[list[str]] = None,
+    fixed_entities: list[str] | None = None,
 ) -> dict[str, list[dict]]:
     """Group BIDS-compliant recordings by specified fixed entities.
 
@@ -214,7 +215,8 @@ def group_recordings_by_entity(
             "No fixed_entities were specified for grouping recordings. "
             "By default, recordings will be grouped by all BIDS entities present in the filename, except for the 'run' entity "
             "(so only the run may vary within each group). "
-            "To control grouping more precisely, specify 'fixed_entities' as a list of BIDS entities (e.g., ['subject', 'session', 'task'])."
+            "To control grouping more precisely, specify 'fixed_entities' as a list of BIDS entities (e.g., ['subject', 'session', 'task']).",
+            stacklevel=2,
         )
 
     normalized_fixed = (
@@ -378,13 +380,13 @@ def load_json_sidecar(bids_path: BIDSPath) -> dict:
         sidecar_path = bids_path.find_matching_sidecar(
             extension=".json", on_error="raise"
         )
-        with open(sidecar_path, "r", encoding="utf-8") as f:
+        with open(sidecar_path, encoding="utf-8") as f:
             return json.load(f)
     except RuntimeError as err:
         raise FileNotFoundError(f"No JSON sidecar file found for {bids_path}.") from err
 
 
-def load_participants_tsv(bids_root: Path | str) -> Optional[pd.DataFrame]:
+def load_participants_tsv(bids_root: Path | str) -> pd.DataFrame | None:
     """Load participants.tsv data from a BIDS root directory.
 
     The participants.tsv file is a tab-delimited file containing information about all subjects
@@ -417,7 +419,8 @@ def load_participants_tsv(bids_root: Path | str) -> Optional[pd.DataFrame]:
     if "participant_id" not in df.columns:
         warnings.warn(
             f"No participant_id column found in participants.tsv file in BIDS root directory {bids_root}. "
-            "Returning None."
+            "Returning None.",
+            stacklevel=2,
         )
         return None
 
@@ -441,14 +444,16 @@ def get_subject_info(
     if participants_data is None:
         warnings.warn(
             "The participants.tsv file was not provided. No subject information can be retrieved. "
-            "Returning None for age and sex. Please provide a valid participants.tsv file."
+            "Returning None for age and sex. Please provide a valid participants.tsv file.",
+            stacklevel=2,
         )
         return {"age": None, "sex": None}
 
     if subject_id not in participants_data.index:
         warnings.warn(
             f"Subject {subject_id} not found in participants.tsv file. "
-            "Setting age and sex to None."
+            "Setting age and sex to None.",
+            stacklevel=2,
         )
         return {"age": None, "sex": None}
 
@@ -458,7 +463,8 @@ def get_subject_info(
     if pd.isna(age):
         warnings.warn(
             f"Age for subject {subject_id} is NaN in participants.tsv file. "
-            "Setting age to None."
+            "Setting age to None.",
+            stacklevel=2,
         )
         age = None
 
@@ -466,7 +472,8 @@ def get_subject_info(
     if pd.isna(sex):
         warnings.warn(
             f"Sex for subject {subject_id} is NaN in participants.tsv file. "
-            "Setting sex to None."
+            "Setting sex to None.",
+            stacklevel=2,
         )
         sex = None
 
@@ -637,7 +644,7 @@ def _is_bids_root(path: str | Path) -> bool:
         This is checked using get_entity_vals(path, 'subject'), which searches for subject-level entities.
 
     Args:
-        path (str or Path): The path to check.
+        path: The path to check.
 
     Returns:
         bool: True if the path is a valid BIDS root (i.e., it is a directory and has at least one BIDS subject entity).

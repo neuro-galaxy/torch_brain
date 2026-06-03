@@ -1,10 +1,10 @@
-from pathlib import Path
-from io import StringIO
 import shutil
+from io import StringIO
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-from unittest.mock import MagicMock, patch
 
 try:
     import mne_bids
@@ -19,16 +19,16 @@ try:
     from torch_brain.utils.bids import (
         EEG_EXTENSIONS,
         IEEG_EXTENSIONS,
-        fetch_eeg_recordings,
-        fetch_ieeg_recordings,
-        check_eeg_recording_files_exist,
-        build_bids_path,
-        load_json_sidecar,
-        get_subject_info,
-        group_recordings_by_entity,
-        load_participants_tsv,
         _fetch_recordings,
         _validate_modality,
+        build_bids_path,
+        check_eeg_recording_files_exist,
+        fetch_eeg_recordings,
+        fetch_ieeg_recordings,
+        get_subject_info,
+        group_recordings_by_entity,
+        load_json_sidecar,
+        load_participants_tsv,
     )
 except ImportError:
     EEG_EXTENSIONS = None
@@ -134,10 +134,7 @@ def bids_root_with_participants(bids_root):
     """
     participants_tsv = bids_root / "participants.tsv"
     participants_tsv.write_text(
-        "participant_id\tage\tsex\n"
-        "sub-01\t34\tF\n"
-        "sub-02\tn/a\tN/A\n"
-        "sub-03\t28\tM\n"
+        "participant_id\tage\tsex\nsub-01\t34\tF\nsub-02\tn/a\tN/A\nsub-03\t28\tM\n"
     )
     return bids_root
 
@@ -1024,20 +1021,20 @@ class TestGetSubjectInfo:
     def participants_df_with_age_sex(self):
         """Create a participants DataFrame with age and sex information."""
         return _make_participants_df(
-            "participant_id\tage\tsex\n" "sub-01\t34\tF\n" "sub-02\t28\tM\n"
+            "participant_id\tage\tsex\nsub-01\t34\tF\nsub-02\t28\tM\n"
         )
 
     @pytest.fixture
     def participants_df_with_na_values(self):
         """Create a participants DataFrame with NA/N/A values."""
         return _make_participants_df(
-            "participant_id\tage\tsex\n" "sub-01\tn/a\tN/A\n" "sub-02\t28\tM\n"
+            "participant_id\tage\tsex\nsub-01\tn/a\tN/A\nsub-02\t28\tM\n"
         )
 
     @pytest.fixture
     def participants_df_missing_age_sex(self):
         """Create a participants DataFrame without age and sex columns."""
-        return _make_participants_df("participant_id\thandedness\n" "sub-01\tright\n")
+        return _make_participants_df("participant_id\thandedness\nsub-01\tright\n")
 
     def test_returns_age_and_sex_when_available(self, participants_df_with_age_sex):
         """Test that age and sex are correctly returned when available in participants.tsv."""

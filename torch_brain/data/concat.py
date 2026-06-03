@@ -1,4 +1,5 @@
 from functools import reduce
+
 import numpy as np
 
 from .irregular_ts import IrregularTimeSeries
@@ -8,8 +9,8 @@ def concat(objs, sort=True):
     """Concatenates multiple time series objects into a single object.
 
     Args:
-        objs (List[Union[IrregularTimeSeries, RegularTimeSeries]]): List of time series objects to concatenate.
-        sort (bool, optional): Whether to sort the resulting time series by timestamps. Only applies to IrregularTimeSeries. Defaults to True.
+        objs: List of time series objects to concatenate.
+        sort: Whether to sort the resulting time series by timestamps. Only applies to IrregularTimeSeries. Defaults to True.
 
     Returns:
         Union[IrregularTimeSeries, RegularTimeSeries]: The concatenated time series object.
@@ -20,17 +21,16 @@ def concat(objs, sort=True):
 
     Example ::
 
-        >>> import numpy as np
         >>> from torch_brain.data import IrregularTimeSeries, Interval, concat
 
         >>> ts1 = IrregularTimeSeries(
-        ...     timestamps=np.array([0.0, 1.0]),
-        ...     values=np.array([1.0, 2.0]),
+        ...     timestamps=[0.0, 1.0],
+        ...     values=[1.0, 2.0],
         ...     domain="auto",
         ... )
         >>> ts2 = IrregularTimeSeries(
-        ...     timestamps=np.array([2.0, 3.0]),
-        ...     values=np.array([3.0, 4.0]),
+        ...     timestamps=[2.0, 3.0],
+        ...     values=[3.0, 4.0],
         ...     domain="auto",
         ... )
 
@@ -47,9 +47,7 @@ def concat(objs, sort=True):
     obj_type = type(objs[0])
     if any(not isinstance(obj, obj_type) for obj in objs):
         raise ValueError(
-            "All objects must be of the same type, got: {}".format(
-                [type(obj) for obj in objs]
-            )
+            f"All objects must be of the same type, got: {[type(obj) for obj in objs]}"
         )
 
     if obj_type == IrregularTimeSeries:
@@ -60,15 +58,11 @@ def concat(objs, sort=True):
         for obj in objs:
             if set(obj.keys()) != set(keys):
                 raise ValueError(
-                    "All objects must have the same keys, got {} and {}".format(
-                        keys, obj.keys()
-                    )
+                    f"All objects must have the same keys, got {keys} and {obj.keys()}"
                 )
             if set(obj.timekeys()) != set(timekeys):
                 raise ValueError(
-                    "All objects must have the same timekeys, got {} and {}".format(
-                        timekeys, obj.timekeys()
-                    )
+                    f"All objects must have the same timekeys, got {timekeys} and {obj.timekeys()}"
                 )
 
         obj_concat_dict = {}
@@ -82,8 +76,6 @@ def concat(objs, sort=True):
         if sort:
             obj_concat.sort()
     else:
-        raise NotImplementedError(
-            "Concatenation not implemented for type: {}".format(obj_type)
-        )
+        raise NotImplementedError(f"Concatenation not implemented for type: {obj_type}")
 
     return obj_concat

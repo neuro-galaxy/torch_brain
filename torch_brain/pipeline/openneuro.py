@@ -10,15 +10,14 @@ __api_ref__ = {
     "sections": [{"autosummary": __all__}],
 }
 
+import logging
+import sys
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from typing import Literal, Optional
-import logging
-import sys
+from typing import Literal
 
 import h5py
-import numpy as np
 import pandas as pd
 
 try:
@@ -30,38 +29,37 @@ except ImportError:
     MNE_BIDS_AVAILABLE = False
 
 from torch_brain.data import (
-    Data,
-    Interval,
     BrainsetDescription,
+    Data,
     DeviceDescription,
     SessionDescription,
     SubjectDescription,
     serialize_fn_map,
 )
-from .pipeline import BrainsetPipeline
 from torch_brain.utils.bids import (
     build_bids_path,
-    fetch_eeg_recordings,
-    fetch_ieeg_recordings,
     check_eeg_recording_files_exist,
     check_ieeg_recording_files_exist,
+    fetch_eeg_recordings,
+    fetch_ieeg_recordings,
     get_subject_info,
 )
 from torch_brain.utils.mne import (
-    extract_signal,
-    extract_measurement_date,
     extract_channels,
+    extract_measurement_date,
+    extract_signal,
 )
-from torch_brain.utils.split import generate_string_kfold_assignment
 from torch_brain.utils.openneuro import (
     construct_s3_url_from_path,
     download_dataset_description,
     download_recording,
     fetch_all_filenames,
+    fetch_latest_snapshot_tag,
     fetch_participants_tsv,
     fetch_species,
-    fetch_latest_snapshot_tag,
 )
+
+from .pipeline import BrainsetPipeline
 
 base_openneuro_parser = ArgumentParser()
 base_openneuro_parser.add_argument("--redownload", action="store_true")
@@ -142,24 +140,24 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
     derived_version: str
     """Version of the processed data. Must be specified by the author of each pipeline."""
 
-    description: Optional[str] = None
+    description: str | None = None
     """Optional description of the dataset."""
 
-    CHANNEL_NAME_REMAPPING: Optional[dict[str, str]] = None
+    CHANNEL_NAME_REMAPPING: dict[str, str] | None = None
     """Optional dict mapping original channel name to new standardized name.
 
     For more complex configurations (e.g., per-recording mappings), override
     get_channel_name_remapping() instead.
     """
 
-    TYPE_CHANNELS_REMAPPING: Optional[dict[str, list[str]]] = None
+    TYPE_CHANNELS_REMAPPING: dict[str, list[str]] | None = None
     """Optional dict mapping channel types to lists of channel names.
 
     For more complex configurations (e.g., per-recording mappings), override
     get_type_channels_remapping() instead.
     """
 
-    IGNORE_CHANNELS: Optional[list[str]] = None
+    IGNORE_CHANNELS: list[str] | None = None
     """Optional list of channel names to ignore.
 
     Channel names should be specified as they appear in the original namespace of
@@ -296,7 +294,7 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
         return None
 
     @classmethod
-    def get_manifest(cls, raw_dir: Path, args: Optional[Namespace]) -> pd.DataFrame:
+    def get_manifest(cls, raw_dir: Path, args: Namespace | None) -> pd.DataFrame:
         """Generate a manifest DataFrame by discovering recordings from OpenNeuro.
 
         This implementation queries OpenNeuro S3 and parses BIDS-compliant
@@ -422,7 +420,7 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
 
         return manifest_item
 
-    def process_common(self, download_output: pd.Series) -> Optional[tuple[Data, Path]]:
+    def process_common(self, download_output: pd.Series) -> tuple[Data, Path] | None:
         """Process data files and create a Data object.
 
         This method handles common OpenNeuro processing tasks:
@@ -543,7 +541,7 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
     def get_channel_name_remapping(
         self,
         recording_id: str | None = None,
-    ) -> Optional[dict[str, str]]:
+    ) -> dict[str, str] | None:
         """Return channel name remapping for a given recording.
 
         Override this method to provide per-recording channel name remappings.
@@ -561,7 +559,7 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
     def get_type_channels_remapping(
         self,
         recording_id: str | None = None,
-    ) -> Optional[dict[str, list[str]]]:
+    ) -> dict[str, list[str]] | None:
         """Return channel type remapping for a given recording.
 
         Override this method to provide per-recording channel type remappings.

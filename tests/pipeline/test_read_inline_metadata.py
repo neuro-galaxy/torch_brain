@@ -1,8 +1,9 @@
 """Tests for _read_inline_metadata function in cli_prepare module."""
 
-import pytest
-from pathlib import Path
 import tempfile
+from pathlib import Path
+
+import pytest
 
 from torch_brain.pipeline._cli.cli_prepare import _read_inline_metadata
 

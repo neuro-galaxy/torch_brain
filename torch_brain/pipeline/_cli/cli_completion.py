@@ -4,7 +4,6 @@ from pathlib import Path
 import click
 from click.shell_completion import get_completion_class
 
-
 SUPPORTED_SHELLS = {"bash", "zsh"}
 
 SHELL_COMPLETION_DIRS = {

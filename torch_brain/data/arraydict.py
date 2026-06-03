@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-from typing import List
 import logging
 
 import h5py
@@ -12,7 +11,7 @@ from .typing import ArrayLike
 from .utils import _size_repr, _validate_select_by_mask_input
 
 
-class ArrayDict(object):
+class ArrayDict:
     r"""A dictionary of arrays that share the same first dimension. The number of
     dimensions for each array can be different, but they need to be at least
     1-dimensional.
@@ -43,7 +42,7 @@ class ArrayDict(object):
         for key, value in kwargs.items():
             self.__setattr__(key, value)
 
-    def keys(self) -> List[str]:
+    def keys(self) -> list[str]:
         r"""Returns a list of all array attribute names."""
         return list(filter(lambda x: not x.startswith("_"), self.__dict__))
 
@@ -82,7 +81,7 @@ class ArrayDict(object):
                     f"{value.shape[0]} but the first dimension of existing attributes "
                     f"is {first_dim}."
                 )
-        super(ArrayDict, self).__setattr__(name, value)
+        super().__setattr__(name, value)
 
     def __getattr__(self, name) -> np.ndarray:
         raise AttributeError(f"Attribute {name} not found.")
@@ -110,8 +109,8 @@ class ArrayDict(object):
             >>> import numpy as np
 
             >>> units = ArrayDict(
-            ...     unit_id=np.array(["unit01", "unit02"]),
-            ...     brain_region=np.array(["M1", "M1"]),
+            ...     unit_id=["unit01", "unit02"],
+            ...     brain_region=["M1", "M1"],
             ...     waveform_mean=np.random.rand(2, 48),
             ... )
 
@@ -143,8 +142,8 @@ class ArrayDict(object):
         they will be skipped.
 
         Args:
-            df (pandas.DataFrame): DataFrame.
-            unsigned_to_long (bool, optional): If :obj:`True`, automatically converts
+            df: DataFrame.
+            unsigned_to_long: If :obj:`True`, automatically converts
                 unsigned integers to int64. Defaults to :obj:`True`.
         """
         data = {**kwargs}
@@ -210,7 +209,7 @@ class ArrayDict(object):
         r"""Saves the data object to an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. code-block:: python
 
@@ -218,8 +217,8 @@ class ArrayDict(object):
             from torch_brain.data import ArrayDict
 
             data = ArrayDict(
-                unit_id=np.array(["unit01", "unit02"]),
-                brain_region=np.array(["M1", "M1"]),
+                unit_id=["unit01", "unit02"],
+                brain_region=["M1", "M1"],
                 waveform_mean=np.zeros((2, 48)),
             )
 
@@ -238,12 +237,12 @@ class ArrayDict(object):
                 try:
                     # convert string arrays to fixed length ASCII bytes
                     value = value.astype("S")
-                except UnicodeEncodeError:
+                except UnicodeEncodeError as err:
                     raise NotImplementedError(
                         f"Unable to convert column '{key}' from numpy 'U' string type "
                         "to fixed-length ASCII (np.dtype('S')). HDF5 does not support "
                         "numpy 'U' strings."
-                    )
+                    ) from err
                 # keep track of the keys of the arrays that were originally unicode
                 _unicode_keys.append(key)
             file.create_dataset(key, data=value)
@@ -257,7 +256,7 @@ class ArrayDict(object):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. note::
             This method will load all data in memory, if you would like to use lazy
@@ -356,7 +355,7 @@ class LazyArrayDict(ArrayDict):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        if not name in ["__dict__", "keys"]:
+        if name not in ["__dict__", "keys"]:
             # intercept attribute calls. this is where data that is not loaded is loaded
             # and when any lazy operations are applied
             if name in self.keys():
@@ -386,7 +385,7 @@ class LazyArrayDict(ArrayDict):
                     del self._lazy_ops, self._unicode_keys
                 return out
 
-        return super(LazyArrayDict, self).__getattribute__(name)
+        return super().__getattribute__(name)
 
     def select_by_mask(self, mask: np.ndarray):
         r"""Index all arrays with a boolean mask and return a copy.
@@ -437,7 +436,7 @@ class LazyArrayDict(ArrayDict):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. code-block:: python
 

@@ -173,7 +173,7 @@ def test_lazy_regular_timeseries(test_filepath):
 
         assert data.__class__ == LazyRegularTimeSeries
 
-        data.raw
+        _ = data.raw
         # final attribute was accessed, the object should automatically convert to ArrayDict
         assert data.__class__ == RegularTimeSeries
 
@@ -245,7 +245,7 @@ def test_lazy_regular_timeseries(test_filepath):
 
 
 def test_slice_numerical_instability():
-    ts = RegularTimeSeries(value=np.zeros((40)), sampling_rate=4)
+    ts = RegularTimeSeries(value=np.zeros(40), sampling_rate=4)
     # Expected timestamps: [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, ...]
 
     eps = 1e-14
@@ -303,7 +303,7 @@ def test_slice_numerical_instability():
     assert sliced_ts.domain.start[0] == 0.25
     assert sliced_ts.domain.end[-1] == 1.0
 
-    ts = RegularTimeSeries(value=np.zeros((40)), sampling_rate=10)
+    ts = RegularTimeSeries(value=np.zeros(40), sampling_rate=10)
     # Expected timestamps: [0.0, 0.1, 0.2, ...]
 
     # Using math that natively generates known float anomalies.
@@ -317,7 +317,7 @@ def test_slice_numerical_instability():
 
 
 def test_slice_outside_domain(test_filepath):
-    ts = RegularTimeSeries(value=np.zeros((100)), sampling_rate=10, domain_start=10.0)
+    ts = RegularTimeSeries(value=np.zeros(100), sampling_rate=10, domain_start=10.0)
 
     def _assert_slice_outside_domain(ts):
         sliced_ts = ts.slice(0, 5, reset_origin=False)
@@ -736,7 +736,6 @@ class TestRegularTimeSeriesCoercion:
 
 
 class TestIndexMask:
-
     @pytest.fixture(params=["regular", "lazy"])
     def rts(self, request, test_filepath):
         rts = RegularTimeSeries(
@@ -818,7 +817,6 @@ class TestIndexMask:
 
 
 class TestIsGappy:
-
     @pytest.fixture(params=["regular", "lazy"])
     def rts(self, request, test_filepath):
         rts = RegularTimeSeries(
@@ -865,7 +863,6 @@ class TestIsGappy:
 
 
 class TestToIrregular:
-
     @pytest.fixture(params=["regular", "lazy"])
     def rts(self, request, test_filepath):
         rts = RegularTimeSeries(

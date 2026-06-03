@@ -1,10 +1,10 @@
 """Unit tests for OpenNeuro S3 utility functions."""
 
-import pytest
-from io import BytesIO
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
+import pytest
 
 from torch_brain.utils.openneuro import BOTO_AVAILABLE
 
@@ -12,17 +12,17 @@ pytestmark = pytest.mark.skipif(
     not BOTO_AVAILABLE, reason="boto3/botocore not installed"
 )
 
-from torch_brain.utils.openneuro import (
-    ClientError,
-    fetch_latest_snapshot_tag,
-    fetch_species,
-    fetch_all_filenames,
-    fetch_participants_tsv,
-    construct_s3_url_from_path,
-    download_recording,
-    download_dataset_description,
-    _graphql_query_openneuro,
+from torch_brain.utils.openneuro import (  # noqa: E402
     OPENNEURO_S3_BUCKET,
+    ClientError,
+    _graphql_query_openneuro,
+    construct_s3_url_from_path,
+    download_dataset_description,
+    download_recording,
+    fetch_all_filenames,
+    fetch_latest_snapshot_tag,
+    fetch_participants_tsv,
+    fetch_species,
 )
 
 # ============================================================================

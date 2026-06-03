@@ -76,7 +76,6 @@ API_REFERENCE = {m: import_module(m).__api_ref__ for m in API_MODS}
 
 
 def build_api_rst():
-    import importlib
     import pathlib
 
     generated = pathlib.Path(__file__).parent / "generated"
@@ -104,7 +103,7 @@ def build_api_rst():
 
     for template in rst_templates:
         # Read the corresponding template file into jinja2
-        with open(template["template_path"], "r") as f:
+        with open(template["template_path"]) as f:
             t = jinja2.Template(f.read())
 
         # Render the template and write to the target

@@ -12,7 +12,6 @@ from torch_brain.data import (
 
 
 class TestSubjectDescription:
-
     def test_basic_usage_with_all_parameters(self):
         result = SubjectDescription(
             id="subject_1",
@@ -98,7 +97,6 @@ class TestSubjectDescription:
 
 
 class TestBrainsetDescription:
-
     def test_basic_usage_with_all_parameters(self):
         result = BrainsetDescription(
             id="brainset_1",
@@ -193,7 +191,6 @@ class TestBrainsetDescription:
 
 
 class TestSessionDescription:
-
     def test_basic_usage_with_all_parameters(self):
         recording_date = datetime.datetime(2024, 1, 15, 10, 30, 0)
         result = SessionDescription(
@@ -235,7 +232,6 @@ class TestSessionDescription:
 
 
 class TestDeviceDescription:
-
     def test_basic_usage_with_all_parameters(self):
         result = DeviceDescription(
             id="device_1",
