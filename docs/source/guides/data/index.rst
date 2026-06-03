@@ -24,5 +24,5 @@ from disk, what lazy-loading means, and more.
    io
    domain
    gappy_regular_ts
-   interval_operations
+   interval_ops/index
 

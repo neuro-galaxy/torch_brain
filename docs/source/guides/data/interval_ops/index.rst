@@ -26,16 +26,15 @@ Intersection
 The intersection operation (``&``) creates a new :obj:`Interval`
 containing only the overlapping time periods between two objects.
 
-.. image:: /_static/intersection.png
-   :width: 800
-   :align: center
-   :alt: Visualization of interval intersection operation
-
 .. code-block:: pycon
 
    >>> intersection = interval1 & interval2
    >>> intersection.start, intersection.end
    (array([ 2.,  7., 14.]), array([ 5.,  8., 17.]))
+
+.. plot:: guides/data/interval_ops/plots.py plot_intersection
+
+   Visualization of thet intersection operation
 
 
 Union
@@ -44,17 +43,15 @@ Union
 The union operation (``|``) combines the two intervals in a set-union fashion,
 merging any overlapping or touching periods.
 
-.. image:: /_static/union.png
-   :width: 800
-   :align: center
-   :alt: Visualization of interval union operation
-
-
 .. code-block:: pycon
 
    >>> union = interval1 | interval2
    >>> union.start, union.end
    (array([ 1., 12.]), array([10., 18.]))
+
+.. plot:: guides/data/interval_ops/plots.py plot_union
+
+   Visualization of the union operation
 
 
 Difference
@@ -64,17 +61,15 @@ The :obj:`~Interval.difference` operation returns a new :obj:`Interval`
 containing time periods that are in the first interval but not in the second
 interval.
 
-.. image:: /_static/difference.png
-   :width: 800
-   :align: center
-   :alt: Visualization of interval difference operation
-
-
 .. code-block:: pycon
 
    >>> difference = interval1.difference(interval2)
    >>> difference.start, difference.end
    (array([ 1.,  5., 12., 17.]), array([ 2.,  7., 14., 18.]))
+
+.. plot:: guides/data/interval_ops/plots.py plot_difference
+
+   Visualization of the difference operation
 
 
 Dilation
@@ -82,11 +77,6 @@ Dilation
 
 The :obj:`~Interval.dilate` method expands each interval by a specified amount
 on both sides.
-
-.. image:: /_static/dilate.png
-   :width: 800
-   :align: center
-   :alt: Visualization of interval dilation operation
 
 .. code-block:: pycon
 
@@ -96,6 +86,10 @@ on both sides.
    >>> dilated = interval.dilate(0.5)
    >>> dilated.start, dilated.end
    (array([ 0.5 ,  9.5 , 13.75]), array([ 5.5 , 13.75, 18.5 ]))
+
+.. plot:: guides/data/interval_ops/plots.py plot_dilation
+
+   Visualization of the dilation operation
 
 The dilation operation is particularly useful when you need to:
 
@@ -110,11 +104,6 @@ The :obj:`~Interval.coalesce` method merges overlapping or touching intervals
 into single continuous intervals. This is useful for simplifying interval sets
 and removing gaps below a certain threshold.
 
-.. image:: /_static/coalesce.png
-   :width: 800
-   :align: center
-   :alt: Visualization of interval coalesce operation
-
 .. code-block:: pycon
 
     >>> # Create four intervals [1, 6), [6.1, 11), [11.3, 14.5), and [14.5, 17.8)
@@ -123,11 +112,14 @@ and removing gaps below a certain threshold.
     ...     end=[6., 11., 14.5, 17.8],
     ... )
 
-
     >>> # Coalesce intervals that are within 0.2 of each other
     >>> coalesced = interval.coalesce(0.2)
     >>> coalesced.start, coalesced.end
     (array([ 1. , 11.3]), array([11. , 17.8]))
+
+.. plot:: guides/data/interval_ops/plots.py plot_coalesce
+
+   Visualization of the coalesce operation
 
 
 The coalesce operation is useful for:
@@ -167,7 +159,7 @@ checks return ``True``:
 
 The set operations above (intersection, union, and difference) require their
 inputs to be disjoint and sorted, and will raise a ``ValueError`` otherwise, so
-these methods are handy for validating an :obj:`Interval` before relying on it.
+these methods are handy for validating an :obj:`Interval` object.
 
 
 .. _interval_ops_edge_cases:
