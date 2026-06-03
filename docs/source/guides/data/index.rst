@@ -19,10 +19,16 @@ from disk, what lazy-loading means, and more.
 
 .. toctree::
    :maxdepth: 1
+   :caption: Getting Started
 
    data_objects_intro
    io
-   domain
-   gappy_regular_ts
    interval_ops/index
+   domain
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Advanced Concepts
+
+   gappy_regular_ts
 
