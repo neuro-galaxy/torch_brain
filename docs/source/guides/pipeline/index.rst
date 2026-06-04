@@ -1,5 +1,7 @@
-Data Pre-Processing Concepts
-============================
+.. _brainsets_guide:
+
+Brainsets: Dataset Pre-Processing Tools
+=======================================
 
 .. toctree::
    :maxdepth: 1
