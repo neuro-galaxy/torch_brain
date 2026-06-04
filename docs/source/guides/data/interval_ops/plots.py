@@ -1,7 +1,7 @@
-import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+
 from torch_brain.data import Interval
 
 cmap = mpl.colormaps["Accent"]
@@ -11,7 +11,7 @@ grid_alpha = 0.4
 
 
 def draw_interval(ax, interval, y, color):
-    for s, e in zip(interval.start, interval.end):
+    for s, e in zip(interval.start, interval.end, strict=False):
         rect = Rectangle(
             (s, y - half_height),
             e - s,
