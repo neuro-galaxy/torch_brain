@@ -1,5 +1,5 @@
-Anatomy of a Brainset
-=====================
+Brainset Concepts
+=================
 
 Brainset
 --------
@@ -18,10 +18,9 @@ signals, behavior, metadata, and a temporal **Domain**.
 Brainset Pipeline
 -----------------
 
-A **Brainset Pipeline** is the code that downloads raw source data and
-transforms each session into a standardized H5 file. Pipelines subclass
-:class:`~torch_brain.pipeline.BrainsetPipeline` and are run via
-``brainsets prepare``.
+A **Brainset Pipeline** downloads raw source data and transforms each session
+into a standardized H5 file. Pipelines subclass
+:class:`~torch_brain.pipeline.BrainsetPipeline` and run via ``brainsets prepare``.
 
 Dataset
 -------
@@ -45,7 +44,8 @@ Session files carry structured metadata:
 * :class:`~torch_brain.data.SessionDescription` — session identifiers and dates
 * :class:`~torch_brain.data.DeviceDescription` — recording hardware
 
-See :doc:`building_sessions` for how pipeline authors populate these fields.
+See :doc:`../adding_a_brainset/build_session` for how pipeline authors populate
+these fields.
 
 Directory layout
 ----------------

@@ -14,7 +14,7 @@ and the updated `OpenReview submission <https://openreview.net/forum?id=n0WDVWqg
 Preparing the data
 ------------------
 
-Prepare the underlying brainset with the CLI (see :doc:`../brainsets/getting_started`)::
+Prepare the underlying brainset with the CLI (see :doc:`../brainsets/getting_started/prepare`)::
 
     brainsets prepare neuroprobe_2025
 

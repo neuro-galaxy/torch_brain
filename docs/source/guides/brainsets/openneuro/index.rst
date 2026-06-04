@@ -1,16 +1,15 @@
-OpenNeuro Brainset Pipelines
+Adding an OpenNeuro Brainset
 ============================
 
 .. py:currentmodule:: torch_brain.pipeline.openneuro
 .. |OpenNeuroPipeline| replace:: :class:`OpenNeuroPipeline`
 
-This tutorial explains how to build a **Brainset Pipeline** for EEG or iEEG
+This guide explains how to build a **Brainset Pipeline** for EEG or iEEG
 datasets on `OpenNeuro <https://openneuro.org/>`_. :class:`OpenNeuroPipeline`
 handles S3 discovery, BIDS download, signal extraction, and Session H5 storage.
 
-Before starting, see :doc:`../creating_a_brainset_pipeline` for the general
-pipeline workflow.
-
+Before starting, see :doc:`../adding_a_brainset/index` for the general pipeline
+workflow.
 
 Minimal example
 ---------------
@@ -33,7 +32,6 @@ Add the pipeline under ``brainsets_pipelines/my_sleep_study_ds005555/`` and run:
 .. code-block:: console
 
    brainsets prepare my_sleep_study_ds005555
-
 
 Required attributes
 -------------------
@@ -61,7 +59,6 @@ against. At runtime, the latest snapshot is downloaded regardless; a mismatch
 triggers the ``--on-version-mismatch`` policy (see
 :doc:`../../../cli/commands`).
 
-
 Optional customization
 ----------------------
 
@@ -82,9 +79,8 @@ For per-recording mappings, override ``get_channel_name_remapping(recording_id)`
 and ``get_type_channels_remapping(recording_id)``. For extra processing beyond
 the defaults, override ``process()`` and call ``self.process_common(download_output)``.
 
-We recommend **UPPERCASE** channel names and types for consistency across
-EEG/iEEG brainsets.
-
+Use **UPPERCASE** channel names and types for consistency across EEG/iEEG
+brainsets.
 
 Examples
 --------

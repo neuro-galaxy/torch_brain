@@ -1,21 +1,12 @@
-Building Sessions
-=================
+Build the Session Object
+========================
 
 In :meth:`~torch_brain.pipeline.BrainsetPipeline.process`, convert downloaded
-raw data into a standardized **Session** :class:`~torch_brain.data.Data` object
-and write it to H5.
+raw data into a standardized **Session** :class:`~torch_brain.data.Data`
+object.
 
 For ``ArrayDict``, ``Interval``, and related types, see
-:doc:`../data/creating_objects`.
-
-
-Pick a ``brainset_id``
-----------------------
-
-Choose a unique identifier, typically formatted as
-``{first_author}_{label}_{year}``. For example, Perich et al. 2018 becomes
-``perich_miller_population_2018``.
-
+:doc:`../../data/creating_objects`.
 
 Add brainset metadata
 ---------------------
@@ -38,7 +29,6 @@ Create a :class:`~torch_brain.data.BrainsetDescription`:
 * ``derived_version`` — version of your processing logic
 * ``source`` — URL or access instructions for the raw data
 * ``description`` — short human-readable summary
-
 
 Load raw data
 -------------
@@ -70,7 +60,6 @@ Load raw data
       neural_data = np.load("path/to/spikes.npy")
       behavior = np.load("path/to/behavior.npy")
 
-
 Extract subject metadata
 ------------------------
 
@@ -92,7 +81,6 @@ For NWB files from DANDI, use the helper:
 
    subject = extract_subject_from_nwb(nwbfile)
 
-
 Extract session metadata
 ------------------------
 
@@ -106,7 +94,6 @@ Extract session metadata
        recording_date=datetime.datetime(2024, 1, 1),
    )
 
-
 Extract device metadata
 -----------------------
 
@@ -118,7 +105,6 @@ Extract device metadata
        id="device_1",
        recording_tech="UTAH_ARRAY_SPIKES",
    )
-
 
 Extract neural data
 -------------------
@@ -156,7 +142,6 @@ For spiking data, the typical outputs are ``spikes`` and ``units``.
           recording_tech="UTAH_ARRAY_SPIKES",
       )
 
-
 Extract behavioral data
 -----------------------
 
@@ -172,7 +157,6 @@ Extract behavioral data
        domain="auto",
    )
 
-
 Extract trials
 --------------
 
@@ -187,14 +171,12 @@ Extract trials
        reach_direction=...,
    )
 
-
-Assemble and save the Session
------------------------------
+Assemble the Session
+--------------------
 
 .. code-block:: python
 
-   import h5py
-   from torch_brain.data import Data, serialize_fn_map
+   from torch_brain.data import Data
 
    data = Data(
        brainset=brainset_description,
@@ -208,14 +190,9 @@ Assemble and save the Session
        domain="auto",
    )
 
-   output_path = self.processed_dir / f"{session.id}.h5"
-   with h5py.File(output_path, "w") as file:
-       data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
-
 Train/validation/test **Splits** and **Sampling Intervals** are typically
 defined on the **Dataset** side rather than baked into Session files. See
-:doc:`../sampling/index`.
-
+:doc:`../../training/sampling/index`.
 
 Notes
 -----
@@ -224,3 +201,5 @@ Notes
 - Use :class:`~torch_brain.data.RegularTimeSeries` for fixed-rate signals and
   :class:`~torch_brain.data.IrregularTimeSeries` for event-based data.
 - See ``brainsets_pipelines/`` in the repository for complete examples.
+
+Next, see :doc:`save_to_disk` to write the ``Data`` object to H5.
