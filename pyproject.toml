@@ -79,6 +79,7 @@ brainsets = "torch_brain.pipeline._cli:cli"
 [tool.ruff]
 target-version = "py310"
 exclude = ["brainsets", "temporaldata"] # TODO: remove after cleanup
+extend-exclude = ["*.ipynb"]
 
 [tool.ruff.lint]
 select = ["I", "F", "UP", "B", "E"]
