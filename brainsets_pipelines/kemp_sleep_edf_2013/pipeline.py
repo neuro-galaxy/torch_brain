@@ -308,7 +308,7 @@ def extract_sleep_stages(hypnogram_file: str) -> Interval:
     stage_ids = []
 
     for annot_onset, annot_duration, annot_description in zip(
-        annotations.onset, annotations.duration, annotations.description
+        annotations.onset, annotations.duration, annotations.description, strict=True
     ):
         starts.append(annot_onset)
         ends.append(annot_onset + annot_duration)
@@ -370,7 +370,9 @@ def create_splits(
     filtered = chopped.select_by_mask(mask)
     logging.info(f"Filtered out unknown stages, {len(filtered)} epochs remaining")
 
-    for stage_id, count in zip(*np.unique(filtered.id, return_counts=True)):
+    for stage_id, count in zip(
+        *np.unique(filtered.id, return_counts=True), strict=True
+    ):
         if count < n_folds:
             mask = ~np.isin(filtered.id, [stage_id])
             filtered = filtered.select_by_mask(mask)

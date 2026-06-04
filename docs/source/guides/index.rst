@@ -2,11 +2,21 @@ User Guide
 ==========
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
-   installation
    data/index
+
+.. toctree::
+   :maxdepth: 2
+
    brainsets/index
-   benchmarks/index
-   sampling/index
+
+.. toctree::
+   :maxdepth: 2
+
+   training/index
+
+.. toctree::
+   :maxdepth: 2
+
    examples/index

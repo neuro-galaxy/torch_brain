@@ -28,6 +28,7 @@ class IrregularTimeSeries(ArrayDict):
         domain: an :obj:`Interval` object that defines the domain over which the
             timeseries is defined. If set to :obj:`"auto"`, the domain will be
             automatically the interval defined by the minimum and maximum timestamps.
+            (default `"auto"`)
         **kwargs: arrays that shares the same first dimension N.
 
     Example ::
@@ -82,7 +83,7 @@ class IrregularTimeSeries(ArrayDict):
         timestamps: ArrayLike,
         *,
         timekeys: list[str] | None = None,
-        domain: Interval | Literal["auto"],
+        domain: Interval | Literal["auto"] = "auto",
         **kwargs: ArrayLike,
     ):
         super().__init__(timestamps=timestamps, **kwargs)

@@ -568,7 +568,7 @@ def _intervals_from_dataset(dataset) -> Interval:
             label=np.array([], dtype=np.int64),
         )
 
-    windows, labels = zip(*items)
+    windows, labels = zip(*items, strict=True)
     window_array = np.array(windows)
     label_array = np.array(labels)
 

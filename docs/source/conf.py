@@ -23,6 +23,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
+    "matplotlib.sphinxext.plot_directive",
     "myst_nb",
     "sphinx_autodoc_typehints",
     "sphinx_inline_tabs",
@@ -100,6 +101,15 @@ bokeh_plot_pyfile_include_dirs = [
 html_copy_source = False
 html_show_sourcelink = True
 html_favicon = "_static/torch_brain_logo.png"
+
+# matplotlib plot_directive: figures are generated at build time from the code
+# in each `.. plot::` block. We only want the rendered figure, not the source
+# (the surrounding pycon blocks already show the relevant code).
+plot_include_source = False
+plot_html_show_source_link = False
+plot_html_show_formats = False
+plot_formats = [("png", 110)]
+
 
 # Compile scss files into css files using sphinxcontrib-sass
 sass_src_dir, sass_out_dir = "scss", "generated/css/styles"
