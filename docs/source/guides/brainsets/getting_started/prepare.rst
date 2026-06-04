@@ -24,7 +24,7 @@ First, we set where raw downloads and processed Session files are stored:
 
    $ brainsets config show
 
-We can list all available brainsets:
+List available brainsets
 ------------------------
 
 .. code-block:: console
@@ -35,7 +35,7 @@ Each ``brainset_id`` maps to a pipeline at
 ``brainsets_pipelines/<brainset_id>/pipeline.py`` in the ``torch_brain``
 repository.
 
-We can prepare a brainset using the ``brainsets prepare`` command:
+Prepare a brainset
 ------------------
 
 .. code-block:: console
