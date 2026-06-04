@@ -129,9 +129,12 @@ The coalesce operation is useful for:
 - Merging intervals that are effectively continuous
 - Simplifying interval representations
 
-There are multiple edge cases that can occur when performing interval
-operations. For more details, see the :ref:`interval_ops_edge_cases`
-section below.
+
+.. note::
+
+   There are multiple edge cases that can occur when performing interval
+   operations. For more details, see the :ref:`interval_ops_edge_cases`
+   section below.
 
 Introspection
 -------------
