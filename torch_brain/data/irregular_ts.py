@@ -634,9 +634,9 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             out.__dict__["timestamps"] = self.__dict__["timestamps"]
             out._timestamp_indices_1s = self._timestamp_indices_1s
         else:
-            assert (
-                "unresolved_slice" not in self._lazy_ops
-            ), "unresolved slice already exists"
+            assert "unresolved_slice" not in self._lazy_ops, (
+                "unresolved slice already exists"
+            )
             assert self.is_sorted(), "time series is not sorted, cannot slice"
 
             timestamps = self.timestamps
@@ -700,9 +700,9 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert (
-            file.attrs["object"] == IrregularTimeSeries.__name__
-        ), "object type mismatch"
+        assert file.attrs["object"] == IrregularTimeSeries.__name__, (
+            "object type mismatch"
+        )
 
         obj = cls.__new__(cls)
         for key, value in file.items():
