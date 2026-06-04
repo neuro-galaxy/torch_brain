@@ -7,39 +7,6 @@ The :obj:`torch_brain.data` module defines several key data objects.
 Here we'll look at the different ways to create and interact with each type of object.
 
 
-ArrayDict
----------
-:obj:`ArrayDict` is a simple container for arbitrary arrays *that share the same
-first dimension*.
-This data structure is useful for storing things like metadata associated with
-different recording channels, or any other data in a tabular form.
-
-.. code-block:: pycon
-
-   >>> from torch_brain.data import ArrayDict
-
-   >>> # Create an ArrayDict with any attributes you want
-   >>> channels = ArrayDict(
-   ...     channel_id=[1, 2, 3],
-   ...     brain_region=['V1', 'V2', 'V1'],
-   ...     position=[[0., 1.], [0.1, 0.9], [1.2, 3.2]]
-   ... )
-
-   >>> # Printing the object shows the shapes of the underlying data
-   >>> channels
-   ArrayDict(
-     channel_id=[3],
-     brain_region=[3],
-     position=[3, 2]
-   )
-
-   >>> # Access any attribute
-   >>> channels.position
-   array([[0. , 1. ],
-          [0.1, 0.9],
-          [1.2, 3.2]])
-
-
 RegularTimeSeries
 -----------------
 :obj:`RegularTimeSeries` is the first time-oriented data object we will look
@@ -57,6 +24,8 @@ sampled. This could be anything from behavior measurements to EEG signals.
    ...     eye_pos=np.random.randn(1000, 2),
    ...     pupil_size=np.random.randn(1000),
    ... )
+
+   >>> # Printing the object shows the shapes of the underlying data
    >>> behavior
    RegularTimeSeries(
      hand_vel=[1000, 2],
@@ -71,6 +40,7 @@ sampled. This could be anything from behavior measurements to EEG signals.
    >>> # timestamps are automatically created from the sampling rate
    >>> behavior.timestamps
    array([0.  , 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, ...])
+
 
 Here, we have created a 10-second-long collection of behavioral measurements
 (hand velocity, eye position, and pupil size) inside the *same* data object.
@@ -94,6 +64,13 @@ Since our signals are sampled at 100Hz, we should get 200 samples.
 
    >>> sliced.pupil_size
    array([-0.07094018,  1.1442879 ,  1.26022563,  1.57259098, ..., ])
+
+
+.. admonition:: Other constructors
+   :class: tip
+
+   :obj:`RegularTimeSeries.from_gappy_timeseries()`: If your raw data has missing
+   timesteps. Also see :doc:`gappy_regular_ts`.
 
 
 IrregularTimeSeries
@@ -154,17 +131,17 @@ You can opt out of this by passing ``reset_origin=False``:
 
 .. TODO Add link to some tutorial explaining timekeys
 
-.. note::
 
-   Note that in ``torch_brain``, we always represent time in the units of seconds.
+.. admonition:: Other constructors
+   :class: tip
 
+   :obj:`IrregularTimeSeries.from_dataframe()`
 
 
 Interval
 --------
-Our final *core* object is :obj:`Interval`, which represents time-periods and
-any metadata attached to them. A common use of this is to represent the trial
-structure of an experiment:
+:obj:`Interval` represents time-periods and any metadata attached to them. A
+common use of this is to represent the trial structure of an experiment:
 
 .. code-block:: pycon
 
@@ -205,6 +182,48 @@ Trials can also be sliced:
     array([1.]),
     array(['right'], dtype='<U5'),
     array(['error'], dtype='<U7'))
+
+.. admonition:: Other constructors
+   :class: tip
+
+   :obj:`Interval.from_list()`, :obj:`Interval.from_dataframe()`
+
+ArrayDict
+---------
+Our final *core* data object is :obj:`ArrayDict`. It is a simple container
+for arbitrary arrays *that share the same first dimension*.
+This data structure is useful for storing things like metadata associated with
+different recording channels, or any other data in a tabular form.
+
+.. code-block:: pycon
+
+   >>> from torch_brain.data import ArrayDict
+
+   >>> # Create an ArrayDict with any attributes you want
+   >>> channels = ArrayDict(
+   ...     channel_id=[1, 2, 3],
+   ...     brain_region=['V1', 'V2', 'V1'],
+   ...     position=[[0., 1.], [0.1, 0.9], [1.2, 3.2]]
+   ... )
+
+   >>> channels
+   ArrayDict(
+     channel_id=[3],
+     brain_region=[3],
+     position=[3, 2]
+   )
+
+   >>> # Access any attribute
+   >>> channels.position
+   array([[0. , 1. ],
+          [0.1, 0.9],
+          [1.2, 3.2]])
+
+.. admonition:: Other constructors
+   :class: tip
+
+   :obj:`ArrayDict.from_dataframe()`
+
 
 Data
 ----
@@ -303,3 +322,13 @@ primitives (scalars, lists, tuples, strings, etc.).
 Additionally, :obj:`Data` objects can be *nested* — a :obj:`Data` object can
 itself contain another :obj:`Data` object — which lets you organize your data
 in a hierarchy.
+
+
+Conventions
+-----------
+
+Some conventions to note:
+
+* In ``torch_brain``, time is always represented in the units of seconds.
+* Slicing like ``data.slice(a, b)`` is inclusive on the left side, and
+  exclusive on the right side.
