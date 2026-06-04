@@ -4,10 +4,9 @@ Anatomy of a Brainset
 Brainset
 --------
 
-A **brainset** is a standardized collection of Sessions from one publication
-or data source. On disk, a prepared brainset is a directory of Session H5
-files under your configured processed directory, typically
-``<processed_dir>/<brainset_id>/``.
+A **brainset** is a standardized collection of Sessions from one publication or
+data source. On disk, a prepared brainset is a directory of Session H5 files,
+typically ``<processed_dir>/<brainset_id>/``.
 
 Session
 -------
@@ -27,10 +26,9 @@ transforms each session into a standardized H5 file. Pipelines subclass
 Dataset
 -------
 
-Each brainset provides a **Dataset** class in :mod:`torch_brain.datasets` —
-a PyTorch-compatible loader that reads Session files and exposes
-**Sampling Intervals** for use with **Samplers**. This is the interface you
-use in training scripts.
+Each brainset provides a **Dataset** class in :mod:`torch_brain.datasets`: a
+PyTorch-compatible loader that reads Session files and exposes **Sampling
+Intervals** for use with **Samplers**.
 
 Multiple brainsets can be combined with
 :class:`~torch_brain.datasets.NestedDataset`, which namespaces recording IDs

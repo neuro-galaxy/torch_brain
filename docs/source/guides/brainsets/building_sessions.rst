@@ -1,13 +1,12 @@
 Building Sessions
 =================
 
-Inside a **Brainset Pipeline**'s :meth:`~torch_brain.pipeline.BrainsetPipeline.process`
-method, you convert downloaded raw data into a standardized **Session**
-:class:`~torch_brain.data.Data` object and write it to H5. This page walks
-through that construction step by step.
+In :meth:`~torch_brain.pipeline.BrainsetPipeline.process`, convert downloaded
+raw data into a standardized **Session** :class:`~torch_brain.data.Data` object
+and write it to H5.
 
-For general object APIs (``ArrayDict``, ``Interval``, etc.), see the
-:doc:`../data/creating_objects` guide.
+For ``ArrayDict``, ``Interval``, and related types, see
+:doc:`../data/creating_objects`.
 
 
 Pick a ``brainset_id``
@@ -218,12 +217,10 @@ defined on the **Dataset** side rather than baked into Session files. See
 :doc:`../sampling/index`.
 
 
-Tips
-----
+Notes
+-----
 
-- Validate after processing: missing values, timestamp alignment, reasonable
-  behavioral ranges, valid trial segmentation.
+- Validate after processing: missing values, timestamp alignment, trial bounds.
 - Use :class:`~torch_brain.data.RegularTimeSeries` for fixed-rate signals and
   :class:`~torch_brain.data.IrregularTimeSeries` for event-based data.
-- See ``brainsets_pipelines/`` in the ``torch_brain`` repository for complete
-  examples.
+- See ``brainsets_pipelines/`` in the repository for complete examples.

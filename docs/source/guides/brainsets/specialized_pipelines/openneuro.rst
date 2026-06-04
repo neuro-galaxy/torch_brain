@@ -4,12 +4,12 @@ OpenNeuro Brainset Pipelines
 .. py:currentmodule:: torch_brain.pipeline.openneuro
 .. |OpenNeuroPipeline| replace:: :class:`OpenNeuroPipeline`
 
-Build a **Brainset Pipeline** for publicly available EEG or iEEG datasets on
-`OpenNeuro <https://openneuro.org/>`_ with minimal boilerplate.
-:class:`OpenNeuroPipeline` handles S3 discovery, BIDS download, signal
-extraction, and Session H5 storage.
+This tutorial explains how to build a **Brainset Pipeline** for EEG or iEEG
+datasets on `OpenNeuro <https://openneuro.org/>`_. :class:`OpenNeuroPipeline`
+handles S3 discovery, BIDS download, signal extraction, and Session H5 storage.
 
-For the general pipeline workflow, see :doc:`../creating_a_brainset_pipeline`.
+Before starting, see :doc:`../creating_a_brainset_pipeline` for the general
+pipeline workflow.
 
 
 Minimal example

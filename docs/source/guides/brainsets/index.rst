@@ -1,74 +1,47 @@
 Working with Brainsets
 ======================
 
-A **brainset** is a curated collection of standardized neural and behavioral
-recordings from a specific publication or experimental source. Each brainset
-consists of **Session** files (one H5 file per session) produced by a
-**Brainset Pipeline** and accessed at training time through a PyTorch
-**Dataset** class.
+This guide explains how to use and create **brainsets**: curated collections
+of standardized neural and behavioral recordings from a publication or
+experimental source. A brainset is stored as **Session** H5 files (one file per
+session), produced by a **Brainset Pipeline** and loaded at training time
+through a PyTorch **Dataset** class in :mod:`torch_brain.datasets`.
 
-This guide covers two common paths:
+Before starting, see :doc:`anatomy_of_a_brainset` for definitions of Session,
+Brainset Pipeline, and Dataset on disk and in code.
 
-* **Use an existing brainset**: configure storage, run ``brainsets prepare``,
-  load the corresponding **Dataset**.
-* **Create a new brainset**: implement a **Brainset Pipeline** that
-  downloads raw data and writes standardized Session files.
+To download and use a published brainset, see :doc:`getting_started`. To
+implement a new pipeline, see :doc:`creating_a_brainset_pipeline`. For OpenNeuro
+EEG or iEEG sources, see :doc:`specialized_pipelines/index`.
 
-Choose your path
-----------------
+Lifecycle
+---------
 
-.. list-table::
-   :header-rows: 1
-   :widths: 30 70
+A **Brainset Pipeline** downloads raw source data and writes Session files under
+your processed directory. Run it with ``brainsets prepare``; pipeline code lives
+in ``brainsets_pipelines/<brainset_id>/`` in the ``torch_brain`` repository.
 
-   * - I want to…
-     - Start here
-   * - Download and use a published brainset
-     - :doc:`getting_started`
-   * - Build a new Brainset Pipeline from scratch
-     - :doc:`creating_a_brainset_pipeline`
-   * - Target OpenNeuro (EEG / iEEG) with minimal boilerplate
-     - :doc:`specialized_pipelines/index`
+Each brainset provides a **Dataset** subclass that reads those Sessions and
+exposes **Sampling Intervals** for training. After loading a Dataset, see
+:doc:`../sampling/index`.
 
-The brainset lifecycle
-----------------------
+Example: Perich & Miller (2018)
+-------------------------------
 
-Raw source data is downloaded and converted into Session H5 files by a
-**Brainset Pipeline**, invoked through the ``brainsets`` CLI. Each brainset
-ships with a **Dataset** class in :mod:`torch_brain.datasets` that loads
-Sessions and exposes **Sampling Intervals** for training. See the
-:doc:`../sampling/index` guide for the next step after loading a Dataset.
-You can also see :doc:`anatomy_of_a_brainset` for more details on what a brainset contains on disk.
-
-Brainset Pipelines live under ``brainsets_pipelines/<brainset_id>/`` in the
-``torch_brain`` repository. The ``brainsets prepare`` command discovers
-pipelines from the installed package.
-
-Example walkthrough: Perich & Miller (2018)
--------------------------------------------
-
-This walkthrough prepares a small spiking brainset, loads it, and inspects
-one session.
-
-**1. Configure storage directories**
-
-.. code-block:: console
-
-   $ brainsets config set
-   Enter raw data directory: ./data/raw
-   Enter processed data directory: ./data/processed
-
-**2. Prepare the brainset**
+The following example prepares a spiking brainset, loads one session, and
+composes multiple brainsets. Configure storage and run ``brainsets prepare`` as
+described in :doc:`getting_started`:
 
 .. code-block:: console
 
    $ brainsets prepare perich_miller_population_2018 --cores 8
 
-This runs the
-`Perich & Miller Brainset Pipeline <https://github.com/neuro-galaxy/torch_brain/blob/main/brainsets_pipelines/perich_miller_population_2018/pipeline.py>`__
-and writes Session H5 files under your processed directory.
+The
+`Perich & Miller pipeline <https://github.com/neuro-galaxy/torch_brain/blob/main/brainsets_pipelines/perich_miller_population_2018/pipeline.py>`__
+writes Session H5 files under your processed directory.
 
-**3. Load the Dataset**
+Load the Dataset
+^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -78,8 +51,7 @@ and writes Session H5 files under your processed directory.
    session = dataset.get_recording(dataset.recording_ids[0])
    print(session.spikes.timestamps.shape)
 
-Each brainset has a dedicated **Dataset** subclass. Pass ``recording_ids`` to
-load a subset of Sessions, or compose multiple brainsets with
+Pass ``recording_ids`` to load a subset of Sessions, or combine brainsets with
 :class:`~torch_brain.datasets.NestedDataset`:
 
 .. code-block:: python
@@ -96,10 +68,11 @@ load a subset of Sessions, or compose multiple brainsets with
    ])
    # recording_ids look like "PerichMillerPopulation2018/session_1"
 
-**4. Sample windows for training**
+Sample windows for training
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Once you have a **Dataset**, use **Sampling Intervals** and a **Sampler** to
-draw training windows. Continue with the :doc:`../sampling/index` guide.
+Use **Sampling Intervals** and a **Sampler** to draw training windows; see
+:doc:`../sampling/index`.
 
 .. toctree::
    :maxdepth: 1

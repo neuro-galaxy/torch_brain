@@ -7,25 +7,18 @@ Creating a Brainset Pipeline
 .. |download| replace:: :meth:`download <BrainsetPipeline.download>`
 .. |process| replace:: :meth:`process <BrainsetPipeline.process>`
 
-Neural data sources typically contain many **Sessions** that can be downloaded
-and processed independently. A |BrainsetPipeline| encodes the repeatable steps
-to fetch raw recordings and write standardized Session H5 files. Once
-implemented, it runs through the ``brainsets prepare`` command.
+This tutorial explains how to implement a |BrainsetPipeline|: the code that
+enumerates Sessions (the manifest), downloads each Session, and converts raw
+data into standardized Session H5 files. Run the result with
+``brainsets prepare``; the CLI and :mod:`torch_brain.pipeline.runner` handle
+isolated environments, parallelism, and progress reporting.
 
-A pipeline implementation defines:
-
-* how to enumerate available Sessions (the manifest),
-* how each Session is downloaded, and
-* how raw data is converted into a Session :obj:`~torch_brain.data.Data` object.
-
-The CLI and pipeline runner handle isolated environments, parallel execution,
-and progress reporting.
+Before starting, see :doc:`getting_started` for storage configuration and
+``brainsets prepare`` usage.
 
 
-Tutorial: build a Brainset Pipeline
------------------------------------
-
-If you are new to the CLI, start with :doc:`getting_started`.
+Build a Brainset Pipeline
+-------------------------
 
 
 Step 1 — Create a pipeline directory

@@ -1,9 +1,9 @@
-Getting Started
-===============
+Getting Started with Brainsets
+==============================
 
 The ``brainsets`` CLI downloads raw data and runs **Brainset Pipelines** to
-produce standardized Session files. This page covers the essentials; see
-:doc:`../../cli/commands` for the full command reference.
+produce standardized Session files. See :doc:`../../cli/commands` for the full
+command reference.
 
 Configure storage
 -----------------
@@ -53,11 +53,11 @@ After preparation, load Sessions through the brainset's **Dataset** class in
 
    dataset = PerichMillerPopulation2018()
 
-See :doc:`index` for a complete walkthrough including
-:class:`~torch_brain.datasets.NestedDataset`.
+See :doc:`index` for combining brainsets with
+:class:`~torch_brain.datasets.NestedDataset` and a full example.
 
-Next steps
-----------
+See also
+--------
 
-* :doc:`anatomy_of_a_brainset` — what lives on disk after ``prepare``
-* :doc:`../sampling/index` — draw training windows from a **Dataset**
+* :doc:`anatomy_of_a_brainset`
+* :doc:`../sampling/index`
