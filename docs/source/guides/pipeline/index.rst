@@ -1,5 +1,7 @@
-Working with Brainsets Pipelines
-================================
+.. _brainsets_guide:
+
+Brainsets: Dataset Pre-Processing Tools
+=======================================
 
 .. toctree::
    :maxdepth: 1
@@ -8,5 +10,4 @@ Working with Brainsets Pipelines
    prepare_data
    create_pipeline
    openneuro_pipeline
-   neuroprobe
 

@@ -1,107 +1,189 @@
-I/O Operations
---------------
+.. currentmodule:: torch_brain.data
 
-All data objects in :obj:`torch_brain.data` can be saved to and loaded from HDF5 files. This provides an efficient way to store and retrieve large datasets.
+Saving and Loading Data
+=======================
+
+:obj:`Data` objects can be saved to and loaded from `HDF5 <https://en.wikipedia.org/wiki/Hierarchical_Data_Format>`_
+files. HDF5 is a specialized data format that allows streaming chunks of data
+from disk without loading all of it into memory (RAM), giving us an efficient
+way to work with large datasets.
 
 
-Writing
-~~~~~~~
+Saving
+------
+
+To save a data object to disk, use the :obj:`~Data.save()` method:
+
+.. code-block:: pycon
+
+   >>> import numpy as np
+   >>> from torch_brain.data import RegularTimeSeries, IrregularTimeSeries, Data
+
+   >>> # Create a complex data object
+   >>> session = Data(
+   ...     spikes=IrregularTimeSeries(
+   ...         timestamps=np.array([1.2, 2.3, 3.1]),
+   ...         unit_id=np.array([1, 2, 1]),
+   ...     ),
+   ...     behavior=RegularTimeSeries(
+   ...         sampling_rate=100.0,
+   ...         hand_vel=np.random.randn(400, 2),
+   ...         eye_pos=np.random.randn(400, 2),
+   ...         pupil_size=np.random.randn(400),
+   ...     ),
+   ...     domain="auto",
+   ... )
+
+   >>> # Save to a HDF5 file on disk
+   >>> session.save("neural_data.h5")
 
 
-To save a data object to disk, use the ``save`` method:
+Loading
+-------
 
-.. tab:: Generic
+To load data back from disk, use :obj:`Data.load()`.
+Let's first load it "non-lazily" by passing ``lazy=False``:
 
-    .. code-block:: python
+.. code-block:: pycon
 
-        from torch_brain.data  import RegularTimeSeries, IrregularTimeSeries, Data, Interval
-        import numpy as np
+    >>> # Read neural data from HDF5 file on disk
+    >>> session = Data.load("neural_data.h5", lazy=False)
 
-        # Create a complex data object
-        user_session = Data(
-            clicks=IrregularTimeSeries(
-                timestamps=np.array([1.2, 2.3, 3.1]),
-                position=np.array([[100,200], [150,300], [200,150]]),
-                domain=Interval(start=0, end=4)
-            ),
-            sensor=RegularTimeSeries(
-                sampling_rate=100,
-                accelerometer=np.random.randn(400, 3),
-            ),
-            user_id='user123',
-            device='laptop'
-        )
+    >>> # Access neural data
+    >>> session.spikes.timestamps
+    array([1.2, 2.3, 3.1])
+    >>> session.behavior.sampling_rate
+    np.float64(100.0)
 
-        # Save to a HDF5 file on disk
-        user_session.save("user_data.h5")
+    >>> # Slice
+    >>> sliced = session.slice(2., 4.)
+    >>> sliced
+    Data(
+      behavior=RegularTimeSeries(
+        eye_pos=[200, 2],
+        hand_vel=[200, 2],
+        pupil_size=[200]
+      ),
+      spikes=IrregularTimeSeries(
+        timestamps=[2],
+        unit_id=[2]
+      ),
+    )
 
-.. tab:: Neuroscience
+By setting ``lazy=False``, we load the entire dataset into memory upfront.
+This quickly becomes infeasible for datasets of any real size (a few hundred GBs
+to a few TBs). To address this, we provide a *Lazy Loading* mode.
 
-    .. code-block:: python
 
-        from torch_brain.data  import RegularTimeSeries, IrregularTimeSeries, Data, Interval
-        import numpy as np
+Lazy Loading
+------------
 
-        # Create a complex data object
-        session = Data(
-            spikes=IrregularTimeSeries(
-                timestamps=np.array([1.2, 2.3, 3.1]),
-                unit_id=np.array([1, 2, 1]),
-                domain=Interval(start=0, end=4)
-            ),
-            lfp=RegularTimeSeries(
-                sampling_rate=1000,
-                raw=np.random.randn(4000, 3),
-            ),
-            subject_id='mouse1',
-            date='2023-01-01'
-        )
+Under lazy-loading:
 
-        # Save to a HDF5 file on disk
-        session.save("neural_data.h5")
+- Data is read from disk only when an attribute is accessed.
 
-The data structure is preserved in the HDF5 file, including all attributes and metadata.
+- Slicing is also deferred: only the attributes you access get sliced, and
+  only at the moment you access them. Importantly, only the sliced portion is
+  read from disk, not the whole array. So slicing a small window out of a
+  huge recording is cheap, both in terms of disk I/O and memory usage.
 
-Reading
-~~~~~~~
+- The same goes for masking (via methods such as :obj:`ArrayDict.select_by_mask()`):
+  the masking is deferred until the attribute is actually requested.
 
-To read data from an HDF5 file, use the ``load`` method:
 
-.. tab:: Generic
+To load data in lazy mode, simply omit the ``lazy=False`` flag we used above:
 
-    .. code-block:: python
+.. code-block:: pycon
 
-        # Read from HDF5 file on disk
-        user_session = Data.load("user_data.h5")
-        
-        # Access data as normal
-        print(user_session.clicks.timestamps)  # [1.2, 2.3, 3.1]
-        print(user_session.sensor.sampling_rate)  # 100
-        print(user_session.user_id)  # 'user123'
+   >>> # omit lazy=False to load lazily
+   >>> session = Data.load("neural_data.h5")
+   >>> session
+   Data(
+     behavior=LazyRegularTimeSeries(
+       eye_pos=<HDF5 dataset "eye_pos": shape (400, 2), type "<f8">,
+       hand_vel=<HDF5 dataset "hand_vel": shape (400, 2), type "<f8">,
+       pupil_size=<HDF5 dataset "pupil_size": shape (400,), type "<f8">
+     ),
+     spikes=LazyIrregularTimeSeries(
+       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
+       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+     ),
+   )
 
-        # Perform operations
-        subset = user_session.clicks.slice(0, 2.0)
-        print(subset.timestamps)  # [1.2]
+First note that the internal objects are :obj:`LazyRegularTimeSeries` and
+:obj:`LazyIrregularTimeSeries`. Secondly, the presence of ``<HDF5 dataset...>``
+indicates that the arrays are yet to be loaded. Let's see what happens when we
+access ``eye_pos``:
 
-.. tab:: Neuroscience
+.. code-block:: pycon
 
-    .. code-block:: python
+   >>> session.behavior.eye_pos
+   array([[ 1.14566523,  0.22616446],
+          [-0.03963849,  0.11477352],
+          ...
 
-        # Read neural data from HDF5 file on disk
-        session = Data.load("neural_data.h5")
-            
-        # Access neural data
-        print(session.spikes.timestamps)  # [1.2, 2.3, 3.1] 
-        print(session.lfp.sampling_rate)  # 1000
-        print(session.subject_id)  # 'mouse1'
+   >>> session
+   Data(
+     behavior=LazyRegularTimeSeries(
+       eye_pos=[400, 2],
+       hand_vel=<HDF5 dataset "hand_vel": shape (400, 2), type "<f8">,
+       pupil_size=<HDF5 dataset "pupil_size": shape (400,), type "<f8">
+     ),
+     spikes=LazyIrregularTimeSeries(
+       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
+       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+     ),
+   )
 
-        # Get spikes from specific unit
-        unit1_spikes = session.spikes.select_by_mask(session.spikes.unit_id == 1)
-        print(unit1_spikes.timestamps)  # [1.2, 3.1]
+We can see that ``eye_pos`` has been loaded, and the remaining attributes
+are still lazy. If we access both ``hand_vel`` and ``pupil_size``, ``behavior``
+will then turn into a :obj:`RegularTimeSeries` object:
 
-The loaded objects maintain all the functionality of the original objects, allowing you to perform operations, slicing, and access all attributes.
+.. code-block:: pycon
 
-Note that, when reading from an HDF5 file, the data is not loaded into memory immediately. 
-Instead, it is loaded on demand when you access an attribute. This lazy loading mechanism 
-allows you to work with large datasets without loading the entire file into memory at once. 
-For more details, see :ref:`lazy_loading`.
+   >>> session.behavior.hand_vel
+   array([[ 1.86527056e-01,  1.54714182e-01],
+          [ 2.75861600e-01, -5.30891532e-01],
+          ...
+   >>> session.behavior.pupil_size
+   array([ 1.66121169e-01,  2.06565774e-01, -7.85847571e-01, ...])
+
+   >>> session
+   Data(
+     behavior=RegularTimeSeries(
+       eye_pos=[400, 2],
+       hand_vel=[400, 2],
+       pupil_size=[400]
+     ),
+     spikes=LazyIrregularTimeSeries(
+       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
+       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+     ),
+   )
+
+We can also slice a lazy object:
+
+.. code-block:: pycon
+
+   >>> sliced = session.slice(2., 4.)
+   >>> sliced
+   Data(
+     behavior=RegularTimeSeries(
+       eye_pos=[200, 2],
+       hand_vel=[200, 2],
+       pupil_size=[200]
+     ),
+     spikes=LazyIrregularTimeSeries(  # Note that this remains lazy!!
+       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
+       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+     ),
+   )
+
+   >>> sliced.spikes.timestamps
+   array([0.3, 1.1])
+
+Here, ``spikes`` stayed lazy after slicing. When we finally access
+``sliced.spikes.timestamps``, only the two timestamps that fall within the
+:math:`[2, 4)` window are read from disk and not the full timestamps array.
+This is what makes lazy loading efficient: you only pay for the slice you ask for.
+

@@ -1,3 +1,7 @@
+"""
+**User guide.** See :ref:`data_guide` section for further details.
+"""
+
 from .arraydict import ArrayDict, LazyArrayDict
 from .concat import concat
 from .data import Data
