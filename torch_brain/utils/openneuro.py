@@ -20,12 +20,12 @@ __api_ref__ = {
     "sections": [{"autosummary": __all__}],
 }
 
+import logging
 from io import BytesIO
 from pathlib import Path
-from typing import Optional
-import logging
-import requests
+
 import pandas as pd
+import requests
 
 try:
     from botocore.exceptions import ClientError
@@ -114,7 +114,7 @@ def fetch_all_filenames(dataset_id: str) -> list[str]:
     return filenames
 
 
-def fetch_participants_tsv(dataset_id: str) -> Optional[pd.DataFrame]:
+def fetch_participants_tsv(dataset_id: str) -> pd.DataFrame | None:
     """Fetch and parse participants.tsv from OpenNeuro S3.
 
     Args:
@@ -296,7 +296,6 @@ def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
     def _retry(max_attempts=5, initial_wait=4, max_wait=10):
         def decorator(func):
             import time
-            import random
 
             def wrapper(*args, **kwargs):
                 attempt = 0
@@ -304,7 +303,7 @@ def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
                 while True:
                     try:
                         return func(*args, **kwargs)
-                    except Exception as e:
+                    except Exception:
                         attempt += 1
                         if attempt >= max_attempts:
                             raise

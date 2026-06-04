@@ -1,11 +1,12 @@
-from typing import Callable, Optional, Literal, get_args
+from collections.abc import Callable
 from pathlib import Path
+from typing import Literal, get_args
 
-from torch_brain.utils import np_string_prefix
 from torch_brain.data import Data
-from torch_brain.datasets import Dataset
+from torch_brain.utils import np_string_prefix
 
 from ._utils import get_processed_dir
+from .dataset import Dataset
 
 FoldType = Literal["intrasession", "intersubject", "intersession"]
 VALID_FOLD_TYPES = get_args(FoldType)
@@ -23,24 +24,24 @@ class KempSleepEDF2013(Dataset):
             brainsets prepare kemp_sleep_edf_2013
 
     Args:
-        root (str, optional): Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
-        recording_ids (list[str], optional): List of recording IDs to load.
-        transform (Callable, optional): Data transformation to apply.
-        uniquify_channel_ids (bool, optional): Whether to prefix channel IDs with session ID to ensure uniqueness. Defaults to True.
-        fold_number (int, optional): The cross-validation fold index (0 to 2 for a 3-fold split). Defaults to 0.
-        fold_type (str, optional): The splitting strategy. Must be one of:
+        root: Root directory for the dataset. Defaults to ``processed_dir`` from brainsets config.
+        recording_ids: List of recording IDs to load.
+        transform: Data transformation to apply.
+        uniquify_channel_ids: Whether to prefix channel IDs with session ID to ensure uniqueness. Defaults to True.
+        fold_number: The cross-validation fold index (0 to 2 for a 3-fold split). Defaults to 0.
+        fold_type: The splitting strategy. Must be one of:
             - \"intrasession\": Epoch-level stratified split within each session.
             - \"intersubject\": Subject-level split (subjects are assigned to train/valid/test).
             - \"intersession\": Session-level split (subject-session pairs are assigned to train/valid/test).
             Defaults to \"intrasession\".
-        dirname (str, optional): Subdirectory for the dataset. Defaults to "kemp_sleep_edf_2013".
+        dirname: Subdirectory for the dataset. Defaults to "kemp_sleep_edf_2013".
     """
 
     def __init__(
         self,
-        root: Optional[str] = None,
-        recording_ids: Optional[list[str]] = None,
-        transform: Optional[Callable] = None,
+        root: str | None = None,
+        recording_ids: list[str] | None = None,
+        transform: Callable | None = None,
         uniquify_channel_ids: bool = True,
         fold_number: int = 0,
         fold_type: FoldType = "intrasession",
@@ -74,7 +75,7 @@ class KempSleepEDF2013(Dataset):
 
     def get_sampling_intervals(
         self,
-        split: Optional[Literal["train", "valid", "test"]] = None,
+        split: Literal["train", "valid", "test"] | None = None,
     ):
 
         if split is None:

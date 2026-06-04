@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from .OpenNeuroDataset import OpenNeuroDataset, OpenNeuroSplitType
 
@@ -19,10 +19,10 @@ class ShiraziHBNR1DS005505(OpenNeuroDataset):
     restricted to specific recordings via recording_ids.
 
     Args:
-        root (str): Root directory containing processed HBN-R1 artifacts.
-        split_type (OpenNeuroSplitType): The split type describing train/valid/test regime.
-        recording_ids (list[str], optional): List of explicit recording IDs to load. If omitted, the dataset uses split-based recording selection.
-        transform (Callable, optional): Optional transform to apply to samples.
+        root: Root directory containing processed HBN-R1 artifacts.
+        split_type: The split type describing train/valid/test regime.
+        recording_ids: List of explicit recording IDs to load. If omitted, the dataset uses split-based recording selection.
+        transform: Optional transform to apply to samples.
         **kwargs: Additional keyword arguments forwarded to the base OpenNeuroDataset.
 
     **References**
@@ -34,8 +34,8 @@ class ShiraziHBNR1DS005505(OpenNeuroDataset):
         self,
         root: str,
         split_type: OpenNeuroSplitType,
-        recording_ids: Optional[list[str]] = None,
-        transform: Optional[Callable] = None,
+        recording_ids: list[str] | None = None,
+        transform: Callable | None = None,
         **kwargs,
     ):
         dataset_dir = "shirazi_hbnr1_ds005505"

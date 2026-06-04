@@ -135,7 +135,7 @@ print(f"Number of parameters {num_parameters:,}")
 optim = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
 # Train Loop
-for epoch in (epoch_pbar := tqdm(range(args.epochs))):
+for _epoch in (epoch_pbar := tqdm(range(args.epochs))):
     # Train epoch
     model.train()
     for X, Y in (step_pbar := tqdm(train_loader, leave=False)):

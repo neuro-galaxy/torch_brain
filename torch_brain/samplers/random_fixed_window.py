@@ -1,7 +1,6 @@
 import logging
 import math
 from functools import cached_property
-from typing import Dict
 
 import torch
 
@@ -38,7 +37,6 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
 
     Example::
 
-        >>> import numpy as np
         >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import RandomFixedWindowSampler
 
@@ -57,7 +55,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
     def __init__(
         self,
         *,
-        sampling_intervals: Dict[str, Interval],
+        sampling_intervals: dict[str, Interval],
         window_length: float,
         generator: torch.Generator | None = None,
         drop_short: bool = True,
@@ -76,7 +74,7 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
         total_short_dropped = 0.0
 
         for intervals in self.sampling_intervals.values():
-            for start, end in zip(intervals.start, intervals.end):
+            for start, end in zip(intervals.start, intervals.end, strict=True):
                 interval_length = end - start
                 if interval_length < self.window_length:
                     if self.drop_short:

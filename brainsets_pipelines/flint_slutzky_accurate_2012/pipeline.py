@@ -4,9 +4,8 @@
 # ///
 
 from argparse import ArgumentParser, Namespace
-from pathlib import Path
-from typing import Optional
 from datetime import datetime
+from pathlib import Path
 
 import h5py
 import numpy as np
@@ -16,11 +15,11 @@ from scipy.io import loadmat
 
 from torch_brain.data import (
     ArrayDict,
+    BrainsetDescription,
     Data,
+    DeviceDescription,
     Interval,
     IrregularTimeSeries,
-    BrainsetDescription,
-    DeviceDescription,
     SessionDescription,
     SubjectDescription,
     serialize_fn_map,
@@ -65,7 +64,7 @@ class Pipeline(BrainsetPipeline):
     def get_manifest(
         cls,
         raw_dir: Path,
-        args: Optional[Namespace],
+        args: Namespace | None,
     ) -> pd.DataFrame:
         manifest_list = [
             {"session_id": x.split(".")[0].lower(), "fname": x} for x in MANIFEST_LIST

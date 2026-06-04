@@ -1,6 +1,5 @@
 import logging
 from functools import cached_property
-from typing import Dict, List
 
 import torch
 
@@ -35,7 +34,6 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
 
     Example::
 
-        >>> import numpy as np
         >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import SequentialFixedWindowSampler
 
@@ -55,7 +53,7 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
     def __init__(
         self,
         *,
-        sampling_intervals: Dict[str, Interval],
+        sampling_intervals: dict[str, Interval],
         window_length: float,
         step: float | None = None,
         drop_short: bool = False,
@@ -69,12 +67,12 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
 
     # we cache the indices since they are deterministic
     @cached_property
-    def _indices(self) -> List[DatasetIndex]:
+    def _indices(self) -> list[DatasetIndex]:
         indices = []
         total_short_dropped = 0.0
 
         for session_name, intervals in self.sampling_intervals.items():
-            for start, end in zip(intervals.start, intervals.end):
+            for start, end in zip(intervals.start, intervals.end, strict=True):
                 interval_length = end - start
                 if interval_length < self.window_length:
                     if self.drop_short:

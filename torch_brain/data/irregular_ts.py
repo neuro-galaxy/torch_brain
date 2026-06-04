@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from typing import List, Union, Literal
-import logging
 import copy
+import logging
+from typing import Literal
 
 import h5py
 import numpy as np
 import pandas as pd
 
 from .arraydict import ArrayDict
-from .typing import ArrayLike
 from .interval import Interval
+from .typing import ArrayLike
 from .utils import _validate_select_by_mask_input
 
 
@@ -82,7 +82,7 @@ class IrregularTimeSeries(ArrayDict):
         self,
         timestamps: ArrayLike,
         *,
-        timekeys: List[str] | None = None,
+        timekeys: list[str] | None = None,
         domain: Interval | Literal["auto"] = "auto",
         **kwargs: ArrayLike,
     ):
@@ -152,12 +152,12 @@ class IrregularTimeSeries(ArrayDict):
             object.__setattr__(self, "_domain", value)
             return
 
-        super(IrregularTimeSeries, self).__setattr__(name, value)
+        super().__setattr__(name, value)
 
         if name == "timestamps":
             value = self.__dict__[name]
             assert value.ndim == 1, "timestamps must be 1D."
-            assert ~np.isnan(value).any(), f"timestamps cannot contain NaNs."
+            assert ~np.isnan(value).any(), "timestamps cannot contain NaNs."
             if value.dtype != np.float64:
                 logging.warning(f"{name} is of type {value.dtype} not of type float64.")
             self._sorted = None
@@ -277,7 +277,7 @@ class IrregularTimeSeries(ArrayDict):
     def from_dataframe(
         cls,
         df: pd.DataFrame,
-        domain: Union[str, Interval] = "auto",
+        domain: str | Interval = "auto",
         unsigned_to_long: bool = True,
     ):
         r"""Create an :obj:`IrregularTimeseries` object from a pandas DataFrame.
@@ -291,7 +291,7 @@ class IrregularTimeSeries(ArrayDict):
             df: DataFrame.
             unsigned_to_long: Whether to automatically convert unsigned
               integers to int64 dtype. Defaults to :obj:`True`.
-            domain (optional): The domain over which the time
+            domain: The domain over which the time
                 series is defined. If set to :obj:`"auto"`, the domain will be
                 automatically the interval defined by the minimum and maximum
                 timestamps. Defaults to :obj:`"auto"`.
@@ -309,7 +309,7 @@ class IrregularTimeSeries(ArrayDict):
         r"""Saves the data object to an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. warning::
             If the time series is not sorted, it will be automatically sorted in place.
@@ -320,8 +320,8 @@ class IrregularTimeSeries(ArrayDict):
             from torch_brain.data import IrregularTimeseries
 
             data = IrregularTimeseries(
-                unit_index=np.array([0, 0, 1, 0, 1, 2]),
-                timestamps=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+                unit_index=[0, 0, 1, 0, 1, 2],
+                timestamps=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
                 waveforms=np.zeros((6, 48)),
                 domain="auto",
             )
@@ -341,12 +341,12 @@ class IrregularTimeSeries(ArrayDict):
                 try:
                     # convert string arrays to fixed length ASCII bytes
                     value = value.astype("S")
-                except UnicodeEncodeError:
+                except UnicodeEncodeError as err:
                     raise NotImplementedError(
                         f"Unable to convert column '{key}' from numpy 'U' string type "
                         "to fixed-length ASCII (np.dtype('S')). HDF5 does not support "
                         "numpy 'U' strings."
-                    )
+                    ) from err
                 # keep track of the keys of the arrays that were originally unicode
                 _unicode_keys.append(key)
             file.create_dataset(key, data=value)
@@ -379,7 +379,7 @@ class IrregularTimeSeries(ArrayDict):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. note::
             This method will load all data in memory, if you would like to use lazy
@@ -464,7 +464,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        if not name in ["__dict__", "keys"]:
+        if name not in ["__dict__", "keys"]:
             # intercept attribute calls
             if name in self.keys():
                 # out could either be a numpy array or a reference to a h5py dataset
@@ -521,7 +521,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                         del self._timestamp_indices_1s
 
                 return out
-        return super(LazyIrregularTimeSeries, self).__getattribute__(name)
+        return super().__getattribute__(name)
 
     def select_by_mask(self, mask: np.ndarray):
         r"""Index all arrays with a boolean mask and return a copy.
@@ -690,7 +690,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file (h5py.File): HDF5 file.
+            file: HDF5 file.
 
         .. code-block:: python
 

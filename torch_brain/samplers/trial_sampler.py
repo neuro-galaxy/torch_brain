@@ -1,5 +1,3 @@
-from typing import Dict
-
 import torch
 
 from torch_brain.data import Interval
@@ -29,14 +27,13 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
 
     Example::
 
-        >>> import numpy as np
         >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import TrialSampler
 
         >>> sampling_intervals = {
         ...     "session_1": Interval(
-        ...         start=np.array([0.0, 5.0, 10.0]),
-        ...         end=np.array([2.0, 8.0, 15.0]),
+        ...         start=[0.0, 5.0, 10.0],
+        ...         end=[2.0, 8.0, 15.0],
         ...     ),
         ... }
         >>> sampler = TrialSampler(
@@ -50,7 +47,7 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
     def __init__(
         self,
         *,
-        sampling_intervals: Dict[str, Interval],
+        sampling_intervals: dict[str, Interval],
         shuffle: bool = False,
         generator: torch.Generator | None = None,
     ):
@@ -67,7 +64,7 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
         indices = [
             DatasetIndex(session_id, start, end)
             for session_id, intervals in self.sampling_intervals.items()
-            for start, end in zip(intervals.start, intervals.end)
+            for start, end in zip(intervals.start, intervals.end, strict=True)
         ]
 
         if self.shuffle:

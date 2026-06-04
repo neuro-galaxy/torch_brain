@@ -1,14 +1,13 @@
 import numpy as np
 
 from torch_brain.data import (
-    Data,
     ArrayDict,
+    Data,
     Interval,
     IrregularTimeSeries,
     RegularTimeSeries,
 )
 from torch_brain.transforms.random_time_scaling import RandomTimeScaling
-from torch_brain.transforms.unit_dropout import TriangleDistribution, UnitDropout
 
 
 def test_irregular_scaling():

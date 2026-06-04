@@ -132,14 +132,15 @@ To ensure **Neuro-Galaxy** remains maintainable and accessible, we adhere to the
 
 ### Formatting
 
-- All code must be formatted using [Black](https://github.com/psf/black).
-- Run black in your project root:
+- All code must be formatted and linted using [Ruff](https://github.com/astral-sh/ruff).
+- Run ruff in your project root:
 
 ```bash
-black .
+ruff format .
+ruff check --fix .
 ```
 
-- We recommend enabling “Format on Save” in your code editor. You can also set up a hook so the formatter runs automatically before every commit:
+- We recommend enabling “Format on Save” in your code editor. You can also set up a hook so the formatter and linter run automatically before every commit:
 
 ```bash
 pre-commit install

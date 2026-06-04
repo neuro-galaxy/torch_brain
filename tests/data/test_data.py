@@ -494,12 +494,12 @@ def test_data_has_nested_attribute_lazy(test_filepath):
         assert lazy_data.has_nested_attribute("nested_data.level2_primitive")
 
         # Check attributes remain lazy after has_nested_attribute calls
-        assert isinstance(
-            lazy_data.spikes.__dict__["unit_index"], h5py.Dataset
-        ), "spikes.unit_index was loaded"
-        assert isinstance(
-            lazy_data.units.__dict__["id"], h5py.Dataset
-        ), "units.id was loaded"
+        assert isinstance(lazy_data.spikes.__dict__["unit_index"], h5py.Dataset), (
+            "spikes.unit_index was loaded"
+        )
+        assert isinstance(lazy_data.units.__dict__["id"], h5py.Dataset), (
+            "units.id was loaded"
+        )
         assert isinstance(
             lazy_data.nested_data.level2_array_dict.__dict__["l2_field"], h5py.Dataset
         ), "nested_data.l2_array_dict.l2_field was loaded"

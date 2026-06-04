@@ -1,25 +1,26 @@
 """Unit tests for S3 utility functions."""
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from torch_brain.utils.s3 import BOTO_AVAILABLE
 
 pytestmark = pytest.mark.skipif(
     not BOTO_AVAILABLE, reason="boto3/botocore not installed"
 )
 
-from torch_brain.utils.s3 import (
+from torch_brain.utils.s3 import (  # noqa: E402
     UNSIGNED,
     ClientError,
-    get_cached_s3_client,
-    get_object_list,
     download_prefix,
     download_prefix_from_url,
+    get_cached_s3_client,
+    get_object_list,
 )
 
 
 class TestGetCachedS3Client:
-
     def setup_method(self):
         get_cached_s3_client.cache_clear()
 
@@ -72,7 +73,6 @@ class TestGetCachedS3Client:
 
 
 class TestListObjects:
-
     def test_lists_objects_successfully(self):
         """Test listing objects returns keys without directories."""
         mock_client = MagicMock()
@@ -181,7 +181,6 @@ class TestListObjects:
 
 
 class TestDownloadPrefix:
-
     def test_downloads_files_successfully(self, tmp_path):
         mock_client = MagicMock()
         mock_paginator = MagicMock()
@@ -373,7 +372,6 @@ class TestDownloadPrefix:
 
 
 class TestDownloadPrefixFromUrl:
-
     @patch("torch_brain.utils.s3.download_prefix")
     def test_parses_s3_url_correctly(self, mock_download, tmp_path):
         mock_download.return_value = [tmp_path / "file.edf"]

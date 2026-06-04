@@ -1,9 +1,9 @@
 import os
+
 import requests
-from typing import Optional
 
 
-def download_file_from_s3(file_path: str, target_path: Optional[str] = None) -> None:
+def download_file_from_s3(file_path: str, target_path: str | None = None) -> None:
     """Downloads a file from the torch-brain S3 bucket.
 
     Args:

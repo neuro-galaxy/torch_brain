@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+
 from torch_brain.data import Data, Interval
 from torch_brain.utils.split import (
     generate_stratified_folds,
@@ -55,7 +56,7 @@ class TestGenerateStratifiedFolds:
             # Class 2: 0.1 * 20 = 2
             test_ids = test.id
             unique, counts = np.unique(test_ids, return_counts=True)
-            counts_dict = dict(zip(unique, counts))
+            counts_dict = dict(zip(unique, counts, strict=True))
 
             # Allow small deviation due to rounding/randomness
             assert counts_dict.get(0, 0) in [11, 12, 13]
@@ -69,7 +70,7 @@ class TestGenerateStratifiedFolds:
             # Class 2: 0.1 * 20 = 2
             valid_ids = valid.id
             v_unique, v_counts = np.unique(valid_ids, return_counts=True)
-            v_counts_dict = dict(zip(v_unique, v_counts))
+            v_counts_dict = dict(zip(v_unique, v_counts, strict=True))
 
             assert v_counts_dict.get(0, 0) in [11, 12, 13]
             assert v_counts_dict.get(1, 0) in [5, 6, 7]
@@ -278,7 +279,7 @@ class TestGenerateStringKfoldAssignment:
 
         expected_per_fold = n_subjects / n_folds
         # Each fold should be test for roughly 1/n_folds of subjects (allow 20% deviation)
-        for k, count in fold_test_counts.items():
+        for _, count in fold_test_counts.items():
             assert abs(count - expected_per_fold) < expected_per_fold * 0.2
 
     def test_train_plus_valid_equals_non_test_count(self):
@@ -401,7 +402,7 @@ class TestGenerateStringKfoldAssignment:
         expected_train_ratio = (1 - 1 / n_folds) * (1 - val_ratio)
 
         # Verify test distribution (allow 15% deviation)
-        for k, count in test_fold_counts.items():
+        for _, count in test_fold_counts.items():
             assert abs(count - expected_test_per_fold) < expected_test_per_fold * 0.15
 
         # Verify valid/train ratios

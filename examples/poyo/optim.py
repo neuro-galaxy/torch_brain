@@ -49,17 +49,17 @@ class SparseLamb(Optimizer):
         sparse: bool = False,
     ) -> None:
         if lr <= 0.0:
-            raise ValueError("Invalid learning rate: {}".format(lr))
+            raise ValueError(f"Invalid learning rate: {lr}")
         if eps < 0.0:
-            raise ValueError("Invalid epsilon value: {}".format(eps))
+            raise ValueError(f"Invalid epsilon value: {eps}")
         if not 0.0 <= betas[0] < 1.0:
-            raise ValueError("Invalid beta parameter at index 0: {}".format(betas[0]))
+            raise ValueError(f"Invalid beta parameter at index 0: {betas[0]}")
         if not 0.0 <= betas[1] < 1.0:
-            raise ValueError("Invalid beta parameter at index 1: {}".format(betas[1]))
+            raise ValueError(f"Invalid beta parameter at index 1: {betas[1]}")
         if weight_decay < 0:
-            raise ValueError("Invalid weight_decay value: {}".format(weight_decay))
+            raise ValueError(f"Invalid weight_decay value: {weight_decay}")
         if clamp_value < 0.0:
-            raise ValueError("Invalid clamp value: {}".format(clamp_value))
+            raise ValueError(f"Invalid clamp value: {clamp_value}")
 
         defaults = dict(
             lr=lr, betas=betas, eps=eps, weight_decay=weight_decay, sparse=sparse
@@ -68,7 +68,7 @@ class SparseLamb(Optimizer):
         self.adam = adam
         self.debias = debias
 
-        super(SparseLamb, self).__init__(params, defaults)
+        super().__init__(params, defaults)
 
     def step(self, closure=None):
         r"""Performs a single optimization step.

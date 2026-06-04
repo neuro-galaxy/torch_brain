@@ -1,10 +1,10 @@
-import pytest
 import os
+import tempfile
 
 import h5py
 import numpy as np
 import pandas as pd
-import tempfile
+import pytest
 
 from torch_brain.data import ArrayDict, LazyArrayDict
 
@@ -123,7 +123,7 @@ def test_lazy_array_dict(test_filepath):
 
         assert data.__class__ == LazyArrayDict
 
-        data.waveform_mean
+        _ = data.waveform_mean
         # final attribute was accessed, the object should automatically convert to ArrayDict
         assert data.__class__ == ArrayDict
 

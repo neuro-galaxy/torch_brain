@@ -63,25 +63,24 @@ __api_ref__ = {
     "sections": [],
 }
 
-from .dataset import Dataset, DatasetIndex
-from .nested import NestedDataset, NestedSpikingDataset
-from .mixins import (
-    SpikingDatasetMixin,
-    CalciumImagingDatasetMixin,
-    MultiChannelDatasetMixin,
-)
-from .OpenNeuroDataset import OpenNeuroDataset, OpenNeuroSplitType
-
-from .PerichMillerPopulation2018 import PerichMillerPopulation2018
-from .PeiPandarinathNLB2021 import PeiPandarinathNLB2021
-from .FlintSlutzkyAccurate2012 import FlintSlutzkyAccurate2012
-from .ChurchlandShenoyNeural2012 import ChurchlandShenoyNeural2012
-from .OdohertySabesNonhuman2017 import OdohertySabesNonhuman2017
 from .AllenVisualCodingOphys2016 import AllenVisualCodingOphys2016
+from .ChurchlandShenoyNeural2012 import ChurchlandShenoyNeural2012
+from .dataset import Dataset, DatasetIndex
+from .FlintSlutzkyAccurate2012 import FlintSlutzkyAccurate2012
 from .KempSleepEDF2013 import KempSleepEDF2013
-from .Neuroprobe2025 import Neuroprobe2025
 from .KlinzingSleepDS005555 import KlinzingSleepDS005555
 from .KochiVisualNamingDS006914 import KochiVisualNamingDS006914
+from .mixins import (
+    CalciumImagingDatasetMixin,
+    MultiChannelDatasetMixin,
+    SpikingDatasetMixin,
+)
+from .nested import NestedDataset, NestedSpikingDataset
+from .Neuroprobe2025 import Neuroprobe2025
+from .OdohertySabesNonhuman2017 import OdohertySabesNonhuman2017
+from .OpenNeuroDataset import OpenNeuroDataset, OpenNeuroSplitType
+from .PeiPandarinathNLB2021 import PeiPandarinathNLB2021
+from .PerichMillerPopulation2018 import PerichMillerPopulation2018
 from .ShiraziHBNR1DS005505 import ShiraziHBNR1DS005505
 from .VollanMoserAlternating2025 import VollanMoserAlternating2025
 

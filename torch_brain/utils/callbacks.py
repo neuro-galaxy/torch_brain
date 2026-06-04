@@ -1,7 +1,6 @@
-from typing import List
-import time
-import subprocess
 import logging
+import subprocess
+import time
 from dataclasses import dataclass
 
 import torch
@@ -36,7 +35,7 @@ def _check_lightning_available(cls):
 class EpochTimeLogger(L.Callback):
     r"""Lightning callback to log the time taken for each epoch.
     Args:
-        enable (bool, optional): Whether to enable the callback. Defaults to `True`.
+        enable: Whether to enable the callback. Defaults to `True`.
     """
 
     def __init__(self, enable=True):
@@ -57,10 +56,10 @@ class ModelWeightStatsLogger(L.Callback):
     r"""Lightning callback to log the mean and standard deviation of the weights and
     gradients of the model.
     Args:
-        enable (bool, optional): Whether to enable the callback. Defaults to `True`.
-        grads (bool, optional): Whether to log the statistics of gradients.
+        enable: Whether to enable the callback. Defaults to `True`.
+        grads: Whether to log the statistics of gradients.
             Defaults to `True`.
-        module_name (str, optional): The name of the :class:`torch.nn.Module` object inside your
+        module_name: The name of the :class:`torch.nn.Module` object inside your
             :class:`lightning.LightningModule` object to log the statistics of. Defaults to "model".
             This name is prefixed to the keys in the logs, allowing logging the statistics
             of multiple modules with multiple instances of this callback.
@@ -133,5 +132,5 @@ class DataForDecodingStitchEvaluator:
     preds: torch.FloatTensor  # B x T_max x D_output
     targets: torch.FloatTensor  # B x T_max x D_output
     eval_masks: torch.BoolTensor  # B x T_max
-    session_ids: List[str]  # A list of session ID strings, 1 for each sample in batch
+    session_ids: list[str]  # A list of session ID strings, 1 for each sample in batch
     absolute_starts: torch.Tensor  # Batch

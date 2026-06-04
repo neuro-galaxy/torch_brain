@@ -1,7 +1,8 @@
 import datetime
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
 
 try:
     import mne
@@ -11,13 +12,13 @@ except ImportError:
     MNE_AVAILABLE = False
 
 try:
+    from torch_brain.data import ArrayDict
     from torch_brain.utils.mne import (
+        concatenate_recordings,
+        extract_channels,
         extract_measurement_date,
         extract_signal,
-        extract_channels,
-        concatenate_recordings,
     )
-    from torch_brain.data import ArrayDict
 except ImportError:
     extract_measurement_date = None
     extract_signal = None
@@ -843,7 +844,7 @@ class TestConcatenateRecordings:
                 UserWarning,
                 match="One or more recordings have missing measurement dates",
             ):
-                result = concatenate_recordings(
+                concatenate_recordings(
                     [mock_raw1, mock_raw2], on_missing_meas_date="warn"
                 )
             mock_concat.assert_called_once()
@@ -858,7 +859,7 @@ class TestConcatenateRecordings:
 
         with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
-            result = concatenate_recordings(
+            concatenate_recordings(
                 [mock_raw1, mock_raw2], on_missing_meas_date="ignore"
             )
             mock_concat.assert_called_once()
@@ -877,7 +878,7 @@ class TestConcatenateRecordings:
                 UserWarning,
                 match="One or more recordings have missing measurement dates",
             ):
-                result = concatenate_recordings([mock_raw1, mock_raw2])
+                concatenate_recordings([mock_raw1, mock_raw2])
             mock_concat.assert_called_once()
 
     # ----------- Timezone normalization/handling -----------
@@ -895,7 +896,7 @@ class TestConcatenateRecordings:
 
         with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
-            result = concatenate_recordings([mock_raw1, mock_raw2])
+            concatenate_recordings([mock_raw1, mock_raw2])
             mock_concat.assert_called_once()
 
     def test_mixed_naive_and_aware_datetimes_normalized(self):
@@ -912,7 +913,7 @@ class TestConcatenateRecordings:
 
         with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
-            result = concatenate_recordings([mock_raw1, mock_raw2])
+            concatenate_recordings([mock_raw1, mock_raw2])
             mock_concat.assert_called_once()
 
     # ----------- Handling different measurement days (mismatch policy) -----------
@@ -982,7 +983,7 @@ class TestConcatenateRecordings:
 
         with patch("torch_brain.utils.mne.mne.concatenate_raws") as mock_concat:
             mock_concat.return_value = MagicMock()
-            result = concatenate_recordings([mock_raw1, mock_raw2], on_gap="warn")
+            concatenate_recordings([mock_raw1, mock_raw2], on_gap="warn")
             mock_concat.assert_called_once()
 
     def test_gap_greater_than_max_gap_raise_with_raise_policy(self):

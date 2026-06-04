@@ -1,16 +1,14 @@
-import pytest
-
 import numpy as np
+import pytest
 import torch
 
 from torch_brain.data import Interval
-
+from torch_brain.datasets import DatasetIndex
 from torch_brain.samplers import (
-    SequentialFixedWindowSampler,
     RandomFixedWindowSampler,
+    SequentialFixedWindowSampler,
     TrialSampler,
 )
-from torch_brain.datasets import DatasetIndex
 
 
 # helper
@@ -32,7 +30,7 @@ def samples_in_sampling_intervals(samples, sampling_intervals):
                 [
                     (s.start >= start) and (s.end <= end)
                     for start, end in zip(
-                        allowed_intervals.start, allowed_intervals.end
+                        allowed_intervals.start, allowed_intervals.end, strict=True
                     )
                 ]
             )
@@ -116,7 +114,7 @@ def test_random_sampler():
     # sample and check that all indices are within the expected range
     samples = list(sampler)
     assert len(samples) == 9
-    assert samples_in_sampling_intervals(samples, sampling_intervals) == True
+    assert samples_in_sampling_intervals(samples, sampling_intervals)
 
     # sample again and check that the indices are different this time
     samples2 = list(sampler)
@@ -132,7 +130,7 @@ def test_random_sampler():
         generator=torch.Generator().manual_seed(42),
     )
     samples = list(sampler)
-    assert samples_in_sampling_intervals(samples, sampling_intervals) == True
+    assert samples_in_sampling_intervals(samples, sampling_intervals)
 
     # Having window_length bigger than any interval should raise an error
     with pytest.raises(ValueError):

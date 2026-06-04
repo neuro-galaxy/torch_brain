@@ -6,33 +6,34 @@
 # ]
 # ///
 
-from itertools import product
-import os
-import time
-import h5py
 import logging
+import os
 import shutil
+import time
 import urllib.request
 import zipfile
-import torch
-from torch.utils.data import Subset
+from argparse import ArgumentParser, Namespace
+from itertools import product
+from pathlib import Path
+from typing import Literal, NamedTuple, get_args
+
+import h5py
 import numpy as np
 import pandas as pd
-from pathlib import Path
-from argparse import ArgumentParser, Namespace
-from typing import Dict, List, Literal, Tuple, Optional, NamedTuple, get_args
+import torch
+from torch.utils.data import Subset
 from tqdm import tqdm
 
-from torch_brain.pipeline import BrainsetPipeline
 from torch_brain.data import (
     ArrayDict,
+    BrainsetDescription,
     Data,
     Interval,
     RegularTimeSeries,
-    BrainsetDescription,
     SubjectDescription,
     serialize_fn_map,
 )
+from torch_brain.pipeline import BrainsetPipeline
 
 logging.basicConfig(level=logging.INFO)
 
@@ -54,15 +55,23 @@ COMMON_ASSETS = [
     "data/corrupted_elec.json",
 ]
 
-FILENAME_MAP = lambda sub_id, trial_id: f"sub_{sub_id}_trial{trial_id:03d}"
-ASSET_PATH_MAP = (
-    lambda sub_id, trial_id: f"data/subject_data/sub_{sub_id}/trial{trial_id:03d}/{FILENAME_MAP(sub_id, trial_id)}.h5.zip"
-)
 
-SUBSET_TIER_KEY_MAP = lambda lite, nano: (
-    "lite" if lite else ("nano" if nano else "full")
-)
-LABEL_MODE_KEY_MAP = lambda binary_tasks: "binary" if binary_tasks else "multiclass"
+def FILENAME_MAP(sub_id, trial_id):
+    return f"sub_{sub_id}_trial{trial_id:03d}"
+
+
+def ASSET_PATH_MAP(sub_id, trial_id):
+    return f"data/subject_data/sub_{sub_id}/trial{trial_id:03d}/{FILENAME_MAP(sub_id, trial_id)}.h5.zip"
+
+
+def SUBSET_TIER_KEY_MAP(lite, nano):
+    return "lite" if lite else ("nano" if nano else "full")
+
+
+def LABEL_MODE_KEY_MAP(binary_tasks):
+    return "binary" if binary_tasks else "multiclass"
+
+
 EvalSettingOption = Literal["within_session", "cross_x"]
 ALL_EVAL_SETTINGS = {
     "lite": [True, False],
@@ -113,7 +122,7 @@ class Pipeline(BrainsetPipeline):
     def get_manifest(
         cls,
         raw_dir: Path,
-        args: Optional[Namespace],
+        args: Namespace | None,
     ) -> pd.DataFrame:
         _prepare_neuroprobe_lib(raw_dir)
 
@@ -241,7 +250,7 @@ class Pipeline(BrainsetPipeline):
 
     def iterate_extract_splits(
         self, subject_id: int, trial_id: int
-    ) -> Tuple[Dict[str, Interval], Dict[str, np.ndarray]]:
+    ) -> tuple[dict[str, Interval], dict[str, np.ndarray]]:
         _prepare_neuroprobe_lib(self.raw_dir)
         if not hasattr(self, "all_subjects"):
             # load all subjects and channels once
@@ -265,8 +274,8 @@ class Pipeline(BrainsetPipeline):
             }
 
         all_combinations = product(*ALL_EVAL_SETTINGS.values())
-        split_indices: Dict[str, Interval] = {}
-        split_channel_masks: Dict[str, np.ndarray] = {}
+        split_indices: dict[str, Interval] = {}
+        split_channel_masks: dict[str, np.ndarray] = {}
         for setting_combination in all_combinations:
             lite, nano, binary_tasks, eval_setting = setting_combination
             if lite and nano:  # lite and nano cannot be True at the same time
@@ -389,21 +398,21 @@ def _extract_channel_data(subject) -> ArrayDict:
 
 
 def _extract_and_structure_splits(
-    all_subjects: Dict[int, object],
-    all_channels: Dict[int, ArrayDict],
+    all_subjects: dict[int, object],
+    all_channels: dict[int, ArrayDict],
     subject_id: int,
     trial_id: int,
     lite: bool,
     nano: bool,
     binary_tasks: bool,
     eval_setting: EvalSettingOption,
-) -> Tuple[Dict[str, Interval], Dict[str, np.ndarray]]:
-    split_indices: Dict[str, Interval] = {}
-    split_channel_masks: Dict[str, np.ndarray] = {}
+) -> tuple[dict[str, Interval], dict[str, np.ndarray]]:
+    split_indices: dict[str, Interval] = {}
+    split_channel_masks: dict[str, np.ndarray] = {}
 
-    assert (
-        len(neuroprobe_config.NEUROPROBE_TASKS_MAPPING) > 0
-    ), "No tasks to extract splits for"
+    assert len(neuroprobe_config.NEUROPROBE_TASKS_MAPPING) > 0, (
+        "No tasks to extract splits for"
+    )
     for eval_name in neuroprobe_config.NEUROPROBE_TASKS_MAPPING:
         # load splits via neuroprobe API
         folds = _extract_splits(
@@ -447,7 +456,7 @@ def _extract_and_structure_splits(
 
 
 def _extract_splits(
-    all_subjects: Dict[int, object],
+    all_subjects: dict[int, object],
     subject_id: int,
     trial_id: int,
     lite: bool,
@@ -507,8 +516,8 @@ def _extract_local_role_splits(
     output_dict: bool,
     start_neural_data_before_word_onset: int,
     end_neural_data_after_word_onset: int,
-    max_samples: Optional[int],
-) -> List[Dict[str, object]]:
+    max_samples: int | None,
+) -> list[dict[str, object]]:
     local_dataset = neuroprobe.BrainTreebankSubjectTrialBenchmarkDataset(
         subject=subject,
         trial_id=trial_id,
@@ -559,7 +568,7 @@ def _intervals_from_dataset(dataset) -> Interval:
             label=np.array([], dtype=np.int64),
         )
 
-    windows, labels = zip(*items)
+    windows, labels = zip(*items, strict=True)
     window_array = np.array(windows)
     label_array = np.array(labels)
 
@@ -659,7 +668,7 @@ def _get_electrode_labels(dataset) -> np.ndarray:
     )
 
 
-def _unpack_dataset_item(item) -> Tuple[np.ndarray, np.ndarray]:
+def _unpack_dataset_item(item) -> tuple[np.ndarray, np.ndarray]:
     if isinstance(item, dict):
         return item["data"], item["label"]
     return item[0], item[1]

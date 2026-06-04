@@ -1,5 +1,3 @@
-from typing import Dict, List, Tuple
-
 import torch
 import torch.distributed as dist
 
@@ -42,14 +40,13 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
             :func:`torch.distributed.get_rank`.
 
     Attributes:
-        sequence_index (torch.Tensor): 1-D integer tensor of length ``len(self)``
+        sequence_index: 1-D integer tensor of length ``len(self)``
             mapping each window index to its contiguous-interval index on this rank.
             Consecutive windows sharing the same value belong to the same interval and
             will be stitched together.
 
     Example::
 
-        >>> import numpy as np
         >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import DistributedStitchingFixedWindowSampler
 
@@ -71,7 +68,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
     def __init__(
         self,
         *,
-        sampling_intervals: Dict[str, Interval],
+        sampling_intervals: dict[str, Interval],
         batch_size: int,
         window_length: float,
         step: float | None = None,
@@ -111,7 +108,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         self.indices, self.sequence_index = self._generate_indices()
         self.num_samples = len(self.indices)
 
-    def _generate_indices(self) -> Tuple[List[DatasetIndex], torch.Tensor]:
+    def _generate_indices(self) -> tuple[list[DatasetIndex], torch.Tensor]:
         """Build window indices for this rank using a greedy load-balancing assignment.
 
         Intervals are sorted by window count (largest first) and assigned to the rank
@@ -128,7 +125,7 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
         all_intervals = []
         interval_sizes = []
         for session_name, intervals in self.sampling_intervals.items():
-            for start, end in zip(intervals.start, intervals.end):
+            for start, end in zip(intervals.start, intervals.end, strict=True):
                 if end - start >= self.window_length:
                     # calculate number of windows in this interval
                     num_windows = (

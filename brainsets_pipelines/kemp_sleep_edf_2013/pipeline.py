@@ -10,7 +10,6 @@
 import logging
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Optional, Tuple
 
 import h5py
 import mne
@@ -78,7 +77,7 @@ class Pipeline(BrainsetPipeline):
         if args.study_type in ["st", "both"]:
             prefixes.append(f"{cls.prefix}/sleep-telemetry/")
 
-        def find_hypnogram_key(s3, psg_key: str) -> Optional[str]:
+        def find_hypnogram_key(s3, psg_key: str) -> str | None:
             """Find the hypnogram file corresponding to a PSG file."""
             psg_path = Path(psg_key)
             base_name = psg_path.stem
@@ -132,7 +131,7 @@ class Pipeline(BrainsetPipeline):
         manifest = pd.DataFrame(manifest_rows).set_index("session_id")
         return manifest
 
-    def download(self, manifest_item) -> Tuple[Path, Path]:
+    def download(self, manifest_item) -> tuple[Path, Path]:
         self.update_status("DOWNLOADING")
         s3 = get_cached_s3_client()
 
@@ -162,7 +161,7 @@ class Pipeline(BrainsetPipeline):
 
         return psg_local, hypnogram_local
 
-    def process(self, download_output: Tuple[Path, Path]) -> None:
+    def process(self, download_output: tuple[Path, Path]) -> None:
         psg_path, hypnogram_path = download_output
 
         self.update_status("PROCESSING")
@@ -309,7 +308,7 @@ def extract_sleep_stages(hypnogram_file: str) -> Interval:
     stage_ids = []
 
     for annot_onset, annot_duration, annot_description in zip(
-        annotations.onset, annotations.duration, annotations.description
+        annotations.onset, annotations.duration, annotations.description, strict=True
     ):
         starts.append(annot_onset)
         ends.append(annot_onset + annot_duration)
@@ -371,7 +370,9 @@ def create_splits(
     filtered = chopped.select_by_mask(mask)
     logging.info(f"Filtered out unknown stages, {len(filtered)} epochs remaining")
 
-    for stage_id, count in zip(*np.unique(filtered.id, return_counts=True)):
+    for stage_id, count in zip(
+        *np.unique(filtered.id, return_counts=True), strict=True
+    ):
         if count < n_folds:
             mask = ~np.isin(filtered.id, [stage_id])
             filtered = filtered.select_by_mask(mask)

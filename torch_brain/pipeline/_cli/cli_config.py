@@ -1,9 +1,9 @@
-from typing import Optional
-import click
 from pathlib import Path
+
+import click
 from prompt_toolkit import prompt
-from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.completion import PathCompleter
+from prompt_toolkit.shortcuts import CompleteStyle
 
 from torch_brain.pipeline.config import CONFIG_FILE, load_config, save_config
 
@@ -49,7 +49,7 @@ def config(ctx, raw_dir, processed_dir):
     type=click.Path(file_okay=False, dir_okay=True),
     required=False,
 )
-def set_config(raw_dir: Optional[Path], processed_dir: Optional[Path]):
+def set_config(raw_dir: Path | None, processed_dir: Path | None):
     """Set raw and processed data directories."""
 
     # Get missing args from user prompts

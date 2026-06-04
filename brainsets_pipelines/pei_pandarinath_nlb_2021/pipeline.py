@@ -3,31 +3,30 @@
 # dependencies = ["dandi==0.74.0"]
 # ///
 
-from argparse import ArgumentParser
 import datetime
+from argparse import ArgumentParser
 
-import numpy as np
 import h5py
-from pynwb import NWBHDF5IO
+import numpy as np
 import pandas as pd
+from pynwb import NWBHDF5IO
 
 from torch_brain.data import (
+    BrainsetDescription,
     Data,
-    IrregularTimeSeries,
+    DeviceDescription,
     Interval,
     RegularTimeSeries,
-    BrainsetDescription,
     SessionDescription,
-    DeviceDescription,
     serialize_fn_map,
 )
+from torch_brain.pipeline import BrainsetPipeline
 from torch_brain.utils.dandi import (
+    download_file,
     extract_spikes_from_nwbfile,
     extract_subject_from_nwb,
     get_nwb_asset_list,
-    download_file,
 )
-from torch_brain.pipeline import BrainsetPipeline
 
 parser = ArgumentParser()
 parser.add_argument("--redownload", action="store_true")
@@ -139,7 +138,7 @@ class Pipeline(BrainsetPipeline):
             domain="auto",
         )
 
-        if not "test" in str(fpath):
+        if "test" not in str(fpath):
             self.update_status("Creating Splits")
             # extract behavior
             data.hand, data.eye = extract_behavior(nwbfile, trials)

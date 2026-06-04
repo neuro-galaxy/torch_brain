@@ -1,5 +1,5 @@
-import pytest
 import numpy as np
+
 from torch_brain.data import IrregularTimeSeries, concat
 
 
