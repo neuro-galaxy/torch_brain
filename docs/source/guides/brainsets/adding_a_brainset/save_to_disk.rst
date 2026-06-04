@@ -25,6 +25,4 @@ Write each :class:`~torch_brain.data.Data` object to an H5 file under
        with h5py.File(output_file_path, "w") as file:
            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
 
-Skip writing when the output file already exists unless ``--reprocess`` is set.
-
-Next, see :doc:`contribute` to run the pipeline and open a pull request.
+We can safely skip writing when the output file already exists unless ``--reprocess`` is set.

@@ -18,4 +18,4 @@ Before starting, complete :doc:`../getting_started/index` so storage paths and
    contribute
 
 
-For OpenNeuro EEG or iEEG sources, see :doc:`../openneuro/index` instead.
+If the brainset you are adding is an OpenNeuro EEG or iEEG dataset, see :doc:`../openneuro/index` instead.
