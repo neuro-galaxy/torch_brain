@@ -45,7 +45,7 @@ jobs:
     - name: Test documentation
       run: |
         source venv/bin/activate
-        pytest --doctest-modules torch_brain/ -v
+        pytest --doctest-modules torch_brain/ -v --ignore=torch_brain/pipeline/brainsets-pipelines/
     - name: Download sample dataset
       run: |
         source venv/bin/activate
