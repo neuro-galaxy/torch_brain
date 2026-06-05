@@ -1,9 +1,10 @@
 import os
+from importlib.resources import files
 from pathlib import Path
 
 import click
 
-PIPELINES_PATH = Path(__file__).parents[3] / "brainsets_pipelines"
+PIPELINES_PATH = files("torch_brain.pipeline") / "brainsets-pipelines"
 
 
 def expand_path(path: str | Path) -> Path:

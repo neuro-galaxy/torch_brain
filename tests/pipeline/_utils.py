@@ -1,6 +1,7 @@
 import sys
-from pathlib import Path
+
+from torch_brain.pipeline._cli.utils import PIPELINES_PATH
 
 
 def add_pipelines_to_path():
-    sys.path.append(str(Path(__file__).parents[2] / "brainsets_pipelines"))
+    sys.path.append(str(PIPELINES_PATH))
