@@ -21,8 +21,8 @@ def cli():
     A command line interface for downloading and preparing brainsets.
 
     \b
-    Documentation: TODO
-    Project page: TODO
+    Documentation: https://torch-brain.readthedocs.io
+    Project page: https://github.com/neuro-galaxy/torch_brain
     """
     pass
 
