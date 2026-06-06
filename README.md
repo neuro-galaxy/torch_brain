@@ -163,7 +163,7 @@ cd examples/poyo
 python train_simple.py --config-name train_poyo_mp data_root=data/processed
 ```
 
-## Research powered by `torch_brain`
+## Research powered by torch_brain
 
 - [POYO](https://poyo-brain.github.io/) (Azabou et al. NeurIPS 2023)
 - [POYO+](https://github.com/nerdslab/poyo_plus) (Azabou and Pan et al. ICLR 2025)
