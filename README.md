@@ -2,6 +2,8 @@
     <img height="250" src="https://torch-brain.readthedocs.io/en/latest/_static/torch_brain_logo.png" />
 </p>
 
+<h1 align="center">torch_brain</h1>
+
 <p align="center">
     <a href="https://torch-brain.readthedocs.io/en/latest/">Documentation</a>
     |
