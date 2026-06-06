@@ -1,14 +1,20 @@
-<p align="left">
+<p align="center">
     <img height="250" src="https://torch-brain.readthedocs.io/en/latest/_static/torch_brain_logo.png" />
 </p>
 
-[Documentation](https://torch-brain.readthedocs.io/en/latest/) | [Join our Discord community](https://discord.gg/kQNKA6B8ZC)
+<p align="center">
+    <a href="https://torch-brain.readthedocs.io/en/latest/">Documentation</a>
+    |
+    <a href="https://discord.gg/kQNKA6B8ZC">Join our Discord community</a>
+</p>
 
-[![PyPI version](https://badge.fury.io/py/torch_brain.svg)](https://badge.fury.io/py/torch_brain)
-[![Documentation Status](https://readthedocs.org/projects/torch-brain/badge/?version=latest)](https://torch-brain.readthedocs.io/en/latest/?badge=latest)
-[![Tests](https://github.com/neuro-galaxy/torch_brain/actions/workflows/testing.yml/badge.svg)](https://github.com/neuro-galaxy/torch_brain/actions/workflows/testing.yml)
-[![Linting](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml/badge.svg)](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml)
-[![Discord](https://img.shields.io/discord/1338561153089146962?label=Discord&logo=discord)](https://discord.gg/kQNKA6B8ZC)
+<p align="center">
+    <a href="https://badge.fury.io/py/torch_brain"><img src="https://badge.fury.io/py/torch_brain.svg" alt="PyPI version" /></a>
+    <a href="https://torch-brain.readthedocs.io/en/latest/?badge=latest"><img src="https://readthedocs.org/projects/torch-brain/badge/?version=latest" alt="Documentation Status" /></a>
+    <a href="https://github.com/neuro-galaxy/torch_brain/actions/workflows/testing.yml"><img src="https://github.com/neuro-galaxy/torch_brain/actions/workflows/testing.yml/badge.svg" alt="Tests" /></a>
+    <a href="https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml"><img src="https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml/badge.svg" alt="Linting" /></a>
+    <a href="https://discord.gg/kQNKA6B8ZC"><img src="https://img.shields.io/discord/1338561153089146962?label=Discord&logo=discord" alt="Discord" /></a>
+</p>
 
 > [!NOTE]
 > We have merged `temporaldata` and `brainsets` into `torch_brain`.
