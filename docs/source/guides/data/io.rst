@@ -129,10 +129,10 @@ Let's access ``eye_pos``:
      ),
    )
 
-Since ``eye_pos`` has been loaded into memory, it is no longer an ``<HDF5
-dataset...>``, while the remaining attributes remain lazy. Accessing the
-remainig attributes of ``behavior`` will load its data into memory and turn it
-into a normal (non-lazy) :obj:`RegularTimeSeries` object:
+Since ``eye_pos`` has been loaded into memory, it is no longer an ``<HDF5 dataset...>``,
+while the remaining attributes remain lazy. Accessing the remaining attributes of
+``behavior`` loads its data into memory and turns it into a normal (non-lazy)
+:obj:`RegularTimeSeries` object:
 
 .. code-block:: pycon
 
