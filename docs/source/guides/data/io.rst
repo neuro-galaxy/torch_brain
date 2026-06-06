@@ -174,9 +174,9 @@ Slicing preserves laziness for any attributes that are still lazy:
      ),
    )
 
-Here, ``behavior`` is sliced immediately (indicated by the change in the shape
-of the arrays), On the other hand, ``spikes`` remains lazy.
-
+Here, ``behavior`` is already in memory (non-lazy), so it is sliced immediately
+(indicated by the change in array shapes). On the other hand, ``spikes`` remains
+lazy.
 Upon accessing ``sliced.spikes.timestamps``, only the two timestamps that fall
 within the :math:`[2s, 4s)` window are read from disk and not the full
 timestamps array.
