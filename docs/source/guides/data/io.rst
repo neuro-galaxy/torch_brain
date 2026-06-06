@@ -156,7 +156,7 @@ into a normal (non-lazy) :obj:`RegularTimeSeries` object:
      ),
    )
 
-Lazy objects are also sliced lazily:
+Slicing preserves laziness for any attributes that are still lazy:
 
 .. code-block:: pycon
 
