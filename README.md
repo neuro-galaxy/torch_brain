@@ -142,7 +142,11 @@ for X, Y in loader:
     ...
 ```
 
-The key idea: unlike a standard PyTorch `Dataset` indexed by integers, a torch*brain `Dataset` is indexed by \_time-slices*, and loads data lazily, so only the slice you ask for is read from disk. A `Sampler` decides _what_ to load, the `Dataset` decides _how_, and everything downstream stays vanilla PyTorch.
+The key idea: unlike a standard PyTorch `Dataset` indexed by integers, a
+**torch_brain `Dataset` is indexed by time-slices**, and loads data lazily, so
+only the slice you ask for is read from disk. A `Sampler` decides _what_ to
+load, the `Dataset` decides _how_, and everything downstream stays vanilla
+PyTorch.
 
 See [`examples/`](examples/) for simple and readable training implementations.
 
