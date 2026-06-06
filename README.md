@@ -41,12 +41,12 @@ pip install torch torch_brain
 > can skip installing `torch`.
 
 <details>
-    <summary>Latest development version:</summary>
+<summary>Latest development version:</summary>
 
-    Install the latest (unstable) development version via the main branch:
+Install the latest (unstable) development version via the main branch:
 
-    ```bash
-    pip install git+https://github.com/neuro-galaxy/torch_brain
+```bash
+pip install git+https://github.com/neuro-galaxy/torch_brain
     ```
 </details>
 
