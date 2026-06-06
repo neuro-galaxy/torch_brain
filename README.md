@@ -40,11 +40,15 @@ pip install torch torch_brain
 > If you only need `torch_brain.data` and the data-preparation pipelines, you
 > can skip installing `torch`.
 
-For the latest development version:
+<details>
+    <summary>Latest development version:</summary>
 
-```bash
-pip install git+https://github.com/neuro-galaxy/torch_brain
-```
+    Install the latest (unstable) development version via the main branch:
+
+    ```bash
+    pip install git+https://github.com/neuro-galaxy/torch_brain
+    ```
+</details>
 
 ## The data format
 
