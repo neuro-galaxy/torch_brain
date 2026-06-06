@@ -180,6 +180,8 @@ lazy.
 Upon accessing ``sliced.spikes.timestamps``, only the two timestamps that fall
 within the :math:`[2s, 4s)` window are read from disk and not the full
 timestamps array.
+The returned timestamps are shifted by the slice start time, so the values shown
+ below are relative to :math:`t=2s`.
 
 .. code-block:: pycon
 
