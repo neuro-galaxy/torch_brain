@@ -33,26 +33,32 @@ jobs:
       run: uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
 
     - name: Download pei_pandarinath_nlb_2021
+      id: pei_pandarinath_nlb_2021
       continue-on-error: true
       run: uv run brainsets prepare pei_pandarinath_nlb_2021
 
     - name: Download perich_miller_population_2018
+      id: perich_miller_population_2018
       continue-on-error: true
       run: uv run brainsets prepare perich_miller_population_2018 -s c_20131219_center_out_reaching
 
     - name: Download allen_visual_coding_ophys_2016
+      id: allen_visual_coding_ophys_2016
       continue-on-error: true
       run: uv run brainsets prepare allen_visual_coding_ophys_2016 -s 717913184
 
     - name: Download churchland_shenoy_neural_2012
+      id: churchland_shenoy_neural_2012
       continue-on-error: true
       run: uv run brainsets prepare churchland_shenoy_neural_2012 -s jenkins_20090912
 
     - name: Download flint_slutzky_accurate_2012
+      id: flint_slutzky_accurate_2012
       continue-on-error: true
       run: uv run brainsets prepare flint_slutzky_accurate_2012 -s flint_2012_e1
 
     - name: Download kemp_sleep_edf_2013
+      id: kemp_sleep_edf_2013
       continue-on-error: true
       if: matrix.python-version != '3.9'
       # scikit-learn>=1.7.2 is not compatible with python3.9
@@ -60,21 +66,50 @@ jobs:
 
     # TODO: SSL cert issue with data-proxy.ebrains.eu, re-enable when fixed
     - name: Download vollan_moser_alternating_2025 (navigation)
+      id: vollan_moser_alternating_2025_navigation
       continue-on-error: true
       run: uv run brainsets prepare vollan_moser_alternating_2025 -s of_24365_2
 
     - name: Download vollan_moser_alternating_2025 (sleep)
+      id: vollan_moser_alternating_2025_sleep
       continue-on-error: true
       run: uv run brainsets prepare vollan_moser_alternating_2025 -s sleep_25691_1
 
     - name: Download klinzing_sleep_ds005555
+      id: klinzing_sleep_ds005555
       continue-on-error: true
       run: uv run brainsets prepare klinzing_sleep_ds005555 -s sub-10_task-Sleep_acq-headband --on-version-mismatch continue
 
     - name: Download kochi_visualnaming_ds006914
+      id: kochi_visualnaming_ds006914
       continue-on-error: true
       run: uv run brainsets prepare kochi_visualnaming_ds006914 -s sub-023_ses-2_task-picture --on-version-mismatch continue
 
     - name: Download shirazi_hbnr1_ds005505
+      id: shirazi_hbnr1_ds005505
       continue-on-error: true
       run: uv run brainsets prepare shirazi_hbnr1_ds005505 -s sub-NDARAC904DMU_task-DespicableMe --on-version-mismatch continue
+
+    - name: Check all pipelines passed
+      if: always()
+      run: |
+        outcomes=(
+          "${{ steps.pei_pandarinath_nlb_2021.outcome }}"
+          "${{ steps.perich_miller_population_2018.outcome }}"
+          "${{ steps.allen_visual_coding_ophys_2016.outcome }}"
+          "${{ steps.churchland_shenoy_neural_2012.outcome }}"
+          "${{ steps.flint_slutzky_accurate_2012.outcome }}"
+          "${{ steps.kemp_sleep_edf_2013.outcome }}"
+          "${{ steps.vollan_moser_alternating_2025_navigation.outcome }}"
+          "${{ steps.vollan_moser_alternating_2025_sleep.outcome }}"
+          "${{ steps.klinzing_sleep_ds005555.outcome }}"
+          "${{ steps.kochi_visualnaming_ds006914.outcome }}"
+          "${{ steps.shirazi_hbnr1_ds005505.outcome }}"
+        )
+        failed=0
+        for outcome in "${outcomes[@]}"; do
+          if [ "$outcome" == "failure" ]; then
+            failed=1
+          fi
+        done
+        exit $failed
