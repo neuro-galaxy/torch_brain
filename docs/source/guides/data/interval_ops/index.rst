@@ -5,7 +5,7 @@ Interval Operations
 
 :obj:`Interval` objects can be manipulated using standard set-arithmetic
 operations such as union, intersection, and difference, along with a few other
-useful operations like dilation and coalescing.
+useful operations like :obj:`~Interval.dilate` and :obj:`~Interval.coalesce`.
 
 
 Intersection
