@@ -150,13 +150,6 @@ PyTorch.
 
 See [`examples/`](examples/) for simple and readable training implementations.
 
-## Research powered by torch_brain
-
-- [POYO](https://poyo-brain.github.io/) (Azabou et al. NeurIPS 2023)
-- [POYO+](https://github.com/nerdslab/poyo_plus) (Azabou and Pan et al. ICLR 2025)
-- [POSSM](https://possm-brain.github.io/) (Ryoo and Krishna et al. NeurIPS 2025)
-- [NuCLR](https://nerdslab.github.io/nuclr/) (Arora et al. NeurIPS 2025)
-
 ## Contributing
 
 Contributions are welcome! Get started with:
