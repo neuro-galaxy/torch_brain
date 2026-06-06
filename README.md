@@ -150,19 +150,6 @@ PyTorch.
 
 See [`examples/`](examples/) for simple and readable training implementations.
 
-## Quickstart
-
-Download and preprocess a dataset, then train a model:
-
-```bash
-# Prepare a brainset
-brainsets prepare perich_miller_population_2018 --raw-dir data/raw --processed-dir data/processed
-
-# Train POYO on the prepared data
-cd examples/poyo
-python train_simple.py --config-name train_poyo_mp data_root=data/processed
-```
-
 ## Research powered by torch_brain
 
 - [POYO](https://poyo-brain.github.io/) (Azabou et al. NeurIPS 2023)
