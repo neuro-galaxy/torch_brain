@@ -60,9 +60,11 @@ jobs:
 
     # TODO: SSL cert issue with data-proxy.ebrains.eu, re-enable when fixed
     - name: Download vollan_moser_alternating_2025 (navigation)
+      continue-on-error: true
       run: uv run brainsets prepare vollan_moser_alternating_2025 -s of_24365_2
 
     - name: Download vollan_moser_alternating_2025 (sleep)
+      continue-on-error: true
       run: uv run brainsets prepare vollan_moser_alternating_2025 -s sleep_25691_1
 
     - name: Download klinzing_sleep_ds005555
