@@ -1,18 +1,3 @@
-<p align="left">
-    <img height="250" src="https://brainsets.readthedocs.io/en/latest/_static/brainsets_logo.png" />
-</p>
-
-[Documentation](https://brainsets.readthedocs.io/en/latest/) | [Join our Discord community](https://discord.gg/kQNKA6B8ZC)
-
-[![PyPI version](https://badge.fury.io/py/brainsets.svg)](https://badge.fury.io/py/brainsets)
-[![Documentation Status](https://readthedocs.org/projects/brainsets/badge/?version=latest)](https://brainsets.readthedocs.io/en/latest/?badge=latest)
-[![Tests](https://github.com/neuro-galaxy/brainsets/actions/workflows/testing.yml/badge.svg)](https://github.com/neuro-galaxy/brainsets/actions/workflows/testing.yml)
-[![Linting](https://github.com/neuro-galaxy/brainsets/actions/workflows/linting.yml/badge.svg)](https://github.com/neuro-galaxy/brainsets/actions/workflows/linting.yml)
-[![Discord](https://img.shields.io/discord/1338561153089146962?label=Discord&logo=discord)](https://discord.gg/kQNKA6B8ZC)
-
-
-**brainsets** is a Python package for processing neural data into a standardized format.
-
 ## Installation
 brainsets is available for Python 3.10+
 
@@ -81,37 +66,4 @@ following a set of rules defined in `pipelines/<brainset>/`.
 For example, to prepare the Perich & Miller (2018) dataset, you can run:
 ```bash
 brainsets prepare perich_miller_population_2018 --cores 8
-```
-
-## Contributing
-If you are planning to contribute to the package, you can install the package in
-development mode by running the following command:
-```bash
-pip install -e ".[dev]"
-```
-
-Install pre-commit hooks:
-```bash
-pre-commit install
-```
-
-Unit tests are located under test/. Run the entire test suite with
-```bash
-pytest
-```
-or test individual files via, e.g., `pytest test/test_enum_unique.py`
-
-
-## Cite
-
-Please cite [our paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca113d122584f12a6727341aaf58887-Abstract-Conference.html) if you use this code in your own work:
-
-```bibtex
-@inproceedings{
-    azabou2023unified,
-    title={A Unified, Scalable Framework for Neural Population Decoding},
-    author={Mehdi Azabou and Vinam Arora and Venkataramana Ganesh and Ximeng Mao and Santosh Nachimuthu and Michael Mendelson and Blake Richards and Matthew Perich and Guillaume Lajoie and Eva L. Dyer},
-    booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
-    year={2023},
-}
 ```
