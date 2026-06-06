@@ -25,8 +25,8 @@
 **torch_brain** is an end-to-end framework for building deep learning models
 and training pipelines for neuroscience. It pairs a lightweight, time-based data
 format (plus tools to preprocess existing neural datasets into it) with
-[PyTorch](https://pytorch.org)-compatible building blocks: datasets, samplers,
-`nn.Module`s, and models.
+PyTorch-compatible building blocks: datasets, samplers, `nn.Module`s, and
+models.
 
 ## Features
 
