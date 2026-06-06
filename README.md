@@ -15,18 +15,16 @@
 > If you are migrating from v0.1.x, please see [this migration guide](howto/MIGRATE_TO_v0.2.md).
 
 **torch_brain** is an end-to-end framework for building deep learning models
-and training pipelines for neuroscience. It provides:
-
-- A lightweight data format for time-based and lazy data access.
-- Tools to preprocess existing neural datasets into its format.
-- [PyTorch](https://pytorch.org)-compatible building blocks (datasets,
-samplers, `nn.Module`s, and models)
+and training pipelines for neuroscience. It pairs a lightweight, time-based data
+format (plus tools to preprocess existing neural datasets into it) with
+[PyTorch](https://pytorch.org)-compatible building blocks: datasets, samplers,
+`nn.Module`s, and models.
 
 ## Features
 
 - Multi-recording training across heterogeneous datasets
 - Support for arbitrary neural and behavioral modalities
-- Lazy, on-demand data loading — only reads the time-slices and attributes you request
+- Lazy, on-demand data loading that reads only the time-slices and attributes you request
 - Advanced samplers for arbitrary on-the-fly slicing of recordings
 - Flexible collation strategies, including chaining and padding
 
