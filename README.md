@@ -10,84 +10,167 @@
 [![Linting](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml/badge.svg)](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml)
 [![Discord](https://img.shields.io/discord/1338561153089146962?label=Discord&logo=discord)](https://discord.gg/kQNKA6B8ZC)
 
-**torch_brain** is a Python library for various deep learning models designed for neuroscience.
+**torch_brain** is an end-to-end framework for building deep learning models and
+_training pipelines for neuroscience. It provides
+_[PyTorch](https://pytorch.org)-compatible building blocks (datasets, samplers,
+*`nn.Module`s, and models), a lightweight data format and tools to preprocess
+*existing neural datasets into it.
 
 > [!NOTE]
 > We have merged `temporaldata` and `brainsets` into `torch_brain`.
 > If you are migrating from v0.1.x, please see [this migration guide](howto/MIGRATE_TO_v0.2.md).
 
-### Features
-+ Multi-recording training
-+ Optimized data loading with with on-demand data access -- only loads data when needed
-+ Advanced samplers that enable arbitrary slicing of data on the fly
-+ Advanced data collation strategies including chaining and padding
-+ Support for arbitrary neural and behavioral modalities
-+ Collection of useful nn.Modules like stitchers, multi-output readouts, infinite vocab embeddings, etc.
-+ Collection of neural and behavioral transforms and augmentation strategies
-+ Implementations of various deep learning models for neuroscience
+## Features
 
-### List of implemented models
-
-+ [POYO: A Unified, Scalable Framework for Neural Population Decoding (Azabou et al. 2023)](examples/poyo)
-+ More coming soon...
+- Multi-recording training across heterogeneous datasets
+- Support for arbitrary neural and behavioral modalities
+- Lazy, on-demand data loading — only reads the time-slices and attributes you request
+- Advanced samplers for arbitrary on-the-fly slicing of recordings
+- Flexible collation strategies, including chaining and padding
 
 ## Installation
-**torch_brain** is available for Python >= 3.10. To install a stable release, do:
+
+**torch_brain** requires Python >= 3.10. To install a stable release:
+
 ```bash
 pip install torch torch_brain
 ```
 
-If you only wish to work with `torch_brain.data`, and pipeline related modules,
-you can skip installing `torch`.
+> [!TIP]
+> If you only need `torch_brain.data` and the data-preparation pipelines, you
+> can skip installing `torch`.
 
-To install the development version:
+For the latest development version:
+
 ```bash
 pip install git+https://github.com/neuro-galaxy/torch_brain
 ```
 
+## The data format
+
+A recording is a `Data` object holding heterogeneous, time-aware modalities:
+regularly-sampled signals (LFP, EEG, ...), irregular event streams (spikes),
+interval annotations (trials), and plain arrays.
+
+```python
+import numpy as np
+from torch_brain.data import Data, IrregularTimeSeries, RegularTimeSeries, Interval
+
+data = Data(
+    spikes=IrregularTimeSeries(                       # event stream
+        timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+        unit_index=[0, 0, 1, 0, 1, 2],
+        domain="auto",
+    ),
+    lfp=RegularTimeSeries(raw=np.zeros((1000, 3)), sampling_rate=250.0),  # 4s @ 250Hz
+    trials=Interval(start=[0, 1, 2], end=[1, 2, 3]),  # annotations
+    domain=Interval(0.0, 4.0),
+)
+```
+
+The point of the format is that **slicing is time-based and modality-aware**:
+one call crops every modality consistently, regardless of their different
+sampling rates, and reads lazily from disk so only the requested window and
+attributes is loaded.
+
+```python
+window = data.slice(1.0, 3.0)
+# spikes -> the 3 events in [1, 3)   lfp -> 500 samples   trials -> 2 trials
+```
+
+This is why a torch_brain `Dataset` is indexed by time, not by integer (see below).
+
+## Training pipelines
+
+torch_brain leans on the standard PyTorch training loop, and most of its job is
+to handle the data side. You define a `Dataset` (built on the time-slicing
+above) and a `Sampler` that decides which slices become samples. The
+`DataLoader`, model, and loop are ordinary PyTorch.
+
+```python
+import torch
+from torch.utils.data import DataLoader
+from torch_brain.datasets import PeiPandarinathNLB2021, DatasetIndex
+from torch_brain.samplers import TrialSampler
+from torch_brain.utils import bin_spikes
+
+# torch_brain ships loaders for many public datasets.
+# Subclass one to define the two things specific to your task:
+class MyDataset(PeiPandarinathNLB2021):
+    # 1. WHICH windows count as samples (here, one per behavioral trial).
+    def get_sampling_intervals(self):
+        sampling_intervals = {}
+        for rid in self.recording_ids:
+            sampling_intervals[rid] = self.get_recording(rid).trials
+        return sampling_intervals
+
+    # 2. HOW one window becomes tensors.
+    def __getitem__(self, index: DatasetIndex):
+        # `index` is a DatasetIndex(recording_id, start, end) handed in by the sampler;
+
+        data = super().__getitem__(index)
+        # super().__getitem__(...) returns that slice with
+        # every modality (.spikes, .hand.vel, ...) lazily cropped.
+
+        # Only attributes actually accessed will be loaded into memory from disk.
+        X = bin_spikes(data.spikes, num_units=len(data.units), bin_size=0.05)
+        Y = data.hand.vel
+        return torch.from_numpy(X).float(), torch.from_numpy(Y).float()
+
+dataset = MyDataset(root="data/processed", recording_ids=["jenkins_maze_train"])
+
+# The sampler turns those intervals into per-sample DatasetIndex objects.
+sampler = TrialSampler(sampling_intervals=dataset.get_sampling_intervals(), shuffle=True)
+loader = DataLoader(dataset, sampler=sampler, batch_size=8)
+
+# From here on it's plain PyTorch
+for X, Y in loader:
+    pred = model(X)
+    loss = loss_fn(pred, Y)
+    ...
+```
+
+The key idea: unlike a standard PyTorch `Dataset` indexed by integers, a torch*brain `Dataset` is indexed by \_time-slices*, and loads data lazily, so only the slice you ask for is read from disk. A `Sampler` decides _what_ to load, the `Dataset` decides _how_, and everything downstream stays vanilla PyTorch.
+
+See [`examples/`](examples/) for simple and readable training implementations.
+
+## Quickstart
+
+Download and preprocess a dataset, then train a model:
+
+```bash
+# Prepare a brainset
+brainsets prepare perich_miller_population_2018 --raw-dir data/raw --processed-dir data/processed
+
+# Train POYO on the prepared data
+cd examples/poyo
+python train_simple.py --config-name train_poyo_mp data_root=data/processed
+```
+
+## Research powered by `torch_brain`
+
+- [POYO](https://poyo-brain.github.io/) (Azabou et al. NeurIPS 2023)
+- [POYO+](https://github.com/nerdslab/poyo_plus) (Azabou and Pan et al. ICLR 2025)
+- [POSSM](https://possm-brain.github.io/) (Ryoo and Krishna et al. NeurIPS 2025)
+- [NuCLR](https://nerdslab.github.io/nuclr/) (Arora et al. NeurIPS 2025)
+
 ## Contributing
-If you are planning to contribute to the package, you can install the package in
-development mode by running the following command:
+
+Contributions are welcome! Get started with:
+
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev]"   # editable install with dev dependencies
+pre-commit install        # formatting & lint hooks
+pytest                    # run the test suite
 ```
 
-Install pre-commit hooks:
-```bash
-pre-commit install
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow and code-style guidelines.
 
-Unit tests are located under test/. Run the entire test suite with
-```bash
-pytest
-```
-or test individual files via, e.g., `pytest test/test_binning.py`
+## Building the documentation
 
-## Building documentation for development
-
-Install requirements:
 ```bash
 pip install -e ".[dev,docs]"
+cd docs && make clean html
 ```
 
-Build:
-```bash
-cd docs
-make clean html
-```
-
-The documentation is then present in `docs/build/html`
-
-## Cite
-
-Please cite [our paper](https://papers.nips.cc/paper_files/paper/2023/hash/8ca113d122584f12a6727341aaf58887-Abstract-Conference.html) if you use this code in your own work:
-
-```bibtex
-@inproceedings{
-    azabou2023unified,
-    title={A Unified, Scalable Framework for Neural Population Decoding},
-    author={Mehdi Azabou and Vinam Arora and Venkataramana Ganesh and Ximeng Mao and Santosh Nachimuthu and Michael Mendelson and Blake Richards and Matthew Perich and Guillaume Lajoie and Eva L. Dyer},
-    booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
-    year={2023},
-}
-```
+The built docs are placed in `docs/build/html`.
