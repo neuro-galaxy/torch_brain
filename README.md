@@ -10,15 +10,15 @@
 [![Linting](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml/badge.svg)](https://github.com/neuro-galaxy/torch_brain/actions/workflows/linting.yml)
 [![Discord](https://img.shields.io/discord/1338561153089146962?label=Discord&logo=discord)](https://discord.gg/kQNKA6B8ZC)
 
-**torch_brain** is an end-to-end framework for building deep learning models and
-_training pipelines for neuroscience. It provides
-_[PyTorch](https://pytorch.org)-compatible building blocks (datasets, samplers,
-*`nn.Module`s, and models), a lightweight data format and tools to preprocess
-*existing neural datasets into it.
-
 > [!NOTE]
 > We have merged `temporaldata` and `brainsets` into `torch_brain`.
 > If you are migrating from v0.1.x, please see [this migration guide](howto/MIGRATE_TO_v0.2.md).
+
+**torch_brain** is an end-to-end framework for building deep learning models
+and training pipelines for neuroscience. It provides
+[PyTorch](https://pytorch.org)-compatible building blocks (datasets, samplers,
+`nn.Module`s, and models), a lightweight data format and tools to preprocess
+existing neural datasets into it.
 
 ## Features
 
