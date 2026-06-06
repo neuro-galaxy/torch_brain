@@ -132,7 +132,7 @@ while ``behavior`` spans only :math:`[1s, 9s)`, so the union is :math:`[0s, 10s)
 Why domains matter
 ------------------
 
-When you train a model in **torch_brian**, :ref:`Samplers <samplers_ref>` use
+When you train a model in **torch_brain**, :ref:`Samplers <samplers_ref>` use
 each recording's domain to decide *where* they can draw time-windows from.
 Sampling from time periods where the data is absent or corrupted should be
 avoided, so removing those periods from the domain is good practice. In
