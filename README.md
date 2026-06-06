@@ -61,7 +61,7 @@ pip install git+https://github.com/neuro-galaxy/torch_brain
 ## The data format
 
 A recording is a `Data` object holding heterogeneous, time-aware modalities:
-regularly-sampled signals (LFP, EEG, ...), irregular event streams (spikes),
+regularly-sampled signals (LFP, EEG, etc.), irregular event streams (spikes),
 interval annotations (trials), and plain arrays.
 
 ```python
