@@ -72,10 +72,10 @@ data = Data(
 )
 ```
 
-The point of the format is that **slicing is time-based**:
+The point of the format is that **slicing is time-based and lazy**:
 Every modality is sliced consistently, regardless of their different
-sampling rates, and reads data lazily from disk so only the requested window
-and attributes is loaded.
+sampling rates, and the data is lazily read from disk so only the
+requested window and attributes are loaded.
 
 ```python
 window = data.slice(1.0, 3.0)
