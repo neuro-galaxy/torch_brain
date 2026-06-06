@@ -30,10 +30,10 @@ models.
 
 ## Features
 
-- Multi-recording training across heterogeneous datasets
-- Support for arbitrary neural and behavioral modalities
 - Lazy, on-demand data loading that reads only the time-slices and attributes you request
 - Advanced samplers for arbitrary on-the-fly slicing of recordings
+- Multi-recording training across heterogeneous datasets
+- Support for arbitrary neural and behavioral modalities
 - Flexible collation strategies, including chaining and padding
 
 ## Installation
