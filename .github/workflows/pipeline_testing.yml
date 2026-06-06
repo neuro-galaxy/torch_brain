@@ -92,24 +92,13 @@ jobs:
 
     - name: Check all pipelines passed
       if: always()
+      env:
+        STEPS_JSON: ${{ toJSON(steps) }}
       run: |
-        outcomes=(
-          "${{ steps.pei_pandarinath_nlb_2021.outcome }}"
-          "${{ steps.perich_miller_population_2018.outcome }}"
-          "${{ steps.allen_visual_coding_ophys_2016.outcome }}"
-          "${{ steps.churchland_shenoy_neural_2012.outcome }}"
-          "${{ steps.flint_slutzky_accurate_2012.outcome }}"
-          "${{ steps.kemp_sleep_edf_2013.outcome }}"
-          "${{ steps.vollan_moser_alternating_2025_navigation.outcome }}"
-          "${{ steps.vollan_moser_alternating_2025_sleep.outcome }}"
-          "${{ steps.klinzing_sleep_ds005555.outcome }}"
-          "${{ steps.kochi_visualnaming_ds006914.outcome }}"
-          "${{ steps.shirazi_hbnr1_ds005505.outcome }}"
-        )
-        failed=0
-        for outcome in "${outcomes[@]}"; do
-          if [ "$outcome" == "failure" ]; then
-            failed=1
-          fi
-        done
-        exit $failed
+        failed=$(echo "$STEPS_JSON" | jq -r 'to_entries[] | select(.value.outcome == "failure") | .key')
+        if [ -n "$failed" ]; then
+          echo "The following pipelines failed:"
+          echo "$failed" | sed 's/^/  - /'
+          exit 1
+        fi
+        echo "All pipelines passed."
