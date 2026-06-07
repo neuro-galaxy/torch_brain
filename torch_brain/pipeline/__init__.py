@@ -6,6 +6,9 @@ __all__ = [
 __api_ref__ = {
     "description": None,
     "sections": [{"autosummary": __all__}],
+    "submodules": [
+        "torch_brain.pipeline.openneuro",
+    ],
 }
 
 from .pipeline import BrainsetPipeline

@@ -42,3 +42,16 @@
   {{ obj }}
 {%- endfor %}
 {% endfor %}
+
+
+{% if "submodules" in module_info %}
+.. rubric:: Submodules
+
+.. toctree::
+  :maxdepth: 1
+
+{% for sub in module_info["submodules"] %}
+  {{ sub }}
+{%- endfor %}
+{% endif %}
+

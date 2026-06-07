@@ -27,4 +27,14 @@ __all__ = [
 __api_ref__ = {
     "description": None,
     "sections": [{"autosummary": __all__}],
+    "submodules": [
+        "torch_brain.utils.bids",
+        "torch_brain.utils.dandi",
+        "torch_brain.utils.mne",
+        "torch_brain.utils.openneuro",
+        "torch_brain.utils.s3",
+        "torch_brain.utils.signal",
+        "torch_brain.utils.split",
+        "torch_brain.utils.stitcher",
+    ],
 }

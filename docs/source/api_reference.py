@@ -58,18 +58,9 @@ API_MODS = [
     "torch_brain.models",
     "torch_brain.nn",
     "torch_brain.pipeline",
-    "torch_brain.pipeline.openneuro",
     "torch_brain.samplers",
     "torch_brain.transforms",
     "torch_brain.utils",
-    "torch_brain.utils.bids",
-    "torch_brain.utils.dandi",
-    "torch_brain.utils.mne",
-    "torch_brain.utils.openneuro",
-    "torch_brain.utils.s3",
-    "torch_brain.utils.signal",
-    "torch_brain.utils.split",
-    "torch_brain.utils.stitcher",
 ]
 
 API_REFERENCE = {m: import_module(m).__api_ref__ for m in API_MODS}
@@ -100,6 +91,18 @@ def build_api_rst():
                 "kwargs": {"module": module, "module_info": API_REFERENCE[module]},
             }
         )
+
+        for submodule in API_REFERENCE[module].get("submodules", []):
+            rst_templates.append(
+                {
+                    "template_path": "api/module.rst.template",
+                    "target_path": f"generated/api/{submodule}.rst",
+                    "kwargs": {
+                        "module": submodule,
+                        "module_info": import_module(submodule).__api_ref__,
+                    },
+                }
+            )
 
     for template in rst_templates:
         # Read the corresponding template file into jinja2
