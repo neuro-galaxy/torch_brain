@@ -5,9 +5,14 @@ Interval Operations
 
 :obj:`Interval` objects can be manipulated using standard set-arithmetic
 operations such as union, intersection, and difference, along with a few other
-useful operations like dilation and coalescing.
+useful operations like :obj:`~Interval.dilate` and :obj:`~Interval.coalesce`.
 
-First, let's create some simple intervals:
+
+Intersection
+------------
+
+The intersection operation (``&``) creates a new :obj:`Interval`
+containing only the overlapping time periods between two objects.
 
 .. code-block:: pycon
 
@@ -18,15 +23,6 @@ First, let's create some simple intervals:
 
    >>> # second interval over [2, 5), [7, 10), and [14, 17)
    >>> interval2 = Interval(start=[2., 7., 14.], end=[5., 10., 17.])
-
-
-Intersection
-------------
-
-The intersection operation (``&``) creates a new :obj:`Interval`
-containing only the overlapping time periods between two objects.
-
-.. code-block:: pycon
 
    >>> intersection = interval1 & interval2
    >>> intersection.start, intersection.end
@@ -72,8 +68,8 @@ interval.
    Visualization of the difference operation
 
 
-Dilation
---------
+Dilate
+------
 
 The :obj:`~Interval.dilate` method expands each interval by a specified amount
 on both sides.
@@ -98,8 +94,8 @@ The dilation operation is particularly useful when you need to:
 - Account for uncertainty in interval boundaries
 - Merge intervals that are close together
 
-Coalescing
-----------
+Coalesce
+--------
 
 The :obj:`~Interval.coalesce` method merges overlapping or touching intervals
 into single continuous intervals. This is useful for simplifying interval sets
@@ -130,51 +126,11 @@ The coalesce operation is useful for:
 - Simplifying interval representations
 
 
-.. note::
-
-   There are multiple edge cases that can occur when performing interval
-   operations. For more details, see the :ref:`interval_ops_edge_cases`
-   section below.
-
-Introspection
--------------
-
-We also provide some introspection methods to check whether the periods in an
-:obj:`Interval` are *disjoint* (non-overlapping) and *sorted* (in increasing
-order of start time).
-
-Here, the two periods ``[0, 1.1)`` and ``[1, 2)`` overlap, so the interval is
-not disjoint, but its start times are still in increasing order:
-
-.. code-block:: pycon
-
-   >>> # Create two intervals [1., 1.1), and [1., 2.)
-   >>> interval = Interval(start=[0., 1.], end=[1.1, 2.0])
-   >>> interval.is_disjoint(), interval.is_sorted()
-   (False, True)
-
-By contrast, these periods don't overlap and are already ordered, so both
-checks return ``True``:
-
-.. code-block:: pycon
-
-   >>> # Create two intervals [0., 1.), and [3., 4.)
-   >>> interval = Interval(start=[0., 3.], end=[1., 4.])
-   >>> interval.is_disjoint(), interval.is_sorted()
-   (True, True)
-
-The set operations above (intersection, union, and difference) require their
-inputs to be disjoint and sorted, and will raise a ``ValueError`` otherwise, so
-these methods are handy for validating an :obj:`Interval` object.
-
-
-.. _interval_ops_edge_cases:
-
 Edge Cases
 ----------
 
-Interval operations also handle a number of edge cases gracefully. Here we walk
-through a few of them.
+Interval operations also handle a number of edge cases gracefully, and below
+are a few important cases to keep in mind.
 
 Adjacent Intervals
 ~~~~~~~~~~~~~~~~~~~

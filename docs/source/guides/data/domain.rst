@@ -3,9 +3,9 @@
 Domains
 =======
 
-A **domain** is simply the span of time over which a data object is considered
-*valid*. Let's make this concrete. Below we create a spike train with 1000
-spikes scattered randomly over a 10-second window, and inspect its domain:
+A **domain** is the span of time over which a data object is *valid*. Below, we
+create a spike train with 1000 spikes scattered randomly over a 10-second window
+and inspect its domain:
 
 .. code:: pycon
 
@@ -28,15 +28,14 @@ spikes scattered randomly over a 10-second window, and inspect its domain:
    >>> min(spikes.timestamps), max(spikes.timestamps)
    (np.float64(0.015414725327748124), np.float64(9.999305627648218))
 
-The domain is itself an :obj:`Interval`, and here it was filled in automatically:
-by default, an :obj:`IrregularTimeSeries` sets its domain to the span between its
+The domain is itself an :obj:`Interval`. Here it is filled in automatically: by
+default, an :obj:`IrregularTimeSeries` sets its domain to the span between its
 first and last timestamps.
 
-This default is just a convenience. Often you know more about the recording than
-the timestamps alone reveal. Suppose, for instance, that the probe was switched
-off between :math:`t=3` and :math:`t=4`, so no spikes *could* have been recorded
-there. You can express that by passing the domain yourself when constructing the
-object:
+Often you know more about a recording than its timestamps reveal. For example, if
+the probe was switched off between :math:`t=3s` and :math:`t=4s`, no spikes could
+have been recorded in that gap. To capture this, we pass the domain directly when
+constructing the object:
 
 .. code:: pycon
 
@@ -54,41 +53,40 @@ object:
    >>> spikes.domain.start, spikes.domain.end
    (array([0., 4.]), array([3., 10.]))
 
-Notice that the domain is now made up of *two* intervals. A domain can be any set
-of disjoint time periods, not just a single one.
+The domain is now made up of *two* intervals. A domain can be any set of disjoint
+time periods, not just a single one.
 
 
 Which objects have a domain?
 ----------------------------
 
-Not every data object carries a domain; it depends on whether the object is
+Not every data object has a domain; it depends on whether the object is
 inherently temporal.
 
-- :obj:`IrregularTimeSeries` **has a domain.** As we saw above, it defaults to the
-  span of its timestamps, but you can also set it explicitly.
+- :obj:`IrregularTimeSeries` **has a domain.** It defaults to the span of its
+  timestamps, but you can also set it explicitly.
 
-- :obj:`RegularTimeSeries` **has a domain.** Because its samples are evenly
-  spaced, the domain is computed for you from the ``sampling_rate``, the number
-  of samples, and the ``domain_start`` offset, so you never set it by hand.
-  Although, regular time series *can* handle missing timepoints too; see
-  :doc:`gappy_regular_ts`.
+- :obj:`RegularTimeSeries` **has a domain.** Its samples are evenly spaced, so
+  the domain is computed from the ``sampling_rate``, the number of samples, and
+  the ``domain_start`` offset; you never set it by hand. Regular time series can
+  also handle missing timepoints; see the :doc:`gappy_regular_ts` guide.
 
-- :obj:`Interval` **does not have a separate domain.** Its own ``start`` and ``end``
+- :obj:`Interval` **does not have a separate domain.** Its ``start`` and ``end``
   times already describe the periods it spans, so there is nothing extra to track.
 
-- :obj:`ArrayDict` **does not have a domain.** It holds non-temporal data, so the
-  notion of a time span simply doesn't apply.
+- :obj:`ArrayDict` **does not have a domain.** It holds non-temporal data, so a
+  time span does not apply.
 
-- :obj:`Data` **can have a domain**, if it contains temporal objects. We take a closer
-  look at this below.
+- :obj:`Data` **can have a domain**, if it contains temporal objects. We cover
+  this case below.
 
 
 Domains on ``Data`` objects
 ---------------------------
 
 A :obj:`Data` object groups several of the objects above into a single recording,
-so any :obj:`Data` that holds time-based data must be given a domain. You can set
-it explicitly:
+so any :obj:`Data` that holds time-based data must have a domain. We set it
+explicitly:
 
 .. code:: pycon
 
@@ -116,10 +114,9 @@ it explicitly:
    >>> data.domain.start, data.domain.end
    (array([0.]), array([10.]))
 
-You can also let :obj:`Data` work it out for you. Passing ``domain="auto"``
-tells the constructor to take the union of the domains of all the objects it
-contains. Here ``spikes`` spans the full :math:`[0, 10)` while ``behavior``
-spans only :math:`[1, 9)`, so the union is :math:`[0, 10)`:
+Passing ``domain="auto"`` tells the constructor to take the union of the domains
+of all the objects it contains. Here ``spikes`` spans the full :math:`[0s, 10s)`
+while ``behavior`` spans only :math:`[1s, 9s)`, so the union is :math:`[0s, 10s)`:
 
 .. code:: pycon
 
@@ -135,8 +132,9 @@ spans only :math:`[1, 9)`, so the union is :math:`[0, 10)`:
 Why domains matter
 ------------------
 
-When you train a model in TorchBrain, :ref:`Samplers <samplers_ref>` look at
-each recording's domain to decide *where* they are allowed to draw time-windows
-from. You may not want to draw samples from time periods where you know the
-data is absent or corrupted. And so, explicitly removing such time periods from
-the domain becomes good practice.
+When you train a model in **torch_brain**, :ref:`Samplers <samplers_ref>` use
+each recording's domain to decide *where* they can draw time-windows from.
+Sampling from time periods where the data is absent or corrupted should be
+avoided, so removing those periods from the domain is good practice. In
+addition, knowing where different recording variables are and aren't valid can
+be useful when exploring an existing dataset.

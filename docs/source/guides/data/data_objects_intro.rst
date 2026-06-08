@@ -4,14 +4,14 @@ Meet the Data Objects
 =====================
 
 The :obj:`torch_brain.data` module defines several key data objects.
-Here we'll look at the different ways to create and interact with each type of object.
+This guide covers how to create and interact with each type of object.
 
 
 RegularTimeSeries
 -----------------
-:obj:`RegularTimeSeries` is the first time-oriented data object we will look
-at. As the name suggests, it is meant to store time-series that are regularly
-sampled. This could be anything from behavior measurements to EEG signals.
+:obj:`RegularTimeSeries` stores regularly sampled time-series, such as behavior
+measurements or EEG signals. It can store multiple signals that are sampled at
+the same timestamps.
 
 .. code-block:: pycon
 
@@ -39,15 +39,15 @@ sampled. This could be anything from behavior measurements to EEG signals.
 
    >>> # timestamps are automatically created from the sampling rate
    >>> behavior.timestamps
-   array([0.  , 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, ...])
+   array([0.  , 0.01, 0.02, 0.03, 0.04, 0.05, ..., 9.99])
 
 
-Here, we have created a 10-second-long collection of behavioral measurements
-(hand velocity, eye position, and pupil size) inside the *same* data object.
-This allows us to get time-slices of the entire set of signals at once.
+This creates a 10-second collection of behavioral measurements (hand velocity,
+eye position, and pupil size) inside a single object.
 
-Let's grab a slice starting at 2 seconds and ending at 4 seconds.
-Since our signals are sampled at 100Hz, we should get 200 samples.
+This entire set of signals can be time-sliced at once. As an example, we slice
+it from :math:`t=2s` to :math:`t=4s` below. The signals are sampled at 100Hz,
+so the slice returns 200 samples.
 
 .. code-block:: pycon
 
@@ -65,19 +65,42 @@ Since our signals are sampled at 100Hz, we should get 200 samples.
    >>> sliced.pupil_size
    array([-0.07094018,  1.1442879 ,  1.26022563,  1.57259098, ..., ])
 
+:obj:`RegularTimeSeries` can also incorporate a starting time offset:
+
+.. code-block:: pycon
+
+   >>> behavior = RegularTimeSeries(
+   ...     sampling_rate=100.0,  # in Hz
+   ...     hand_vel=np.random.randn(1000, 2),
+   ...     eye_pos=np.random.randn(1000, 2),
+   ...     pupil_size=np.random.randn(1000),
+   ...     domain_start=10.0,  # <- the starting time offset
+   ... )
+
+   >>> # timestamps start from 10s
+   >>> behavior.timestamps
+   array([10.  , 10.01, 10.02, 10.03, 10.04, ..., 19.99]])
+
 
 .. admonition:: Other constructors
    :class: tip
 
    :obj:`RegularTimeSeries.from_gappy_timeseries()`: If your raw data has missing
-   timesteps. Also see :doc:`gappy_regular_ts`.
+   timestamps. Also see the :doc:`gappy_regular_ts` guide.
 
+
+**torch_brain** follows some common conventions throughout:
+
+* Time is always represented in seconds.
+* ``data.slice(a, b)`` is inclusive on the left side and exclusive on the right
+  side.
 
 IrregularTimeSeries
 -------------------
 An :obj:`IrregularTimeSeries` represents event-based or irregularly sampled
 time-series data, and is well suited for things like discrete events and
-spike-trains.
+spike-trains. It can also store multiple time-series that share the same
+timestamps.
 
 .. code-block:: pycon
 
@@ -90,8 +113,7 @@ spike-trains.
    ...     user_id=[1, 2, 1],
    ... )
 
-   >>> # Real spike-trains would be much longer ofcourse,
-   >>> # here we show a spike-train with only 3 spikes.
+   >>> # Real spike-trains are much longer; this one has only 3 spikes.
    >>> spikes = IrregularTimeSeries(
    ...     timestamps=[1.2, 2.3, 3.1],  # required
    ...     unit_id=[1, 2, 1],
@@ -99,9 +121,12 @@ spike-trains.
    ...     waveforms=np.random.randn(3, 32),
    ... )
 
-IrregularTimeSeries objects can also be time-sliced.
-In this example, slicing ``spikes`` from 2 to 4 seconds should give us the
-2 spikes that fall within that window.
+Inputs passed as Python lists are automatically converted to :obj:`numpy`
+arrays internally.
+
+:obj:`IrregularTimeSeries` objects also support time-slicing. We slice
+``spikes`` from :math:`t=2s` to :math:`t=4s`, which returns the 2 spikes within
+that window.
 
 .. code-block:: pycon
 
@@ -120,8 +145,8 @@ In this example, slicing ``spikes`` from 2 to 4 seconds should give us the
    >>> sliced.unit_id
    array([2, 1])
 
-Notice how slicing *shifted* the timestamps so that the slice starts at zero.
-You can opt out of this by passing ``reset_origin=False``:
+Slicing *shifts* the timestamps to the left by the start time of the slicing
+window. Pass ``reset_origin=False`` to keep the original timestamps:
 
 .. code-block:: pycon
 
@@ -140,8 +165,8 @@ You can opt out of this by passing ``reset_origin=False``:
 
 Interval
 --------
-:obj:`Interval` represents time-periods and any metadata attached to them. A
-common use of this is to represent the trial structure of an experiment:
+:obj:`Interval` represents time-periods and any metadata attached to them, such
+as the trial structure of an experiment:
 
 .. code-block:: pycon
 
@@ -161,15 +186,14 @@ common use of this is to represent the trial structure of an experiment:
      outcome=[3]
    )
 
-This says that during the interval :math:`[0, 1)` the stimulus was ``'left'``
-and the outcome was ``'correct'``; during :math:`[2, 3)` the stimulus was
-``'right'`` and the outcome was ``'error'``, and so on.
+Each *pair* of start and end timestamps defines the boundary of a time-period,
+and the remaining attributes hold metadata for that period. By convention,
+start times are inclusive and end times are non-inclusive. Here, during the
+interval :math:`[0s, 1s)` the stimulus is ``'left'`` and the outcome is
+``'correct'``; during :math:`[2s, 3s)` the stimulus is ``'right'`` and the
+outcome is ``'error'``, and so on.
 
-In other words, each *pair* of start and end timestamps describes the boundary
-of a period, and the remaining attributes act as metadata for what happened
-within that period.
-
-Trials can also be sliced:
+Intervals also support slicing:
 
 .. code-block:: pycon
 
@@ -183,6 +207,24 @@ Trials can also be sliced:
     array(['right'], dtype='<U5'),
     array(['error'], dtype='<U7'))
 
+When a slicing window partially overlaps a time-period, the slice includes the
+entire period, and the start time of the slice sets the shift. Below, we slice
+from :math:`t=2.5s` to :math:`t=4s`. The time-period :math:`[2s, 3s)` partially
+overlaps this window, so the slice includes it and shifts its timestamps to the
+left by :math:`2.5s`.
+
+.. code-block:: pycon
+
+   >>> sliced = trials.slice(2.5, 4.0)
+   >>> len(sliced)
+   1
+
+   >>> sliced.start, sliced.end, sliced.stimulus, sliced.outcome
+   (array([-0.5]),
+    array([0.5]),
+    array(['right'], dtype='<U5'),
+    array(['error'], dtype='<U7'))
+
 .. admonition:: Other constructors
    :class: tip
 
@@ -190,10 +232,9 @@ Trials can also be sliced:
 
 ArrayDict
 ---------
-Our final *core* data object is :obj:`ArrayDict`. It is a simple container
-for arbitrary arrays *that share the same first dimension*.
-This data structure is useful for storing things like metadata associated with
-different recording channels, or any other data in a tabular form.
+:obj:`ArrayDict` is the final *core* data object. It is a simple container for
+arbitrary arrays *that share the same first dimension*. Use it to store tabular
+data, such as metadata associated with different recording channels.
 
 .. code-block:: pycon
 
@@ -227,8 +268,7 @@ different recording channels, or any other data in a tabular form.
 
 Data
 ----
-:obj:`Data` objects act as containers for all four types of objects we
-discussed above:
+:obj:`Data` objects act as containers for all four object types above:
 
 .. code-block:: pycon
 
@@ -242,8 +282,8 @@ discussed above:
    ...     domain="auto",  # don't worry about this for now; "auto" is the right choice most of the time
    ... )
 
-Let's say this ``data`` object represents one entire neural recording.
-The nice thing about this container is that it can be sliced *as a whole*:
+This ``data`` object represents one entire neural recording. We can slice the
+container *as a whole*:
 
 .. code-block:: pycon
 
@@ -276,15 +316,15 @@ The nice thing about this container is that it can be sliced *as a whole*:
    >>> sliced.spikes.timestamps
    array([0.3, 1.1])  # same as the IrregularTimeSeries example above
 
-The sliced object also remembers the absolute time at which it was sliced:
+The sliced object remembers the absolute time at which it was sliced:
 
 .. code-block:: pycon
 
    >>> sliced.absolute_start
    2.0
 
-The sliced data object is itself just another :obj:`Data` object, which means
-you can slice it again:
+The sliced data object is itself another :obj:`Data` object, so you can slice it
+again:
 
 .. code-block:: pycon
 
@@ -317,18 +357,8 @@ you can slice it again:
      ),
    )
 
-You can also store a few other things in :obj:`Data`: numpy arrays and Python
-primitives (scalars, lists, tuples, strings, etc.).
-Additionally, :obj:`Data` objects can be *nested* — a :obj:`Data` object can
-itself contain another :obj:`Data` object — which lets you organize your data
-in a hierarchy.
+:obj:`Data` can also store numpy arrays and Python primitives (scalars, lists,
+tuples, strings, etc.). :obj:`Data` objects also *nest* — a :obj:`Data` object
+can contain another :obj:`Data` object — which can be used to organize data in
+a meaningful hierarchy.
 
-
-Conventions
------------
-
-Some conventions to note:
-
-* In ``torch_brain``, time is always represented in the units of seconds.
-* Slicing like ``data.slice(a, b)`` is inclusive on the left side, and
-  exclusive on the right side.
