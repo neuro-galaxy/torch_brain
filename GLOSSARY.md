@@ -26,16 +26,16 @@ A PyTorch-compatible data loading interface provided for each Brainset, used to 
 The total temporal boundaries over which a RegularTimeSeries, IrregularTimeSeries, or Session is defined and holds valid data. Represented as an Interval, it may consist of a single contiguous span or a union of disjoint time ranges.
 *Avoid*: Time span, recording duration, timeline
 
+**Data**:
+A container object that aggregates diverse neural, behavioral, and experimental attributes under a single unified Domain. May nest other Data objects or specialized series containers (RegularTimeSeries, IrregularTimeSeries, Interval, ArrayDict), serving as the canonical programmatic representation of a complete Session or a Window sliced from one.
+*Avoid*: Dictionary, record, payload, state map
+
 **Interval**:
 A set of one or more time ranges, each defined by a start time and an end time. May carry additional per-range attributes (e.g. trial metadata). Used to define Domains, represent collections of Trials, and specify Sampling Intervals.
 *Avoid*: Epoch, segment, time range
 
-**Data**:
-A top-level container object that aggregates diverse neural, behavioral, and experimental attributes under a single unified Domain. May nest other Data objects or specialized series containers (RegularTimeSeries, IrregularTimeSeries, ArrayDict), serving as the canonical programmatic representation of a complete Session or a Window sliced from one.
-*Avoid*: Dictionary, record, payload, state map
-
 **ArrayDict**:
-A dictionary-like container of multi-dimensional arrays or tensors that strictly share a uniform first dimension. Permits individual attributes to carry distinct inner dimensions and data types while ensuring rigorous row-wise index synchronization. Used within Data to store per-Unit or per-Channel attributes.
+A dictionary-like container of multi-dimensional arrays or tensors that strictly share a uniform first dimension. Permits individual attributes to carry distinct inner dimensions and data types while ensuring rigorous row-wise index synchronization. Typically used within Data to store per-Unit or per-Channel attributes.
 *Avoid*: Dataframe, table, matrix, structural dictionary
 
 **RegularTimeSeries**:
@@ -49,11 +49,11 @@ An event-driven data container for non-uniformly sampled or discrete sequential 
 ### Signals & Hardware
 
 **Unit**:
-A source of discrete neural events (spikes). This includes both isolated single neurons and unsorted multi-unit activity (threshold crossings). A Session's spike events are stored as an IrregularTimeSeries with a per-spike reference to the originating Unit.
+A putative neuron isolated from a multi-neuron electrophysiological recording, typically using a spike-sorting algorithm. It is a source of discrete neural evens (spikes). A Session's spike events are stored as an IrregularTimeSeries with a per-spike reference to the originating Unit. Metadata about a Session's units is stored as an ArrayDict within the Session's Data object.  
 *Avoid*: Neuron, cell
 
 **Channel**:
-A single 1D time-series stream of data within an array (e.g., a row in an EEG matrix). Each Channel has a specific Modality but does not have to be limited to brain data (e.g., stimulus triggers, eye tracking). Channel data is typically stored as a RegularTimeSeries within a Data object.
+A source of 1D time-series data stream within an array (e.g., a row in an EEG matrix). Each Channel has a specific Modality but does not have to be limited to brain data (e.g., stimulus triggers, eye tracking). Channel data is typically stored as a RegularTimeSeries within a Data object.  
 *Avoid*: Stream, track, trace
 
 **Device**:
@@ -82,32 +82,7 @@ A component that generates indices (session ID + time range) defining which Wind
 The process of extracting a specific `[start, end)` time range from a Data object, producing a new Data object for that Window. Can be done deterministically (to isolate Trials) or stochastically (to generate random Windows for training diversity).
 *Avoid*: Cropping, chopping, segmenting, patches
 
-**Patching**:
-The process of regularly subdividing a Window along the temporal axis, spatial axis, or both into smaller, uniform sub-windows. Patching is a strategy a Tokenizer may use to decompose signals into Tokens.
-*Avoid*: Cropping, slicing, chopping, segmenting
-
-**Binning**:
-The process of aggregating sparse discrete events within defined time windows into contiguous, fixed-width intervals to produce a dense, uniformly sampled array. Converts an IrregularTimeSeries (e.g., spikes) into a RegularTimeSeries.
-*Avoid*: Downsampling, digitizing, quantizing, pooling
-
-
 ### Model Architecture
-
-**Task**:
-The high-level behavioral paradigm or objective the subject is performing during data collection (e.g., "Center-Out Reach", "Sleep").
-*Avoid*: Paradigm, experiment
-
-**Readout**:
-The neural network head or projection layer that maps the model's processed latent representations to a target predicted variable of a specific Modality (e.g., a velocity readout, a state classifier).
-*Avoid*: Decoder, predictor
-
-**Token**:
-The atomic unit of a model's input or output sequence. What constitutes a Token is entirely model-specific and defined by the model's Tokenizer: it may represent a single spike event, a single sample from a continuous Channel, a patch combining multiple Channels and/or timepoints, or a cross-modal fusion of heterogeneous signals. The only universal property is that a Token is the indivisible element the model operates on.
-*Avoid*: Matrix row, node, vector point
-
-**Tokenizer**:
-A model-specific component or callable that takes a raw Data object as input and produces the sequence of Tokens the model consumes. The Tokenizer decides how to decompose the data, which signals to include, and how to segment them, making it the sole authority on what a Token means for a given model.
-*Avoid*: Preprocessor, parser, collator, data encoder
 
 **Latent**:
 A learned, structural Token used by the model to query or compress information across time. Unlike input Tokens derived from biological signals (Units, Channels), Latents are not tied to any specific data source and exist purely within the model's internal representational space.
@@ -122,10 +97,6 @@ A learnable continuous vector representation that maps discrete identifiers (suc
 **Transform**:
 A callable operation that takes a Data object, modifies it (either deterministically or stochastically), and returns it. Transforms are applied after Slicing and before tokenization.
 *Avoid*: Augmentation, preprocessor
-
-**Stitching**:
-The process of aggregating and reconciling model predictions across overlapping Windows to reconstruct a single continuous prediction stream. Required when a Sampler produces Windows with temporal overlap (step < window length).
-*Avoid*: Merging, pooling, aggregating
 
 **Padding**:
 A batching strategy where variable-length Token sequences are extended with filler values to match the longest sequence in the batch, resulting in uniform `(B, T, ...)` tensors.
