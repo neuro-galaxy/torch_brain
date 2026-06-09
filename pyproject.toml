@@ -79,6 +79,11 @@ include = ["torch_brain*"]
 [project.scripts]
 brainsets = "torch_brain.pipeline._cli:cli"
 
+[tool.pytest.ini_options]
+markers = [
+    "ray: tests that start a real Ray cluster (incompatible with pytest-cov; run separately)",
+]
+
 [tool.ruff]
 target-version = "py310"
 exclude = ["brainsets", "temporaldata"] # TODO: remove after cleanup

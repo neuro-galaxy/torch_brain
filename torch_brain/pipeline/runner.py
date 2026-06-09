@@ -82,7 +82,7 @@ def run_pool_in_background(actor_pool: ActorPool, work_items: list[Any]):
         pass
 
 
-def spin_on_tracker(tracker, manifest):
+def spin_on_tracker(tracker, manifest) -> bool:
     """
     Spins until all manifest items are DONE or FAILED, updating and displaying progress/status
     in the terminal.
@@ -119,29 +119,26 @@ def spin_on_tracker(tracker, manifest):
         return False
 
 
-def run():
-    parser = ArgumentParser()
-    parser.add_argument("pipeline_file", type=Path)
-    parser.add_argument("--raw-dir", type=Path, required=True)
-    parser.add_argument("--processed-dir", type=Path, required=True)
-    parser.add_argument("-s", "--single", default=None, type=str)
-    parser.add_argument("-c", "--cores", default=4, type=int)
-    parser.add_argument("--list", action="store_true", help="List manifest and exit")
-    parser.add_argument(
-        "--download-only", action="store_true", help="Download raw data and exit"
-    )
-    args, remaining_args = parser.parse_known_args()
-
-    pipeline_cls = import_pipeline_cls_from_file(args.pipeline_file)
+def run(
+    pipeline_file: Path,
+    raw_dir: Path,
+    processed_dir: Path,
+    single: bool,
+    cores: int,
+    list: bool,
+    download_only: bool,
+    extra_args: list[str],
+):
+    Pipeline = import_pipeline_cls_from_file(pipeline_file)
 
     # Parse pipeline specific arguments
     pipeline_args = None
-    if pipeline_cls.parser is not None:
-        pipeline_args = pipeline_cls.parser.parse_args(remaining_args)
+    if Pipeline.parser is not None:
+        pipeline_args = Pipeline.parser.parse_args(extra_args)
 
-    raw_dir = args.raw_dir / pipeline_cls.brainset_id
+    raw_dir = raw_dir / Pipeline.brainset_id
     raw_dir.mkdir(parents=True, exist_ok=True)
-    manifest = pipeline_cls.get_manifest(
+    manifest = Pipeline.get_manifest(
         raw_dir=raw_dir,
         args=pipeline_args,
     )
@@ -152,7 +149,7 @@ def run():
             print(manifest)
         sys.exit(0)
 
-    processed_dir = args.processed_dir / pipeline_cls.brainset_id
+    processed_dir = args.processed_dir / Pipeline.brainset_id
     processed_dir.mkdir(parents=True, exist_ok=True)
     if args.single is None:
         # Parallel run
@@ -169,7 +166,7 @@ def run():
 
         # 2. Start tracker and actors
         tracker = StatusTracker.remote()
-        actor_cls = ray.remote(pipeline_cls)
+        actor_cls = ray.remote(Pipeline)
         actor_pool = ActorPool(
             [
                 actor_cls.remote(
@@ -190,8 +187,8 @@ def run():
     else:
         # Single run
         manifest_item = manifest.loc[args.single]
-        manifest_item.Index = args.single
-        pipeline = pipeline_cls(
+        manifest_item.Index = args.single  # mock the behavior of .itertuples()
+        pipeline = Pipeline(
             raw_dir=raw_dir,
             processed_dir=processed_dir,
             args=pipeline_args,
@@ -201,4 +198,24 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    parser = ArgumentParser()
+    parser.add_argument("pipeline_file", type=Path)
+    parser.add_argument("--raw-dir", type=Path, required=True)
+    parser.add_argument("--processed-dir", type=Path, required=True)
+    parser.add_argument("-s", "--single", default=None, type=str)
+    parser.add_argument("-c", "--cores", default=4, type=int)
+    parser.add_argument("--list", action="store_true", help="List manifest and exit")
+    parser.add_argument(
+        "--download-only", action="store_true", help="Download raw data and exit"
+    )
+    args, remaining_args = parser.parse_known_args()
+    run(
+        pipeline_file=args.pipeline_file,
+        raw_dir=args.raw_dir,
+        processed_dir=args.processed_dir,
+        single=args.single,
+        cores=args.cores,
+        list=args.list,
+        download_only=args.download_only,
+        extra_args=remaining_args,
+    )
