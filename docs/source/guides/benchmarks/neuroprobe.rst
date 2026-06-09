@@ -6,7 +6,7 @@ neural decoding models on human intracranial EEG (iEEG) data. It defines 15
 tasks spanning audio, language, and vision domains, and supports both binary
 and multiclass classification label modes. This benchmark is derived from the
 `BrainTreebank <https://braintreebank.dev>`_ dataset — 40 hours
-of sEEG recordings from 10 human subjects watching naturalistic movies.
+of sEEG from 10 human subjects watching naturalistic movies.
 
 For full details, see the `Neuroprobe paper <https://arxiv.org/abs/2509.21671>`_
 and the updated `OpenReview submission <https://openreview.net/forum?id=n0WDVWqgzC>`_.
@@ -14,21 +14,21 @@ and the updated `OpenReview submission <https://openreview.net/forum?id=n0WDVWqg
 Preparing the data
 ------------------
 
-Download and process the Neuroprobe data using the brainsets CLI::
+Prepare the underlying brainset with the CLI (see :doc:`../brainsets/getting_started/prepare`)::
 
     brainsets prepare neuroprobe_2025
 
 .. note::
 
    Processing includes downloading raw BrainTreebank data and computing all
-   benchmark splits. This may take several hours depending on your hardware and
-   network connection. Use ``--cores <N>`` to parallelize.
+   benchmark **Splits**. This may take several hours depending on your hardware
+   and network connection. Use ``--cores <N>`` to parallelize.
 
 
 Key concepts
 ------------
 
-**Tasks.** Each task uses a 1-second window of neural data aligned to a word
+**Tasks.** Each task uses a 1-second **Window** of neural data aligned to a word
 onset and can be evaluated in either binary or multiclass label mode.
 Available tasks:
 
@@ -159,19 +159,18 @@ Visual tasks
 Use ``label_mode="multiclass"`` when constructing
 :class:`~torch_brain.datasets.Neuroprobe2025` to load multiclass splits.
 
-**Regimes (split types).** Neuroprobe defines three evaluation regimes that test
-different levels of generalization:
+**Regimes.** Neuroprobe defines three evaluation regimes corresponding to
+different **Split Strategy** axes:
 
-- **SS-SM** (*within-session*): Train and test on data from the same subject
-  watching the same movie. Uses 2-fold cross-validation on contiguous blocks to
-  prevent temporal autocorrelation leakage.
-- **SS-DM** (*cross-session*): Train on one movie session and test on a
-  different movie from the same subject.
-- **DS-DM** (*cross-subject*): Train on a fixed anchor recording (Subject 2,
-  Trial 4) and test on a different subject and movie. This is the most
-  challenging regime.
+- **SS-SM** (intrasession): Train and test on the same subject watching the
+  same movie. Uses 2-fold cross-validation on contiguous blocks to prevent
+  temporal autocorrelation leakage.
+- **SS-DM** (intersession): Train on one movie session and test on a different
+  movie from the same subject.
+- **DS-DM** (intersubject): Train on a fixed anchor session (Subject 2,
+  Trial 4) and test on a different subject and movie.
 
-The default leaderboard ranking uses the **cross-session (SS-DM)** split.
+The default leaderboard ranking uses the **cross-session (SS-DM)** regime.
 
 **Subset tiers.** Three subset sizes control the number of subject/trial pairs
 and electrodes included:
@@ -191,9 +190,9 @@ evaluation protocol and leaderboard reporting guidelines.
 Loading benchmark splits
 ------------------------
 
-The :class:`~torch_brain.datasets.Neuroprobe2025` class handles split resolution
-automatically. Specify the benchmark parameters to get the correct train/test
-partition:
+The :class:`~torch_brain.datasets.Neuroprobe2025` **Dataset** handles split
+resolution automatically. Specify the benchmark parameters to get the correct
+train/test partition:
 
 .. code-block:: python
 
@@ -219,8 +218,8 @@ partition:
         regime="SS-DM",
     )
 
-The constructor resolves which recordings to load and which channel subset
-and time intervals to use based on the requested split.
+The constructor resolves which Sessions to load and which channel subset and
+**Sampling Intervals** to use based on the requested split.
 
 **Within-session (SS-SM)** uses 2-fold cross-validation. You can iterate over
 folds:
@@ -253,16 +252,16 @@ folds:
 Accessing neural data and labels
 ---------------------------------
 
-Each recording exposes sEEG data as a :obj:`~torch_brain.data.RegularTimeSeries`
-sampled at 2048 Hz, along with split-specific sampling intervals and
+Each Session exposes sEEG data as a :obj:`~torch_brain.data.RegularTimeSeries`
+sampled at 2048 Hz, along with split-specific **Sampling Intervals** and
 channel inclusion masks:
 
 .. code-block:: python
 
     intervals = train_ds.get_sampling_intervals()
     for recording_id, interval in intervals.items():
-        rec = train_ds.get_recording(recording_id)
-        print(rec.seeg_data.data.shape)
+        session = train_ds.get_recording(recording_id)
+        print(session.seeg_data.data.shape)
         print(interval.start[:5], interval.end[:5])
         print(interval.label[:5])
 
@@ -280,11 +279,11 @@ via :meth:`~torch_brain.datasets.Neuroprobe2025.get_channel_metadata`:
     print(meta["included_mask"])    # benchmark electrode subset
 
 
-Loading raw recordings
-----------------------
+Loading full Sessions
+---------------------
 
-If you want access to full continuous recordings without benchmark splits
-(e.g. for pre-training), pass explicit ``recording_ids``:
+For access to full continuous Sessions without benchmark splits (e.g. for
+pre-training), pass explicit ``recording_ids``:
 
 .. code-block:: python
 
@@ -292,8 +291,7 @@ If you want access to full continuous recordings without benchmark splits
 
     ds = Neuroprobe2025(recording_ids=["sub_1_trial001", "sub_2_trial004"])
 
-In this mode, no split/task/regime resolution is performed; you get the
-complete neural data for the requested sessions.
+In this mode, no split/task/regime resolution is performed.
 
 
 Running a complete benchmark evaluation

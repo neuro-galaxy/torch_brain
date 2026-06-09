@@ -172,4 +172,12 @@ Download and process a single brainset.
 
     Print debugging information.
 
+``--on-version-mismatch`` *policy*
+
+    OpenNeuro pipelines only. Behavior when the pipeline's ``origin_version``
+    differs from the latest OpenNeuro snapshot: ``prompt`` (default, interactive
+    confirmation; fails in non-interactive mode), ``continue`` (warn and proceed),
+    or ``abort`` (raise immediately). Regardless of policy, downloads use the
+    latest snapshot.
+
 Any additional arguments are passed through to the pipeline.
