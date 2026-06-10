@@ -29,7 +29,7 @@ cd torch_brain
 We strongly recommend using a virtual environment to manage dependencies and
 avoid conflicts with your system Python.
 
-> [!NOTE]
+> [!TIP]
 > The instructions below use standard Python tools (`venv` and `pip`), but feel
 > free to use your preferred package manager (such as **Conda**, **uv**, or
 > **Poetry**) if you are comfortable with them.
