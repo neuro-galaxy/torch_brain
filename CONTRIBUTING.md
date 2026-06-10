@@ -181,8 +181,8 @@ instead of just `list` or `Any`).
 
 ### Documentation Standards
 
-All public-facing API (functions, classes, methods, constants) **must** have
-a docstring.
+All public-facing API (functions, classes, methods) **must** have a docstring.
+Public constants should be documented in the module docstring or in `docs/source`.
 
 A good docstring looks like the following:
 
