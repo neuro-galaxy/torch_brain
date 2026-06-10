@@ -199,10 +199,10 @@ def my_new_function(arg1: Tensor, arg2: str = "abc") -> Tensor:
        Write any edge-cases as notes
 
     Args:
-        arg1: short description for argument 1 :math:`(N, D)`
-            # use :math: to describe shape expectations for arrays/tensors
+        arg1: short description for argument 1 :math:`(N, D)`.
+            Use :math: to describe shape expectations for arrays/tensors.
         arg2: short description for argument 2 (default "abc").
-            # always write default value in the docstring
+            Always include the default value in the docstring.
 
     Returns:
         Concise description of what this function returns
