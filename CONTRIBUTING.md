@@ -85,7 +85,7 @@ git checkout -b my-username/my-new-feature
 directory. This is where you will add features or fix bugs.
 
 - **Models**: New models are added to `torch_brain/models`. If you're
-adding a model, we would also encourage adding a _minimal_ training usage
+adding a model, we would also encourage adding a _minimal_ training example
 in the `examples/` directory.
 
 - **Brainsets**: New brainset pipelines go in
