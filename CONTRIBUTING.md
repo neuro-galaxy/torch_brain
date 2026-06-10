@@ -216,8 +216,8 @@ def my_new_function(arg1: Tensor, arg2: str = "abc") -> Tensor:
 - Docstrings should concisely describe the component's purpose, arguments,
 return values, and important shape conventions (for tensors/arrays).
 
-- Every argument must be listed in the docstring with its type and a
-description of its role.
+- Every argument must be listed in the docstring with a description of its role.
+  (Types should come from the signature's type hints.)
 
 - If a function is non-trivial (i.e., it involves complex logic, specific
 tensor shapes, or edge cases), provide a functional usage example.
