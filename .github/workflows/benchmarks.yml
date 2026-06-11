@@ -3,6 +3,11 @@ name: Benchmarks
 on:
   pull_request:
     types: [opened, reopened, synchronize]
+    paths:
+      - torch_brain/data/**
+      - pyproject.toml
+      - scripts/data_benchmarks/**
+      - .github/workflows/benchmarks.yml
 
 permissions:
   contents: read
