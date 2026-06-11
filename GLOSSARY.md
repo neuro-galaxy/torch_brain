@@ -56,10 +56,6 @@ A putative neuron isolated from a multi-neuron electrophysiological recording, t
 A source of 1D time-series data stream within an array (e.g., a row in an EEG matrix). Each Channel has a specific Modality but does not have to be limited to brain data (e.g., stimulus triggers, eye tracking). Channel data is typically stored as a RegularTimeSeries within a Data object.  
 *Avoid*: Stream, track, trace
 
-**Device**:
-The physical hardware used to record the data (e.g., Neuropixels probe, Utah array, EEG cap). A Device hosts one or more Units and/or Channels.
-*Avoid*: Probe, hardware
-
 **Modality**:
 The semantic meaning and structural specification of a given Channel, Unit, or output. It dictates the data type (e.g., continuous, discrete), dimensions, and appropriate loss function if used as a Readout target (e.g., `cursor_velocity_2d`, `lfp`, `eeg`, `spikes`).
 *Avoid*: Feature type, signal type
@@ -81,16 +77,6 @@ A component that generates indices (session ID + time range) defining which Wind
 **Slicing**:
 The process of extracting a specific `[start, end)` time range from a Data object, producing a new Data object for that Window. Can be done deterministically (to isolate Trials) or stochastically (to generate random Windows for training diversity).
 *Avoid*: Cropping, chopping, segmenting, patches
-
-### Model Architecture
-
-**Latent**:
-A learned, structural Token used by the model to query or compress information across time. Unlike input Tokens derived from biological signals (Units, Channels), Latents are not tied to any specific data source and exist purely within the model's internal representational space.
-*Avoid*: Query token, memory token
-
-**Embedding**:
-A learnable continuous vector representation that maps discrete identifiers (such as Channel IDs, Unit IDs, or Session IDs) into a unified, fixed-dimensional dense hidden space.
-*Avoid*: Latent vector, representation map, feature projection, weight vector
 
 ### Operations & Evaluation Lifecycle
 
