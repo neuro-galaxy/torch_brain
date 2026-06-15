@@ -95,7 +95,7 @@ def _removed_import_error(name):
     raise ImportError(
         f"`{name}` was removed in v0.2.0. It relied on modules that are no longer "
         "supported (`torch_brain.nn.MultitaskReadout`, `torch_brain.nn.loss`). "
-        "See `examples/poyo/` for a current end-to-end training and evaluation setup, "
+        "See `examples/poyo/` for a reference end-to-end training and evaluation setup, "
         "and `howto/MIGRATE_TO_v0.2.md` for the full list of removed APIs."
     )
 
