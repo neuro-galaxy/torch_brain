@@ -18,7 +18,7 @@ an example of how these are used in practice.
 
    import torch
    from torch_brain.datasets import Dataset
-   from torch_brain.batching import collate, chain, pad
+   from torch_brain.batching import collate, chain, pad, track_mask
 
    class MyDataset(Dataset):
        ...
