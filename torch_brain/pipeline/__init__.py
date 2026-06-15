@@ -2,6 +2,7 @@
 
 **User guide.** See :ref:`brainsets_guide` guide for more information.
 """
+
 __all__ = [
     "BrainsetPipeline",
 ]

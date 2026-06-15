@@ -82,13 +82,12 @@ __api_ref__ = {
             "title": "Collate Function",
             "autosummary": [
                 "collate",
-            ]
+            ],
         },
         {
             "title": "Collation Recipes",
             "description": (
-                "Wrap objects with these functions "
-                "to collate them in different ways."
+                "Wrap objects with these functions to collate them in different ways."
             ),
             "autosummary": [
                 "chain",
