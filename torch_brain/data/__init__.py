@@ -1,5 +1,6 @@
-"""
-**User guide.** See :ref:`data_guide` section for further details.
+"""Core data structures for representing neural and behavioral data.
+
+**User guide.** See :ref:`data_guide` guide for further details.
 """
 
 from .arraydict import ArrayDict, LazyArrayDict
@@ -39,7 +40,40 @@ __api_ref__ = {
     "description": None,
     "sections": [
         {
-            "autosummary": __all__,
+            "title": "Core Objects",
+            "autosummary": [
+                "ArrayDict",
+                "Data",
+                "Interval",
+                "IrregularTimeSeries",
+                "RegularTimeSeries",
+            ],
+        },
+        {
+            "title": "Lazy Variants",
+            "autosummary": [
+                "LazyArrayDict",
+                "LazyInterval",
+                "LazyIrregularTimeSeries",
+                "LazyRegularTimeSeries",
+            ],
+        },
+        {
+            "title": "Description Containers",
+            "autosummary": [
+                "BrainsetDescription",
+                "DeviceDescription",
+                "SessionDescription",
+                "SubjectDescription",
+            ],
+        },
+        {
+            "title": "Utility Functions",
+            "autosummary": ["concat"],
+        },
+        {
+            "title": "Constants",
+            "autosummary": ["serialize_fn_map"],
         },
     ],
 }
