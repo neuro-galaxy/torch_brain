@@ -41,6 +41,7 @@ __api_ref__ = {
     "sections": [
         {
             "title": "Core Objects",
+            "template": "data_objects.rst",
             "autosummary": [
                 "ArrayDict",
                 "Data",
@@ -51,6 +52,7 @@ __api_ref__ = {
         },
         {
             "title": "Lazy Variants",
+            "template": "data_objects.rst",
             "autosummary": [
                 "LazyArrayDict",
                 "LazyInterval",
