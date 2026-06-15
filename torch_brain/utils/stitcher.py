@@ -99,6 +99,7 @@ def _removed_import_error(name):
         "and `howto/MIGRATE_TO_v0.2.md` for the full list of removed APIs."
     )
 
+
 class DecodingStitchEvaluator:
     def __init__(self, *args, **kwargs):
         _removed_import_error("DecodingStitchEvaluator")
