@@ -1,6 +1,6 @@
 """Core data structures for representing neural and behavioral data.
 
-**User guide.** See :ref:`data_guide` guide for further details.
+See :ref:`data_guide` for further details.
 """
 
 from .arraydict import ArrayDict, LazyArrayDict

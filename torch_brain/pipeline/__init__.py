@@ -1,6 +1,6 @@
 """Tools for defining pipelines that create brainsets.
 
-**User guide.** See :ref:`brainsets_guide` guide for more information.
+See :ref:`brainsets_guide` for more information.
 """
 
 __all__ = [
