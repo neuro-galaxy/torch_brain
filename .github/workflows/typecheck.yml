@@ -2,7 +2,7 @@ name: Type Checking
 
 on:
   push:
-    branches: [ "main", "vinam/merger" ] #TODO remove vinam_merger after merge
+    branches: [ "main" ]
   pull_request:
     branches: [ "**" ]
 
