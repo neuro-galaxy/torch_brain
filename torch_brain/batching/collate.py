@@ -114,7 +114,10 @@ Padded2dObject = namedtuple("Padded2dObject", ["obj"])
 
 
 def pad2d(obj):
-    """
+    r"""Wrap an object to specify that it (or any of its members) should be padded to
+    the maximum length in the batch along its first two dimensions. This function is
+    similar to :obj:`pad` except that padding is applied in two dimensions.
+
     Args:
         obj: Can be tensors, numpy arrays, lists, tuples, or dictionaries.
     """
@@ -169,7 +172,11 @@ Padded2d8Object = namedtuple("Padded2d8Object", ["obj"])
 
 
 def pad2d8(obj):
-    """
+    r"""Wrap an object to specify that it (or any of its members) should be padded to
+    the maximum length in the batch along its first two dimensions. This function is
+    similar to :obj:`pad2d` except that the inner padding length is rounded up to the
+    nearest multiple of 8.
+
     Args:
         obj: Can be tensors, numpy arrays, lists, tuples, or dictionaries.
     """

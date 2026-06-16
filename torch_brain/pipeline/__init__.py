@@ -1,3 +1,8 @@
+"""Tools for defining pipelines that create brainsets.
+
+See :ref:`brainsets_guide` for more information.
+"""
+
 __all__ = [
     "BrainsetPipeline",
 ]

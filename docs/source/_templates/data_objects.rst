@@ -6,4 +6,4 @@
    :show-inheritance:
    :members:
    :inherited-members:
-   :member-order: bysource
+   :special-members: __getitem__, __len__, __contains__
