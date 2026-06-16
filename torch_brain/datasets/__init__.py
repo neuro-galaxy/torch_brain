@@ -16,6 +16,7 @@ __all__ = [
     "ChurchlandShenoyNeural2012",
     "OdohertySabesNonhuman2017",
     "VollanMoserAlternating2025",
+    "ShiraziHBN",
     "ShiraziHBNR1DS005505",
     "KlinzingSleepDS005555",
     "AllenVisualCodingOphys2016",
@@ -44,6 +45,7 @@ from .OdohertySabesNonhuman2017 import OdohertySabesNonhuman2017
 from .OpenNeuroDataset import OpenNeuroDataset, OpenNeuroSplitType
 from .PeiPandarinathNLB2021 import PeiPandarinathNLB2021
 from .PerichMillerPopulation2018 import PerichMillerPopulation2018
+from .ShiraziHBN import ShiraziHBN
 from .ShiraziHBNR1DS005505 import ShiraziHBNR1DS005505
 from .VollanMoserAlternating2025 import VollanMoserAlternating2025
 
@@ -113,6 +115,7 @@ __api_ref__ = {
                 "ChurchlandShenoyNeural2012",
                 "OdohertySabesNonhuman2017",
                 "VollanMoserAlternating2025",
+                "ShiraziHBN",
                 "ShiraziHBNR1DS005505",
             ],
         },
