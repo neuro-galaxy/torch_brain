@@ -62,17 +62,19 @@ Base classes to ease creation of PyTorch-compatible Datasets for your data.
 you to sample *time-slices* of your data. This is a major deviation from the
 standard :class:`torch.utils.data.Dataset`, which is indexed by integers. To
 achieve arbitrary time-slice based access, our Dataset class is indexed by
-three things:
+a :class:`DatasetIndex` containing three attributes:
 
-1. The recording id from which you want the slice,
-2. Start time of the slice, and
-3. End time of the slice
+.. code-block:: python
 
-These are put into a :class:`DatasetIndex` object, which is then used to index
-the :class:`Dataset`. Since different machine learning applications require
-different ways of sampling, we provide a collection of :ref:`samplers
-<samplers_ref>` which are responsible for creating these :class:`DatasetIndex`
-objects.
+    DatasetIndex(
+        recording_id=...,  # The recording ID from which we want the slice
+        start=...,         # Start time of the slice
+        end=...,           # End time of the slice
+    )
+
+Since different machine learning applications require different ways of
+sampling, we provide a collection of :ref:`samplers <samplers_ref>` which are
+responsible for creating these :class:`DatasetIndex` objects.
 
 See
 :doc:`NLB Maze minimal example </generated/notebooks/nlb_maze_minimal_example>`
