@@ -66,7 +66,6 @@ jobs:
     - name: Download kemp_sleep_edf_2013
       id: kemp_sleep_edf_2013
       continue-on-error: true
-      if: matrix.python-version != '3.9'
       run: brainsets prepare kemp_sleep_edf_2013 -s sleep_cassette_SC4002E0-PSG
 
     # TODO: SSL cert issue with data-proxy.ebrains.eu, re-enable when fixed
