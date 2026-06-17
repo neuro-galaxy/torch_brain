@@ -18,8 +18,6 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-    - uses: actions/checkout@v4
-
     - name: Install uv
       uses: astral-sh/setup-uv@v5
       with:
@@ -30,10 +28,21 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install the project
-      run: uv sync --all-extras
+    - name: Install the project from git ref
+      # For PRs, we use the head repo URL and SHA to support fork PRs where the
+      # commit doesn't exist in the base repo. For pushes, we use the base repo
+      # URL and the pushed SHA directly.
+      run: |
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          REPO_URL="${{ github.event.pull_request.head.repo.clone_url }}"
+          REF="${{ github.event.pull_request.head.sha }}"
+        else
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
+          REF="${{ github.sha }}"
+        fi
+        uv pip install --system "torch_brain @ git+${REPO_URL}@${REF}"
 
     - name: Download pei_pandarinath_nlb_2021
       run: |
-        uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
-        uv run brainsets prepare pei_pandarinath_nlb_2021
+        brainsets config set --raw-dir data/raw --processed-dir data/processed
+        brainsets prepare pei_pandarinath_nlb_2021
