@@ -36,7 +36,7 @@ jobs:
           REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
           REF="${{ github.sha }}"
         fi
-        uv pip install --system "torch_brain[dev] @ git+${REPO_URL}@${REF}"
+        uv pip install --system "torch_brain @ git+${REPO_URL}@${REF}"
 
     - name: Configure brainsets
       run: brainsets config set --raw-dir data/raw --processed-dir data/processed
