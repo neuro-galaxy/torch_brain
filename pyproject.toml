@@ -84,6 +84,9 @@ target-version = "py310"
 exclude = ["brainsets", "temporaldata"] # TODO: remove after cleanup
 extend-exclude = ["*.ipynb"]
 
+[tool.uv]
+constraint-dependencies = ["greenlet<3.5.2"]
+
 [tool.ruff.lint]
 select = ["I", "F", "UP", "B", "E"]
 ignore = ["E501"]

@@ -27,7 +27,7 @@ jobs:
         python-version: "3.10"
 
     - name: Install the project
-      run: uv sync --all-extras --frozen
+      run: uv sync --all-extras
 
     - name: Configure brainsets
       run: uv run brainsets config set --raw-dir data/raw --processed-dir data/processed
