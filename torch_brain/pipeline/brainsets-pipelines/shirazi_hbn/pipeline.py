@@ -50,8 +50,8 @@ class Pipeline(OpenNeuroPipeline):
     brainset_id = "shirazi_hbn"
     dataset_id = "ds005505"
     description = (
-        "Healthy Brain Network (HBN) EEG dataset combining all 11 data releases."
-        "Contains recordings from participants performing various passive"
+        "Healthy Brain Network (HBN) EEG dataset combining all 11 data releases. "
+        "Contains recordings from participants performing various passive "
         "and active tasks including resting state, movie watching, "
         "and cognitive tasks."
     )
@@ -72,13 +72,16 @@ class Pipeline(OpenNeuroPipeline):
             releases = RELEASES
 
         all_manifests = []
-        for release_id, dataset_id in releases.items():
-            cls.dataset_id = dataset_id
-            manifest = super().get_manifest(raw_dir, args)
-            manifest["release_id"] = release_id
-            manifest["release_dataset_id"] = dataset_id
-            all_manifests.append(manifest)
-
+        original_dataset_id = cls.dataset_id
+        try:
+            for release_id, dataset_id in releases.items():
+                cls.dataset_id = dataset_id
+                manifest = super().get_manifest(raw_dir, args)
+                manifest["release_id"] = release_id
+                manifest["release_dataset_id"] = dataset_id
+                all_manifests.append(manifest)
+        finally:
+            cls.dataset_id = original_dataset_id
         return pd.concat(all_manifests)
 
     def _run_item(self, manifest_item):
