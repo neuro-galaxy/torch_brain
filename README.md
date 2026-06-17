@@ -44,7 +44,7 @@ models.
 pip install torch torch_brain
 ```
 
-> [!NOTE]
+> [!CAUTION]
 > Until we release `v0.2.0` on PyPI, you will have to install from GitHub
 > itself. See the [releases page](https://github.com/neuro-galaxy/torch_brain/releases)
 > for updates on releases.

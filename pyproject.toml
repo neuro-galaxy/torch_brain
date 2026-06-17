@@ -92,7 +92,7 @@ ignore = ["E501"]
 python-version = "3.10"
 
 [tool.ty.src]
-include = ["torch_brain/data", "tests/data", "torch_brain/models"]
+include = ["torch_brain/data", "tests/data"]
 
 [tool.ty.rules]
 # Change these to "error" over time
