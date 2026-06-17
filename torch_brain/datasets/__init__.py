@@ -113,7 +113,6 @@ __api_ref__ = {
                 "ChurchlandShenoyNeural2012",
                 "OdohertySabesNonhuman2017",
                 "VollanMoserAlternating2025",
-                "ShiraziHBN",
             ],
         },
         {
@@ -136,6 +135,7 @@ __api_ref__ = {
             "template": "dataset.rst",
             "autosummary": [
                 "KlinzingSleepDS005555",
+                "ShiraziHBN",
             ],
         },
         {
