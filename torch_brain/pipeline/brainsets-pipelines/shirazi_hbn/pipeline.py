@@ -50,8 +50,8 @@ class Pipeline(OpenNeuroPipeline):
     brainset_id = "shirazi_hbn"
     dataset_id = "ds005505"
     description = (
-        "Healthy Brain Network (HBN) EEG dataset combining all 11 data releases."
-        "Contains recordings from participants performing various passive"
+        "Healthy Brain Network (HBN) EEG dataset combining all 11 data releases. "
+        "Contains recordings from participants performing various passive "
         "and active tasks including resting state, movie watching, "
         "and cognitive tasks."
     )
@@ -84,6 +84,8 @@ class Pipeline(OpenNeuroPipeline):
     def _run_item(self, manifest_item):
 
         release_id = manifest_item.release_id
+        original_dataset_id = self.dataset_id
+        original_brainset_id = self.brainset_id
         original_raw_dir = self.raw_dir
         original_processed_dir = self.processed_dir
 
@@ -100,10 +102,12 @@ class Pipeline(OpenNeuroPipeline):
         try:
             super()._run_item(manifest_item)
         finally:
+            self.dataset_id = original_dataset_id
+            self.brainset_id = original_brainset_id
             self.raw_dir = original_raw_dir
             self.processed_dir = original_processed_dir
             if original_processed_dir.exists() and not any(
-                original_processed_dir.iterdir()
+
             ):
                 original_processed_dir.rmdir()
 
