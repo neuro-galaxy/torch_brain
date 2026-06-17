@@ -34,6 +34,8 @@ RELEASES = {
     11: "ds005516",
 }
 
+# Channels remapping are done according to the original dataset channel
+# description files associated with each recording (*_channels.tsv)
 TYPE_CHANNELS_REMAPPING = {"EEG": [f"E{i}" for i in range(1, 129)] + ["Cz"]}
 
 parser = ArgumentParser(parents=[base_openneuro_parser], add_help=False)
