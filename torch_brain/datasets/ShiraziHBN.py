@@ -1,12 +1,16 @@
+import re
 from collections.abc import Callable
+from pathlib import Path
 
-from .nested import NestedDataset
 from .OpenNeuroDataset import OpenNeuroDataset, OpenNeuroSplitType
 
 RELEASES = tuple(range(1, 12))
 
+# Processed files are named "HBN_R{release_id}_{recording_id}.h5" by the pipeline.
+_RELEASE_PREFIX_RE = re.compile(r"^HBN_R(\d+)_")
 
-class ShiraziHBN(NestedDataset):
+
+class ShiraziHBN(OpenNeuroDataset):
     """
     Healthy Brain Network (HBN) EEG Dataset combining all 11 data releases.
 
@@ -24,26 +28,21 @@ class ShiraziHBN(NestedDataset):
 
             brainsets prepare shirazi_hbn --release <release_id>
 
-    Processed recordings are stored per release in ``shirazi_hbn_r1`` through
-    ``shirazi_hbn_r11`` under the root directory. This dataset composes those
-    release directories into a single interface.
-
-    Each dataset instance uses a split strategy (`split_type`) and can optionally be
-    restricted to specific recordings via recording_ids.
-    Exposed ``recording_ids`` take the form ``"r<release_id>/<recording_id>"``
-    (for example, ``"r1/sub-NDARAC904DMU_task-DespicableMe"``).
+    All releases are processed as a single brainset: every processed recording is
+    stored in one directory (``shirazi_hbn``) and named with a release prefix,
+    ``HBN_R<release_id>_<recording_id>.h5``.
 
     Args:
         root: Root directory containing processed HBN artifacts.
         split_type: The split type describing train/valid/test regime.
         releases: List of release IDs (1-11) to include. If omitted, all releases
             are loaded.
-        recording_ids: List of explicit recording IDs to load. IDs may be either
-            bare recording names (matched across all selected releases) or
-            release-prefixed names of the form ``"r<release_id>/<recording_id>"``.
-            If omitted, the dataset uses split-based recording selection.
+        recording_ids: List of recording IDs (file stems) to load. If omitted, all
+            recordings of the selected releases are loaded.
         transform: Optional transform to apply to samples.
-        **kwargs: Additional keyword arguments forwarded to each release
+        dirname: Name of the processed dataset directory under ``root``.
+            Defaults to ``"shirazi_hbn"``.
+        **kwargs: Additional keyword arguments forwarded to
             :class:`OpenNeuroDataset`.
 
     **References**
@@ -66,54 +65,39 @@ class ShiraziHBN(NestedDataset):
         releases: list[int] | None = None,
         recording_ids: list[str] | None = None,
         transform: Callable | None = None,
+        dirname: str = "shirazi_hbn",
         **kwargs,
     ):
-        if releases is None:
-            releases = list(RELEASES)
-        else:
+        if releases is not None:
             invalid = [release for release in releases if release not in RELEASES]
             if invalid:
                 raise ValueError(
                     f"Invalid release IDs: {invalid}. Releases must be in {RELEASES}."
                 )
+        self.releases = list(releases) if releases is not None else list(RELEASES)
 
-        prefixed_recording_ids: dict[int, list[str]] = {
-            release_id: [] for release_id in releases
-        }
-        shared_recording_ids: list[str] = []
-        if recording_ids is not None:
-            for recording_id in recording_ids:
-                if "/" in recording_id:
-                    release_name, bare_recording_id = recording_id.split("/", 1)
-                    if not release_name.startswith("r"):
-                        raise ValueError(
-                            f"Invalid recording_id '{recording_id}'. Expected format "
-                            "'r<release_id>/<recording_id>'."
-                        )
-                    release_id = int(release_name[1:])
-                    if release_id not in prefixed_recording_ids:
-                        raise ValueError(
-                            f"Recording '{recording_id}' references release "
-                            f"{release_id}, which is not included in releases={releases}."
-                        )
-                    prefixed_recording_ids[release_id].append(bare_recording_id)
-                else:
-                    shared_recording_ids.append(recording_id)
-
-        datasets = {}
-        for release_id in releases:
-            release_name = f"r{release_id}"
-            release_recording_ids = (
-                prefixed_recording_ids[release_id] + shared_recording_ids
+        # When a subset of releases is requested (and no explicit recordings are
+        # given), select the matching files by their "HBN_R{release_id}_" prefix.
+        # Otherwise, defer to OpenNeuroDataset (loads all *.h5 / the given ids).
+        if recording_ids is None and releases is not None:
+            allowed = set(self.releases)
+            dataset_dir = Path(root) / dirname
+            recording_ids = sorted(
+                path.stem
+                for path in dataset_dir.glob("*.h5")
+                if (match := _RELEASE_PREFIX_RE.match(path.stem))
+                and int(match.group(1)) in allowed
             )
-            datasets[release_name] = OpenNeuroDataset(
-                root=root,
-                dataset_dir=f"shirazi_hbn_{release_name}",
-                split_type=split_type,
-                recording_ids=release_recording_ids or None,
-                **kwargs,
-            )
+            if not recording_ids:
+                raise ValueError(
+                    f"No recordings found for releases {self.releases} in {dataset_dir}."
+                )
 
-        self.split_type = split_type
-        self.releases = releases
-        super().__init__(datasets=datasets, transform=transform)
+        super().__init__(
+            root=root,
+            dataset_dir=dirname,
+            split_type=split_type,
+            recording_ids=recording_ids,
+            transform=transform,
+            **kwargs,
+        )
