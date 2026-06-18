@@ -136,6 +136,16 @@ class IrregularTimeSeries(ArrayDict):
         if timekey not in self._timekeys:
             self._timekeys.append(timekey)
 
+    def __delattr__(self, name):
+        if name == "timestamps":
+            raise AttributeError(
+                f"Cannot delete 'timestamps' from {self.__class__.__name__}."
+            )
+
+        super().__delattr__(name)
+        if name in self._timekeys:
+            self._timekeys.remove(name)
+
     def __setattr__(self, name, value):
         if name == "domain":
             if not isinstance(value, Interval):

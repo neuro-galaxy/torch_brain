@@ -36,8 +36,8 @@ def test_data():
         session_id="session_0",
         domain=Interval.from_list([(0, 3)]),
         spikes=IrregularTimeSeries(
-            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
-            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+            unit_index=[0, 0, 1, 0, 1, 2],
             waveforms=np.zeros((6, 48)),
             domain="auto",
         ),
@@ -46,14 +46,14 @@ def test_data():
             sampling_rate=250.0,
         ),
         units=ArrayDict(
-            id=np.array(["unit_0", "unit_1", "unit_2"]),
-            brain_region=np.array(["M1", "M1", "PMd"]),
+            id=["unit_0", "unit_1", "unit_2"],
+            brain_region=["M1", "M1", "PMd"],
         ),
         trials=Interval(
-            start=np.array([0, 1, 2]),
-            end=np.array([1, 2, 3]),
-            go_cue_time=np.array([0.5, 1.5, 2.5]),
-            drifting_gratings_dir=np.array([0, 45, 90]),
+            start=[0, 1, 2],
+            end=[1, 2, 3],
+            go_cue_time=[0.5, 1.5, 2.5],
+            drifting_gratings_dir=[0, 45, 90],
         ),
         drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
     )
@@ -89,10 +89,10 @@ def test_data_copy():
     data = Data(
         session_id="session_0",
         domain=Interval.from_list([(0, 3)]),
-        some_numpy_array=np.array([1, 2, 3]),
+        some_numpy_array=[1, 2, 3],
         spikes=IrregularTimeSeries(
-            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
-            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+            unit_index=[0, 0, 1, 0, 1, 2],
             waveforms=np.zeros((6, 48)),
             domain="auto",
         ),
@@ -101,14 +101,14 @@ def test_data_copy():
             sampling_rate=250.0,
         ),
         units=ArrayDict(
-            id=np.array(["unit_0", "unit_1", "unit_2"]),
-            brain_region=np.array(["M1", "M1", "PMd"]),
+            id=["unit_0", "unit_1", "unit_2"],
+            brain_region=["M1", "M1", "PMd"],
         ),
         trials=Interval(
-            start=np.array([0, 1, 2]),
-            end=np.array([1, 2, 3]),
-            go_cue_time=np.array([0.5, 1.5, 2.5]),
-            drifting_gratings_dir=np.array([0, 45, 90]),
+            start=[0, 1, 2],
+            end=[1, 2, 3],
+            go_cue_time=[0.5, 1.5, 2.5],
+            drifting_gratings_dir=[0, 45, 90],
         ),
         drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
     )
@@ -142,10 +142,10 @@ def test_lazy_data_copy(test_filepath):
     data = Data(
         session_id="session_0",
         domain=Interval.from_list([(0, 3)]),
-        some_numpy_array=np.array([1, 2, 3]),
+        some_numpy_array=[1, 2, 3],
         spikes=IrregularTimeSeries(
-            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
-            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+            unit_index=[0, 0, 1, 0, 1, 2],
             waveforms=np.zeros((6, 48)),
             domain="auto",
         ),
@@ -154,14 +154,14 @@ def test_lazy_data_copy(test_filepath):
             sampling_rate=250.0,
         ),
         units=ArrayDict(
-            id=np.array(["unit_0", "unit_1", "unit_2"]),
-            brain_region=np.array(["M1", "M1", "PMd"]),
+            id=["unit_0", "unit_1", "unit_2"],
+            brain_region=["M1", "M1", "PMd"],
         ),
         trials=Interval(
-            start=np.array([0, 1, 2]),
-            end=np.array([1, 2, 3]),
-            go_cue_time=np.array([0.5, 1.5, 2.5]),
-            drifting_gratings_dir=np.array([0, 45, 90]),
+            start=[0, 1, 2],
+            end=[1, 2, 3],
+            go_cue_time=[0.5, 1.5, 2.5],
+            drifting_gratings_dir=[0, 45, 90],
         ),
         drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
     )
@@ -210,10 +210,10 @@ def test_data_absolute_start(test_filepath):
     data = Data(
         session_id="session_0",
         domain=Interval.from_list([(0, 3)]),
-        some_numpy_array=np.array([1, 2, 3]),
+        some_numpy_array=[1, 2, 3],
         spikes=IrregularTimeSeries(
-            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
-            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+            unit_index=[0, 0, 1, 0, 1, 2],
             waveforms=np.zeros((6, 48)),
             domain="auto",
         ),
@@ -222,14 +222,14 @@ def test_data_absolute_start(test_filepath):
             sampling_rate=250.0,
         ),
         units=ArrayDict(
-            id=np.array(["unit_0", "unit_1", "unit_2"]),
-            brain_region=np.array(["M1", "M1", "PMd"]),
+            id=["unit_0", "unit_1", "unit_2"],
+            brain_region=["M1", "M1", "PMd"],
         ),
         trials=Interval(
-            start=np.array([0, 1, 2]),
-            end=np.array([1, 2, 3]),
-            go_cue_time=np.array([0.5, 1.5, 2.5]),
-            drifting_gratings_dir=np.array([0, 45, 90]),
+            start=[0, 1, 2],
+            end=[1, 2, 3],
+            go_cue_time=[0.5, 1.5, 2.5],
+            drifting_gratings_dir=[0, 45, 90],
         ),
         drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
     )
@@ -279,8 +279,8 @@ def test_timeless_data(test_filepath):
     data = Data(
         subject=subject,
         spikes=IrregularTimeSeries(
-            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
-            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+            unit_index=[0, 0, 1, 0, 1, 2],
             waveforms=np.zeros((6, 48)),
             domain="auto",
         ),
@@ -309,7 +309,7 @@ def test_precision(caplog):
     with caplog.at_level(logging.WARNING):
         spikes = IrregularTimeSeries(
             timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3], dtype=np.float64),
-            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            unit_index=[0, 0, 1, 0, 1, 2],
             waveforms=np.zeros((6, 48)),
             domain="auto",
         )
@@ -318,7 +318,7 @@ def test_precision(caplog):
     with caplog.at_level(logging.WARNING):
         spikes = IrregularTimeSeries(
             timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3], dtype=np.float16),
-            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            unit_index=[0, 0, 1, 0, 1, 2],
             waveforms=np.zeros((6, 48)),
             domain="auto",
         )
@@ -329,10 +329,10 @@ def test_precision(caplog):
 
     with caplog.at_level(logging.WARNING):
         trials = Interval(
-            start=np.array([0, 1, 2]),
-            end=np.array([1, 2, 3]),
-            go_cue_time=np.array([0.5, 1.5, 2.5]),
-            drifting_gratings_dir=np.array([0, 45, 90]),
+            start=[0, 1, 2],
+            end=[1, 2, 3],
+            go_cue_time=[0.5, 1.5, 2.5],
+            drifting_gratings_dir=[0, 45, 90],
         )
         assert (
             f"start is of type {trials.start.dtype} not of type float64." in caplog.text
@@ -350,13 +350,13 @@ def test_nested_attributes():
         session_id="session_0",
         domain=Interval.from_list([(0, 3)]),
         spikes=IrregularTimeSeries(
-            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
+            timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
             waveforms=np.zeros((6, 48)),
             domain="auto",
         ),
         units=ArrayDict(
-            id=np.array(["unit_0", "unit_1", "unit_2"]),
-            brain_region=np.array(["M1", "M1", "PMd"]),
+            id=["unit_0", "unit_1", "unit_2"],
+            brain_region=["M1", "M1", "PMd"],
         ),
     )
 
@@ -390,13 +390,13 @@ class TestSetNestedAttribute:
             session=Data(id="session_0"),
             domain=Interval.from_list([(0, 3)]),
             spikes=IrregularTimeSeries(
-                timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
+                timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
                 waveforms=np.zeros((6, 48)),
                 domain="auto",
             ),
             units=ArrayDict(
-                id=np.array(["unit_0", "unit_1", "unit_2"]),
-                brain_region=np.array(["M1", "M1", "PMd"]),
+                id=["unit_0", "unit_1", "unit_2"],
+                brain_region=["M1", "M1", "PMd"],
             ),
         )
 
@@ -448,15 +448,15 @@ def test_data_has_nested_attribute_lazy(test_filepath):
     """Tests the Data.has_nested_attribute method with lazily loaded objects."""
     data_to_save = Data(
         session_id="session_lazy_hsna_test",
-        some_numpy_array=np.array([10, 20, 30]),
+        some_numpy_array=[10, 20, 30],
         spikes=IrregularTimeSeries(
-            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
-            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+            unit_index=[0, 0, 1, 0, 1, 2],
             domain="auto",
         ),
         units=ArrayDict(
-            id=np.array(["u0_hsna", "u1_hsna"]),
-            type=np.array(["typeA_hsna", "typeB_hsna"]),
+            id=["u0_hsna", "u1_hsna"],
+            type=["typeA_hsna", "typeB_hsna"],
         ),
         nested_data=Data(
             level2_attr="hello_nested_hsna",
@@ -537,12 +537,137 @@ def test_data_has_nested_attribute_lazy(test_filepath):
             lazy_data.has_nested_attribute("nested_data.level2_primitive.foo")
 
 
+class TestDeleteNestedAttribute:
+    @pytest.fixture
+    def data(self):
+        return Data(
+            session_id="session_0",
+            domain=Interval(0.0, 3.0),
+            spikes=IrregularTimeSeries(
+                timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+                unit_index=[0, 0, 1, 0, 1, 2],
+                waveforms=np.zeros((6, 48)),
+                # offset_time is a secondary time attribute registered as a timekey
+                offset_time=[0.05, 0.05, 0.05, 0.05, 0.05, 0.05],
+                timekeys=["offset_time"],
+                domain="auto",
+            ),
+            trials=Interval(
+                start=[0.0, 1.0, 2.0],
+                end=[1.0, 2.0, 3.0],
+                go_cue_time=[0.5, 1.5, 2.5],
+                condition=[0, 1, 2],
+                timekeys=["go_cue_time"],
+            ),
+            units=ArrayDict(
+                id=["unit_0", "unit_1", "unit_2"],
+                brain_region=["M1", "M1", "PMd"],
+            ),
+        )
+
+    # --- basic deletion ---
+
+    def test_delete_top_level(self, data):
+        data.delete_nested_attribute("session_id")
+        with pytest.raises(AttributeError):
+            data.session_id  # noqa: B018
+
+    def test_delete_nested_column_irregular_ts(self, data):
+        data.delete_nested_attribute("spikes.waveforms")
+        assert "waveforms" not in data.spikes.keys()
+        with pytest.raises(AttributeError):
+            data.spikes.waveforms  # noqa: B018
+        assert "timestamps" in data.spikes.keys()
+        assert "unit_index" in data.spikes.keys()
+
+    def test_delete_nested_column_arraydict(self, data):
+        data.delete_nested_attribute("units.brain_region")
+        assert "brain_region" not in data.units.keys()
+        with pytest.raises(AttributeError):
+            data.units.brain_region  # noqa: B018
+        assert "id" in data.units.keys()
+
+    def test_delete_non_timekey_interval_column(self, data):
+        data.delete_nested_attribute("trials.condition")
+        assert "condition" not in data.trials.keys()
+        with pytest.raises(AttributeError):
+            data.trials.condition  # noqa: B018
+        assert "start" in data.trials.keys()
+        assert "end" in data.trials.keys()
+
+    # --- timekey deregistration ---
+
+    def test_delete_timekey_irregular_ts_deregisters(self, data):
+        assert "offset_time" in data.spikes.timekeys()
+        data.delete_nested_attribute("spikes.offset_time")
+        assert "offset_time" not in data.spikes.keys()
+        assert "offset_time" not in data.spikes.timekeys()
+
+    def test_delete_timekey_irregular_ts_slice_still_works(self, data):
+        data.delete_nested_attribute("spikes.offset_time")
+        sliced = data.slice(1.0, 3.0)
+        assert len(sliced.spikes) == 3
+
+    def test_delete_timekey_interval_deregisters(self, data):
+        assert "go_cue_time" in data.trials.timekeys()
+        data.delete_nested_attribute("trials.go_cue_time")
+        assert "go_cue_time" not in data.trials.keys()
+        assert "go_cue_time" not in data.trials.timekeys()
+
+    def test_delete_timekey_interval_slice_still_works(self, data):
+        data.delete_nested_attribute("trials.go_cue_time")
+        sliced = data.slice(0.0, 2.0)
+        assert len(sliced.trials) == 2
+
+    # --- protected attributes raise ---
+
+    def test_raises_on_irregular_ts_timestamps(self, data):
+        with pytest.raises(AttributeError, match="timestamps"):
+            data.delete_nested_attribute("spikes.timestamps")
+
+    def test_raises_on_interval_start(self, data):
+        with pytest.raises(AttributeError, match="start"):
+            data.delete_nested_attribute("trials.start")
+
+    def test_raises_on_interval_end(self, data):
+        with pytest.raises(AttributeError, match="end"):
+            data.delete_nested_attribute("trials.end")
+
+    # --- nonexistent paths raise ---
+
+    def test_raises_on_nonexistent_intermediate(self, data):
+        with pytest.raises(AttributeError):
+            data.delete_nested_attribute("nonexistent.attr")
+
+    def test_raises_on_nonexistent_leaf(self, data):
+        with pytest.raises(AttributeError):
+            data.delete_nested_attribute("spikes.nonexistent")
+
+    # --- __delattr__ guard applies outside delete_nested_attribute too ---
+
+    def test_direct_delattr_timestamps_raises(self, data):
+        with pytest.raises(AttributeError):
+            delattr(data.spikes, "timestamps")
+
+    def test_direct_delattr_interval_start_raises(self, data):
+        with pytest.raises(AttributeError):
+            delattr(data.trials, "start")
+
+    def test_direct_delattr_interval_end_raises(self, data):
+        with pytest.raises(AttributeError):
+            delattr(data.trials, "end")
+
+    def test_direct_delattr_private_interval_raises(self, data):
+        with pytest.raises(AttributeError):
+            delattr(data.trials, "_timekeys")
+
+
 def test_data_auto_domain():
     data = Data(
         session_id="session_0",
         spikes=IrregularTimeSeries(
-            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
-            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+            unit_index=[0, 0, 1, 0, 1, 2],
             waveforms=np.zeros((6, 48)),
             domain="auto",
         ),
@@ -551,14 +676,14 @@ def test_data_auto_domain():
             sampling_rate=250.0,
         ),
         units=ArrayDict(
-            id=np.array(["unit_0", "unit_1", "unit_2"]),
-            brain_region=np.array(["M1", "M1", "PMd"]),
+            id=["unit_0", "unit_1", "unit_2"],
+            brain_region=["M1", "M1", "PMd"],
         ),
         trials=Interval(
-            start=np.array([0, 1, 5]),
-            end=np.array([1, 2, 6]),
-            go_cue_time=np.array([0.5, 1.5, 2.5]),
-            drifting_gratings_dir=np.array([0, 45, 90]),
+            start=[0, 1, 5],
+            end=[1, 2, 6],
+            go_cue_time=[0.5, 1.5, 2.5],
+            drifting_gratings_dir=[0, 45, 90],
         ),
         drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
         domain="auto",
@@ -571,15 +696,15 @@ def test_data_auto_domain():
 def test_data_save(tmp_path):
     data_to_save = Data(
         session_id="session_lazy_hsna_test",
-        some_numpy_array=np.array([10, 20, 30]),
+        some_numpy_array=[10, 20, 30],
         spikes=IrregularTimeSeries(
-            timestamps=np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3]),
-            unit_index=np.array([0, 0, 1, 0, 1, 2]),
+            timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+            unit_index=[0, 0, 1, 0, 1, 2],
             domain="auto",
         ),
         units=ArrayDict(
-            id=np.array(["u0_hsna", "u1_hsna"]),
-            type=np.array(["typeA_hsna", "typeB_hsna"]),
+            id=["u0_hsna", "u1_hsna"],
+            type=["typeA_hsna", "typeB_hsna"],
         ),
         domain=Interval(0.0, 3.0),
     )
