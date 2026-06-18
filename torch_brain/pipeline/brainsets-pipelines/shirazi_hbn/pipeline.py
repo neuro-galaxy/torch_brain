@@ -9,6 +9,7 @@
 # ///
 
 from argparse import ArgumentParser
+from pathlib import Path
 
 import h5py
 import pandas as pd
@@ -86,40 +87,39 @@ class Pipeline(OpenNeuroPipeline):
             cls.dataset_id = original_dataset_id
         return pd.concat(all_manifests)
 
-    def _run_item(self, manifest_item):
+    def _release_raw_dir(self, release_id) -> Path:
+        # Capture the runner-assigned raw dir once, before we start repointing it,
+        # then nest per-release subdirs inside it: <raw>/shirazi_hbn/r{n}.
+        if not hasattr(self, "_base_raw_dir"):
+            self._base_raw_dir = self.raw_dir
+        return self._base_raw_dir / f"R{int(release_id)}"
 
-        release_id = manifest_item.release_id
-        original_raw_dir = self.raw_dir
-        original_processed_dir = self.processed_dir
-
+    def download(self, manifest_item):
         self.dataset_id = manifest_item.release_dataset_id
-        self.brainset_id = f"shirazi_hbn_r{release_id}"
-        self.raw_dir = original_raw_dir / f"R{release_id}"
+        self.raw_dir = self._release_raw_dir(manifest_item.release_id)
+        return super().download(manifest_item)
 
-        target_processed_dir = original_processed_dir.with_name(
-            f"{original_processed_dir.name}_r{release_id}"
-        )
-        target_processed_dir.mkdir(parents=True, exist_ok=True)
-        self.processed_dir = target_processed_dir
+    def process(self, download_output: pd.Series) -> None:
 
-        try:
-            super()._run_item(manifest_item)
-        finally:
-            self.raw_dir = original_raw_dir
-            self.processed_dir = original_processed_dir
-            if original_processed_dir.exists() and not any(
-                original_processed_dir.iterdir()
-            ):
-                original_processed_dir.rmdir()
+        self.dataset_id = download_output.release_dataset_id
+        self.raw_dir = self._release_raw_dir(download_output.release_id)
+        release_id = int(download_output.release_id)
+        recording_id = download_output.Index
 
-    def process(self, download_output: dict) -> None:
+        # All releases share a single processed dir; the release is encoded in the
+        # output filename prefix (HBN_R{n}_) and in the Data object metadata.
+        self.processed_dir.mkdir(parents=True, exist_ok=True)
+        store_path = self.processed_dir / f"HBN_R{release_id}_{recording_id}.h5"
+        if store_path.exists() and not getattr(self.args, "reprocess", False):
+            self.update_status("Already Processed")
+            return
 
         result = super().process_common(download_output)
 
         if result is None:
             return
 
-        data, store_path = result
+        data, _ = result
 
         participants_data = fetch_participants_tsv(self.dataset_id)
 
@@ -134,6 +134,9 @@ class Pipeline(OpenNeuroPipeline):
                 data.subject.attention = row.get("attention", None)
                 data.subject.internalizing = row.get("internalizing", None)
                 data.subject.externalizing = row.get("externalizing", None)
+
+        data.release_id = release_id
+        data.release_dataset_id = str(download_output.release_dataset_id)
 
         self.update_status("Storing")
         with h5py.File(store_path, "w") as file:
