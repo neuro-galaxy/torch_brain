@@ -605,7 +605,8 @@ class Data:
         r"""Set a nested attribute specified by its dot-separated path, modifying
         the object in-place.
 
-        Examples:
+        Example ::
+
             >>> data.set_nested_attribute("session.subject.age", 5)  # doctest: +SKIP
             >>> data.set_nested_attribute("spikes.unit_index", remapped_units)  # doctest: +SKIP
 
