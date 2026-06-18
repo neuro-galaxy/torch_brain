@@ -429,12 +429,12 @@ class Data:
             >>> # lazy with context manager (recommended)
             >>> with Data.load("data.h5") as data:  # doctest: +SKIP
             ...     ...
-
-            >>> # lazy with context manager (recommended)
+            >>>
+            >>> # lazy with explicit close
             >>> data = Data.load("data.h5")  # doctest: +SKIP
             >>> ...  # doctest: +SKIP
             >>> data.close()  # doctest: +SKIP
-
+            >>>
             >>> # non-lazy (no close needed)
             >>> data = Data.load("data.h5", lazy=False)  # doctest: +SKIP
         """
