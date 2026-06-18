@@ -95,7 +95,7 @@ jobs:
     - name: Download shirazi_hbn
       id: shirazi_hbn
       continue-on-error: true
-      run: brainsets prepare shirazi_hbnr1_ds005505 -s sub-NDARAC904DMU_task-DespicableMe --on-version-mismatch continue
+      run: brainsets prepare shirazi_hbn --release 1 -s sub-NDARAC904DMU_task-DespicableMe --on-version-mismatch continue
 
     - name: Check all pipelines passed
       if: always()
