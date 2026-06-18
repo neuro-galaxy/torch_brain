@@ -313,9 +313,9 @@ class Data:
         Args:
             file: HDF5 file.
 
-        Examples:
-            >>> import h5py  # doctest: +SKIP
-            >>> from torch_brain.data import Data  # doctest: +SKIP
+        Examples::
+            >>> import h5py
+            >>> from torch_brain.data import Data
             >>> data = Data(...)  # doctest: +SKIP
             >>> with h5py.File("data.h5", "w") as f:  # doctest: +SKIP
             ...     data.to_hdf5(f)
@@ -355,7 +355,7 @@ class Data:
         Args:
             file: HDF5 file.
 
-        Examples:
+        Examples::
             >>> import h5py  # doctest: +SKIP
             >>> from torch_brain.data import Data  # doctest: +SKIP
             >>> with h5py.File("data.h5", "r") as f:  # doctest: +SKIP
@@ -424,7 +424,7 @@ class Data:
         Returns:
             Data: The loaded :class:`Data` object from the HDF5 file.
 
-        Examples:
+        Examples::
             >>> from torch_brain.data import Data
             >>> # lazy with context manager (recommended)
             >>> with Data.load("data.h5") as data:  # doctest: +SKIP
@@ -473,7 +473,7 @@ class Data:
         Args:
             path: Destination file path
 
-        Examples:
+        Examples::
             >>> from torch_brain.data import Data  # doctest: +SKIP
             >>> data = Data(...)  # doctest: +SKIP
             >>> data.save("data.h5")  # doctest: +SKIP
@@ -572,7 +572,7 @@ class Data:
         Raises:
             AttributeError: If any component of the path cannot be resolved.
 
-        Examples:
+        Examples::
             >>> import numpy as np
             >>> from torch_brain.data import Data, IrregularTimeSeries, Interval
             >>> data = Data(
@@ -626,7 +626,7 @@ class Data:
     def has_nested_attribute(self, path: str) -> bool:
         """Return :obj:`True` if the dot-separated path resolves to an existing attribute.
 
-        Examples:
+        Examples::
             >>> if data.has_nested_attribute("spikes.waveforms"):  # doctest: +SKIP
             ...     process(data.spikes.waveforms)
 
@@ -665,7 +665,7 @@ class Data:
         r"""Delete a nested attribute specified by its dot-separated path, modifying
         the object in-place.
 
-        Examples:
+        Examples::
             >>> for path in ["spikes.waveforms", "lfp.raw"]:  # doctest: +SKIP
             ...     if data.has_nested_attribute(path):
             ...         data.delete_nested_attribute(path)
