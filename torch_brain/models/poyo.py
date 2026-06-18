@@ -12,7 +12,6 @@ from torch_brain.batching import pad8, track_mask8
 from torch_brain.data import Data
 from torch_brain.datasets import Dataset
 from torch_brain.nn import (
-    Embedding,
     InfiniteVocabEmbedding,
     RotaryCrossAttention,
     RotarySelfAttention,
@@ -92,10 +91,10 @@ class POYO(nn.Module):
         # embeddings
         self.unit_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
         self.session_emb = InfiniteVocabEmbedding(dim, init_scale=emb_init_scale)
-        self.token_type_emb = Embedding(4, dim, init_scale=emb_init_scale)
-        self.latent_emb = Embedding(
-            num_latents_per_step, dim, init_scale=emb_init_scale
-        )
+        self.token_type_emb = nn.Embedding(4, dim)
+        self.latent_emb = nn.Embedding(num_latents_per_step, dim)
+        nn.init.normal_(self.token_type_emb.weight, std=emb_init_scale)
+        nn.init.normal_(self.latent_emb.weight, std=emb_init_scale)
         self.rotary_emb = RotaryTimeEmbedding(
             head_dim=dim_head,
             rotate_dim=dim_head // 2,

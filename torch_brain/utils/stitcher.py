@@ -91,28 +91,30 @@ def stitch(
         )
 
 
-def _deprecated_import_error(name):
+def _removed_import_error(name):
     raise ImportError(
-        f"`{name}` has been moved to `torch_brain.utils.callbacks`. "
-        f"Please update your import to: `from torch_brain.utils.callbacks import {name}`"
+        f"`{name}` was removed in v0.2.0. It relied on modules that are no longer "
+        "supported (`torch_brain.nn.MultitaskReadout`, `torch_brain.nn.loss`). "
+        "See `examples/poyo/` for a reference end-to-end training and evaluation setup, "
+        "and `howto/MIGRATE_TO_v0.2.md` for the full list of removed APIs."
     )
 
 
 class DecodingStitchEvaluator:
     def __init__(self, *args, **kwargs):
-        _deprecated_import_error("DecodingStitchEvaluator")
+        _removed_import_error("DecodingStitchEvaluator")
 
 
 class DataForDecodingStitchEvaluator:
     def __init__(self, *args, **kwargs):
-        _deprecated_import_error("DataForDecodingStitchEvaluator")
+        _removed_import_error("DataForDecodingStitchEvaluator")
 
 
 class MultiTaskDecodingStitchEvaluator:
     def __init__(self, *args, **kwargs):
-        _deprecated_import_error("MultiTaskDecodingStitchEvaluator")
+        _removed_import_error("MultiTaskDecodingStitchEvaluator")
 
 
 class DataForMultiTaskDecodingStitchEvaluator:
     def __init__(self, *args, **kwargs):
-        _deprecated_import_error("DataForMultiTaskDecodingStitchEvaluator")
+        _removed_import_error("DataForMultiTaskDecodingStitchEvaluator")
