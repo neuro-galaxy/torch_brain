@@ -123,17 +123,21 @@ class Pipeline(OpenNeuroPipeline):
 
         participants_data = fetch_participants_tsv(self.dataset_id)
 
-        if participants_data is not None:
+        if participants_data is not None and data.subject.id in participants_data.index:
             row = participants_data.loc[data.subject.id]
-            if row is not None:
-                data.subject.species = "HOMO_SAPIENS"
-                data.subject.ehq_total = row.get("ehq_total", None)
-                data.subject.commercial_use = row.get("commercial_use", None)
-                data.subject.full_pheno = row.get("full_pheno", None)
-                data.subject.p_factor = row.get("p_factor", None)
-                data.subject.attention = row.get("attention", None)
-                data.subject.internalizing = row.get("internalizing", None)
-                data.subject.externalizing = row.get("externalizing", None)
+
+            def _value(field):
+                value = row.get(field, None)
+                return None if pd.isna(value) else value
+
+            data.subject.species = "HOMO_SAPIENS"
+            data.subject.ehq_total = _value("ehq_total")
+            data.subject.commercial_use = _value("commercial_use")
+            data.subject.full_pheno = _value("full_pheno")
+            data.subject.p_factor = _value("p_factor")
+            data.subject.attention = _value("attention")
+            data.subject.internalizing = _value("internalizing")
+            data.subject.externalizing = _value("externalizing")
 
         data.release_id = release_id
         data.release_dataset_id = str(download_output.release_dataset_id)
