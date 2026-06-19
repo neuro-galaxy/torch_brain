@@ -320,6 +320,8 @@ def download_participants_tsv(
         if BOTO_AVAILABLE:
             error_code = e.response.get("Error", {}).get("Code", "")
         if error_code in ("NoSuchKey", "404"):
+            if redownload and target_path.exists() and target_path.is_file():
+                target_path.unlink()
             return None
         raise RuntimeError(
             f"Failed to download participants.tsv for {dataset_id}: {e}"
