@@ -8,11 +8,13 @@ __all__ = [
     "OPENNEURO_S3_BUCKET",
     "construct_s3_url_from_path",
     "download_dataset_description",
+    "download_participants_tsv",
     "download_recording",
     "fetch_latest_snapshot_tag",
     "fetch_all_filenames",
     "fetch_participants_tsv",
     "fetch_species",
+    "parse_participants_tsv",
 ]
 
 __api_ref__ = {
@@ -132,21 +134,15 @@ def fetch_participants_tsv(dataset_id: str) -> pd.DataFrame | None:
         response = s3_client.get_object(Bucket=OPENNEURO_S3_BUCKET, Key=key)
         content = response["Body"].read()
 
-        df = pd.read_csv(
-            BytesIO(content),
-            sep="\t",
-            na_values=["n/a", "N/A"],
-            keep_default_na=True,
-        )
+        df = parse_participants_tsv(BytesIO(content))
 
-        if "participant_id" not in df.columns:
+        if df is None:
             logging.warning(
                 f"No participant_id column found in participants.tsv file in OpenNeuro dataset {dataset_id}. "
                 "Returning None."
             )
             return None
 
-        df = df.set_index("participant_id")
         return df
 
     except ClientError as e:
@@ -278,6 +274,58 @@ def download_dataset_description(dataset_id: str, target_dir: Path) -> Path:
         ) from e
 
 
+def download_participants_tsv(
+    dataset_id: str,
+    target_dir: Path,
+    *,
+    redownload: bool = False,
+) -> Path | None:
+    """Download participants.tsv from OpenNeuro S3.
+
+    Args:
+        dataset_id: The OpenNeuro dataset identifier
+        target_dir: Local directory to download to
+        redownload: If ``True``, re-download and overwrite any existing local file.
+            If ``False`` (default), an existing local file is returned as-is.
+
+    Returns:
+        Path to the downloaded or existing participants.tsv file, or ``None`` if
+        the dataset has no participants.tsv on OpenNeuro S3.
+
+    Raises:
+        RuntimeError: If the download fails for a reason other than the file being
+            absent.
+    """
+    target_dir = Path(target_dir)
+    target_path = target_dir / "participants.tsv"
+
+    if target_path.exists() and not redownload:
+        return target_path
+
+    s3_client = get_cached_s3_client()
+    key = f"{dataset_id}/participants.tsv"
+
+    try:
+        response = s3_client.get_object(Bucket=OPENNEURO_S3_BUCKET, Key=key)
+        content = response["Body"].read()
+
+        target_dir.mkdir(parents=True, exist_ok=True)
+        with open(target_path, "wb") as f:
+            f.write(content)
+
+        return target_path
+
+    except ClientError as e:
+        error_code = ""
+        if BOTO_AVAILABLE:
+            error_code = e.response.get("Error", {}).get("Code", "")
+        if error_code in ("NoSuchKey", "404"):
+            return None
+        raise RuntimeError(
+            f"Failed to download participants.tsv for {dataset_id}: {e}"
+        ) from e
+
+
 def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
     """Execute an OpenNeuro GraphQL query with retry.
 
@@ -332,3 +380,27 @@ def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
             raise Exception(f"Query failed with status code {response.status_code}")
 
     return _graphql_query(query, variables)
+
+
+def parse_participants_tsv(buffer) -> pd.DataFrame | None:
+    """Parse a participants.tsv source into a DataFrame indexed by participant_id.
+
+    Args:
+        buffer: Any source accepted by :func:`pandas.read_csv` (e.g. a
+            :class:`io.BytesIO` of the file contents or a local path).
+
+    Returns:
+        DataFrame indexed by ``participant_id``, or ``None`` if the file has no
+        ``participant_id`` column.
+    """
+    df = pd.read_csv(
+        buffer,
+        sep="\t",
+        na_values=["n/a", "N/A"],
+        keep_default_na=True,
+    )
+
+    if "participant_id" not in df.columns:
+        return None
+
+    return df.set_index("participant_id")
