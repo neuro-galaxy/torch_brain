@@ -16,7 +16,7 @@ __all__ = [
     "ChurchlandShenoyNeural2012",
     "OdohertySabesNonhuman2017",
     "VollanMoserAlternating2025",
-    "ShiraziHBNR1DS005505",
+    "ShiraziHBN",
     "KlinzingSleepDS005555",
     "AllenVisualCodingOphys2016",
     "Neuroprobe2025",
@@ -44,7 +44,7 @@ from .OdohertySabesNonhuman2017 import OdohertySabesNonhuman2017
 from .OpenNeuroDataset import OpenNeuroDataset, OpenNeuroSplitType
 from .PeiPandarinathNLB2021 import PeiPandarinathNLB2021
 from .PerichMillerPopulation2018 import PerichMillerPopulation2018
-from .ShiraziHBNR1DS005505 import ShiraziHBNR1DS005505
+from .ShiraziHBN import ShiraziHBN
 from .VollanMoserAlternating2025 import VollanMoserAlternating2025
 
 _base_classes_doc = """
@@ -113,7 +113,6 @@ __api_ref__ = {
                 "ChurchlandShenoyNeural2012",
                 "OdohertySabesNonhuman2017",
                 "VollanMoserAlternating2025",
-                "ShiraziHBNR1DS005505",
             ],
         },
         {
@@ -136,6 +135,7 @@ __api_ref__ = {
             "template": "dataset.rst",
             "autosummary": [
                 "KlinzingSleepDS005555",
+                "ShiraziHBN",
             ],
         },
         {
