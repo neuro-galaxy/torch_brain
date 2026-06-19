@@ -120,6 +120,15 @@ class Interval(ArrayDict):
         if timekey not in self._timekeys:
             self._timekeys.append(timekey)
 
+    def __delattr__(self, name):
+        if name in ("start", "end"):
+            raise AttributeError(
+                f"Cannot delete '{name}' from {self.__class__.__name__}."
+            )
+        super().__delattr__(name)
+        if name in self._timekeys:
+            self._timekeys.remove(name)
+
     def __setattr__(self, name, value):
         super().__setattr__(name, value)
 

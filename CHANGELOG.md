@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
+- Added `Data.delete_nested_attribute` to delete a nested attribute by dot-separated path ([#299](https://github.com/neuro-galaxy/torch_brain/pull/299))
 - Added `MultiChannelDatasetMixin` to provide `get_channel_ids` and prefixing interface for EEG-like datasets ([#173](https://github.com/neuro-galaxy/torch_brain/pull/173))
 - Added `BinSpikes` transform ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
 - Added public weights for `CalciumPOYOPlus` ([#198](https://github.com/neuro-galaxy/torch_brain/pull/198))
@@ -28,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed `utils.get_sinusoidal_encoding` (legacy) ([#200](https://github.com/neuro-galaxy/torch_brain/pull/200))
 
 ### Changed
+- `delattr` on `Data`, `ArrayDict`, `IrregularTimeSeries`, and `Interval` now raises `AttributeError` for `IrregularTimeSeries.timestamps` and `Interval.start`/`end`; deleting other registered timekeys auto-deregisters them
 - Moved collate utilities from `torch_brain.data.collate` to `torch_brain.batching`; the old module now raises a descriptive `ImportError` directing users to the new location ([#232](https://github.com/neuro-galaxy/torch_brain/pull/232))
 - Changed minimum `temporaldata` version to `v0.1.4` ([#209](https://github.com/neuro-galaxy/torch_brain/pull/209))
 - Moved `DecodingStitchEvaluator` and `MultiTaskDecodingStitchEvaluator` to `utils/callbacks.py` ([#183](https://github.com/neuro-galaxy/torch_brain/pull/183))
