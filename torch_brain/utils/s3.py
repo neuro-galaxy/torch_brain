@@ -165,13 +165,13 @@ def download_object(
         ImportError: If boto3/botocore is not installed.
     """
     _check_boto_available("download_object")
-    if s3_client is None:
-        s3_client = get_cached_s3_client()
-
     target_path = Path(target_path)
 
     if target_path.exists() and not redownload:
         return target_path
+
+    if s3_client is None:
+        s3_client = get_cached_s3_client()
 
     try:
         response = s3_client.get_object(Bucket=bucket, Key=key)
