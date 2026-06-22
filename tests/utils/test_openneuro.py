@@ -616,6 +616,7 @@ class TestGraphqlQueryOpenneuro:
         call_kwargs = mock_post.call_args[1]
         assert call_kwargs["json"]["query"] == query
         assert call_kwargs["json"]["variables"] == variables
+        assert call_kwargs["timeout"] == 30
 
     @patch("torch_brain.utils.openneuro.requests.post")
     def test_handles_none_variables(self, mock_post):

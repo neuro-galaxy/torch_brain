@@ -363,7 +363,9 @@ def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
     @_retry(max_attempts=5, initial_wait=4, max_wait=10)
     def _graphql_query(query, variables=None):
         response = requests.post(
-            GRAPHQL_ENDPOINT, json={"query": query, "variables": variables}
+            GRAPHQL_ENDPOINT,
+            json={"query": query, "variables": variables},
+            timeout=30,
         )
         if response.status_code == 200:
             json_response = response.json()
