@@ -24,7 +24,7 @@ try:
     from botocore import UNSIGNED
     from botocore.client import BaseClient
     from botocore.config import Config
-    from botocore.exceptions import ClientError
+    from botocore.exceptions import BotoCoreError, ClientError
 
     BOTO_AVAILABLE = True
 except ImportError:
@@ -32,6 +32,7 @@ except ImportError:
     UNSIGNED = None
     BaseClient = None
     Config = None
+    BotoCoreError = None
     ClientError = None
     BOTO_AVAILABLE = False
 
@@ -188,6 +189,8 @@ def download_object(
     except ClientError as e:
         if _is_not_found_error(e):
             return None
+        raise RuntimeError(f"Failed to download {key} from {bucket}: {e}") from e
+    except (BotoCoreError, OSError, KeyError) as e:
         raise RuntimeError(f"Failed to download {key} from {bucket}: {e}") from e
 
 

@@ -12,6 +12,7 @@ pytestmark = pytest.mark.skipif(
 
 from torch_brain.utils.s3 import (  # noqa: E402
     UNSIGNED,
+    BotoCoreError,
     ClientError,
     download_object,
     download_prefix,
@@ -278,6 +279,19 @@ class TestDownloadObject:
         mock_client.get_object.side_effect = ClientError(
             {"Error": {"Code": "403", "Message": "Access Denied"}}, "GetObject"
         )
+
+        target_path = tmp_path / "dataset_description.json"
+        with pytest.raises(RuntimeError, match="Failed to download"):
+            download_object(
+                bucket="test-bucket",
+                key="ds000000/dataset_description.json",
+                target_path=target_path,
+                s3_client=mock_client,
+            )
+
+    def test_raises_runtime_error_on_botocore_error(self, tmp_path):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = BotoCoreError()
 
         target_path = tmp_path / "dataset_description.json"
         with pytest.raises(RuntimeError, match="Failed to download"):
