@@ -22,6 +22,7 @@ __api_ref__ = {
     "sections": [{"autosummary": __all__}],
 }
 
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -333,6 +334,26 @@ def download_participants_tsv(
     return result
 
 
+def _retry(max_attempts=5, initial_wait=4, max_wait=10):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            attempt = 0
+            wait_time = initial_wait
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except Exception:
+                    attempt += 1
+                    if attempt >= max_attempts:
+                        raise
+                    time.sleep(wait_time)
+                    wait_time = min(wait_time * 2, max_wait)
+
+        return wrapper
+
+    return decorator
+
+
 def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
     """Execute an OpenNeuro GraphQL query with retry.
 
@@ -348,27 +369,6 @@ def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
             errors.
     """
 
-    def _retry(max_attempts=5, initial_wait=4, max_wait=10):
-        def decorator(func):
-            import time
-
-            def wrapper(*args, **kwargs):
-                attempt = 0
-                wait_time = initial_wait
-                while True:
-                    try:
-                        return func(*args, **kwargs)
-                    except Exception:
-                        attempt += 1
-                        if attempt >= max_attempts:
-                            raise
-                        time.sleep(wait_time)
-                        wait_time = min(wait_time * 2, max_wait)
-
-            return wrapper
-
-        return decorator
-
     @_retry(max_attempts=5, initial_wait=4, max_wait=10)
     def _graphql_query(query, variables=None):
         response = requests.post(
@@ -376,14 +376,12 @@ def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
         )
         if response.status_code == 200:
             json_response = response.json()
-            # Check for "errors" key in the GraphQL response
             if "errors" in json_response and json_response["errors"]:
                 raise Exception(
                     f"GraphQL query returned errors: {json_response['errors']}"
                 )
             return json_response
 
-        else:
-            raise Exception(f"Query failed with status code {response.status_code}")
+        raise Exception(f"Query failed with status code {response.status_code}")
 
     return _graphql_query(query, variables)
