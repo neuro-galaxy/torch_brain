@@ -160,8 +160,6 @@ def fetch_species(dataset_id: str) -> str:
 
     dataset = _fetch_dataset_graphql(dataset_id, query)
     species = ((dataset or {}).get("metadata") or {}).get("species")
-    if species is None:
-        raise RuntimeError(f"Could not resolve species for dataset '{dataset_id}'. ")
 
     return species
 
