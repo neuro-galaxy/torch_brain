@@ -31,7 +31,6 @@ from torch_brain.data import (
     Interval,
     RegularTimeSeries,
     SubjectDescription,
-    serialize_fn_map,
 )
 from torch_brain.pipeline import BrainsetPipeline
 
@@ -245,7 +244,7 @@ class Pipeline(BrainsetPipeline):
         self.update_status("Storing")
         path = self.processed_dir / download_output.path.name
         with h5py.File(path, "w") as file:
-            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
+            data.to_hdf5(file)
         logging.info(f"Saved data to {path}")
 
     def iterate_extract_splits(

@@ -22,7 +22,6 @@ from torch_brain.data import (
     IrregularTimeSeries,
     SessionDescription,
     SubjectDescription,
-    serialize_fn_map,
 )
 from torch_brain.pipeline import BrainsetPipeline
 
@@ -170,7 +169,7 @@ class Pipeline(BrainsetPipeline):
 
         # save data to disk
         with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
+            data.to_hdf5(file)
 
 
 def extract_units(mat):

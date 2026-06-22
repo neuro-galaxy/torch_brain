@@ -24,7 +24,6 @@ from torch_brain.data import (
     RegularTimeSeries,
     SessionDescription,
     SubjectDescription,
-    serialize_fn_map,
 )
 from torch_brain.pipeline import BrainsetPipeline
 from torch_brain.utils import calculate_sampling_rate
@@ -209,7 +208,7 @@ class Pipeline(BrainsetPipeline):
         # save data to disk
         self.update_status("Storing")
         with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
+            data.to_hdf5(file)
 
 
 def extract_behavior(h5file):
