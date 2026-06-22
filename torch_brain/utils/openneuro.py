@@ -20,8 +20,6 @@ __api_ref__ = {
     "sections": [{"autosummary": __all__}],
 }
 
-import logging
-from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
@@ -35,7 +33,9 @@ except ImportError:
     ClientError = Exception
     BOTO_AVAILABLE = False
 
+from torch_brain.utils.bids import _parse_participants_tsv
 from torch_brain.utils.s3 import (
+    _is_not_found_error,
     download_prefix_from_url,
     get_cached_s3_client,
     get_object_list,
@@ -125,36 +125,20 @@ def fetch_participants_tsv(dataset_id: str) -> pd.DataFrame | None:
         exist or has no ``participant_id`` column.
     """
     s3_client = get_cached_s3_client()
-
     key = f"{dataset_id}/participants.tsv"
 
     try:
         response = s3_client.get_object(Bucket=OPENNEURO_S3_BUCKET, Key=key)
         content = response["Body"].read()
-
-        df = pd.read_csv(
-            BytesIO(content),
-            sep="\t",
-            na_values=["n/a", "N/A"],
-            keep_default_na=True,
-        )
-
-        if "participant_id" not in df.columns:
-            logging.warning(
-                f"No participant_id column found in participants.tsv file in OpenNeuro dataset {dataset_id}. "
-                "Returning None."
-            )
-            return None
-
-        df = df.set_index("participant_id")
-        return df
-
     except ClientError as e:
-        if BOTO_AVAILABLE:
-            error_code = e.response.get("Error", {}).get("Code", "")
-            if error_code in ("NoSuchKey", "404"):
-                return None
+        if _is_not_found_error(e):
+            return None
         raise
+
+    return _parse_participants_tsv(
+        content,
+        missing_column_context=f"file in OpenNeuro dataset {dataset_id}",
+    )
 
 
 def fetch_species(dataset_id: str) -> str:

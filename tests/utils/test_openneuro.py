@@ -201,7 +201,7 @@ class TestFetchParticipantsTsv:
 
     @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_returns_none_when_participant_id_column_missing(
-        self, mock_get_client, participants_tsv_bytes, caplog
+        self, mock_get_client, participants_tsv_bytes
     ):
         """Returns None with warning when participant_id column is absent."""
         mock_client = MagicMock()
@@ -212,10 +212,10 @@ class TestFetchParticipantsTsv:
             )
         }
 
-        result = fetch_participants_tsv("ds005085")
+        with pytest.warns(UserWarning, match="No participant_id column found"):
+            result = fetch_participants_tsv("ds005085")
 
         assert result is None
-        assert "No participant_id column found" in caplog.text
 
     @patch("torch_brain.utils.openneuro.get_cached_s3_client")
     def test_returns_none_on_no_such_key_error(self, mock_get_client):
