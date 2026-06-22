@@ -3,6 +3,7 @@
 __all__ = [
     "get_cached_s3_client",
     "get_object_list",
+    "download_object",
     "download_prefix",
     "download_prefix_from_url",
 ]
@@ -125,6 +126,67 @@ def get_object_list(
         raise RuntimeError(f"Error listing objects in {bucket}/{prefix}: {e}") from e
 
     return keys
+
+
+def _is_not_found_error(error: Exception) -> bool:
+    """Return True if the exception indicates a missing S3 object."""
+    if not BOTO_AVAILABLE or not isinstance(error, ClientError):
+        return False
+
+    error_code = error.response.get("Error", {}).get("Code", "")
+    return error_code in ("NoSuchKey", "404")
+
+
+def download_object(
+    bucket: str,
+    key: str,
+    target_path: Path,
+    *,
+    redownload: bool = False,
+    s3_client: "BaseClient | None" = None,
+) -> Path | None:
+    """Download a single S3 object to a local file.
+
+    Args:
+        bucket: S3 bucket name
+        key: Object key to download
+        target_path: Local file path to write to
+        redownload: If ``False`` (default), return an existing local file as-is.
+            If ``True``, re-download and overwrite any existing local file.
+        s3_client: Optional pre-configured S3 client
+
+    Returns:
+        Path to the downloaded or existing local file, or ``None`` if the object
+        does not exist on S3.
+
+    Raises:
+        RuntimeError: If the download fails for a reason other than the object
+            being absent.
+        ImportError: If boto3/botocore is not installed.
+    """
+    _check_boto_available("download_object")
+    if s3_client is None:
+        s3_client = get_cached_s3_client()
+
+    target_path = Path(target_path)
+
+    if target_path.exists() and not redownload:
+        return target_path
+
+    try:
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        content = response["Body"].read()
+
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(target_path, "wb") as f:
+            f.write(content)
+
+        return target_path
+
+    except ClientError as e:
+        if _is_not_found_error(e):
+            return None
+        raise RuntimeError(f"Failed to download {key} from {bucket}: {e}") from e
 
 
 def download_prefix(
