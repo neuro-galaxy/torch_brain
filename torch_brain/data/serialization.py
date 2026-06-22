@@ -7,7 +7,6 @@ def datetime_serialize_fn(obj, serialize_fn_map=None):
     return str(obj)
 
 
-serialize_fn_map: dict[type, Callable] = {
+_DEFAULT_SERIALIZE_FN_MAP: dict[type, Callable] = {
     datetime.datetime: datetime_serialize_fn,
 }
-r"""A dict that maps classes to their serialization functions"""

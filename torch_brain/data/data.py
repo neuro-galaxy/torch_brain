@@ -13,6 +13,7 @@ from .arraydict import ArrayDict, LazyArrayDict  # noqa: F401
 from .interval import Interval, LazyInterval  # noqa: F401
 from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries  # noqa: F401
 from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries  # noqa: F401
+from .serialization import _DEFAULT_SERIALIZE_FN_MAP
 from .utils import _size_repr
 
 
@@ -304,14 +305,28 @@ class Data:
         out_dict = {k: v for k, v in self.__dict__.items() if k != "_file"}
         return copy.deepcopy(out_dict)
 
-    def to_hdf5(self, file, serialize_fn_map=None):
+    def to_hdf5(
+        self,
+        file: h5py.File | h5py.Group,
+        serialize_fn_map: dict[type, Callable] | None = None,
+    ):
         r"""Saves the data object to an HDF5 file. This method will also call the
-        `to_hdf5` method of all contained data objects, so that the entire data object
-        is saved to the HDF5 file, i.e. no need to call `to_hdf5` for each contained
-        data object.
+        ``to_hdf5`` method of all contained data objects, so that the entire data
+        object is saved to the HDF5 file, i.e. no need to call ``to_hdf5`` for each
+        contained data object.
 
         Args:
-            file: HDF5 file.
+            file: An open :class:`h5py.File` (or :class:`h5py.Group`) to write into.
+            serialize_fn_map: Optional dictionary mapping a Python type to a callable
+                that serializes values of that type into an `HDF5-compatible object
+                <https://docs.h5py.org/en/latest/faq.html#what-datatypes-are-supported>`_.
+                Use this for attributes whose types are not natively supported by
+                HDF5. If :obj:`None`, a default map is used that performs the
+                following serialization:
+
+                - :obj:`datetime.datetime` objects are converted to :obj:`str`
+
+                Defaults to :obj:`None`.
 
         Example ::
             >>> import h5py
@@ -320,6 +335,9 @@ class Data:
             >>> with h5py.File("data.h5", "w") as f:  # doctest: +SKIP
             ...     data.to_hdf5(f)
         """
+        if serialize_fn_map is None:
+            serialize_fn_map = _DEFAULT_SERIALIZE_FN_MAP
+
         for key in self.keys():
             value = getattr(self, key)
             if isinstance(value, (Data, ArrayDict)):
@@ -731,7 +749,7 @@ class Data:
 
 def _serialize(
     elem,
-    serialize_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
+    serialize_fn_map: dict[type, Callable] | None = None,
 ):
     r"""
     General serialization function that handles object types that are not supported

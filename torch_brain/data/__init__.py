@@ -15,7 +15,6 @@ from .descriptions import (
 from .interval import Interval, LazyInterval
 from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
 from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries
-from .serialization import serialize_fn_map
 
 __all__ = [
     "ArrayDict",
@@ -32,7 +31,6 @@ __all__ = [
     "SessionDescription",
     "SubjectDescription",
     "concat",
-    "serialize_fn_map",
 ]
 
 # Drives the generated API reference; see docs/source/api_reference.py.
@@ -72,10 +70,6 @@ __api_ref__ = {
         {
             "title": "Utility Functions",
             "autosummary": ["concat"],
-        },
-        {
-            "title": "Constants",
-            "autosummary": ["serialize_fn_map"],
         },
     ],
 }
