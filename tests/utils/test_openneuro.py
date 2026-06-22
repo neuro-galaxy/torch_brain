@@ -18,6 +18,8 @@ from torch_brain.utils.openneuro import (  # noqa: E402
     _graphql_query_openneuro,
     construct_s3_url_from_path,
     download_dataset_description,
+    download_meta,
+    download_participants_tsv,
     download_recording,
     fetch_all_filenames,
     fetch_latest_snapshot_tag,
@@ -322,6 +324,62 @@ class TestDownloadRecording:
         assert result == expected_files
 
 
+class TestDownloadMeta:
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
+    def test_returns_none_when_not_required_and_missing(
+        self, mock_get_client, tmp_path
+    ):
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_client.get_object.side_effect = make_client_error("NoSuchKey")
+
+        result = download_meta("ds005085", tmp_path, "participants.tsv")
+
+        assert result is None
+
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
+    def test_raises_when_required_and_missing(self, mock_get_client, tmp_path):
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_client.get_object.side_effect = make_client_error("NoSuchKey")
+
+        with pytest.raises(RuntimeError, match="not found"):
+            download_meta(
+                "ds005085",
+                tmp_path,
+                "dataset_description.json",
+                required=True,
+            )
+
+
+class TestDownloadParticipantsTsv:
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
+    def test_returns_none_when_missing_on_s3(self, mock_get_client, tmp_path):
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_client.get_object.side_effect = make_client_error("NoSuchKey")
+
+        result = download_participants_tsv("ds005085", tmp_path)
+
+        assert result is None
+
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
+    def test_unlinks_local_file_on_redownload_when_missing_on_s3(
+        self, mock_get_client, tmp_path
+    ):
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_client.get_object.side_effect = make_client_error("NoSuchKey")
+
+        target_file = tmp_path / "participants.tsv"
+        target_file.write_text("participant_id\tage\nsub-01\t34\n")
+
+        result = download_participants_tsv("ds005085", tmp_path, redownload=True)
+
+        assert result is None
+        assert not target_file.exists()
+
+
 # ============================================================================
 # Tests for download_dataset_description
 # ============================================================================
@@ -330,7 +388,7 @@ class TestDownloadRecording:
 class TestDownloadDatasetDescription:
     """Tests for dataset_description.json download and caching."""
 
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
     def test_short_circuits_when_file_exists(self, mock_get_client, tmp_path):
         """Returns existing file without downloading if already present."""
         target_file = tmp_path / "dataset_description.json"
@@ -341,7 +399,7 @@ class TestDownloadDatasetDescription:
         assert result == target_file
         mock_get_client.assert_not_called()
 
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
     def test_downloads_and_writes_file_on_success(self, mock_get_client, tmp_path):
         """Downloads and writes file when not already present."""
         mock_client = MagicMock()
@@ -356,7 +414,23 @@ class TestDownloadDatasetDescription:
         assert result.exists()
         assert result.read_bytes() == b'{"name": "test"}'
 
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
+    def test_redownloads_when_redownload_true(self, mock_get_client, tmp_path):
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_client.get_object.return_value = {
+            "Body": MagicMock(read=lambda: b'{"name": "updated"}')
+        }
+
+        target_file = tmp_path / "dataset_description.json"
+        target_file.write_text('{"name": "existing"}')
+
+        result = download_dataset_description("ds005085", tmp_path, redownload=True)
+
+        assert result == target_file
+        assert result.read_bytes() == b'{"name": "updated"}'
+
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
     def test_creates_parent_directories(self, mock_get_client, tmp_path):
         """Creates parent directories if they don't exist."""
         mock_client = MagicMock()
@@ -369,7 +443,7 @@ class TestDownloadDatasetDescription:
         assert result.parent.exists()
         assert result.exists()
 
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
     def test_raises_runtime_error_on_no_such_key(self, mock_get_client, tmp_path):
         """RuntimeError is raised when file doesn't exist on S3 (NoSuchKey)."""
         mock_client = MagicMock()
@@ -379,7 +453,7 @@ class TestDownloadDatasetDescription:
         with pytest.raises(RuntimeError, match="not found"):
             download_dataset_description("ds005085", tmp_path)
 
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
     def test_raises_runtime_error_on_404(self, mock_get_client, tmp_path):
         """RuntimeError is raised on 404 error."""
         mock_client = MagicMock()
@@ -389,7 +463,7 @@ class TestDownloadDatasetDescription:
         with pytest.raises(RuntimeError, match="not found"):
             download_dataset_description("ds005085", tmp_path)
 
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
     def test_raises_runtime_error_on_other_client_error(
         self, mock_get_client, tmp_path
     ):

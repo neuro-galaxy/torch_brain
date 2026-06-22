@@ -8,6 +8,8 @@ __all__ = [
     "OPENNEURO_S3_BUCKET",
     "construct_s3_url_from_path",
     "download_dataset_description",
+    "download_meta",
+    "download_participants_tsv",
     "download_recording",
     "fetch_latest_snapshot_tag",
     "fetch_all_filenames",
@@ -36,6 +38,7 @@ except ImportError:
 from torch_brain.utils.bids import _parse_participants_tsv
 from torch_brain.utils.s3 import (
     _is_not_found_error,
+    download_object,
     download_prefix_from_url,
     get_cached_s3_client,
     get_object_list,
@@ -214,15 +217,68 @@ def download_recording(s3_url: str, target_dir: Path) -> list[Path]:
     return download_prefix_from_url(s3_url, target_dir)
 
 
-def download_dataset_description(dataset_id: str, target_dir: Path) -> Path:
-    """Download dataset_description.json from OpenNeuro S3.
-
-    This file is required for mne-bids to recognize a valid BIDS dataset.
-    If the file already exists locally, it is not re-downloaded.
+def download_meta(
+    dataset_id: str,
+    target_dir: Path,
+    filename: str,
+    *,
+    redownload: bool = False,
+    required: bool = False,
+) -> Path | None:
+    """Download a metadata file from OpenNeuro S3.
 
     Args:
         dataset_id: The OpenNeuro dataset identifier
         target_dir: Local directory to download to
+        filename: Metadata filename at the dataset root (for example,
+            ``"dataset_description.json"`` or ``"participants.tsv"``)
+        redownload: If ``True``, re-download and overwrite any existing local file.
+            If ``False`` (default), an existing local file is returned as-is.
+        required: If ``True``, raise ``RuntimeError`` when the file is missing on
+            S3. If ``False`` (default), return ``None`` when the file is absent.
+
+    Returns:
+        Path to the downloaded or existing local file, or ``None`` if the file is
+        not present on S3 and ``required`` is ``False``.
+
+    Raises:
+        RuntimeError: If the download fails, or if the file is missing on S3 and
+            ``required`` is ``True``.
+    """
+    target_dir = Path(target_dir)
+    target_path = target_dir / filename
+    key = f"{dataset_id}/{filename}"
+
+    result = download_object(
+        OPENNEURO_S3_BUCKET,
+        key,
+        target_path,
+        redownload=redownload,
+    )
+
+    if result is None and required:
+        raise RuntimeError(f"{filename} not found for {dataset_id} on OpenNeuro S3")
+
+    return result
+
+
+def download_dataset_description(
+    dataset_id: str,
+    target_dir: Path,
+    *,
+    redownload: bool = False,
+) -> Path:
+    """Download dataset_description.json from OpenNeuro S3.
+
+    This file is required for mne-bids to recognize a valid BIDS dataset.
+    If the file already exists locally, it is not re-downloaded unless
+    ``redownload`` is ``True``.
+
+    Args:
+        dataset_id: The OpenNeuro dataset identifier
+        target_dir: Local directory to download to
+        redownload: If ``True``, re-download and overwrite any existing local file.
+            If ``False`` (default), an existing local file is returned as-is.
 
     Returns:
         Path to the downloaded or existing dataset_description.json file
@@ -230,36 +286,51 @@ def download_dataset_description(dataset_id: str, target_dir: Path) -> Path:
     Raises:
         RuntimeError: If download fails or file doesn't exist on S3
     """
+    return download_meta(
+        dataset_id,
+        target_dir,
+        "dataset_description.json",
+        redownload=redownload,
+        required=True,
+    )
+
+
+def download_participants_tsv(
+    dataset_id: str,
+    target_dir: Path,
+    *,
+    redownload: bool = False,
+) -> Path | None:
+    """Download participants.tsv from OpenNeuro S3.
+
+    Args:
+        dataset_id: The OpenNeuro dataset identifier
+        target_dir: Local directory to download to
+        redownload: If ``True``, re-download and overwrite any existing local file.
+            If ``False`` (default), an existing local file is returned as-is.
+
+    Returns:
+        Path to the downloaded or existing participants.tsv file, or ``None`` if
+        the dataset has no participants.tsv on OpenNeuro S3.
+
+    Raises:
+        RuntimeError: If the download fails for a reason other than the file being
+            absent.
+    """
     target_dir = Path(target_dir)
-    target_path = target_dir / "dataset_description.json"
+    target_path = target_dir / "participants.tsv"
 
-    if target_path.exists():
-        return target_path
+    result = download_meta(
+        dataset_id,
+        target_dir,
+        "participants.tsv",
+        redownload=redownload,
+    )
 
-    s3_client = get_cached_s3_client()
-    key = f"{dataset_id}/dataset_description.json"
+    if result is None and redownload and target_path.exists() and target_path.is_file():
+        target_path.unlink()
 
-    try:
-        response = s3_client.get_object(Bucket=OPENNEURO_S3_BUCKET, Key=key)
-        content = response["Body"].read()
-
-        target_dir.mkdir(parents=True, exist_ok=True)
-        with open(target_path, "wb") as f:
-            f.write(content)
-
-        return target_path
-
-    except ClientError as e:
-        error_code = ""
-        if BOTO_AVAILABLE:
-            error_code = e.response.get("Error", {}).get("Code", "")
-        if error_code in ("NoSuchKey", "404"):
-            raise RuntimeError(
-                f"dataset_description.json not found for {dataset_id} on OpenNeuro S3"
-            ) from e
-        raise RuntimeError(
-            f"Failed to download dataset_description.json for {dataset_id}: {e}"
-        ) from e
+    return result
 
 
 def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
