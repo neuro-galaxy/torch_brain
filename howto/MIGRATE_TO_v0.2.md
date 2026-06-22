@@ -52,6 +52,7 @@ See below for re-organization of modules in v0.2.0:
 | `from brainsets.utils.bids_utils import XYZ`              | `from torch_brain.utils.bids import XYZ`                       |
 | `from brainsets.processing.signal import XYZ`             | `from torch_brain.utils.signal import XYZ`                     |
 | `from brainsets.datasets import XYZ`                      | `from torch_brain.datasets import XYZ`                         |
+| `from brainsets import serialize_fn_map`                  | Deprecated; `Data.to_hdf5` now applies the default serialization automatically, so it no longer needs to be passed. Importable as `torch_brain.data.serialize_fn_map` for now (with a `DeprecationWarning`). |
 
 
 `brainsets` CLI remains the same as before.
