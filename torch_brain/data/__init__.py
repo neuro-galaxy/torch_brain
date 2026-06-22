@@ -16,6 +16,28 @@ from .interval import Interval, LazyInterval
 from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
 from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries
 
+
+def __getattr__(name):
+    # `serialize_fn_map` was renamed to the private `_DEFAULT_SERIALIZE_FN_MAP`.
+    # Keep the old public name importable but deprecated; `Data.to_hdf5` now
+    # applies this default map automatically, so passing it explicitly is no
+    # longer necessary.
+    if name == "serialize_fn_map":
+        import warnings
+
+        from .serialization import _DEFAULT_SERIALIZE_FN_MAP
+
+        warnings.warn(
+            "torch_brain.data.serialize_fn_map is deprecated and will be removed "
+            "in a future version. Data.to_hdf5 now uses this default serialization "
+            "map automatically, so it no longer needs to be passed explicitly.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return _DEFAULT_SERIALIZE_FN_MAP
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
 __all__ = [
     "ArrayDict",
     "LazyArrayDict",
