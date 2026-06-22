@@ -73,16 +73,7 @@ def fetch_latest_snapshot_tag(dataset_id: str) -> str:
         }
     """
 
-    variables = {
-        "datasetId": dataset_id,
-    }
-
-    response = _graphql_query_openneuro(
-        query,
-        variables,
-    )
-
-    dataset = response.get("data", {}).get("dataset")
+    dataset = _fetch_dataset_graphql(dataset_id, query)
     latest_snapshot_tag = ((dataset or {}).get("latestSnapshot") or {}).get("tag")
     if not latest_snapshot_tag:
         raise RuntimeError(
@@ -385,3 +376,20 @@ def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
         raise Exception(f"Query failed with status code {response.status_code}")
 
     return _graphql_query(query, variables)
+
+
+def _fetch_dataset_graphql(dataset_id: str, query: str) -> dict | None:
+    """Execute a dataset GraphQL query and return the dataset payload.
+
+    Args:
+        dataset_id: OpenNeuro dataset identifier.
+        query: GraphQL query expecting a ``$datasetId`` variable.
+
+    Returns:
+        The ``dataset`` object from the GraphQL response, or ``None`` if absent.
+    """
+    response = _graphql_query_openneuro(
+        query,
+        {"datasetId": dataset_id},
+    )
+    return response.get("data", {}).get("dataset")
