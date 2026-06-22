@@ -6,7 +6,8 @@ from enum import Enum
 import h5py
 import pytest
 
-from torch_brain.data import Data
+from torch_brain.data import Data, get_default_serialize_fn_map
+from torch_brain.data.serialization import _DEFAULT_SERIALIZE_FN_MAP
 
 
 @pytest.fixture
@@ -85,3 +86,17 @@ def test_default_datetime_serialize(test_filepath):
 
         assert d.recording_date == str(timestamp)
         assert d.nested.recording_date == str(timestamp)
+
+
+def test_get_default_serialize_fn_map_returns_copy():
+    # Test public extension path for adding more serialization functions.
+    # Adding a new serialize fn should not change the module's own dict.
+    serialize_fn_map = get_default_serialize_fn_map()
+
+    assert id(serialize_fn_map) != id(_DEFAULT_SERIALIZE_FN_MAP)
+    assert serialize_fn_map is not _DEFAULT_SERIALIZE_FN_MAP
+    assert serialize_fn_map == _DEFAULT_SERIALIZE_FN_MAP
+
+    serialize_fn_map[Enum] = lambda obj, serialize_fn_map=None: obj.name
+
+    assert Enum not in _DEFAULT_SERIALIZE_FN_MAP
