@@ -321,11 +321,8 @@ class Data:
                 that serializes values of that type into an `HDF5-compatible object
                 <https://docs.h5py.org/en/latest/faq.html#what-datatypes-are-supported>`_.
                 Use this for attributes whose types are not natively supported by
-                HDF5. If :obj:`None`, a default map is used that performs the
-                following serialization:
-
-                - :obj:`datetime.datetime` objects are converted to :obj:`str`
-
+                HDF5. If :obj:`None`, the map returned by
+                :func:`~torch_brain.data.get_default_serialize_fn_map` is used.
                 Defaults to :obj:`None`.
 
         Example ::

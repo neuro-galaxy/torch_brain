@@ -15,26 +15,25 @@ from .descriptions import (
 from .interval import Interval, LazyInterval
 from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
 from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries
+from .serialization import get_default_serialize_fn_map
 
 
 def __getattr__(name):
-    # `serialize_fn_map` was renamed to the private `_DEFAULT_SERIALIZE_FN_MAP`.
-    # Keep the old public name importable but deprecated; `Data.to_hdf5` now
-    # applies this default map automatically, so passing it explicitly is no
-    # longer necessary.
+    # `serialize_fn_map` is deprecated: `Data.to_hdf5` now applies the default
+    # serialization map automatically, so passing it explicitly is no longer
+    # necessary. To extend the defaults, use `get_default_serialize_fn_map()`,
+    # which returns a fresh, safe-to-mutate copy.
     if name == "serialize_fn_map":
         import warnings
 
-        from .serialization import _DEFAULT_SERIALIZE_FN_MAP
-
         warnings.warn(
             "torch_brain.data.serialize_fn_map is deprecated and will be removed "
-            "in a future version. Data.to_hdf5 now uses this default serialization "
-            "map automatically, so it no longer needs to be passed explicitly.",
+            "in a future version. Data.to_hdf5 now uses the default serialization "
+            "map automatically; to extend it, use get_default_serialize_fn_map().",
             DeprecationWarning,
             stacklevel=2,
         )
-        return _DEFAULT_SERIALIZE_FN_MAP
+        return get_default_serialize_fn_map()
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -53,6 +52,7 @@ __all__ = [
     "SessionDescription",
     "SubjectDescription",
     "concat",
+    "get_default_serialize_fn_map",
 ]
 
 # Drives the generated API reference; see docs/source/api_reference.py.
@@ -91,7 +91,10 @@ __api_ref__ = {
         },
         {
             "title": "Utility Functions",
-            "autosummary": ["concat"],
+            "autosummary": [
+                "concat",
+                "get_default_serialize_fn_map",
+            ],
         },
     ],
 }
