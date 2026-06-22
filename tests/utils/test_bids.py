@@ -20,6 +20,7 @@ try:
         EEG_EXTENSIONS,
         IEEG_EXTENSIONS,
         _fetch_recordings,
+        _parse_participants_tsv,
         _validate_modality,
         build_bids_path,
         check_eeg_recording_files_exist,
@@ -41,6 +42,7 @@ except ImportError:
     get_subject_info = None
     group_recordings_by_entity = None
     load_participants_tsv = None
+    _parse_participants_tsv = None
     _fetch_recordings = None
     _validate_modality = None
 
@@ -942,6 +944,45 @@ class TestLoadJsonSidecar:
                 load_json_sidecar(bids_path)
         finally:
             shutil.rmtree(bids_root, ignore_errors=True)
+
+
+class TestParseParticipantsTsv:
+    """Test shared participants.tsv parsing helper."""
+
+    def test_parses_from_path(self, tmp_path):
+        participants_path = tmp_path / "participants.tsv"
+        participants_path.write_text("participant_id\tage\tsex\nsub-01\t34\tF\n")
+
+        participants_data = _parse_participants_tsv(participants_path)
+
+        assert participants_data is not None
+        assert participants_data.index.name == "participant_id"
+        assert list(participants_data.index) == ["sub-01"]
+
+    def test_parses_from_bytes(self):
+        content = b"participant_id\tage\tsex\nsub-01\t34\tF\n"
+
+        participants_data = _parse_participants_tsv(content)
+
+        assert participants_data is not None
+        assert list(participants_data.index) == ["sub-01"]
+
+    def test_returns_none_without_participant_id_column(self):
+        with pytest.warns(UserWarning, match="No participant_id column found"):
+            participants_data = _parse_participants_tsv(
+                b"subject_id\tage\tsex\nsub-01\t34\tF\n"
+            )
+
+        assert participants_data is None
+
+    def test_handles_na_values(self):
+        content = b"participant_id\tage\tsex\nsub-01\tn/a\tN/A\n"
+
+        participants_data = _parse_participants_tsv(content)
+
+        assert participants_data is not None
+        assert pd.isna(participants_data.loc["sub-01", "age"])
+        assert pd.isna(participants_data.loc["sub-01", "sex"])
 
 
 @pytest.mark.skipif(not MNE_BIDS_AVAILABLE, reason="mne_bids not installed")
