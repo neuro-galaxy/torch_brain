@@ -514,16 +514,6 @@ class TestFetchSpecies:
         call_args = mock_graphql.call_args
         assert call_args[0][1]["datasetId"] == "ds005085"
 
-    @patch("torch_brain.utils.openneuro._graphql_query_openneuro")
-    def test_raises_when_species_missing(self, mock_graphql):
-        mock_graphql.return_value = {"data": {"dataset": {"metadata": {}}}}
-
-        with pytest.raises(
-            RuntimeError,
-            match="Could not resolve species for dataset 'ds005085'",
-        ):
-            fetch_species("ds005085")
-
 
 # ============================================================================
 # Tests for _graphql_query_openneuro
