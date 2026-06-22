@@ -168,6 +168,8 @@ def download_object(
     target_path = Path(target_path)
 
     if target_path.exists() and not redownload:
+        if not target_path.is_file():
+            raise RuntimeError(f"Target path exits and is not a file; {target_path}")
         return target_path
 
     if s3_client is None:
