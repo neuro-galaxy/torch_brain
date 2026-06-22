@@ -1,4 +1,6 @@
-# Guidelines for Maintainers
+# Maintaining `torch_brain`
+
+Notes and guidelines on maintaining the `torch_brain` project.
 
 ## Commit messages
 
@@ -22,13 +24,13 @@ they serve is to help us write release notes. For this, we use the
 - **`!`** *(optional)* — marks a breaking / user-facing API change.
 - **`description`** — imperative tone, lowercase, no trailing period.
 
-| type       | use for                                          | in release notes? |
-|------------|--------------------------------------------------|-------------------|
-| `feat`     | new user-facing capability                       | yes               |
-| `fix`      | bug fix                                          | yes               |
-| `cleanup`  | removing legacy/dead code or deprecated APIs     | yes               |
-| `refactor` | internal restructuring, no behavior change       | no                |
-| `docs`     | documentation only                               | no                |
-| `tests`    | adding or changing tests                         | no                |
-| `chore`    | CI, deps, packaging, repo housekeeping           | no                |
+| type       | use for                                      | release notes? |
+|------------|----------------------------------------------|----------------|
+| `feat`     | new user-facing capability                   | yes            |
+| `fix`      | bug fix                                      | yes            |
+| `cleanup`  | removing legacy/dead code or deprecated APIs | yes            |
+| `refactor` | internal restructuring, no behavior change   | no             |
+| `docs`     | documentation only                           | no             |
+| `tests`    | adding or changing tests                     | no             |
+| `chore`    | CI, deps, packaging, repo housekeeping       | no             |
 
