@@ -29,7 +29,6 @@ from brainsets.descriptions import (
     SubjectDescription,
 )
 from brainsets.pipeline import BrainsetPipeline
-from brainsets.taxonomy import RecordingTech
 from brainsets.utils.mne_utils import (
     extract_annotations,
     extract_channels,
@@ -245,7 +244,7 @@ class Pipeline(BrainsetPipeline):
         validate_subject_id(subject_id)
         device_description = DeviceDescription(
             id=f"GSN_HydroCel_129_{subject_id}",
-            recording_tech=RecordingTech.SCALP_EEG,
+            recording_tech="SCALP_EEG",
         )
 
         csv_path = self.raw_dir / "MIPDB_PublicFile.csv"
