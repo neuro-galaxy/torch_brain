@@ -1,8 +1,7 @@
 """Extraction and mapping of paradigm intervals from EEG annotations."""
 
 import numpy as np
-from brainsets.taxonomy import Task
-from constants import PARADIGM_END_CODES, PARADIGM_MAP
+from constants import PARADIGM_END_CODES, PARADIGM_MAP, Task
 from temporaldata import Interval
 
 
@@ -126,7 +125,7 @@ def get_paradigm_interval_for_code(
         end=np.array(ends),
         description=np.array([paradigm_name] * len(starts), dtype="U"),
         start_code=np.full(len(starts), paradigm_code, dtype=np.int64),
-        task=np.array([task.name] * len(starts), dtype="U"),
+        task=np.array([task] * len(starts), dtype="U"),
     )
 
 
@@ -165,7 +164,7 @@ def get_all_paradigm_intervals(annotations: Interval) -> Interval:
         ends.append(_paradigm_segment_end(i, code, annotations, paradigm_start_indices))
         names.append(paradigm_name)
         codes.append(code)
-        tasks.append(task.name)
+        tasks.append(task)
 
     return Interval(
         start=np.array(starts),
