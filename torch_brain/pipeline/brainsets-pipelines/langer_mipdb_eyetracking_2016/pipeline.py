@@ -4,7 +4,6 @@
 #   "boto3~=1.41.0",
 #   "mne~=1.11.0",
 #   "scikit-learn~=1.6.0",
-#   "temporaldata@git+https://github.com/neuro-galaxy/temporaldata@main",
 # ]
 # ///
 
@@ -21,27 +20,28 @@ import h5py
 import mne
 import numpy as np
 import pandas as pd
-from brainsets import serialize_fn_map
-from brainsets.descriptions import (
+
+from torch_brain.data import (
+    ArrayDict,
     BrainsetDescription,
+    Data,
     DeviceDescription,
+    Interval,
     SessionDescription,
     SubjectDescription,
+    serialize_fn_map,
 )
-from brainsets.pipeline import BrainsetPipeline
-from brainsets.utils.mne_utils import (
-    extract_annotations,
+from torch_brain.pipeline import BrainsetPipeline
+from torch_brain.utils.mne import (
     extract_channels,
     extract_measurement_date,
     extract_signal,
 )
-from brainsets.utils.s3_utils import get_cached_s3_client, get_object_list
-from brainsets.utils.split import (
+from torch_brain.utils.s3 import get_cached_s3_client, get_object_list
+from torch_brain.utils.split import (
     generate_stratified_folds,
-    generate_string_binary_assignment,
     generate_string_kfold_assignment,
 )
-from temporaldata import ArrayDict, Data, Interval
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import eyetracking  # noqa: E402
@@ -71,6 +71,20 @@ class Pipeline(BrainsetPipeline):
     bucket = "fcp-indi"
     prefix = "data/Projects/EEG_Eyetracking_CMI_data/"
     parser = parser
+
+    @staticmethod
+    def extract_annotations(raw: "mne.io.BaseRaw") -> Interval:
+        raise NotImplementedError("extract_annotations is not yet implemented.")
+
+    @staticmethod
+    def generate_string_binary_assignment(
+        string_id: str,
+        val_ratio: float = 0.2,
+        seed: int = 42,
+    ) -> str:
+        raise NotImplementedError(
+            "generate_string_binary_assignment is not yet implemented."
+        )
 
     def _download_subject_metadata(self) -> Path:
         """Download the MIPDB public metadata CSV if not already cached locally.
@@ -265,7 +279,7 @@ class Pipeline(BrainsetPipeline):
             channels.pos = extract_channel_locations(sfp_path, channels)
 
         self.update_status("Extracting annotations")
-        annotations = extract_annotations(raw)
+        annotations = self.extract_annotations(raw)
         paradigm_intervals = paradigm.get_all_paradigm_intervals(annotations)
         paradigm_events = paradigm.get_paradigm_events(annotations, paradigm_intervals)
 
@@ -475,12 +489,12 @@ def create_splits(
         domain=all_epochs,
     )
 
-    intersubject_assignment = generate_string_binary_assignment(
+    intersubject_assignment = Pipeline.generate_string_binary_assignment(
         subject_id,
         val_ratio=SPLIT_VAL_RATIO,
         seed=SEED,
     )
-    intersession_assignment = generate_string_binary_assignment(
+    intersession_assignment = Pipeline.generate_string_binary_assignment(
         f"{subject_id}_{session_id}",
         val_ratio=SPLIT_VAL_RATIO,
         seed=SEED,

@@ -1,7 +1,7 @@
 """Parsing and synchronization of SMI iView eyetracking text exports.
 
 The public entry point is :func:`process_session`, which returns a
-``temporaldata.Data`` object containing up to four
+``torch_brain.data.Data`` object containing up to four
 ``IrregularTimeSeries``: *samples*, *fixations*, *saccades*, *blinks*.
 All timestamps are converted to the EEG timescale via a linear transform
 fitted from matched event codes.
@@ -23,7 +23,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from constants import PARADIGM_MAP, SAMPLES_COLUMNS
-from temporaldata import Data, Interval, IrregularTimeSeries
+
+from torch_brain.data import Data, Interval, IrregularTimeSeries
 
 
 def parse_comma_separated_numbers(s: str) -> list[int | float]:

@@ -2,7 +2,8 @@
 
 import numpy as np
 from constants import PARADIGM_END_CODES, PARADIGM_MAP, Task
-from temporaldata import Interval
+
+from torch_brain.data import Interval
 
 
 def _annotation_code_at(annotations: Interval, i: int) -> int | None:
