@@ -28,20 +28,11 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-try:
-    from botocore.exceptions import ClientError
-
-    BOTO_AVAILABLE = True
-except ImportError:
-    ClientError = Exception
-    BOTO_AVAILABLE = False
-
 from torch_brain.utils.bids import _parse_participants_tsv
 from torch_brain.utils.s3 import (
-    _is_not_found_error,
     download_object,
     download_prefix_from_url,
-    get_cached_s3_client,
+    get_object_bytes,
     get_object_list,
 )
 
@@ -110,7 +101,7 @@ def fetch_all_filenames(dataset_id: str) -> list[str]:
 
 
 def fetch_participants_tsv(dataset_id: str) -> pd.DataFrame | None:
-    """Fetch and parse participants.tsv from OpenNeuro S3.
+    """Fetch and parse participants.tsv from OpenNeuro S3 in memory.
 
     Args:
         dataset_id: The OpenNeuro dataset identifier
@@ -119,16 +110,10 @@ def fetch_participants_tsv(dataset_id: str) -> pd.DataFrame | None:
         DataFrame indexed by ``participant_id``, or ``None`` if the file does not
         exist or has no ``participant_id`` column.
     """
-    s3_client = get_cached_s3_client()
     key = f"{dataset_id}/participants.tsv"
-
-    try:
-        response = s3_client.get_object(Bucket=OPENNEURO_S3_BUCKET, Key=key)
-        content = response["Body"].read()
-    except ClientError as e:
-        if _is_not_found_error(e):
-            return None
-        raise
+    content = get_object_bytes(OPENNEURO_S3_BUCKET, key)
+    if content is None:
+        return None
 
     return _parse_participants_tsv(
         content,
