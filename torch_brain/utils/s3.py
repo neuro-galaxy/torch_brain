@@ -18,6 +18,7 @@ __api_ref__ = {
 
 from functools import lru_cache
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 
 try:
@@ -214,11 +215,16 @@ def download_object(
     if content is None:
         return None
 
+    temp_path = None
     try:
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(target_path, "wb") as f:
+        with NamedTemporaryFile("wb", dir=target_path.parent, delete=False) as f:
+            temp_path = Path(f.name)
             f.write(content)
+        temp_path.replace(target_path)
     except OSError as e:
+        if temp_path is not None and temp_path.exists():
+            temp_path.unlink()
         raise RuntimeError(f"Failed to download {key} from {bucket}: {e}") from e
 
     return target_path
