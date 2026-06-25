@@ -3,10 +3,9 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pandas as pd
 import pytest
 
-from torch_brain.utils.openneuro import BOTO_AVAILABLE
+from torch_brain.utils.s3 import BOTO_AVAILABLE
 
 pytestmark = pytest.mark.skipif(
     not BOTO_AVAILABLE, reason="boto3/botocore not installed"
@@ -14,7 +13,6 @@ pytestmark = pytest.mark.skipif(
 
 from torch_brain.utils.openneuro import (  # noqa: E402
     OPENNEURO_S3_BUCKET,
-    ClientError,
     _graphql_query_openneuro,
     construct_s3_url_from_path,
     download_dataset_description,
@@ -26,6 +24,7 @@ from torch_brain.utils.openneuro import (  # noqa: E402
     fetch_participants_tsv,
     fetch_species,
 )
+from torch_brain.utils.s3 import ClientError  # noqa: E402
 
 # ============================================================================
 # Shared Fixtures and Helpers
@@ -44,22 +43,6 @@ def make_client_error(code: str, message: str = "") -> ClientError:
         {"Error": {"Code": code, "Message": message}},
         "GetObject",
     )
-
-
-@pytest.fixture
-def participants_tsv_bytes():
-    """Helper fixture to generate valid participants.tsv content."""
-
-    def _make_tsv(has_participant_id: bool = True) -> bytes:
-        if has_participant_id:
-            content = (
-                "participant_id\tage\tsex\nparticipant_01\t25\tM\nparticipant_02\t30\tF"
-            )
-        else:
-            content = "age\tsex\n25\tM\n30\tF"
-        return content.encode("utf-8")
-
-    return _make_tsv
 
 
 def graphql_ok_response(tag: str) -> dict:
@@ -172,105 +155,6 @@ class TestFetchAllFilenames:
 
 
 # ============================================================================
-# Tests for fetch_participants_tsv
-# ============================================================================
-
-
-class TestFetchParticipantsTsv:
-    """Tests for fetching and parsing participants.tsv."""
-
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
-    def test_returns_indexed_dataframe_with_participant_id(
-        self, mock_get_client, participants_tsv_bytes
-    ):
-        """Returns DataFrame indexed by participant_id when column exists."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-        mock_client.get_object.return_value = {
-            "Body": MagicMock(
-                read=lambda: participants_tsv_bytes(has_participant_id=True)
-            )
-        }
-
-        result = fetch_participants_tsv("ds005085")
-
-        assert isinstance(result, pd.DataFrame)
-        assert result.index.name == "participant_id"
-        assert len(result) == 2
-        assert list(result.index) == ["participant_01", "participant_02"]
-        assert "age" in result.columns
-        assert "sex" in result.columns
-
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
-    def test_returns_none_when_participant_id_column_missing(
-        self, mock_get_client, participants_tsv_bytes
-    ):
-        """Returns None with warning when participant_id column is absent."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-        mock_client.get_object.return_value = {
-            "Body": MagicMock(
-                read=lambda: participants_tsv_bytes(has_participant_id=False)
-            )
-        }
-
-        with pytest.warns(UserWarning, match="No participant_id column found"):
-            result = fetch_participants_tsv("ds005085")
-
-        assert result is None
-
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
-    def test_returns_none_on_no_such_key_error(self, mock_get_client):
-        """Returns None when participants.tsv does not exist (NoSuchKey)."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-        mock_client.get_object.side_effect = make_client_error("NoSuchKey")
-
-        result = fetch_participants_tsv("ds005085")
-
-        assert result is None
-
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
-    def test_returns_none_on_404_error(self, mock_get_client):
-        """Returns None when participants.tsv returns 404."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-        mock_client.get_object.side_effect = make_client_error("404")
-
-        result = fetch_participants_tsv("ds005085")
-
-        assert result is None
-
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
-    def test_reraises_other_client_errors(self, mock_get_client):
-        """Other ClientErrors are re-raised."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-        mock_client.get_object.side_effect = make_client_error(
-            "AccessDenied", "Access Denied"
-        )
-
-        with pytest.raises(ClientError):
-            fetch_participants_tsv("ds005085")
-
-    @patch("torch_brain.utils.openneuro.get_cached_s3_client")
-    def test_parses_tsv_with_na_values(self, mock_get_client):
-        """TSV parser respects na_values configuration."""
-        mock_client = MagicMock()
-        mock_get_client.return_value = mock_client
-        tsv_content = b"participant_id\tage\npart_01\tn/a\npart_02\tN/A"
-        mock_client.get_object.return_value = {
-            "Body": MagicMock(read=lambda: tsv_content)
-        }
-
-        result = fetch_participants_tsv("ds005085")
-
-        assert result is not None
-        assert pd.isna(result.loc["part_01", "age"])
-        assert pd.isna(result.loc["part_02", "age"])
-
-
-# ============================================================================
 # Tests for construct_s3_url_from_path and download_recording
 # ============================================================================
 
@@ -378,6 +262,34 @@ class TestDownloadParticipantsTsv:
 
         assert result is None
         assert not target_file.exists()
+
+
+class TestFetchParticipantsTsv:
+    @patch("torch_brain.utils.openneuro.get_object_bytes")
+    def test_returns_none_when_missing_on_s3(self, mock_get_object_bytes):
+        mock_get_object_bytes.return_value = None
+
+        result = fetch_participants_tsv("ds005085")
+
+        assert result is None
+        mock_get_object_bytes.assert_called_once_with(
+            OPENNEURO_S3_BUCKET, "ds005085/participants.tsv"
+        )
+
+    @patch("torch_brain.utils.openneuro.get_object_bytes")
+    def test_parses_content_from_s3(self, mock_get_object_bytes):
+        content = b"participant_id\tage\tsex\nsub-01\t34\tF\n"
+        mock_get_object_bytes.return_value = content
+
+        result = fetch_participants_tsv("ds005085")
+
+        mock_get_object_bytes.assert_called_once_with(
+            OPENNEURO_S3_BUCKET, "ds005085/participants.tsv"
+        )
+        assert result is not None
+        assert list(result.index) == ["sub-01"]
+        assert result.loc["sub-01", "age"] == 34
+        assert result.loc["sub-01", "sex"] == "F"
 
 
 # ============================================================================

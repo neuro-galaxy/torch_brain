@@ -18,6 +18,7 @@ from torch_brain.utils.s3 import (  # noqa: E402
     download_prefix,
     download_prefix_from_url,
     get_cached_s3_client,
+    get_object_bytes,
     get_object_list,
 )
 
@@ -180,6 +181,63 @@ class TestListObjects:
         assert "/file1.edf" in result
         assert "" not in result
         assert len(result) == 1
+
+
+class TestGetObjectBytes:
+    def test_returns_object_bytes(self):
+        mock_client = MagicMock()
+        mock_body = MagicMock()
+        mock_body.read.return_value = b"file content"
+        mock_client.get_object.return_value = {"Body": mock_body}
+
+        result = get_object_bytes(
+            "test-bucket", "ds000000/file.tsv", s3_client=mock_client
+        )
+
+        assert result == b"file content"
+        mock_client.get_object.assert_called_once_with(
+            Bucket="test-bucket", Key="ds000000/file.tsv"
+        )
+
+    def test_returns_none_on_no_such_key(self):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchKey", "Message": "Not Found"}}, "GetObject"
+        )
+
+        result = get_object_bytes(
+            "test-bucket", "ds000000/missing.tsv", s3_client=mock_client
+        )
+
+        assert result is None
+
+    def test_returns_none_on_404_error(self):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "404", "Message": "Not Found"}}, "GetObject"
+        )
+
+        result = get_object_bytes(
+            "test-bucket", "ds000000/missing.tsv", s3_client=mock_client
+        )
+
+        assert result is None
+
+    def test_raises_runtime_error_on_other_client_error(self):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "403", "Message": "Access Denied"}}, "GetObject"
+        )
+
+        with pytest.raises(RuntimeError, match="Failed to download"):
+            get_object_bytes("test-bucket", "ds000000/file.tsv", s3_client=mock_client)
+
+    def test_raises_runtime_error_on_botocore_error(self):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = BotoCoreError()
+
+        with pytest.raises(RuntimeError, match="Failed to download"):
+            get_object_bytes("test-bucket", "ds000000/file.tsv", s3_client=mock_client)
 
 
 class TestDownloadObject:
