@@ -52,6 +52,7 @@ from torch_brain.utils.mne import (
 from torch_brain.utils.openneuro import (
     construct_s3_url_from_path,
     download_dataset_description,
+    download_participants_tsv,
     download_recording,
     fetch_all_filenames,
     fetch_latest_snapshot_tag,
@@ -398,6 +399,14 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
 
         # dataset_description.json is required for mne-bids to recognize a valid BIDS dataset
         download_dataset_description(
+            self.dataset_id,
+            root_dir,
+            redownload=redownload,
+        )
+
+        # participants.tsv is optional; persist it so processing can read subject
+        # metadata from disk without re-fetching from S3.
+        download_participants_tsv(
             self.dataset_id,
             root_dir,
             redownload=redownload,
