@@ -103,7 +103,7 @@ class Pipeline(BrainsetPipeline):
     behavior-agnostic / behavior-relevant train/valid(/test) splits.
     """
 
-    brainset_id = "cmi_mipdb_2016"
+    brainset_id = "langer_mipdb_eyetracking_2016"
     bucket = "fcp-indi"
     prefix = "data/Projects/EEG_Eyetracking_CMI_data/"
     parser = parser
@@ -273,7 +273,7 @@ class Pipeline(BrainsetPipeline):
             return
 
         brainset_description = BrainsetDescription(
-            id="cmi_mipdb_2016",
+            id="langer_mipdb_eyetracking_2016",
             origin_version="1.0.0",
             derived_version="1.0.0",
             source="https://fcon_1000.projects.nitrc.org/indi/cmi_eeg/",
@@ -381,7 +381,7 @@ def validate_subject_id(subject_id: str) -> None:
     SUBJECT_ID_PATTERN = re.compile(r"^A000\d{5}$")
     if not SUBJECT_ID_PATTERN.match(subject_id):
         raise ValueError(
-            f"Invalid subject_id for CMI MIPDB: {subject_id!r}. "
+            f"Invalid subject_id for langer_mipdb_eyetracking_2016: {subject_id!r}. "
             "Expected format: A000xxxxx where x are digits (e.g. A00054400)."
         )
 
