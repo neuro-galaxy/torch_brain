@@ -2,6 +2,7 @@
 
 __all__ = [
     "get_cached_s3_client",
+    "get_object_bytes",
     "get_object_list",
     "download_object",
     "download_prefix",
@@ -138,7 +139,7 @@ def _is_not_found_error(error: Exception) -> bool:
     return error_code in ("NoSuchKey", "404")
 
 
-def _get_object_bytes(
+def get_object_bytes(
     bucket: str,
     key: str,
     *,
@@ -159,7 +160,7 @@ def _get_object_bytes(
             absent.
         ImportError: If boto3/botocore is not installed.
     """
-    _check_boto_available("_get_object_bytes")
+    _check_boto_available("get_object_bytes")
     if s3_client is None:
         s3_client = get_cached_s3_client()
 
@@ -209,7 +210,7 @@ def download_object(
             raise RuntimeError(f"Target path exits and is not a file; {target_path}")
         return target_path
 
-    content = _get_object_bytes(bucket, key, s3_client=s3_client)
+    content = get_object_bytes(bucket, key, s3_client=s3_client)
     if content is None:
         return None
 
