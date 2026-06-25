@@ -12,6 +12,7 @@ __api_ref__ = {
 
 import logging
 import sys
+import warnings
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -406,11 +407,18 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
 
         # participants.tsv is optional; persist it so processing can read subject
         # metadata from disk without re-fetching from S3.
-        download_participants_tsv(
-            self.dataset_id,
-            root_dir,
-            redownload=redownload,
-        )
+        try:
+            download_participants_tsv(
+                self.dataset_id,
+                root_dir,
+                redownload=redownload,
+            )
+        except RuntimeError as e:
+            warnings.warn(
+                f"Could not download participants.tsv for {self.dataset_id}: {e}. "
+                "Skipping subject information.",
+                stacklevel=2,
+            )
 
         if not redownload:
             if self.modality == "eeg":
