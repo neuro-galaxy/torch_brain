@@ -1,5 +1,6 @@
 """Parsing and synchronization of SMI iView eyetracking text exports.
 
+Part of the :mod:`pipeline` for the CMI MIPDB EEG + eyetracking dataset.
 The public entry point is :func:`process_session`, which returns a
 ``torch_brain.data.Data`` object containing up to four
 ``IrregularTimeSeries``: *samples*, *fixations*, *saccades*, *blinks*.

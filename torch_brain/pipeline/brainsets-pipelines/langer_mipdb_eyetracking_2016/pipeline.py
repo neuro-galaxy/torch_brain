@@ -7,6 +7,30 @@
 # ]
 # ///
 
+"""Brainset pipeline for the Child Mind Institute - Multimodal Resource for Studying Information
+Processing in the Developing Brain (MIPDB) EEG + eyetracking dataset.
+
+Downloads scalp EEG (EGI ``.raw``) and SMI iView eyetracking (``.txt``)
+from the public MIPDB release, extracts signals/channels/paradigms,
+synchronizes eyetracking to EEG, and writes processed ``.h5`` brainset files.
+
+**Dataset documentation:**
+
+    - Paper:
+        Langer, N., Ho, E., Alexander, L. et al. A resource for assessing information processing
+        in the developing brain using EEG and eye tracking. Sci Data 4, 170040 (2017).
+        https://doi.org/10.1038/sdata.2017.40
+
+    - Dataset portal:
+        https://fcon_1000.projects.nitrc.org/indi/cmi_eeg/index.html#
+
+**Related modules:**
+
+    - :mod:`constants` — paradigm annotation codes and eyetracking column names
+    - :mod:`paradigm` — EEG annotation → paradigm interval extraction
+    - :mod:`eyetracking` — ET file parsing and EEG alignment
+"""
+
 import json
 import logging
 import re
@@ -67,6 +91,18 @@ parser.add_argument("--reprocess", action="store_true")
 
 
 class Pipeline(BrainsetPipeline):
+    """Download and process CMI MIPDB EEG + eyetracking sessions.
+
+    Raw data is fetched from the FCP-INDI S3 bucket (``fcp-indi``,
+    prefix ``data/Projects/EEG_Eyetracking_CMI_data/``). Subject metadata
+    and GSN HydroCel 129 channel locations are downloaded separately from
+    NITRC.
+
+    Each processed session contains scalp EEG, channel locations, paradigm
+    intervals/events, synchronized eyetracking (when available), and
+    behavior-agnostic / behavior-relevant train/valid(/test) splits.
+    """
+
     brainset_id = "cmi_mipdb_2016"
     bucket = "fcp-indi"
     prefix = "data/Projects/EEG_Eyetracking_CMI_data/"

@@ -1,3 +1,25 @@
+"""Shared constants for the Langer MIPDB eyetracking 2016 pipeline.
+
+Defines :
+(:class:`Task`): task labels,
+(:data:`PARADIGM_MAP`): annotation-code → paradigm name and task mappings ,
+(:data:`PARADIGM_END_CODES`): naturalistic-viewing end codes,
+(:data:`SAMPLES_COLUMNS`): SMI iView sample column renaming..
+
+These constants are extracted from MISC_Readme files included in the dataset.
+
+**Dataset documentation:**
+
+    - Paper:
+        Langer, N., Ho, E., Alexander, L. et al. A resource for assessing information processing
+        in the developing brain using EEG and eye tracking. Sci Data 4, 170040 (2017).
+        https://doi.org/10.1038/sdata.2017.40
+
+    - Dataset portal:
+        https://fcon_1000.projects.nitrc.org/indi/cmi_eeg/index.html#
+"""
+
+
 class Task:
     RESTING_STATE = "RESTING_STATE"
     SEQUENCE_LEARNING = "SEQUENCE_LEARNING"
@@ -64,12 +86,12 @@ SAMPLES_COLUMNS = {
     "Pupil Confidence": "pupil_confidence",
     "L Plane": "l_plane",
     "R Plane": "r_plane",
-    # "H POS X [mm]": "h_pos_x",
-    # "H POS Y [mm]": "h_pos_y",
-    # "H POS Z [mm]": "h_pos_z",
-    # "H ROT X [°]": "h_rot_x",
-    # "H ROT Y [°]": "h_rot_y",
-    # "H ROT Z [°]": "h_rot_z",
+    "H POS X [mm]": "h_pos_x",
+    "H POS Y [mm]": "h_pos_y",
+    "H POS Z [mm]": "h_pos_z",
+    "H ROT X [°]": "h_rot_x",
+    "H ROT Y [°]": "h_rot_y",
+    "H ROT Z [°]": "h_rot_z",
     "L EPOS X": "l_epos_x",
     "L EPOS Y": "l_epos_y",
     "L EPOS Z": "l_epos_z",

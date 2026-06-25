@@ -1,4 +1,9 @@
-"""Extraction and mapping of paradigm intervals from EEG annotations."""
+"""Paradigm interval extraction from MIPDB EEG annotations.
+
+Maps numeric annotation codes in the EGI recordings to paradigm segments
+(``Interval`` objects with task labels from :mod:`constants`). Used by
+:mod:`pipeline` before eyetracking synchronization and split generation.
+"""
 
 import numpy as np
 from constants import PARADIGM_END_CODES, PARADIGM_MAP, Task
