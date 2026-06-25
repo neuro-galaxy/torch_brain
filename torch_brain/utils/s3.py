@@ -138,6 +138,42 @@ def _is_not_found_error(error: Exception) -> bool:
     return error_code in ("NoSuchKey", "404")
 
 
+def _get_object_bytes(
+    bucket: str,
+    key: str,
+    *,
+    s3_client: "BaseClient | None" = None,
+) -> bytes | None:
+    """Read a single S3 object into memory.
+
+    Args:
+        bucket: S3 bucket name
+        key: Object key to read
+        s3_client: Optional pre-configured S3 client
+
+    Returns:
+        Object contents as bytes, or ``None`` if the object does not exist on S3.
+
+    Raises:
+        RuntimeError: If the read fails for a reason other than the object being
+            absent.
+        ImportError: If boto3/botocore is not installed.
+    """
+    _check_boto_available("_get_object_bytes")
+    if s3_client is None:
+        s3_client = get_cached_s3_client()
+
+    try:
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        return response["Body"].read()
+    except ClientError as e:
+        if _is_not_found_error(e):
+            return None
+        raise RuntimeError(f"Failed to download {key} from {bucket}: {e}") from e
+    except (BotoCoreError, KeyError) as e:
+        raise RuntimeError(f"Failed to download {key} from {bucket}: {e}") from e
+
+
 def download_object(
     bucket: str,
     key: str,
@@ -173,25 +209,18 @@ def download_object(
             raise RuntimeError(f"Target path exits and is not a file; {target_path}")
         return target_path
 
-    if s3_client is None:
-        s3_client = get_cached_s3_client()
+    content = _get_object_bytes(bucket, key, s3_client=s3_client)
+    if content is None:
+        return None
 
     try:
-        response = s3_client.get_object(Bucket=bucket, Key=key)
-        content = response["Body"].read()
-
         target_path.parent.mkdir(parents=True, exist_ok=True)
         with open(target_path, "wb") as f:
             f.write(content)
-
-        return target_path
-
-    except ClientError as e:
-        if _is_not_found_error(e):
-            return None
+    except OSError as e:
         raise RuntimeError(f"Failed to download {key} from {bucket}: {e}") from e
-    except (BotoCoreError, OSError, KeyError) as e:
-        raise RuntimeError(f"Failed to download {key} from {bucket}: {e}") from e
+
+    return target_path
 
 
 def download_prefix(
