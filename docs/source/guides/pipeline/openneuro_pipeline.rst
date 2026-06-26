@@ -376,9 +376,8 @@ Add custom processing beyond the default:
         
         # Save the result
         import h5py
-        from brainsets import serialize_fn_map
         with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
+            data.to_hdf5(file)
 
 
 What's Next?
