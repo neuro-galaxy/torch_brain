@@ -68,4 +68,3 @@ class PoyoOdohertyDataset(OdohertySabesNonhuman2017):
             normalize_mean=0.0,
             normalize_std=200.0,
         )
-
