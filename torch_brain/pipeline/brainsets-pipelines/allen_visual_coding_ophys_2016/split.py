@@ -110,7 +110,7 @@ def split_two_epochs(
     val_interval = Interval(
         start=train_interval.end[0:1], end=np.array([first_epoch_end])
     )
-    test_interval = epoch.select_by_mask(np.array([False, True]))
+    test_interval = epoch.select_by_mask([False, True])
 
     return train_interval, val_interval, test_interval
 
@@ -120,8 +120,8 @@ def split_three_epochs(
 ) -> tuple[Interval, Interval, Interval]:
     assert len(epoch) == 3
 
-    test_interval = epoch.select_by_mask(np.array([False, False, True]))
-    train_interval = epoch.select_by_mask(np.array([True, True, False]))
+    test_interval = epoch.select_by_mask([False, False, True])
+    train_interval = epoch.select_by_mask([True, True, False])
 
     split_time = train_interval.end[1] - 0.3 * (
         train_interval.end[1] - train_interval.start[1]
@@ -144,8 +144,8 @@ def split_four_epochs(
 ) -> tuple[Interval, Interval, Interval]:
     assert len(epoch) == 4
 
-    test_interval = epoch.select_by_mask(np.array([False, False, False, True]))
-    train_interval = epoch.select_by_mask(np.array([True, True, True, False]))
+    test_interval = epoch.select_by_mask([False, False, False, True])
+    train_interval = epoch.select_by_mask([True, True, True, False])
     split_time = train_interval.end[2] - 0.5 * (
         train_interval.end[2] - train_interval.start[2]
     )
@@ -167,8 +167,8 @@ def split_five_epochs(
 ) -> tuple[Interval, Interval, Interval]:
     assert len(epoch) == 5
 
-    train_interval = epoch.select_by_mask(np.array([True, True, True, False, False]))
-    test_interval = epoch.select_by_mask(np.array([False, False, False, True, True]))
+    train_interval = epoch.select_by_mask([True, True, True, False, False])
+    test_interval = epoch.select_by_mask([False, False, False, True, True])
 
     split_time = train_interval.end[2] - 0.5 * (
         train_interval.end[2] - train_interval.start[2]

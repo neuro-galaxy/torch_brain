@@ -95,8 +95,10 @@ class RegularTimeSeries(ArrayDict):
     Args:
         sampling_rate: Sampling rate in Hz.
         domain_start: Absolute starting time offset (in seconds) of this signal. Defaults to :obj:`0.0`.
-        **kwargs: Arbitrary keyword arguments where the values are arbitrary
-            multi-dimensional (2d, 3d, ..., nd) arrays with shape (N, \*).
+        **kwargs: Arbitrary keyword arguments where the values are array-like objects
+            (e.g. numpy arrays, lists or tuples) that are arbitrary multi-dimensional
+            (2d, 3d, ..., nd) with shape (N, \*). Each value is cast to a numpy array
+            internally.
 
     See Also:
         :meth:`from_gappy_timeseries` to construct from regular timeseries that has

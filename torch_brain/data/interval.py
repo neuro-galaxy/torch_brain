@@ -18,11 +18,12 @@ class Interval(ArrayDict):
     interval itself is its own domain.
 
     Args:
-        start: an array of start times of shape (N,) or a float.
-        end: an array of end times of shape (N,) or a float.
+        start: an array-like of start times of shape (N,) or a float.
+        end: an array-like of end times of shape (N,) or a float.
         timekeys: a list of strings that specify which attributes are time-based
             attributes.
-        **kwargs: arrays that shares the same first dimension N.
+        **kwargs: array-like objects (e.g. numpy arrays, lists or tuples) that share
+            the same first dimension N. Each value is cast to a numpy array internally.
 
     Example ::
 
@@ -248,12 +249,13 @@ class Interval(ArrayDict):
                 out.__dict__[key] = out.__dict__[key] - start
         return out
 
-    def select_by_mask(self, mask: np.ndarray):
+    def select_by_mask(self, mask: ArrayLike):
         r"""Index all arrays with a boolean mask and return a copy.
 
         Args:
             mask: Boolean array used for masking. The mask needs to be 1-dimensional,
-                and of equal length as the object itself.
+                and of equal length as the object itself. Anything array-like (e.g. a
+                list) is accepted and cast to a numpy array.
         """
         out = super().select_by_mask(mask)
         # Un-sorted arrays can become sorted after masking
@@ -926,7 +928,7 @@ class LazyInterval(Interval):
                 return out
         return super().__getattribute__(name)
 
-    def select_by_mask(self, mask: np.ndarray):
+    def select_by_mask(self, mask: ArrayLike):
         r"""Index all arrays with a boolean mask and return a copy.
 
         Lazy attributes will remain lazy, and masking will be applied
@@ -934,9 +936,10 @@ class LazyInterval(Interval):
 
         Args:
             mask: Boolean array used for masking. The mask needs to be 1-dimensional,
-                and of equal length as the object itself.
+                and of equal length as the object itself. Anything array-like (e.g. a
+                list) is accepted and cast to a numpy array.
         """
-
+        mask = np.asarray(mask)
         _validate_select_by_mask_input(mask, len(self))
 
         out = self.__class__.__new__(self.__class__)
