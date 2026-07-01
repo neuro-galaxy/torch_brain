@@ -61,11 +61,6 @@ jobs:
       continue-on-error: true
       run: brainsets prepare churchland_shenoy_neural_2012 -s jenkins_20090912
 
-    - name: Download flint_slutzky_accurate_2012
-      id: flint_slutzky_accurate_2012
-      continue-on-error: true
-      run: brainsets prepare flint_slutzky_accurate_2012 -s flint_2012_e1
-
     - name: Download kemp_sleep_edf_2013
       id: kemp_sleep_edf_2013
       continue-on-error: true
