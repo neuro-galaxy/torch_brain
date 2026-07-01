@@ -4,16 +4,24 @@ Notes and guidelines on maintaining the `torch_brain` project.
 
 ## Commit messages
 
-Since we mostly perform "Squash & Merge," the title of the PR forms the main
-commit message. In addition, things are set up so that the PR description forms
-the default commit message description. Thus, to quality-control what the
-commit messages are, we have to quality-control the PR title and descriptions.
-
-Of these, the most important is that the PR titles are good. One main function
-they serve is to help us write release notes. For this, we use the
+One main function of commit messages is to help us write accurate release notes.
+A good commit log is essentially like a CHANGELOG. For this, we use the
 [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format.
 
-### PR title format
+**Enforcement**:
+Since we mostly perform "Squash & Merge," the title of the PR becomes the main
+commit message. In addition, things are set up so that the PR description forms
+the commit message description. Thus, to quality-control what the
+commit messages are, we have to quality-control the PR title and descriptions.
+
+If you are reviewing a PR, please take the additional few moments to ensure
+that the PR title is good and fits within our chosen format (see below). If it
+is not, feel free to edit the title yourself.
+
+### Commit message / PR title format recommendation
+
+Full description in [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/).
+Here is a TLDR. The title should look like:
 
 ```
 <type>[(scope)][!]: <description>
