@@ -2,7 +2,9 @@
 
 __all__ = [
     "get_cached_s3_client",
+    "get_object_bytes",
     "get_object_list",
+    "download_object",
     "download_prefix",
     "download_prefix_from_url",
 ]
@@ -16,6 +18,7 @@ __api_ref__ = {
 
 from functools import lru_cache
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from urllib.parse import urlparse
 
 try:
@@ -23,7 +26,7 @@ try:
     from botocore import UNSIGNED
     from botocore.client import BaseClient
     from botocore.config import Config
-    from botocore.exceptions import ClientError
+    from botocore.exceptions import BotoCoreError, ClientError
 
     BOTO_AVAILABLE = True
 except ImportError:
@@ -31,6 +34,7 @@ except ImportError:
     UNSIGNED = None
     BaseClient = None
     Config = None
+    BotoCoreError = None
     ClientError = None
     BOTO_AVAILABLE = False
 
@@ -125,6 +129,105 @@ def get_object_list(
         raise RuntimeError(f"Error listing objects in {bucket}/{prefix}: {e}") from e
 
     return keys
+
+
+def _is_not_found_error(error: Exception) -> bool:
+    """Return True if the exception indicates a missing S3 object."""
+    if not BOTO_AVAILABLE or not isinstance(error, ClientError):
+        return False
+
+    error_code = error.response.get("Error", {}).get("Code", "")
+    return error_code in ("NoSuchKey", "404")
+
+
+def get_object_bytes(
+    bucket: str,
+    key: str,
+    *,
+    s3_client: "BaseClient | None" = None,
+) -> bytes | None:
+    """Read a single S3 object into memory.
+
+    Args:
+        bucket: S3 bucket name
+        key: Object key to read
+        s3_client: Optional pre-configured S3 client
+
+    Returns:
+        Object contents as bytes, or ``None`` if the object does not exist on S3.
+
+    Raises:
+        RuntimeError: If the read fails for a reason other than the object being
+            absent.
+        ImportError: If boto3/botocore is not installed.
+    """
+    _check_boto_available("get_object_bytes")
+    if s3_client is None:
+        s3_client = get_cached_s3_client()
+
+    try:
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        return response["Body"].read()
+    except ClientError as e:
+        if _is_not_found_error(e):
+            return None
+        raise RuntimeError(f"Failed to download {key} from {bucket}: {e}") from e
+    except (BotoCoreError, KeyError) as e:
+        raise RuntimeError(f"Failed to download {key} from {bucket}: {e}") from e
+
+
+def download_object(
+    bucket: str,
+    key: str,
+    target_path: Path,
+    *,
+    redownload: bool = False,
+    s3_client: "BaseClient | None" = None,
+) -> Path | None:
+    """Download a single S3 object to a local file.
+
+    Args:
+        bucket: S3 bucket name
+        key: Object key to download
+        target_path: Local file path to write to
+        redownload: If ``False`` (default), return an existing local file as-is.
+            If ``True``, re-download and overwrite any existing local file.
+        s3_client: Optional pre-configured S3 client
+
+    Returns:
+        Path to the downloaded or existing local file, or ``None`` if the object
+        does not exist on S3.
+
+    Raises:
+        RuntimeError: If the download fails for a reason other than the object
+            being absent.
+        ImportError: If boto3/botocore is not installed.
+    """
+    _check_boto_available("download_object")
+    target_path = Path(target_path)
+
+    if target_path.exists() and not redownload:
+        if not target_path.is_file():
+            raise RuntimeError(f"Target path exits and is not a file; {target_path}")
+        return target_path
+
+    content = get_object_bytes(bucket, key, s3_client=s3_client)
+    if content is None:
+        return None
+
+    temp_path = None
+    try:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with NamedTemporaryFile("wb", dir=target_path.parent, delete=False) as f:
+            temp_path = Path(f.name)
+            f.write(content)
+        temp_path.replace(target_path)
+    except OSError as e:
+        if temp_path is not None and temp_path.exists():
+            temp_path.unlink()
+        raise RuntimeError(f"Failed to download {key} from {bucket}: {e}") from e
+
+    return target_path
 
 
 def download_prefix(

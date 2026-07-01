@@ -12,6 +12,7 @@ __api_ref__ = {
 
 import logging
 import sys
+import warnings
 from abc import ABC
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -51,6 +52,7 @@ from torch_brain.utils.mne import (
 from torch_brain.utils.openneuro import (
     construct_s3_url_from_path,
     download_dataset_description,
+    download_participants_tsv,
     download_recording,
     fetch_all_filenames,
     fetch_latest_snapshot_tag,
@@ -393,14 +395,31 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
         recording_id = manifest_item.Index
         s3_url = manifest_item.s3_url
         root_dir = self.raw_dir
+        redownload = getattr(self.args, "redownload", False)
 
-        # if the dataset_description.json file does not exist or the redownload flag is set, download it
         # dataset_description.json is required for mne-bids to recognize a valid BIDS dataset
-        dataset_description_exists = (root_dir / "dataset_description.json").exists()
-        if not dataset_description_exists or getattr(self.args, "redownload", False):
-            download_dataset_description(self.dataset_id, root_dir)
+        download_dataset_description(
+            self.dataset_id,
+            root_dir,
+            redownload=redownload,
+        )
 
-        if not getattr(self.args, "redownload", False):
+        # participants.tsv is optional; persist it so processing can read subject
+        # metadata from disk without re-fetching from S3.
+        try:
+            download_participants_tsv(
+                self.dataset_id,
+                root_dir,
+                redownload=redownload,
+            )
+        except RuntimeError as e:
+            warnings.warn(
+                f"Could not download participants.tsv for {self.dataset_id}: {e}. "
+                "Skipping subject information.",
+                stacklevel=2,
+            )
+
+        if not redownload:
             if self.modality == "eeg":
                 if check_eeg_recording_files_exist(root_dir, recording_id):
                     self.update_status("Already Downloaded")

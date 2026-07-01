@@ -12,10 +12,13 @@ pytestmark = pytest.mark.skipif(
 
 from torch_brain.utils.s3 import (  # noqa: E402
     UNSIGNED,
+    BotoCoreError,
     ClientError,
+    download_object,
     download_prefix,
     download_prefix_from_url,
     get_cached_s3_client,
+    get_object_bytes,
     get_object_list,
 )
 
@@ -178,6 +181,218 @@ class TestListObjects:
         assert "/file1.edf" in result
         assert "" not in result
         assert len(result) == 1
+
+
+class TestGetObjectBytes:
+    def test_returns_object_bytes(self):
+        mock_client = MagicMock()
+        mock_body = MagicMock()
+        mock_body.read.return_value = b"file content"
+        mock_client.get_object.return_value = {"Body": mock_body}
+
+        result = get_object_bytes(
+            "test-bucket", "ds000000/file.tsv", s3_client=mock_client
+        )
+
+        assert result == b"file content"
+        mock_client.get_object.assert_called_once_with(
+            Bucket="test-bucket", Key="ds000000/file.tsv"
+        )
+
+    def test_returns_none_on_no_such_key(self):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchKey", "Message": "Not Found"}}, "GetObject"
+        )
+
+        result = get_object_bytes(
+            "test-bucket", "ds000000/missing.tsv", s3_client=mock_client
+        )
+
+        assert result is None
+
+    def test_returns_none_on_404_error(self):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "404", "Message": "Not Found"}}, "GetObject"
+        )
+
+        result = get_object_bytes(
+            "test-bucket", "ds000000/missing.tsv", s3_client=mock_client
+        )
+
+        assert result is None
+
+    def test_raises_runtime_error_on_other_client_error(self):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "403", "Message": "Access Denied"}}, "GetObject"
+        )
+
+        with pytest.raises(RuntimeError, match="Failed to download"):
+            get_object_bytes("test-bucket", "ds000000/file.tsv", s3_client=mock_client)
+
+    def test_raises_runtime_error_on_botocore_error(self):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = BotoCoreError()
+
+        with pytest.raises(RuntimeError, match="Failed to download"):
+            get_object_bytes("test-bucket", "ds000000/file.tsv", s3_client=mock_client)
+
+
+class TestDownloadObject:
+    def test_downloads_file_successfully(self, tmp_path):
+        mock_client = MagicMock()
+        mock_body = MagicMock()
+        mock_body.read.return_value = b'{"Name": "Test Dataset"}'
+        mock_client.get_object.return_value = {"Body": mock_body}
+
+        target_path = tmp_path / "dataset_description.json"
+        result = download_object(
+            bucket="test-bucket",
+            key="ds000000/dataset_description.json",
+            target_path=target_path,
+            s3_client=mock_client,
+        )
+
+        assert result == target_path
+        assert target_path.read_bytes() == b'{"Name": "Test Dataset"}'
+        mock_client.get_object.assert_called_once_with(
+            Bucket="test-bucket",
+            Key="ds000000/dataset_description.json",
+        )
+
+    def test_file_already_exists(self, tmp_path):
+        mock_client = MagicMock()
+        target_path = tmp_path / "dataset_description.json"
+        target_path.write_text("existing content")
+
+        result = download_object(
+            bucket="test-bucket",
+            key="ds000000/dataset_description.json",
+            target_path=target_path,
+            s3_client=mock_client,
+        )
+
+        assert result == target_path
+        assert target_path.read_text() == "existing content"
+        mock_client.get_object.assert_not_called()
+
+    def test_redownloads_when_redownload_true(self, tmp_path):
+        mock_client = MagicMock()
+        mock_body = MagicMock()
+        mock_body.read.return_value = b"new content"
+        mock_client.get_object.return_value = {"Body": mock_body}
+
+        target_path = tmp_path / "dataset_description.json"
+        target_path.write_text("existing content")
+
+        result = download_object(
+            bucket="test-bucket",
+            key="ds000000/dataset_description.json",
+            target_path=target_path,
+            redownload=True,
+            s3_client=mock_client,
+        )
+
+        assert result == target_path
+        assert target_path.read_bytes() == b"new content"
+        mock_client.get_object.assert_called_once()
+
+    def test_returns_none_on_no_such_key(self, tmp_path):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchKey", "Message": "Not Found"}}, "GetObject"
+        )
+
+        target_path = tmp_path / "participants.tsv"
+        result = download_object(
+            bucket="test-bucket",
+            key="ds000000/participants.tsv",
+            target_path=target_path,
+            s3_client=mock_client,
+        )
+
+        assert result is None
+        assert not target_path.exists()
+
+    def test_returns_none_on_404_error(self, tmp_path):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "404", "Message": "Not Found"}}, "GetObject"
+        )
+
+        target_path = tmp_path / "participants.tsv"
+        result = download_object(
+            bucket="test-bucket",
+            key="ds000000/participants.tsv",
+            target_path=target_path,
+            s3_client=mock_client,
+        )
+
+        assert result is None
+
+    def test_raises_runtime_error_on_other_client_error(self, tmp_path):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "403", "Message": "Access Denied"}}, "GetObject"
+        )
+
+        target_path = tmp_path / "dataset_description.json"
+        with pytest.raises(RuntimeError, match="Failed to download"):
+            download_object(
+                bucket="test-bucket",
+                key="ds000000/dataset_description.json",
+                target_path=target_path,
+                s3_client=mock_client,
+            )
+
+    def test_raises_runtime_error_on_botocore_error(self, tmp_path):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = BotoCoreError()
+
+        target_path = tmp_path / "dataset_description.json"
+        with pytest.raises(RuntimeError, match="Failed to download"):
+            download_object(
+                bucket="test-bucket",
+                key="ds000000/dataset_description.json",
+                target_path=target_path,
+                s3_client=mock_client,
+            )
+
+    def test_creates_parent_directories(self, tmp_path):
+        mock_client = MagicMock()
+        mock_body = MagicMock()
+        mock_body.read.return_value = b"content"
+        mock_client.get_object.return_value = {"Body": mock_body}
+
+        target_path = tmp_path / "nested" / "dir" / "file.json"
+        result = download_object(
+            bucket="test-bucket",
+            key="ds000000/file.json",
+            target_path=target_path,
+            s3_client=mock_client,
+        )
+
+        assert result == target_path
+        assert target_path.exists()
+
+    @patch("torch_brain.utils.s3.get_cached_s3_client")
+    def test_uses_cached_client_when_none_provided(self, mock_get_client, tmp_path):
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_body = MagicMock()
+        mock_body.read.return_value = b"content"
+        mock_client.get_object.return_value = {"Body": mock_body}
+
+        target_path = tmp_path / "file.json"
+        download_object(
+            bucket="test-bucket",
+            key="ds000000/file.json",
+            target_path=target_path,
+        )
+
+        mock_get_client.assert_called_once()
 
 
 class TestDownloadPrefix:

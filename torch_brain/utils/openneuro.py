@@ -8,6 +8,8 @@ __all__ = [
     "OPENNEURO_S3_BUCKET",
     "construct_s3_url_from_path",
     "download_dataset_description",
+    "download_meta",
+    "download_participants_tsv",
     "download_recording",
     "fetch_latest_snapshot_tag",
     "fetch_all_filenames",
@@ -20,24 +22,17 @@ __api_ref__ = {
     "sections": [{"autosummary": __all__}],
 }
 
-import logging
-from io import BytesIO
+import time
 from pathlib import Path
 
 import pandas as pd
 import requests
 
-try:
-    from botocore.exceptions import ClientError
-
-    BOTO_AVAILABLE = True
-except ImportError:
-    ClientError = Exception
-    BOTO_AVAILABLE = False
-
+from torch_brain.utils.bids import _parse_participants_tsv
 from torch_brain.utils.s3 import (
+    download_object,
     download_prefix_from_url,
-    get_cached_s3_client,
+    get_object_bytes,
     get_object_list,
 )
 
@@ -69,16 +64,7 @@ def fetch_latest_snapshot_tag(dataset_id: str) -> str:
         }
     """
 
-    variables = {
-        "datasetId": dataset_id,
-    }
-
-    response = _graphql_query_openneuro(
-        query,
-        variables,
-    )
-
-    dataset = response.get("data", {}).get("dataset")
+    dataset = _fetch_dataset_graphql(dataset_id, query)
     latest_snapshot_tag = ((dataset or {}).get("latestSnapshot") or {}).get("tag")
     if not latest_snapshot_tag:
         raise RuntimeError(
@@ -115,7 +101,7 @@ def fetch_all_filenames(dataset_id: str) -> list[str]:
 
 
 def fetch_participants_tsv(dataset_id: str) -> pd.DataFrame | None:
-    """Fetch and parse participants.tsv from OpenNeuro S3.
+    """Fetch and parse participants.tsv from OpenNeuro S3 in memory.
 
     Args:
         dataset_id: The OpenNeuro dataset identifier
@@ -124,37 +110,15 @@ def fetch_participants_tsv(dataset_id: str) -> pd.DataFrame | None:
         DataFrame indexed by ``participant_id``, or ``None`` if the file does not
         exist or has no ``participant_id`` column.
     """
-    s3_client = get_cached_s3_client()
-
     key = f"{dataset_id}/participants.tsv"
+    content = get_object_bytes(OPENNEURO_S3_BUCKET, key)
+    if content is None:
+        return None
 
-    try:
-        response = s3_client.get_object(Bucket=OPENNEURO_S3_BUCKET, Key=key)
-        content = response["Body"].read()
-
-        df = pd.read_csv(
-            BytesIO(content),
-            sep="\t",
-            na_values=["n/a", "N/A"],
-            keep_default_na=True,
-        )
-
-        if "participant_id" not in df.columns:
-            logging.warning(
-                f"No participant_id column found in participants.tsv file in OpenNeuro dataset {dataset_id}. "
-                "Returning None."
-            )
-            return None
-
-        df = df.set_index("participant_id")
-        return df
-
-    except ClientError as e:
-        if BOTO_AVAILABLE:
-            error_code = e.response.get("Error", {}).get("Code", "")
-            if error_code in ("NoSuchKey", "404"):
-                return None
-        raise
+    return _parse_participants_tsv(
+        content,
+        missing_column_context=f"file in OpenNeuro dataset {dataset_id}",
+    )
 
 
 def fetch_species(dataset_id: str) -> str:
@@ -165,6 +129,9 @@ def fetch_species(dataset_id: str) -> str:
 
     Returns:
         Raw species value returned by OpenNeuro metadata.
+
+    Raises:
+        RuntimeError: If the species cannot be resolved from the GraphQL response.
     """
     query = """
         query Dataset($datasetId: ID!) {
@@ -175,15 +142,10 @@ def fetch_species(dataset_id: str) -> str:
             }
         }
     """
-    variables = {
-        "datasetId": dataset_id,
-    }
 
-    response = _graphql_query_openneuro(
-        query,
-        variables,
-    )
-    species = response["data"]["dataset"]["metadata"]["species"]
+    dataset = _fetch_dataset_graphql(dataset_id, query)
+    species = ((dataset or {}).get("metadata") or {}).get("species")
+
     return species
 
 
@@ -230,15 +192,68 @@ def download_recording(s3_url: str, target_dir: Path) -> list[Path]:
     return download_prefix_from_url(s3_url, target_dir)
 
 
-def download_dataset_description(dataset_id: str, target_dir: Path) -> Path:
-    """Download dataset_description.json from OpenNeuro S3.
-
-    This file is required for mne-bids to recognize a valid BIDS dataset.
-    If the file already exists locally, it is not re-downloaded.
+def download_meta(
+    dataset_id: str,
+    target_dir: Path,
+    filename: str,
+    *,
+    redownload: bool = False,
+    required: bool = False,
+) -> Path | None:
+    """Download a metadata file from OpenNeuro S3.
 
     Args:
         dataset_id: The OpenNeuro dataset identifier
         target_dir: Local directory to download to
+        filename: Metadata filename at the dataset root (for example,
+            ``"dataset_description.json"`` or ``"participants.tsv"``)
+        redownload: If ``True``, re-download and overwrite any existing local file.
+            If ``False`` (default), an existing local file is returned as-is.
+        required: If ``True``, raise ``RuntimeError`` when the file is missing on
+            S3. If ``False`` (default), return ``None`` when the file is absent.
+
+    Returns:
+        Path to the downloaded or existing local file, or ``None`` if the file is
+        not present on S3 and ``required`` is ``False``.
+
+    Raises:
+        RuntimeError: If the download fails, or if the file is missing on S3 and
+            ``required`` is ``True``.
+    """
+    target_dir = Path(target_dir)
+    target_path = target_dir / filename
+    key = f"{dataset_id}/{filename}"
+
+    result = download_object(
+        OPENNEURO_S3_BUCKET,
+        key,
+        target_path,
+        redownload=redownload,
+    )
+
+    if result is None and required:
+        raise RuntimeError(f"{filename} not found for {dataset_id} on OpenNeuro S3")
+
+    return result
+
+
+def download_dataset_description(
+    dataset_id: str,
+    target_dir: Path,
+    *,
+    redownload: bool = False,
+) -> Path:
+    """Download dataset_description.json from OpenNeuro S3.
+
+    This file is required for mne-bids to recognize a valid BIDS dataset.
+    If the file already exists locally, it is not re-downloaded unless
+    ``redownload`` is ``True``.
+
+    Args:
+        dataset_id: The OpenNeuro dataset identifier
+        target_dir: Local directory to download to
+        redownload: If ``True``, re-download and overwrite any existing local file.
+            If ``False`` (default), an existing local file is returned as-is.
 
     Returns:
         Path to the downloaded or existing dataset_description.json file
@@ -246,36 +261,71 @@ def download_dataset_description(dataset_id: str, target_dir: Path) -> Path:
     Raises:
         RuntimeError: If download fails or file doesn't exist on S3
     """
+    return download_meta(
+        dataset_id,
+        target_dir,
+        "dataset_description.json",
+        redownload=redownload,
+        required=True,
+    )
+
+
+def download_participants_tsv(
+    dataset_id: str,
+    target_dir: Path,
+    *,
+    redownload: bool = False,
+) -> Path | None:
+    """Download participants.tsv from OpenNeuro S3.
+
+    Args:
+        dataset_id: The OpenNeuro dataset identifier
+        target_dir: Local directory to download to
+        redownload: If ``True``, re-download and overwrite any existing local file.
+            If ``False`` (default), an existing local file is returned as-is.
+
+    Returns:
+        Path to the downloaded or existing participants.tsv file, or ``None`` if
+        the dataset has no participants.tsv on OpenNeuro S3.
+
+    Raises:
+        RuntimeError: If the download fails for a reason other than the file being
+            absent.
+    """
     target_dir = Path(target_dir)
-    target_path = target_dir / "dataset_description.json"
+    target_path = target_dir / "participants.tsv"
 
-    if target_path.exists():
-        return target_path
+    result = download_meta(
+        dataset_id,
+        target_dir,
+        "participants.tsv",
+        redownload=redownload,
+    )
 
-    s3_client = get_cached_s3_client()
-    key = f"{dataset_id}/dataset_description.json"
+    if result is None and redownload and target_path.exists() and target_path.is_file():
+        target_path.unlink()
 
-    try:
-        response = s3_client.get_object(Bucket=OPENNEURO_S3_BUCKET, Key=key)
-        content = response["Body"].read()
+    return result
 
-        target_dir.mkdir(parents=True, exist_ok=True)
-        with open(target_path, "wb") as f:
-            f.write(content)
 
-        return target_path
+def _retry(max_attempts=5, initial_wait=4, max_wait=10):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            attempt = 0
+            wait_time = initial_wait
+            while True:
+                try:
+                    return func(*args, **kwargs)
+                except Exception:
+                    attempt += 1
+                    if attempt >= max_attempts:
+                        raise
+                    time.sleep(wait_time)
+                    wait_time = min(wait_time * 2, max_wait)
 
-    except ClientError as e:
-        error_code = ""
-        if BOTO_AVAILABLE:
-            error_code = e.response.get("Error", {}).get("Code", "")
-        if error_code in ("NoSuchKey", "404"):
-            raise RuntimeError(
-                f"dataset_description.json not found for {dataset_id} on OpenNeuro S3"
-            ) from e
-        raise RuntimeError(
-            f"Failed to download dataset_description.json for {dataset_id}: {e}"
-        ) from e
+        return wrapper
+
+    return decorator
 
 
 def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
@@ -293,42 +343,38 @@ def _graphql_query_openneuro(query: str, variables: dict | None = None) -> dict:
             errors.
     """
 
-    def _retry(max_attempts=5, initial_wait=4, max_wait=10):
-        def decorator(func):
-            import time
-
-            def wrapper(*args, **kwargs):
-                attempt = 0
-                wait_time = initial_wait
-                while True:
-                    try:
-                        return func(*args, **kwargs)
-                    except Exception:
-                        attempt += 1
-                        if attempt >= max_attempts:
-                            raise
-                        time.sleep(wait_time)
-                        wait_time = min(wait_time * 2, max_wait)
-
-            return wrapper
-
-        return decorator
-
     @_retry(max_attempts=5, initial_wait=4, max_wait=10)
     def _graphql_query(query, variables=None):
         response = requests.post(
-            GRAPHQL_ENDPOINT, json={"query": query, "variables": variables}
+            GRAPHQL_ENDPOINT,
+            json={"query": query, "variables": variables},
+            timeout=30,
         )
         if response.status_code == 200:
             json_response = response.json()
-            # Check for "errors" key in the GraphQL response
             if "errors" in json_response and json_response["errors"]:
                 raise Exception(
                     f"GraphQL query returned errors: {json_response['errors']}"
                 )
             return json_response
 
-        else:
-            raise Exception(f"Query failed with status code {response.status_code}")
+        raise Exception(f"Query failed with status code {response.status_code}")
 
     return _graphql_query(query, variables)
+
+
+def _fetch_dataset_graphql(dataset_id: str, query: str) -> dict | None:
+    """Execute a dataset GraphQL query and return the dataset payload.
+
+    Args:
+        dataset_id: OpenNeuro dataset identifier.
+        query: GraphQL query expecting a ``$datasetId`` variable.
+
+    Returns:
+        The ``dataset`` object from the GraphQL response, or ``None`` if absent.
+    """
+    response = _graphql_query_openneuro(
+        query,
+        {"datasetId": dataset_id},
+    )
+    return response.get("data", {}).get("dataset")
