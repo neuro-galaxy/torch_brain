@@ -41,16 +41,8 @@ models.
 **torch_brain** requires Python >= 3.10. To install a stable release:
 
 ```bash
-pip install torch torch_brain
+pip install torch torch_brain>=0.2
 ```
-
-> [!CAUTION]
-> Until we release `v0.2.0` on PyPI, you will have to install from GitHub
-> itself. See the [releases page](https://github.com/neuro-galaxy/torch_brain/releases)
-> for updates on releases.
-> ```bash
-> pip install torch git+https://github.com/neuro-galaxy/torch_brain
-> ```
 
 > [!TIP]
 > If you only need `torch_brain.data` and the data-preparation pipelines, you
