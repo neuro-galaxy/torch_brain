@@ -41,7 +41,7 @@ models.
 **torch_brain** requires Python >= 3.10. To install a stable release:
 
 ```bash
-pip install torch torch_brain>=0.2
+pip install torch torch_brain
 ```
 
 > [!TIP]
