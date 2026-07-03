@@ -111,6 +111,10 @@ plot_html_show_formats = False
 plot_formats = [("png", 110)]
 
 
+exclude_patterns = [
+    "notebooks/nlb_maze_minimal_example/nlb_maze_minimal_example.ipynb",
+]
+
 # Compile scss files into css files using sphinxcontrib-sass
 sass_src_dir, sass_out_dir = "scss", "generated/css/styles"
 sass_targets = {
