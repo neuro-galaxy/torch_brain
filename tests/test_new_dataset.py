@@ -14,7 +14,6 @@ from torch_brain.data import (
     RegularTimeSeries,
     SessionDescription,
     SubjectDescription,
-    serialize_fn_map,
 )
 from torch_brain.datasets import (
     Dataset,
@@ -92,19 +91,19 @@ def dummy_spiking_brainset(tmp_path):
 
     data = create_spiking_data(BRAINSET_ID, "alice", "session1", 1.0)
     with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
+        data.to_hdf5(f)
 
     data = create_spiking_data(BRAINSET_ID, "bob", "session2", 1.5)
     with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
+        data.to_hdf5(f)
 
     data = create_spiking_data(BRAINSET_ID, "bob", "session3", 0.9)
     with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
+        data.to_hdf5(f)
 
     data = create_spiking_data(BRAINSET_ID, "charlie", "session4", 2.0)
     with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
+        data.to_hdf5(f)
 
     return store_path
 
@@ -117,11 +116,11 @@ def dummy_multichannel_brainset(tmp_path):
 
     data = create_multichannel_data(BRAINSET_ID, "alice", "session1", 1.0)
     with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
+        data.to_hdf5(f)
 
     data = create_multichannel_data(BRAINSET_ID, "bob", "session2", 1.2)
     with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f, serialize_fn_map=serialize_fn_map)
+        data.to_hdf5(f)
 
     return store_path
 
