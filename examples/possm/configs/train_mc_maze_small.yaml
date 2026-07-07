@@ -1,0 +1,22 @@
+defaults:
+  - defaults.yaml
+  - model: possm_small.yaml
+  - dataset: pei_pandarinath_nlb_2021.yaml
+  - _self_
+
+train_transforms:
+  - _target_: torch_brain.transforms.UnitDropout
+    max_units: 1000
+    min_units: 60
+    mode_units: 300
+    peak: 4
+
+batch_size: 128
+eval_epochs: 10
+
+optim:
+  base_lr: 1.5625e-5
+  weight_decay: 0.0001
+
+wandb:
+  run_name: possm_nlb_mc_maze

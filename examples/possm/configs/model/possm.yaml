@@ -1,0 +1,17 @@
+_target_: torch_brain.models.POSSM
+sequence_length: 1.0
+bin_width: 0.05
+bin_step: 0.05
+num_latents: 1
+dim: 256
+dim_head: 64
+depth: 0
+cross_heads: 1
+self_heads: 8
+ffn_dropout: 0.2
+lin_dropout: 0.4
+atn_dropout: 0.0
+rnn_dim: 512
+num_rnn_layers: 4
+rnn_dropout: 0.2
+output_ca_ctx_lim: 3
