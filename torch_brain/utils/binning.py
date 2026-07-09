@@ -61,11 +61,15 @@ def bin_spikes(
     num_bins = round((end - start) / bin_size)
 
     rate = 1 / bin_size  # avoid precision issues
-    binned_spikes = np.zeros((num_bins, num_units), dtype=dtype)
     # Handle timestamps when the domain start is non-zero
     ts = spikes.timestamps - spikes.domain.start[0]
-    bin_index = np.floor(ts * rate).astype(int)
-    np.add.at(binned_spikes, (bin_index, spikes.unit_index), 1)
+    # int64 cast avoids overflow when num_bins * num_units is large.
+    bin_index = np.floor(ts * rate).astype(np.int64)
+    flat_index = bin_index * num_units + spikes.unit_index
+    # minlength ensures trailing zero-count cells are not truncated before the reshape.
+    flat_binned_spikes = np.bincount(flat_index, minlength=num_bins * num_units)
+    binned_spikes = flat_binned_spikes.reshape(num_bins, num_units).astype(dtype)
+
     if max_spikes is not None:
         np.clip(binned_spikes, None, max_spikes, out=binned_spikes)
 
