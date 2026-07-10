@@ -332,6 +332,26 @@ class TestDownloadObject:
 
         assert result is None
 
+    def test_unlinks_local_file_on_redownload_when_missing_on_s3(self, tmp_path):
+        mock_client = MagicMock()
+        mock_client.get_object.side_effect = ClientError(
+            {"Error": {"Code": "NoSuchKey", "Message": "Not Found"}}, "GetObject"
+        )
+
+        target_path = tmp_path / "participants.tsv"
+        target_path.write_text("participant_id\tage\nsub-01\t34\n")
+
+        result = download_object(
+            bucket="test-bucket",
+            key="ds000000/participants.tsv",
+            target_path=target_path,
+            redownload=True,
+            s3_client=mock_client,
+        )
+
+        assert result is None
+        assert not target_path.exists()
+
     def test_raises_runtime_error_on_other_client_error(self, tmp_path):
         mock_client = MagicMock()
         mock_client.get_object.side_effect = ClientError(

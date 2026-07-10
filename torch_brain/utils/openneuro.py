@@ -128,10 +128,8 @@ def fetch_species(dataset_id: str) -> str:
         dataset_id: The OpenNeuro dataset identifier (e.g., 'ds005555').
 
     Returns:
-        Raw species value returned by OpenNeuro metadata.
-
-    Raises:
-        RuntimeError: If the species cannot be resolved from the GraphQL response.
+        Raw species value returned by OpenNeuro metadata, or ``None`` if the dataset
+        has no species metadata.
     """
     query = """
         query Dataset($datasetId: ID!) {
@@ -293,19 +291,13 @@ def download_participants_tsv(
             absent.
     """
     target_dir = Path(target_dir)
-    target_path = target_dir / "participants.tsv"
 
-    result = download_meta(
+    return download_meta(
         dataset_id,
         target_dir,
         "participants.tsv",
         redownload=redownload,
     )
-
-    if result is None and redownload and target_path.exists() and target_path.is_file():
-        target_path.unlink()
-
-    return result
 
 
 def _retry(max_attempts=5, initial_wait=4, max_wait=10):

@@ -191,7 +191,8 @@ def download_object(
         key: Object key to download
         target_path: Local file path to write to
         redownload: If ``False`` (default), return an existing local file as-is.
-            If ``True``, re-download and overwrite any existing local file.
+            If ``True``, re-download and overwrite any existing local file. If the
+            object is missing on S3, any existing local file is removed.
         s3_client: Optional pre-configured S3 client
 
     Returns:
@@ -213,6 +214,8 @@ def download_object(
 
     content = get_object_bytes(bucket, key, s3_client=s3_client)
     if content is None:
+        if redownload and target_path.exists() and target_path.is_file():
+            target_path.unlink()
         return None
 
     temp_path = None
