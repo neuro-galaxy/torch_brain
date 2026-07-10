@@ -6,8 +6,6 @@ cycle. The TORCH_BRAIN_SOURCE / sys.path shim lives in benchmark.py and runs
 before either benchmark module is imported.
 """
 
-from __future__ import annotations
-
 import timeit
 
 import numpy as np
