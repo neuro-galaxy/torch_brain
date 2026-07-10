@@ -209,7 +209,7 @@ def download_object(
 
     if target_path.exists() and not redownload:
         if not target_path.is_file():
-            raise RuntimeError(f"Target path exits and is not a file; {target_path}")
+            raise RuntimeError(f"Target path exists and is not a file; {target_path}")
         return target_path
 
     content = get_object_bytes(bucket, key, s3_client=s3_client)
