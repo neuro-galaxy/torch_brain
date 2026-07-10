@@ -11,6 +11,7 @@ Usage:
     uv run python scripts/benchmarks/benchmark.py
     uv run python scripts/benchmarks/benchmark.py --json
     uv run python scripts/benchmarks/benchmark.py --save results.jsonl
+    uv run python scripts/benchmarks/benchmark.py --suite data
 
 Set TORCH_BRAIN_SOURCE to override where torch_brain is imported from (used by
 compare.py to benchmark code from arbitrary commits).
@@ -39,7 +40,11 @@ import bench_utils  # noqa: E402
 # Runner
 # ---------------------------------------------------------------------------
 
-BENCHMARKS = bench_data.BENCHMARKS + bench_utils.BENCHMARKS
+SUITES = {
+    "data": bench_data.BENCHMARKS,
+    "utils": bench_utils.BENCHMARKS,
+    "all": bench_data.BENCHMARKS + bench_utils.BENCHMARKS,
+}
 
 
 def main():
@@ -48,6 +53,12 @@ def main():
     parser.add_argument(
         "--save", type=str, default=None, help="Append results to a JSONL file"
     )
+    parser.add_argument(
+        "--suite",
+        choices=sorted(SUITES),
+        default="all",
+        help="Which benchmark suite to run (default: all)",
+    )
     args = parser.parse_args()
 
     results = []
@@ -55,7 +66,7 @@ def main():
         print(f"{'Benchmark':<42} {'Iters':>8} {'Mean (µs)':>12}")
         print("-" * 65)
 
-    for bench_fn in BENCHMARKS:
+    for bench_fn in SUITES[args.suite]:
         try:
             r = bench_fn()
         except Exception:

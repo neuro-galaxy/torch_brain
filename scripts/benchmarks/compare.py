@@ -10,7 +10,8 @@ Usage:
     uv run python scripts/benchmarks/compare.py <commitA> <commitB>   # commitA vs commitB
 
 Options:
-    --save PATH   Append comparison results as JSONL to PATH.
+    --save PATH    Append comparison results as JSONL to PATH.
+    --suite NAME   Which benchmark suite to run: data, utils, or all (default: all).
 """
 
 from __future__ import annotations
@@ -112,7 +113,9 @@ def extract_source(commit: str) -> str:
     return tmpdir
 
 
-def run_benchmark(source_dir: str | None, label: str) -> list[dict] | None:
+def run_benchmark(
+    source_dir: str | None, label: str, suite: str = "all"
+) -> list[dict] | None:
     """Run benchmark.py, optionally overriding the import source.
 
     Returns the results list, or ``None`` if the benchmark subprocess failed
@@ -124,7 +127,7 @@ def run_benchmark(source_dir: str | None, label: str) -> list[dict] | None:
 
     print(f"Running benchmarks for {label}...", file=sys.stderr)
     result = subprocess.run(
-        [sys.executable, BENCH_SCRIPT, "--json"],
+        [sys.executable, BENCH_SCRIPT, "--json", "--suite", suite],
         capture_output=True,
         text=True,
         env=env,
@@ -209,6 +212,12 @@ def main():
     parser.add_argument(
         "--save", type=str, default=None, help="Append results to a JSONL file"
     )
+    parser.add_argument(
+        "--suite",
+        choices=["data", "utils", "all"],
+        default="all",
+        help="Which benchmark suite to run (default: all)",
+    )
     args = parser.parse_args()
 
     if len(args.commits) > 2:
@@ -218,7 +227,7 @@ def main():
     had_failures = False
     try:
         if len(args.commits) == 0:
-            results = run_benchmark(None, "working tree")
+            results = run_benchmark(None, "working tree", args.suite)
             if results is None:
                 had_failures = True
             else:
@@ -237,8 +246,8 @@ def main():
             tmpdir = extract_source(commit)
             tmpdirs.append(tmpdir)
 
-            results_a = run_benchmark(tmpdir, label_a)
-            results_b = run_benchmark(None, "working tree")
+            results_a = run_benchmark(tmpdir, label_a, args.suite)
+            results_b = run_benchmark(None, "working tree", args.suite)
 
             if results_a is None or results_b is None:
                 had_failures = True
@@ -269,8 +278,8 @@ def main():
             tmpdir_b = extract_source(commit_b)
             tmpdirs.append(tmpdir_b)
 
-            results_a = run_benchmark(tmpdir_a, label_a)
-            results_b = run_benchmark(tmpdir_b, label_b)
+            results_a = run_benchmark(tmpdir_a, label_a, args.suite)
+            results_b = run_benchmark(tmpdir_b, label_b, args.suite)
 
             if results_a is None or results_b is None:
                 had_failures = True

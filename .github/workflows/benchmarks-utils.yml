@@ -1,13 +1,13 @@
-name: Benchmarks
+name: Benchmarks (utils)
 
 on:
   pull_request:
     types: [opened, reopened, synchronize]
     paths:
-      - torch_brain/data/**
+      - torch_brain/utils/**
       - pyproject.toml
-      - scripts/data_benchmarks/**
-      - .github/workflows/benchmarks.yml
+      - scripts/benchmarks/**
+      - .github/workflows/benchmarks-utils.yml
 
 permissions:
   contents: read
@@ -43,7 +43,7 @@ jobs:
         id: benchmark
         run: |
           set -o pipefail
-          uv run python scripts/data_benchmarks/compare.py "origin/$BASE_REF" HEAD | tee benchmark-report.txt
+          uv run python scripts/benchmarks/compare.py --suite utils "origin/$BASE_REF" HEAD | tee benchmark-report.txt
 
       - name: Upsert PR benchmark comment
         if: ${{ !cancelled() && hashFiles('benchmark-report.txt') != '' }}
@@ -54,13 +54,13 @@ jobs:
         with:
           script: |
             const fs = require("fs");
-            const marker = "<!-- benchmark-ci-report -->";
+            const marker = "<!-- benchmark-ci-report:utils -->";
             const reportPath = process.env.BENCHMARK_REPORT_PATH;
             const baseRef = process.env.BASE_REF;
             const report = fs.readFileSync(reportPath, "utf8");
 
             const body = `${marker}
-            ## Benchmark comparison vs ${baseRef}
+            ## Benchmark comparison vs ${baseRef} (torch_brain.utils)
 
             Baseline: \`origin/${baseRef}\`
             Target: \`HEAD\`
