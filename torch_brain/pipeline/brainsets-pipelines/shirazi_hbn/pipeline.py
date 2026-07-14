@@ -89,7 +89,7 @@ class Pipeline(OpenNeuroPipeline):
 
     def _release_raw_dir(self, release_id) -> Path:
         # Capture the runner-assigned raw dir once, before we start repointing it,
-        # then nest per-release subdirs inside it: <raw>/shirazi_hbn/r{n}.
+        # then nest per-release subdirs inside it: <raw>/shirazi_hbn/R{n}.
         if not hasattr(self, "_base_raw_dir"):
             self._base_raw_dir = self.raw_dir
         return self._base_raw_dir / f"R{int(release_id)}"
@@ -121,6 +121,9 @@ class Pipeline(OpenNeuroPipeline):
 
         data, _ = result
 
+        # GraphQL species metadata is not defined for HBN releases.
+        data.subject.species = "HOMO_SAPIENS"
+
         # Downloaded once per release into <raw>/shirazi_hbn/R{n}/ by download().
         participants_data = None
         if (self.raw_dir / "participants.tsv").exists():
@@ -133,7 +136,6 @@ class Pipeline(OpenNeuroPipeline):
                 value = row.get(field, None)
                 return None if pd.isna(value) else value
 
-            data.subject.species = "HOMO_SAPIENS"
             data.subject.ehq_total = _value("ehq_total")
             data.subject.commercial_use = _value("commercial_use")
             data.subject.full_pheno = _value("full_pheno")
