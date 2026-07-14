@@ -13,6 +13,7 @@ from .arraydict import ArrayDict, LazyArrayDict  # noqa: F401
 from .interval import Interval, LazyInterval  # noqa: F401
 from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries  # noqa: F401
 from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries  # noqa: F401
+from .serialization import _DEFAULT_SERIALIZE_FN_MAP
 from .utils import _size_repr
 
 
@@ -304,25 +305,36 @@ class Data:
         out_dict = {k: v for k, v in self.__dict__.items() if k != "_file"}
         return copy.deepcopy(out_dict)
 
-    def to_hdf5(self, file, serialize_fn_map=None):
+    def to_hdf5(
+        self,
+        file: h5py.File | h5py.Group,
+        serialize_fn_map: dict[type, Callable] | None = None,
+    ):
         r"""Saves the data object to an HDF5 file. This method will also call the
-        `to_hdf5` method of all contained data objects, so that the entire data object
-        is saved to the HDF5 file, i.e. no need to call `to_hdf5` for each contained
-        data object.
+        ``to_hdf5`` method of all contained data objects, so that the entire data
+        object is saved to the HDF5 file, i.e. no need to call ``to_hdf5`` for each
+        contained data object.
 
         Args:
-            file: HDF5 file.
+            file: An open :class:`h5py.File` (or :class:`h5py.Group`) to write into.
+            serialize_fn_map: Optional dictionary mapping a Python type to a callable
+                that serializes values of that type into an `HDF5-compatible object
+                <https://docs.h5py.org/en/latest/faq.html#what-datatypes-are-supported>`_.
+                Use this for attributes whose types are not natively supported by
+                HDF5. If :obj:`None`, the map returned by
+                :func:`~torch_brain.data.get_default_serialize_fn_map` is used.
+                Defaults to :obj:`None`.
 
-        .. code-block:: python
-
-                import h5py
-                from torch_brain.data import Data
-
-                data = Data(...)
-
-                with h5py.File("data.h5", "w") as f:
-                    data.to_hdf5(f)
+        Example ::
+            >>> import h5py
+            >>> from torch_brain.data import Data
+            >>> data = Data(...)  # doctest: +SKIP
+            >>> with h5py.File("data.h5", "w") as f:  # doctest: +SKIP
+            ...     data.to_hdf5(f)
         """
+        if serialize_fn_map is None:
+            serialize_fn_map = _DEFAULT_SERIALIZE_FN_MAP
+
         for key in self.keys():
             value = getattr(self, key)
             if isinstance(value, (Data, ArrayDict)):
@@ -358,14 +370,11 @@ class Data:
         Args:
             file: HDF5 file.
 
-
-        .. code-block:: python
-
-            import h5py
-            from torch_brain.data import Data
-
-            with h5py.File("data.h5", "r") as f:
-                data = Data.from_hdf5(f)
+        Example ::
+            >>> import h5py  # doctest: +SKIP
+            >>> from torch_brain.data import Data  # doctest: +SKIP
+            >>> with h5py.File("data.h5", "r") as f:  # doctest: +SKIP
+            ...     data = Data.from_hdf5(f)
         """
         # check that the file is read-only
         if isinstance(file, h5py.File):
@@ -430,21 +439,19 @@ class Data:
         Returns:
             Data: The loaded :class:`Data` object from the HDF5 file.
 
-        .. code-block:: python
+        Example ::
+            >>> from torch_brain.data import Data
+            >>> # lazy with context manager (recommended)
+            >>> with Data.load("data.h5") as data:  # doctest: +SKIP
+            ...     ...
 
-            from torch_brain.data import Data
+            >>> # lazy with explicit close
+            >>> data = Data.load("data.h5")  # doctest: +SKIP
+            >>> ...  # doctest: +SKIP
+            >>> data.close()  # doctest: +SKIP
 
-            # lazy with context manager (recommended)
-            with Data.load("data.h5") as data:
-                ...
-
-            # lazy with explicit close
-            data = Data.load("data.h5")
-            ...
-            data.close()
-
-            # non-lazy (no close needed)
-            data = Data.load("data.h5", lazy=False)
+            >>> # non-lazy (no close needed)
+            >>> data = Data.load("data.h5", lazy=False)  # doctest: +SKIP
         """
         file = h5py.File(path)
         try:
@@ -481,12 +488,10 @@ class Data:
         Args:
             path: Destination file path
 
-        .. code-block:: python
-
-                from torch_brain.data import Data
-
-                data = Data(...)
-                data.save("data.h5")
+        Example ::
+            >>> from torch_brain.data import Data  # doctest: +SKIP
+            >>> data = Data(...)  # doctest: +SKIP
+            >>> data.save("data.h5")  # doctest: +SKIP
         """
         with h5py.File(path, "w") as f:
             self.to_hdf5(f)
@@ -550,43 +555,15 @@ class Data:
         data."""
         return key in self.keys()
 
-    def get_nested_attribute(self, path: str) -> Any:
-        r"""Returns the attribute specified by the path. The path can be nested using
-        dots. For example, if the path is "spikes.timestamps", this method will return
-        the timestamps attribute of the spikes object.
-
-        Args:
-            path: Nested attribute path.
-        """
-        # Split key by dots, resolve using getattr
-        components = path.split(".")
-        out = self
-        for c in components:
-            try:
-                out = getattr(out, c)
-            except AttributeError as err:
-                raise AttributeError(
-                    f"Could not resolve {path} in data (specifically, at level {c})"
-                ) from err
-        return out
-
-    def set_nested_attribute(self, path: str, value: Any) -> Data:
-        r"""Set a nested attribute specified by its path. The path can be nested
-        using dots. For example, if the path is "session.id", this method will
-        set the value of the ``id`` attribute of the ``session`` object.
-        The attribute is modified in an in-place manner.
-
-        Args:
-            path: Nested attribute path (can be dot-separated, e.g. "session.id").
-            value: The value to set for the attribute.
+    def _resolve_to_parent(self, path: str):
+        """Walk all but the last component of a dot-separated path.
 
         Returns:
-            Data: self with the updated nested attribute.
+            tuple: ``(parent_object, last_attribute_name)``
 
         Raises:
-            AttributeError: If any component of the path cannot be resolved.
+            AttributeError: If any intermediate component cannot be resolved.
         """
-        # Split key by dots, resolve using getattr
         components = path.split(".")
         obj = self
         for c in components[:-1]:
@@ -596,12 +573,96 @@ class Data:
                 raise AttributeError(
                     f"Could not resolve {path} in data (specifically, at level {c})"
                 ) from err
+        return obj, components[-1]
 
-        setattr(obj, components[-1], value)
+    def get_nested_attribute(self, path: str) -> Any:
+        r"""Return the value of a nested attribute specified by its dot-separated path.
+
+        Args:
+            path: Nested attribute path (dot-separated).
+
+        Returns:
+            The value of the attribute at the end of the path.
+
+        Raises:
+            AttributeError: If any component of the path cannot be resolved.
+
+        Example ::
+            >>> import numpy as np
+            >>> from torch_brain.data import Data, IrregularTimeSeries, Interval
+            >>> data = Data(
+            ...     spikes=IrregularTimeSeries(
+            ...         timestamps=[0.1, 0.2, 0.3],
+            ...         unit_index=[0, 0, 1],
+            ...         waveforms=np.zeros((3, 2)),
+            ...         domain=Interval(0., 1.),
+            ...     ),
+            ...     domain=Interval(0., 1.),
+            ... )
+
+            >>> for attr in ["timestamps", "unit_index", "waveforms"]:
+            ...     print(attr, data.get_nested_attribute(f"spikes.{attr}"))
+            timestamps [0.1 0.2 0.3]
+            unit_index [0 0 1]
+            waveforms [[0. 0.]
+             [0. 0.]
+             [0. 0.]]
+        """
+        obj, attr = self._resolve_to_parent(path)
+        try:
+            return getattr(obj, attr)
+        except AttributeError as err:
+            raise AttributeError(
+                f"Could not resolve {path} in data (specifically, at level {attr})"
+            ) from err
+
+    def set_nested_attribute(self, path: str, value: Any) -> Data:
+        r"""Set a nested attribute specified by its dot-separated path, modifying
+        the object in-place.
+
+        Example ::
+
+            >>> data.set_nested_attribute("session.subject.age", 5)  # doctest: +SKIP
+            >>> data.set_nested_attribute("spikes.unit_index", remapped_units)  # doctest: +SKIP
+
+        Args:
+            path: Nested attribute path (dot-separated).
+            value: The value to set for the attribute.
+
+        Returns:
+            Data: self with the updated nested attribute.
+
+        Raises:
+            AttributeError: If any component of the path cannot be resolved.
+        """
+        obj, attr = self._resolve_to_parent(path)
+        setattr(obj, attr, value)
         return self
 
     def has_nested_attribute(self, path: str) -> bool:
-        """Check if the attribute specified by the path exists in the Data object."""
+        """Return :obj:`True` if the dot-separated path resolves to an existing attribute.
+
+        Example ::
+            >>> if data.has_nested_attribute("spikes.waveforms"):  # doctest: +SKIP
+            ...     process(data.spikes.waveforms)
+
+        .. note::
+            Uses ``__dict__`` rather than ``getattr`` at each level of the path
+            traversal to avoid two side-effects:
+
+            - ``getattr`` on a lazy object (e.g. :obj:`LazyIrregularTimeSeries`)
+              would materialise the underlying h5py dataset into a NumPy array as
+              a side-effect of the existence check.
+            - ``getattr`` would invoke computed properties such as
+              :attr:`RegularTimeSeries.timestamps`, incorrectly reporting them as
+              stored attributes when they are not.
+
+        Args:
+            path: Nested attribute path (dot-separated).
+
+        Returns:
+            bool: :obj:`True` if the attribute exists, :obj:`False` otherwise.
+        """
         if not path:
             return False
 
@@ -615,6 +676,30 @@ class Data:
                 return False
 
         return True
+
+    def delete_nested_attribute(self, path: str):
+        r"""Delete a nested attribute specified by its dot-separated path, modifying
+        the object in-place.
+
+        Example ::
+            >>> for path in ["spikes.waveforms", "lfp.raw"]:  # doctest: +SKIP
+            ...     if data.has_nested_attribute(path):
+            ...         data.delete_nested_attribute(path)
+
+        Args:
+            path: Nested attribute path (dot-separated).
+
+        Raises:
+            AttributeError: If any component of the path cannot be resolved, or
+                if the target attribute is protected.
+        """
+        obj, attr = self._resolve_to_parent(path)
+        try:
+            delattr(obj, attr)
+        except AttributeError as err:
+            raise AttributeError(
+                f"Could not resolve {path} in data (specifically, at level {attr})"
+            ) from err
 
     def __copy__(self):
         # create a shallow copy of the object
@@ -661,7 +746,7 @@ class Data:
 
 def _serialize(
     elem,
-    serialize_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
+    serialize_fn_map: dict[type, Callable] | None = None,
 ):
     r"""
     General serialization function that handles object types that are not supported

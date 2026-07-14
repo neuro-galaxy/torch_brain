@@ -31,6 +31,12 @@ If you encounter any bugs or have feature requests, please submit them to our
    :alt: Discord
 
 
+.. note::
+   We have merged ``temporaldata`` and ``brainsets`` into ``torch_brain``.
+   If you are migrating from v0.1.x, please see this
+   `migration guide <https://github.com/neuro-galaxy/torch_brain/blob/main/howto/MIGRATE_TO_v0.2.md>`_.
+
+
 ----
 
 .. toctree::

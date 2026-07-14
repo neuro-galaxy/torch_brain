@@ -5,7 +5,6 @@ from datasets.wrapper import PoyoReadoutConfig
 from torch_brain.data import Data
 from torch_brain.datasets import (
     ChurchlandShenoyNeural2012,
-    FlintSlutzkyAccurate2012,
     NestedDataset,
     OdohertySabesNonhuman2017,
     SpikingDatasetMixin,
@@ -17,13 +16,11 @@ class Poyo1Dataset(SpikingDatasetMixin, NestedDataset):
 
     def __init__(self, root, transform: Callable | None = None):
         ds_mp = PoyoMPDataset(root)
-        ds_flint = PoyoFlintDataset(root)
         ds_odoherty = PoyoOdohertyDataset(root)
         ds_churchland = PoyoChurchlandDataset(root)
         super().__init__(
             datasets={
                 "mp": ds_mp,
-                "flint": ds_flint,
                 "odoherty": ds_odoherty,
                 "churchland": ds_churchland,
             },
@@ -70,22 +67,4 @@ class PoyoOdohertyDataset(OdohertySabesNonhuman2017):
             timestamp_key="cursor.timestamps",
             normalize_mean=0.0,
             normalize_std=200.0,
-        )
-
-
-class PoyoFlintDataset(FlintSlutzkyAccurate2012):
-    dim_target = 2
-
-    def get_recording_hook(self, data: Data):
-        """Adds ``readout_config`` attribute to the data object.
-
-        This will be used by the ``PoyoDatasetWrapper`` to apply normalization
-        and extract loss weights.
-        """
-        super().get_recording_hook(data)
-        data.readout_config = PoyoReadoutConfig(
-            timestamp_key="hand.timestamps",
-            value_key="hand.vel",
-            normalize_mean=0.0,
-            normalize_std=0.4,
         )

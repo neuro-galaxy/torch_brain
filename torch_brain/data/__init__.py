@@ -15,7 +15,27 @@ from .descriptions import (
 from .interval import Interval, LazyInterval
 from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries
 from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries
-from .serialization import serialize_fn_map
+from .serialization import get_default_serialize_fn_map
+
+
+def __getattr__(name):
+    # `serialize_fn_map` is deprecated: `Data.to_hdf5` now applies the default
+    # serialization map automatically, so passing it explicitly is no longer
+    # necessary. To extend the defaults, use `get_default_serialize_fn_map()`,
+    # which returns a fresh, safe-to-mutate copy.
+    if name == "serialize_fn_map":
+        import warnings
+
+        warnings.warn(
+            "torch_brain.data.serialize_fn_map is deprecated and will be removed "
+            "in a future version. Data.to_hdf5 now uses the default serialization "
+            "map automatically; to extend it, use get_default_serialize_fn_map().",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return get_default_serialize_fn_map()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "ArrayDict",
@@ -32,7 +52,7 @@ __all__ = [
     "SessionDescription",
     "SubjectDescription",
     "concat",
-    "serialize_fn_map",
+    "get_default_serialize_fn_map",
 ]
 
 # Drives the generated API reference; see docs/source/api_reference.py.
@@ -71,11 +91,10 @@ __api_ref__ = {
         },
         {
             "title": "Utility Functions",
-            "autosummary": ["concat"],
-        },
-        {
-            "title": "Constants",
-            "autosummary": ["serialize_fn_map"],
+            "autosummary": [
+                "concat",
+                "get_default_serialize_fn_map",
+            ],
         },
     ],
 }

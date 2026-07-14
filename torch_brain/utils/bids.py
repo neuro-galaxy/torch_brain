@@ -28,8 +28,9 @@ import json
 import re
 import warnings
 from collections import defaultdict
+from io import BytesIO
 from pathlib import Path
-from typing import Literal
+from typing import BinaryIO, Literal
 
 import pandas as pd
 
@@ -386,6 +387,44 @@ def load_json_sidecar(bids_path: BIDSPath) -> dict:
         raise FileNotFoundError(f"No JSON sidecar file found for {bids_path}.") from err
 
 
+def _parse_participants_tsv(
+    source: Path | str | bytes | BinaryIO,
+    *,
+    missing_column_context: str = "",
+) -> pd.DataFrame | None:
+    """Parse participants.tsv content from a path or in-memory source.
+
+    Args:
+        source: Path to participants.tsv, raw bytes, or a readable buffer.
+        missing_column_context: Optional context appended to the warning when the
+            ``participant_id`` column is missing.
+
+    Returns:
+        DataFrame indexed by ``participant_id``, or ``None`` if the
+        ``participant_id`` column is missing.
+    """
+    if isinstance(source, bytes):
+        source = BytesIO(source)
+
+    df = pd.read_csv(
+        source,
+        sep="\t",
+        na_values=["n/a", "N/A"],
+        keep_default_na=True,
+    )
+
+    if "participant_id" not in df.columns:
+        context_suffix = f" {missing_column_context}" if missing_column_context else ""
+        warnings.warn(
+            f"No participant_id column found in participants.tsv{context_suffix}. "
+            "Returning None.",
+            stacklevel=2,
+        )
+        return None
+
+    return df.set_index("participant_id")
+
+
 def load_participants_tsv(bids_root: Path | str) -> pd.DataFrame | None:
     """Load participants.tsv data from a BIDS root directory.
 
@@ -409,23 +448,10 @@ def load_participants_tsv(bids_root: Path | str) -> pd.DataFrame | None:
     if not (Path(bids_root) / "participants.tsv").exists():
         raise FileNotFoundError(f"participants.tsv file not found in {bids_root}.")
 
-    df = pd.read_csv(
+    return _parse_participants_tsv(
         Path(bids_root) / "participants.tsv",
-        sep="\t",
-        na_values=["n/a", "N/A"],
-        keep_default_na=True,
+        missing_column_context=f"file in BIDS root directory {bids_root}",
     )
-
-    if "participant_id" not in df.columns:
-        warnings.warn(
-            f"No participant_id column found in participants.tsv file in BIDS root directory {bids_root}. "
-            "Returning None.",
-            stacklevel=2,
-        )
-        return None
-
-    df = df.set_index("participant_id")
-    return df
 
 
 def get_subject_info(

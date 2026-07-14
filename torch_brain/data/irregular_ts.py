@@ -21,7 +21,7 @@ class IrregularTimeSeries(ArrayDict):
     series.
 
     Args:
-        timestamps: an array of timestamps of shape (N,).
+        timestamps: an array-like of timestamps of shape (N,).
         timekeys: a list of strings that specify which attributes are time-based
             attributes, this ensures that these attributes are updated appropriately
             when slicing.
@@ -29,7 +29,8 @@ class IrregularTimeSeries(ArrayDict):
             timeseries is defined. If set to :obj:`"auto"`, the domain will be
             automatically the interval defined by the minimum and maximum timestamps.
             (default `"auto"`)
-        **kwargs: arrays that shares the same first dimension N.
+        **kwargs: array-like objects (e.g. numpy arrays, lists or tuples) that share
+            the same first dimension N. Each value is cast to a numpy array internally.
 
     Example ::
 
@@ -136,6 +137,16 @@ class IrregularTimeSeries(ArrayDict):
         if timekey not in self._timekeys:
             self._timekeys.append(timekey)
 
+    def __delattr__(self, name):
+        if name == "timestamps":
+            raise AttributeError(
+                f"Cannot delete 'timestamps' from {self.__class__.__name__}."
+            )
+
+        super().__delattr__(name)
+        if name in self._timekeys:
+            self._timekeys.remove(name)
+
     def __setattr__(self, name, value):
         if name == "domain":
             if not isinstance(value, Interval):
@@ -238,12 +249,13 @@ class IrregularTimeSeries(ArrayDict):
                 out.__dict__[key] = out.__dict__[key] - start
         return out
 
-    def select_by_mask(self, mask: np.ndarray):
+    def select_by_mask(self, mask: ArrayLike):
         r"""Index all arrays with a boolean mask and return a copy.
 
         Args:
             mask: Boolean array used for masking. The mask needs to be 1-dimensional,
-                and of equal length as the object itself.
+                and of equal length as the object itself. Anything array-like (e.g. a
+                list) is accepted and cast to a numpy array.
 
         Note:
             This will not update the domain, as it is unclear how to resolve the
@@ -523,7 +535,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                 return out
         return super().__getattribute__(name)
 
-    def select_by_mask(self, mask: np.ndarray):
+    def select_by_mask(self, mask: ArrayLike):
         r"""Index all arrays with a boolean mask and return a copy.
 
         Lazy attributes will remain lazy, and masking will be applied
@@ -531,9 +543,10 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
 
         Args:
             mask: Boolean array used for masking. The mask needs to be 1-dimensional,
-                and of equal length as the object itself.
+                and of equal length as the object itself. Anything array-like (e.g. a
+                list) is accepted and cast to a numpy array.
         """
-
+        mask = np.asarray(mask)
         _validate_select_by_mask_input(mask, len(self))
 
         out = self.__class__.__new__(self.__class__)

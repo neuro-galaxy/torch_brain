@@ -12,7 +12,6 @@ __all__ = [
     "MultiChannelDatasetMixin",
     "PerichMillerPopulation2018",
     "PeiPandarinathNLB2021",
-    "FlintSlutzkyAccurate2012",
     "ChurchlandShenoyNeural2012",
     "OdohertySabesNonhuman2017",
     "VollanMoserAlternating2025",
@@ -29,7 +28,6 @@ __all__ = [
 from .AllenVisualCodingOphys2016 import AllenVisualCodingOphys2016
 from .ChurchlandShenoyNeural2012 import ChurchlandShenoyNeural2012
 from .dataset import Dataset, DatasetIndex
-from .FlintSlutzkyAccurate2012 import FlintSlutzkyAccurate2012
 from .KempSleepEDF2013 import KempSleepEDF2013
 from .KlinzingSleepDS005555 import KlinzingSleepDS005555
 from .KochiVisualNamingDS006914 import KochiVisualNamingDS006914
@@ -109,7 +107,6 @@ __api_ref__ = {
             "autosummary": [
                 "PerichMillerPopulation2018",
                 "PeiPandarinathNLB2021",
-                "FlintSlutzkyAccurate2012",
                 "ChurchlandShenoyNeural2012",
                 "OdohertySabesNonhuman2017",
                 "VollanMoserAlternating2025",
