@@ -18,8 +18,8 @@ from torch_brain.data import serialize_fn_map
 from torch_brain.pipeline.openneuro import (
     OpenNeuroPipeline,
     base_openneuro_parser,
-    fetch_participants_tsv,
 )
+from torch_brain.utils.bids import load_participants_tsv
 
 RELEASES = {
     1: "ds005505",
@@ -121,7 +121,10 @@ class Pipeline(OpenNeuroPipeline):
 
         data, _ = result
 
-        participants_data = fetch_participants_tsv(self.dataset_id)
+        # Downloaded once per release into <raw>/shirazi_hbn/R{n}/ by download().
+        participants_data = None
+        if (self.raw_dir / "participants.tsv").exists():
+            participants_data = load_participants_tsv(self.raw_dir)
 
         if participants_data is not None and data.subject.id in participants_data.index:
             row = participants_data.loc[data.subject.id]
