@@ -549,6 +549,8 @@ class TestGetManifest:
         )
         result = eeg_pipeline_class.get_manifest(temp_dir, args)
 
+        mock_participants_tsv.assert_called_once_with(eeg_pipeline_class.dataset_id)
+
         assert isinstance(result, pd.DataFrame)
         for rec in [
             ("sub-01_task-rest", "sub-01", "sub-01/eeg", "sub-01_task-rest"),
@@ -769,6 +771,12 @@ class TestGetManifest:
 class TestDownload:
     """Tests for download method."""
 
+    @pytest.fixture(autouse=True)
+    def _mock_download_participants_tsv(self):
+        """download() persists participants.tsv; mock it to avoid S3 access."""
+        with patch("torch_brain.pipeline.openneuro.download_participants_tsv"):
+            yield
+
     def test_download_creates_raw_dir(self, eeg_pipeline_instance, manifest_row):
         """download creates raw_dir if it doesn't exist."""
         with patch("torch_brain.pipeline.openneuro.download_recording"):
@@ -812,10 +820,11 @@ class TestDownload:
             "torch_brain.pipeline.openneuro.check_eeg_recording_files_exist",
             return_value=True,
         ):
-            with patch(
-                "torch_brain.pipeline.openneuro.download_recording"
-            ) as mock_download:
-                result = pipeline.download(manifest_row)
+            with patch("torch_brain.pipeline.openneuro.download_dataset_description"):
+                with patch(
+                    "torch_brain.pipeline.openneuro.download_recording"
+                ) as mock_download:
+                    result = pipeline.download(manifest_row)
 
         mock_download.assert_not_called()
         assert result.Index == "rec-001"
@@ -834,10 +843,11 @@ class TestDownload:
             "torch_brain.pipeline.openneuro.check_ieeg_recording_files_exist",
             return_value=True,
         ):
-            with patch(
-                "torch_brain.pipeline.openneuro.download_recording"
-            ) as mock_download:
-                result = pipeline.download(manifest_row)
+            with patch("torch_brain.pipeline.openneuro.download_dataset_description"):
+                with patch(
+                    "torch_brain.pipeline.openneuro.download_recording"
+                ) as mock_download:
+                    result = pipeline.download(manifest_row)
 
         mock_download.assert_not_called()
         assert result.Index == "rec-001"
@@ -860,18 +870,120 @@ class TestDownload:
 
         mock_download.assert_called_once()
 
-    def test_download_raises_on_s3_error(self, eeg_pipeline_instance, manifest_row):
-        """download raises RuntimeError on download failure."""
+    def test_download_passes_redownload_to_dataset_description(
+        self, temp_dir, eeg_pipeline_class, manifest_row
+    ):
+        pipeline = eeg_pipeline_class(
+            raw_dir=temp_dir / "raw",
+            processed_dir=temp_dir / "processed",
+            args=Namespace(redownload=True, reprocess=False),
+        )
+
         with patch(
-            "torch_brain.pipeline.openneuro.download_recording",
-            side_effect=Exception("S3 error"),
+            "torch_brain.pipeline.openneuro.download_dataset_description"
+        ) as mock_download_description:
+            with patch("torch_brain.pipeline.openneuro.download_recording"):
+                with patch(
+                    "torch_brain.pipeline.openneuro.check_eeg_recording_files_exist",
+                    return_value=False,
+                ):
+                    pipeline.download(manifest_row)
+
+        mock_download_description.assert_called_once_with(
+            pipeline.dataset_id,
+            pipeline.raw_dir,
+            redownload=True,
+        )
+
+    def test_download_persists_participants_tsv(
+        self, eeg_pipeline_instance, manifest_row
+    ):
+        """download persists participants.tsv to raw_dir."""
+        with patch("torch_brain.pipeline.openneuro.download_recording"):
+            with patch("torch_brain.pipeline.openneuro.download_dataset_description"):
+                with patch(
+                    "torch_brain.pipeline.openneuro.download_participants_tsv"
+                ) as mock_download_participants:
+                    with patch(
+                        "torch_brain.pipeline.openneuro.check_eeg_recording_files_exist",
+                        return_value=False,
+                    ):
+                        eeg_pipeline_instance.download(manifest_row)
+
+        mock_download_participants.assert_called_once_with(
+            eeg_pipeline_instance.dataset_id,
+            eeg_pipeline_instance.raw_dir,
+            redownload=False,
+        )
+
+    def test_download_passes_redownload_to_participants_tsv(
+        self, temp_dir, eeg_pipeline_class, manifest_row
+    ):
+        pipeline = eeg_pipeline_class(
+            raw_dir=temp_dir / "raw",
+            processed_dir=temp_dir / "processed",
+            args=Namespace(redownload=True, reprocess=False),
+        )
+
+        with patch(
+            "torch_brain.pipeline.openneuro.download_participants_tsv"
+        ) as mock_download_participants:
+            with patch("torch_brain.pipeline.openneuro.download_dataset_description"):
+                with patch("torch_brain.pipeline.openneuro.download_recording"):
+                    with patch(
+                        "torch_brain.pipeline.openneuro.check_eeg_recording_files_exist",
+                        return_value=False,
+                    ):
+                        pipeline.download(manifest_row)
+
+        mock_download_participants.assert_called_once_with(
+            pipeline.dataset_id,
+            pipeline.raw_dir,
+            redownload=True,
+        )
+
+    def test_download_fetches_metadata_before_skipping_existing_recording(
+        self, temp_dir, mock_args_no_reprocessing, eeg_pipeline_class, manifest_row
+    ):
+        """download still fetches dataset metadata when the recording already exists."""
+        pipeline = eeg_pipeline_class(
+            raw_dir=temp_dir / "raw",
+            processed_dir=temp_dir / "processed",
+            args=mock_args_no_reprocessing,
+        )
+
+        with patch(
+            "torch_brain.pipeline.openneuro.check_eeg_recording_files_exist",
+            return_value=True,
         ):
             with patch(
-                "torch_brain.pipeline.openneuro.check_eeg_recording_files_exist",
-                return_value=False,
+                "torch_brain.pipeline.openneuro.download_dataset_description"
+            ) as mock_download_description:
+                with patch(
+                    "torch_brain.pipeline.openneuro.download_participants_tsv"
+                ) as mock_download_participants:
+                    with patch(
+                        "torch_brain.pipeline.openneuro.download_recording"
+                    ) as mock_download_recording:
+                        pipeline.download(manifest_row)
+
+        mock_download_description.assert_called_once()
+        mock_download_participants.assert_called_once()
+        mock_download_recording.assert_not_called()
+
+    def test_download_raises_on_s3_error(self, eeg_pipeline_instance, manifest_row):
+        """download raises RuntimeError on download failure."""
+        with patch("torch_brain.pipeline.openneuro.download_dataset_description"):
+            with patch(
+                "torch_brain.pipeline.openneuro.download_recording",
+                side_effect=Exception("S3 error"),
             ):
-                with pytest.raises(RuntimeError, match="Failed to download"):
-                    eeg_pipeline_instance.download(manifest_row)
+                with patch(
+                    "torch_brain.pipeline.openneuro.check_eeg_recording_files_exist",
+                    return_value=False,
+                ):
+                    with pytest.raises(RuntimeError, match="Failed to download"):
+                        eeg_pipeline_instance.download(manifest_row)
 
 
 # ============================================================================
