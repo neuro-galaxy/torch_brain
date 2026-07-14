@@ -8,6 +8,7 @@
 # ]
 # ///
 
+import logging
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -75,16 +76,36 @@ class Pipeline(OpenNeuroPipeline):
             releases = RELEASES
 
         all_manifests = []
+        skipped_releases = []
         original_dataset_id = cls.dataset_id
         try:
             for release_id, dataset_id in releases.items():
                 cls.dataset_id = dataset_id
-                manifest = super().get_manifest(raw_dir, args)
+                try:
+                    manifest = super().get_manifest(raw_dir, args)
+                except ValueError as exc:
+                    if "recordings found in dataset" not in str(exc):
+                        raise
+                    logging.warning(
+                        "Skipping release %s (%s): %s",
+                        release_id,
+                        dataset_id,
+                        exc,
+                    )
+                    skipped_releases.append((release_id, dataset_id))
+                    continue
                 manifest["release_id"] = release_id
                 manifest["release_dataset_id"] = dataset_id
                 all_manifests.append(manifest)
         finally:
             cls.dataset_id = original_dataset_id
+
+        if not all_manifests:
+            skipped = ", ".join(f"R{rid} ({did})" for rid, did in skipped_releases)
+            raise ValueError(
+                "No EEG recordings found for any requested Shirazi HBN release"
+                + (f": skipped {skipped}." if skipped else ".")
+            )
         return pd.concat(all_manifests)
 
     def _release_raw_dir(self, release_id) -> Path:
