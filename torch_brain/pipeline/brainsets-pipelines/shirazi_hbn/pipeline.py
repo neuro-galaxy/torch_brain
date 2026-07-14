@@ -94,6 +94,20 @@ class Pipeline(OpenNeuroPipeline):
             self._base_raw_dir = self.raw_dir
         return self._base_raw_dir / f"R{int(release_id)}"
 
+    def _get_participants_data(self, release_id) -> pd.DataFrame | None:
+        # Cache once per release so process() does not re-read the TSV for every recording.
+        if not hasattr(self, "_participants_by_release"):
+            self._participants_by_release = {}
+        release_id = int(release_id)
+        if release_id not in self._participants_by_release:
+            participants_path = self.raw_dir / "participants.tsv"
+            self._participants_by_release[release_id] = (
+                load_participants_tsv(self.raw_dir)
+                if participants_path.exists()
+                else None
+            )
+        return self._participants_by_release[release_id]
+
     def download(self, manifest_item):
         self.dataset_id = manifest_item.release_dataset_id
         self.raw_dir = self._release_raw_dir(manifest_item.release_id)
@@ -124,10 +138,7 @@ class Pipeline(OpenNeuroPipeline):
         # GraphQL species metadata is not defined for HBN releases.
         data.subject.species = "HOMO_SAPIENS"
 
-        # Downloaded once per release into <raw>/shirazi_hbn/R{n}/ by download().
-        participants_data = None
-        if (self.raw_dir / "participants.tsv").exists():
-            participants_data = load_participants_tsv(self.raw_dir)
+        participants_data = self._get_participants_data(release_id)
 
         if participants_data is not None and data.subject.id in participants_data.index:
             row = participants_data.loc[data.subject.id]
