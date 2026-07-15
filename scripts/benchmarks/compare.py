@@ -1,16 +1,17 @@
-"""Compare torch_brain.data benchmarks across git commits.
+"""Compare torch_brain benchmarks across git commits.
 
-Extracts torch_brain.data source from arbitrary commits via `git archive` and
+Extracts torch_brain source from arbitrary commits via `git archive` and
 runs the current benchmark.py against each, then displays a side-by-side
 comparison table.
 
 Usage:
-    uv run python scripts/data_benchmarks/compare.py                      # benchmark working tree
-    uv run python scripts/data_benchmarks/compare.py <commit>              # <commit> vs working tree
-    uv run python scripts/data_benchmarks/compare.py <commitA> <commitB>   # commitA vs commitB
+    uv run python scripts/benchmarks/compare.py                      # benchmark working tree
+    uv run python scripts/benchmarks/compare.py <commit>              # <commit> vs working tree
+    uv run python scripts/benchmarks/compare.py <commitA> <commitB>   # commitA vs commitB
 
 Options:
-    --save PATH   Append comparison results as JSONL to PATH.
+    --save PATH    Append comparison results as JSONL to PATH.
+    --suite NAME   Which benchmark suite to run: data, utils, or all (default: all).
 """
 
 from __future__ import annotations
@@ -48,30 +49,20 @@ def short_hash(full_hash: str) -> str:
     return full_hash[:10]
 
 
-def extract_source(commit: str) -> str:
-    """Extract torch_brain/data/ from a commit into a temp directory.
+def _archive_pathspec(commit: str, pathspec: str, tmpdir: str) -> str | None:
+    """Extract a single pathspec from a commit into tmpdir.
 
-    Only the data subpackage is extracted, and a stub torch_brain/__init__.py
-    is written so that ``from torch_brain.data import ...`` resolves to the
-    extracted code without triggering the full package's imports (which may
-    pull in heavy dependencies like torch).
+    Returns None on success, or an error string on failure (so callers can
+    decide whether the failure is fatal).
     """
-    tmpdir = tempfile.mkdtemp(prefix="tdbench_")
     git_proc = subprocess.run(
-        ["git", "archive", commit, "--", "torch_brain/data/"],
+        ["git", "archive", commit, "--", pathspec],
         cwd=REPO_ROOT,
         capture_output=True,
         check=False,
     )
     if git_proc.returncode != 0:
-        shutil.rmtree(tmpdir, ignore_errors=True)
-        print(
-            (
-                f"Error: git archive failed for {short_hash(commit)}: "
-                f"{git_proc.stderr.decode(errors='replace').strip()}"
-            ),
-        )
-        sys.exit(1)
+        return f"git archive: {git_proc.stderr.decode(errors='replace').strip()}"
 
     tar_proc = subprocess.run(
         ["tar", "xf", "-", "-C", tmpdir],
@@ -80,14 +71,38 @@ def extract_source(commit: str) -> str:
         check=False,
     )
     if tar_proc.returncode != 0:
+        return f"tar: {tar_proc.stderr.decode(errors='replace').strip()}"
+
+    return None
+
+
+def extract_source(commit: str) -> str:
+    """Extract torch_brain source needed by the benchmarks into a temp dir.
+
+    torch_brain/data/ is required; torch_brain/utils/ is extracted best-effort
+    so the bin_spikes benchmark can import (older commits without it simply
+    skip that one benchmark). A stub torch_brain/__init__.py is written so
+    that ``from torch_brain.data import ...`` resolves to the extracted code
+    without triggering the full package's imports (which may pull in heavy
+    dependencies like torch).
+    """
+    tmpdir = tempfile.mkdtemp(prefix="tdbench_")
+
+    err = _archive_pathspec(commit, "torch_brain/data/", tmpdir)
+    if err is not None:
         shutil.rmtree(tmpdir, ignore_errors=True)
-        print(
-            (
-                f"Error: tar extraction failed for {short_hash(commit)}: "
-                f"{tar_proc.stderr.decode(errors='replace').strip()}"
-            ),
-        )
+        print(f"Error: extracting torch_brain/data/ for {short_hash(commit)}: {err}")
         sys.exit(1)
+
+    # Best-effort: absent on commits predating the module; the bin_spikes
+    # benchmark then errors in isolation instead of breaking the whole run.
+    utils_err = _archive_pathspec(commit, "torch_brain/utils/", tmpdir)
+    if utils_err is not None:
+        print(
+            f"Note: torch_brain/utils/ unavailable for {short_hash(commit)} "
+            f"({utils_err}); bin_spikes benchmark will be skipped.",
+            file=sys.stderr,
+        )
 
     # Write a minimal stub so `import torch_brain` succeeds without
     # pulling in the real package's __init__.py and its heavy deps.
@@ -98,7 +113,9 @@ def extract_source(commit: str) -> str:
     return tmpdir
 
 
-def run_benchmark(source_dir: str | None, label: str) -> list[dict] | None:
+def run_benchmark(
+    source_dir: str | None, label: str, suite: str = "all"
+) -> list[dict] | None:
     """Run benchmark.py, optionally overriding the import source.
 
     Returns the results list, or ``None`` if the benchmark subprocess failed
@@ -110,7 +127,7 @@ def run_benchmark(source_dir: str | None, label: str) -> list[dict] | None:
 
     print(f"Running benchmarks for {label}...", file=sys.stderr)
     result = subprocess.run(
-        [sys.executable, BENCH_SCRIPT, "--json"],
+        [sys.executable, BENCH_SCRIPT, "--json", "--suite", suite],
         capture_output=True,
         text=True,
         env=env,
@@ -182,11 +199,11 @@ def print_comparison(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare torch_brain.data benchmarks across git commits.",
+        description="Compare torch_brain benchmarks across git commits.",
         epilog="Examples:\n"
-        "  uv run python scripts/data_benchmarks/compare.py\n"
-        "  uv run python scripts/data_benchmarks/compare.py abc123\n"
-        "  uv run python scripts/data_benchmarks/compare.py abc123 def456\n",
+        "  uv run python scripts/benchmarks/compare.py\n"
+        "  uv run python scripts/benchmarks/compare.py abc123\n"
+        "  uv run python scripts/benchmarks/compare.py abc123 def456\n",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -194,6 +211,12 @@ def main():
     )
     parser.add_argument(
         "--save", type=str, default=None, help="Append results to a JSONL file"
+    )
+    parser.add_argument(
+        "--suite",
+        choices=["data", "utils", "all"],
+        default="all",
+        help="Which benchmark suite to run (default: all)",
     )
     args = parser.parse_args()
 
@@ -204,7 +227,7 @@ def main():
     had_failures = False
     try:
         if len(args.commits) == 0:
-            results = run_benchmark(None, "working tree")
+            results = run_benchmark(None, "working tree", args.suite)
             if results is None:
                 had_failures = True
             else:
@@ -223,8 +246,8 @@ def main():
             tmpdir = extract_source(commit)
             tmpdirs.append(tmpdir)
 
-            results_a = run_benchmark(tmpdir, label_a)
-            results_b = run_benchmark(None, "working tree")
+            results_a = run_benchmark(tmpdir, label_a, args.suite)
+            results_b = run_benchmark(None, "working tree", args.suite)
 
             if results_a is None or results_b is None:
                 had_failures = True
@@ -255,8 +278,8 @@ def main():
             tmpdir_b = extract_source(commit_b)
             tmpdirs.append(tmpdir_b)
 
-            results_a = run_benchmark(tmpdir_a, label_a)
-            results_b = run_benchmark(tmpdir_b, label_b)
+            results_a = run_benchmark(tmpdir_a, label_a, args.suite)
+            results_b = run_benchmark(tmpdir_b, label_b, args.suite)
 
             if results_a is None or results_b is None:
                 had_failures = True

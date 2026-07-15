@@ -17,7 +17,8 @@ class ArrayDict:
     1-dimensional.
 
     Args:
-        **kwargs: arrays that shares the same first dimension.
+        **kwargs: array-like objects (e.g. numpy arrays, lists or tuples) that share
+            the same first dimension. Each value is cast to a numpy array internally.
 
     Example ::
 
@@ -96,12 +97,13 @@ class ArrayDict:
         info = ",\n".join(info)
         return f"{cls}(\n{info}\n)"
 
-    def select_by_mask(self, mask: np.ndarray):
+    def select_by_mask(self, mask: ArrayLike):
         r"""Index all arrays with a boolean mask and return a copy.
 
         Args:
-            mask: Boolean array used for masking. The mask needs to be 1-dimensional,
-                and of equal length as the object itself.
+            mask: Boolean, 1-dimensional array-like used for masking. It must be of
+                equal length as the object itself, and is cast to a numpy array
+                internally, so a numpy array, a list, a tuple, etc. are all accepted.
 
         Example ::
 
@@ -114,7 +116,7 @@ class ArrayDict:
             ...     waveform_mean=np.random.rand(2, 48),
             ... )
 
-            >>> units_subset = units.select_by_mask(np.array([True, False]))
+            >>> units_subset = units.select_by_mask([True, False])
             >>> units_subset
             ArrayDict(
               unit_id=[1],
@@ -123,6 +125,7 @@ class ArrayDict:
             )
 
         """
+        mask = np.asarray(mask)
         _validate_select_by_mask_input(mask, len(self))
 
         out = self.__class__.__new__(self.__class__)
@@ -387,7 +390,7 @@ class LazyArrayDict(ArrayDict):
 
         return super().__getattribute__(name)
 
-    def select_by_mask(self, mask: np.ndarray):
+    def select_by_mask(self, mask: ArrayLike):
         r"""Index all arrays with a boolean mask and return a copy.
 
         Lazy attributes will remain lazy, and masking will be applied
@@ -395,9 +398,11 @@ class LazyArrayDict(ArrayDict):
 
         Args:
             mask: Boolean array used for masking. The mask needs to be 1-dimensional,
-                and of equal length as the object itself.
+                and of equal length as the object itself. Anything array-like (e.g. a
+                list) is accepted and cast to a numpy array.
         """
 
+        mask = np.asarray(mask)
         _validate_select_by_mask_input(mask, len(self))
 
         out = self.__class__.__new__(self.__class__)

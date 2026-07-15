@@ -22,7 +22,6 @@ from torch_brain.data import (
     IrregularTimeSeries,
     SessionDescription,
     SubjectDescription,
-    serialize_fn_map,
 )
 from torch_brain.pipeline import BrainsetPipeline
 
@@ -314,7 +313,7 @@ class Pipeline(BrainsetPipeline):
 
         self.update_status("Storing")
         with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
+            data.to_hdf5(file)
 
     def _process_sleep(self, fpath, session_id):
         """Process a sleep session from ``Dsleep``.
@@ -386,7 +385,7 @@ class Pipeline(BrainsetPipeline):
 
         self.update_status("Storing")
         with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
+            data.to_hdf5(file)
 
 
 # ---------------------------------------------------------------------------

@@ -1,38 +1,25 @@
-"""Benchmark suite for torch_brain.data.
+"""torch_brain.data benchmarks.
 
-Benchmarks are modeled on real torch_brain workloads: Data.slice() on
-realistic lazy-loaded recording objects, IrregularTimeSeries/Interval
-inner-loop slicing, and Interval set operations at production-typical sizes.
+Data.slice() on realistic lazy/in-memory recordings, IrregularTimeSeries /
+RegularTimeSeries / Interval inner-loop slicing, Interval set operations, and
+ArrayDict / LazyInterval access, all at production-typical sizes. The fixtures
+that build the synthetic recordings live here alongside the benchmarks.
 
-Usage:
-    uv run python scripts/data_benchmarks/benchmark.py
-    uv run python scripts/data_benchmarks/benchmark.py --json
-    uv run python scripts/data_benchmarks/benchmark.py --save results.jsonl
-
-Set TORCH_BRAIN_SOURCE to override where torch_brain.data is imported from
-(used by compare.py to benchmark code from arbitrary commits).
+The sys.path shim that resolves ``torch_brain`` lives in benchmark.py and runs
+before this module is imported, so the imports below pick up the code under
+test (see TORCH_BRAIN_SOURCE).
 """
 
 from __future__ import annotations
 
-import argparse
-import json
 import os
-import sys
 import tempfile
-import time
-import timeit
-import traceback
 
-_source = os.environ.get(
-    "TORCH_BRAIN_SOURCE", os.path.join(os.path.dirname(__file__), "..", "..")
-)
-sys.path.insert(0, _source)
+import h5py
+import numpy as np
+from harness import bench
 
-import h5py  # noqa: E402
-import numpy as np  # noqa: E402
-
-from torch_brain.data import (  # noqa: E402
+from torch_brain.data import (
     ArrayDict,
     Data,
     Interval,
@@ -41,11 +28,9 @@ from torch_brain.data import (  # noqa: E402
     RegularTimeSeries,
 )
 
-
-def _bench(label: str, stmt, number: int) -> dict:
-    times = timeit.repeat(stmt, number=number, repeat=5)
-    mean_us = np.mean(times) / number * 1e6
-    return {"label": label, "number": number, "mean_us": round(mean_us, 3)}
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
 
 
 def _make_disjoint_intervals(n, min_gap=1.0, min_dur=0.5, max_dur=2.0, seed=42):
@@ -197,7 +182,7 @@ def bench_data_slice_lazy():
             def go():
                 lazy_data.slice(300.0, 301.0)
 
-            return _bench("Data.slice() (lazy, realistic)", go, number=200)
+            return bench("Data.slice() (lazy, realistic)", go, number=200)
     finally:
         os.unlink(path)
 
@@ -209,7 +194,7 @@ def bench_data_slice_inmemory():
     def go():
         data.slice(300.0, 301.0)
 
-    return _bench("Data.slice() (in-memory)", go, number=500)
+    return bench("Data.slice() (in-memory)", go, number=500)
 
 
 def bench_its_slice():
@@ -227,7 +212,7 @@ def bench_its_slice():
     def go():
         its.slice(500.0, 501.0)
 
-    return _bench("IrregularTimeSeries.slice()", go, number=1_000)
+    return bench("IrregularTimeSeries.slice()", go, number=1_000)
 
 
 def bench_rts_slice():
@@ -243,7 +228,7 @@ def bench_rts_slice():
     def go():
         rts.slice(500.0, 501.0)
 
-    return _bench("RegularTimeSeries.slice()", go, number=1_000)
+    return bench("RegularTimeSeries.slice()", go, number=1_000)
 
 
 def bench_interval_slice():
@@ -255,7 +240,7 @@ def bench_interval_slice():
     def go():
         iv.slice(500.0, 501.0)
 
-    return _bench("Interval.slice()", go, number=2_000)
+    return bench("Interval.slice()", go, number=2_000)
 
 
 def bench_interval_and_single():
@@ -266,7 +251,7 @@ def bench_interval_and_single():
     def go():
         d1 & single
 
-    return _bench("Interval.__and__ (1k&single)", go, number=1_000)
+    return bench("Interval.__and__ (1k&single)", go, number=1_000)
 
 
 def bench_interval_and_multi():
@@ -277,7 +262,7 @@ def bench_interval_and_multi():
     def go():
         d1 & d2
 
-    return _bench("Interval.__and__ (1k&100)", go, number=200)
+    return bench("Interval.__and__ (1k&100)", go, number=200)
 
 
 def bench_interval_or():
@@ -288,7 +273,7 @@ def bench_interval_or():
     def go():
         d1 | d2
 
-    return _bench("Interval.__or__ (1k|100)", go, number=200)
+    return bench("Interval.__or__ (1k|100)", go, number=200)
 
 
 def bench_interval_difference():
@@ -299,7 +284,7 @@ def bench_interval_difference():
     def go():
         d1.difference(d2)
 
-    return _bench("Interval.difference (1k-100)", go, number=200)
+    return bench("Interval.difference (1k-100)", go, number=200)
 
 
 def bench_arraydict_keys():
@@ -309,7 +294,7 @@ def bench_arraydict_keys():
     def go():
         ad.keys()
 
-    return _bench("ArrayDict.keys() x100k", go, number=100_000)
+    return bench("ArrayDict.keys() x100k", go, number=100_000)
 
 
 def bench_lazy_interval_access():
@@ -356,15 +341,11 @@ def bench_lazy_interval_access():
                 _ = lazy.target_pos_x
                 _ = lazy.target_pos_y
 
-            return _bench("LazyInterval access (10 attrs)", go, number=2_000)
+            return bench("LazyInterval access (10 attrs)", go, number=2_000)
     finally:
         if os.path.exists(path):
             os.unlink(path)
 
-
-# ---------------------------------------------------------------------------
-# Runner
-# ---------------------------------------------------------------------------
 
 BENCHMARKS = [
     bench_data_slice_lazy,
@@ -379,46 +360,3 @@ BENCHMARKS = [
     bench_arraydict_keys,
     bench_lazy_interval_access,
 ]
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Run torch_brain.data benchmarks.")
-    parser.add_argument("--json", action="store_true", help="Output results as JSON")
-    parser.add_argument(
-        "--save", type=str, default=None, help="Append results to a JSONL file"
-    )
-    args = parser.parse_args()
-
-    results = []
-    if not args.json:
-        print(f"{'Benchmark':<42} {'Iters':>8} {'Mean (µs)':>12}")
-        print("-" * 65)
-
-    for bench_fn in BENCHMARKS:
-        try:
-            r = bench_fn()
-        except Exception:
-            r = {"label": bench_fn.__name__, "error": traceback.format_exc()}
-        results.append(r)
-        if not args.json:
-            if "error" in r:
-                print(f"{r['label']:<42} {'ERROR':>8} {'---':>12}")
-            else:
-                print(f"{r['label']:<42} {r['number']:>8} {r['mean_us']:>12.3f}")
-
-    if args.json:
-        print(json.dumps({"results": results}))
-
-    if args.save:
-        record = {
-            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "results": results,
-        }
-        with open(args.save, "a") as f:
-            f.write(json.dumps(record) + "\n")
-        if not args.json:
-            print(f"\nResults saved to {args.save}")
-
-
-if __name__ == "__main__":
-    main()

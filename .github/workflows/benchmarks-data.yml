@@ -1,4 +1,4 @@
-name: Benchmarks
+name: Benchmarks (data)
 
 on:
   pull_request:
@@ -6,8 +6,8 @@ on:
     paths:
       - torch_brain/data/**
       - pyproject.toml
-      - scripts/data_benchmarks/**
-      - .github/workflows/benchmarks.yml
+      - scripts/benchmarks/**
+      - .github/workflows/benchmarks-data.yml
 
 permissions:
   contents: read
@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -43,7 +44,7 @@ jobs:
         id: benchmark
         run: |
           set -o pipefail
-          uv run python scripts/data_benchmarks/compare.py "origin/$BASE_REF" HEAD | tee benchmark-report.txt
+          uv run python scripts/benchmarks/compare.py --suite data "origin/$BASE_REF" HEAD | tee benchmark-report.txt
 
       - name: Upsert PR benchmark comment
         if: ${{ !cancelled() && hashFiles('benchmark-report.txt') != '' }}
@@ -54,13 +55,13 @@ jobs:
         with:
           script: |
             const fs = require("fs");
-            const marker = "<!-- benchmark-ci-report -->";
+            const marker = "<!-- benchmark-ci-report:data -->";
             const reportPath = process.env.BENCHMARK_REPORT_PATH;
             const baseRef = process.env.BASE_REF;
             const report = fs.readFileSync(reportPath, "utf8");
 
             const body = `${marker}
-            ## Benchmark comparison vs ${baseRef}
+            ## Benchmark comparison vs ${baseRef} (torch_brain.data)
 
             Baseline: \`origin/${baseRef}\`
             Target: \`HEAD\`

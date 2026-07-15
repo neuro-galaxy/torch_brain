@@ -4,6 +4,7 @@ from contextlib import contextmanager
 
 import h5py
 import numpy as np
+import pandas as pd
 import pytest
 
 from torch_brain.data import (
@@ -90,10 +91,6 @@ class TestInputValidation:
             ) as data:
                 yield data
 
-    def test_select_by_mask_rejects_not_np_array(self, obj):
-        with pytest.raises(ValueError, match="mask must be a numpy array"):
-            obj.select_by_mask([True, False, True])
-
     def test_select_by_mask_rejects_2d_mask(self, obj):
         with pytest.raises(ValueError, match="mask must be 1D"):
             obj.select_by_mask(np.array([[True, False, True]]))
@@ -105,6 +102,75 @@ class TestInputValidation:
     def test_select_by_mask_rejects_length_mismatch(self, obj):
         with pytest.raises(ValueError, match="does not match object length"):
             obj.select_by_mask(np.array([True, False]))
+
+
+class TestMaskCoercion:
+    """`select_by_mask` accepts anything array-like as its mask and casts it to
+    a numpy array internally (mirroring how ``ArrayDict`` coerces its inputs)."""
+
+    @pytest.fixture(
+        params=[
+            "ArrayDict",
+            "Interval",
+            "IrregularTimeSeries",
+            "LazyArrayDict",
+            "LazyInterval",
+            "LazyIrregularTimeSeries",
+        ]
+    )
+    def obj(self, request, test_filepath):
+        name = request.param
+        if name == "ArrayDict":
+            yield _make_array_dict()
+        elif name == "Interval":
+            yield _make_interval()
+        elif name == "IrregularTimeSeries":
+            yield _make_irregular()
+        elif name == "LazyArrayDict":
+            with _make_lazy(_make_array_dict(), LazyArrayDict, test_filepath) as data:
+                yield data
+        elif name == "LazyInterval":
+            with _make_lazy(_make_interval(), LazyInterval, test_filepath) as data:
+                yield data
+        elif name == "LazyIrregularTimeSeries":
+            with _make_lazy(
+                _make_irregular(), LazyIrregularTimeSeries, test_filepath
+            ) as data:
+                yield data
+
+    def test_list(self, obj):
+        masked = obj.select_by_mask([True, False, True])
+        assert len(masked) == 2
+
+    def test_tuple(self, obj):
+        masked = obj.select_by_mask((True, False, True))
+        assert len(masked) == 2
+
+    def test_numpy_array(self, obj):
+        masked = obj.select_by_mask(np.array([True, False, True]))
+        assert len(masked) == 2
+
+    def test_supports_array(self, obj):
+        class MyMask:
+            def __init__(self, values):
+                self._data = np.array(values)
+
+            def __array__(self, dtype=None, copy=None):
+                return self._data if dtype is None else self._data.astype(dtype)
+
+        masked = obj.select_by_mask(MyMask([True, False, True]))
+        assert len(masked) == 2
+
+    def test_pandas_series(self, obj):
+        masked = obj.select_by_mask(pd.Series([True, False, True]))
+        assert len(masked) == 2
+
+    def test_array_like_matches_numpy(self, obj):
+        # A list mask selects exactly the same rows as the equivalent np.array.
+        from_list = obj.select_by_mask([True, False, True])
+        from_array = obj.select_by_mask(np.array([True, False, True]))
+        for key in from_array.keys():
+            assert np.array_equal(getattr(from_list, key), getattr(from_array, key))
 
 
 class TestLazyMaskIsCopied:

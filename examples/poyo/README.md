@@ -34,9 +34,13 @@ To train POYO-1 you first need to download all datasets using `brainsets`.
 brainsets config --raw-dir data/raw --processed-dir data/processed
 brainsets prepare perich_miller_population_2018
 brainsets prepare churchland_shenoy_neural_2012
-brainsets prepare flint_slutzky_accurate_2012
 brainsets prepare odoherty_sabes_nonhuman_2017
 ```
+
+> [!NOTE]
+> FlintSlutzkyAccurate2012 dataset was included in original POYO-1 but
+> is not included due to removal from torch_brain. For context, read issues
+> neuro-galaxy/torch_brain#274 and neuro-galaxy/brainsets#143.
 
 Then you can train POYO-1 by running:
 
