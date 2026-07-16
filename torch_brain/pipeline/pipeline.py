@@ -1,3 +1,4 @@
+import logging
 import sys
 import traceback
 from abc import ABC, abstractmethod
@@ -164,6 +165,7 @@ class BrainsetPipeline(ABC):
     def _run_item(self, manifest_item):
         """Run download and process for a manifest item."""
         self._asset_id = manifest_item.Index
+        logging.basicConfig(stream=sys.stderr, level=logging.INFO, force=True)
         output = self.download(manifest_item)
         if not self._download_only:
             self.process(output)
@@ -191,6 +193,9 @@ def _redirect_stdio(log_out_path, log_err_path):
     This is useful when running pipelines in parallel."""
     stdout_prev = sys.stdout
     stderr_prev = sys.stderr
+    root_logger = logging.getLogger()
+    handlers_prev = root_logger.handlers[:]
+    level_prev = root_logger.level
     with (
         open(log_out_path, "w", encoding="utf-8") as log_out,
         open(log_err_path, "w", encoding="utf-8") as log_err,
@@ -202,3 +207,5 @@ def _redirect_stdio(log_out_path, log_err_path):
         finally:
             sys.stdout = stdout_prev
             sys.stderr = stderr_prev
+            root_logger.handlers[:] = handlers_prev
+            root_logger.setLevel(level_prev)
