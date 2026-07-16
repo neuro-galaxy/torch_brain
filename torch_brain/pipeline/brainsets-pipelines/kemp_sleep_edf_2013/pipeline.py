@@ -36,8 +36,6 @@ from torch_brain.utils.split import (
     generate_string_kfold_assignment,
 )
 
-logging.basicConfig(level=logging.INFO)
-
 CHANNEL_TYPE_REMAPPING = {
     "EEG": ["EEG Fpz-Cz", "EEG Pz-Oz"],
     "EOG": ["EOG horizontal"],
