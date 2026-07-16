@@ -16,7 +16,8 @@ from torch_brain.pipeline.pipeline import BrainsetPipeline
 
 
 class _LoggingPipeline(BrainsetPipeline):
-    """Minimal pipeline whose download() emits a log record."""
+    """Minimal pipeline whose download() emits a log record and whose
+    process() prints to stdout."""
 
     brainset_id = "logging_test"
 
@@ -29,7 +30,7 @@ class _LoggingPipeline(BrainsetPipeline):
         return None
 
     def process(self, download_output):
-        pass
+        print("hello from process")
 
 
 @pytest.fixture(autouse=True)
@@ -68,6 +69,16 @@ def test_logging_lands_in_per_item_log_file(pipeline, tmp_path):
 
     log_file = tmp_path / "processed" / "pipeline_logs" / "item0.err"
     assert "hello from download" in log_file.read_text()
+
+
+def test_print_output_lands_in_per_item_out_file(pipeline, tmp_path):
+    # print() goes through plain sys.stdout redirection (no logging handler
+    # involved), so this isn't exercising the bug above — it just confirms
+    # _redirect_stdio's other half, the .out file, behaves as expected.
+    pipeline._run_item_on_parallel_worker(pd.Series({"Index": "item0"}))
+
+    log_file = tmp_path / "processed" / "pipeline_logs" / "item0.out"
+    assert "hello from process" in log_file.read_text()
 
 
 def test_restores_logging_handlers_after_item_runs(pipeline, tmp_path):
