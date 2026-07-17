@@ -1,3 +1,5 @@
+import logging
+import shutil
 import sys
 import traceback
 from abc import ABC, abstractmethod
@@ -9,6 +11,8 @@ from typing import Any, NamedTuple
 import pandas as pd
 import ray.actor
 from rich.console import Console
+
+logger = logging.getLogger(__name__)
 
 
 class BrainsetPipeline(ABC):
@@ -90,12 +94,14 @@ class BrainsetPipeline(ABC):
         args: Namespace | None,
         tracker_handle: ray.actor.ActorHandle | None = None,
         download_only: bool = False,
+        delete_raw: bool = False,
     ):
         self.raw_dir = raw_dir
         self.processed_dir = processed_dir
         self.args = args
         self._tracker_handle = tracker_handle
         self._download_only = download_only
+        self._delete_raw = delete_raw
 
     @classmethod
     @abstractmethod
@@ -161,12 +167,62 @@ class BrainsetPipeline(ABC):
 
         Console().print(f"[bold][Status][/] [{get_style(status)}]{status}[/]")
 
+    def cleanup_raw(self, download_output: Any) -> None:
+        r"""Delete the raw file(s) for a manifest item, once it has been
+        successfully processed. Called automatically after :meth:`process()`
+        when the pipeline is run with ``delete_raw=True``.
+
+        The default implementation deletes every :class:`~pathlib.Path` found
+        in `download_output` (including inside lists/tuples, or behind a
+        ``.path`` attribute). Pipelines whose :meth:`download` return value
+        doesn't map directly to the raw files it created (e.g. it returns
+        parsed metadata instead of a path, or writes files that aren't part
+        of its return value) must override this method to correctly delete
+        their own raw files.
+
+        Parameters
+        ----------
+        download_output : Any
+            The return value of :meth:`download()` for this manifest item.
+        """
+        paths = self._extract_raw_paths(download_output)
+        if not paths:
+            logger.warning(
+                f"{type(self).__name__}: delete_raw is enabled, but no raw file "
+                "paths could be inferred from the download() return value. "
+                "Override cleanup_raw() in this pipeline to support delete_raw."
+            )
+            return
+        self.update_status("Deleting Raw Files")
+        for path in paths:
+            if path.is_dir():
+                shutil.rmtree(path, ignore_errors=True)
+            elif path.exists():
+                path.unlink()
+
+    @staticmethod
+    def _extract_raw_paths(value: Any) -> list[Path]:
+        """Recursively collect every :class:`~pathlib.Path` found in `value`."""
+        if isinstance(value, Path):
+            return [value]
+        if isinstance(value, (list, tuple, set)):
+            paths = []
+            for item in value:
+                paths.extend(BrainsetPipeline._extract_raw_paths(item))
+            return paths
+        path_attr = getattr(value, "path", None)
+        if isinstance(path_attr, Path):
+            return [path_attr]
+        return []
+
     def _run_item(self, manifest_item):
         """Run download and process for a manifest item."""
         self._asset_id = manifest_item.Index
         output = self.download(manifest_item)
         if not self._download_only:
             self.process(output)
+            if self._delete_raw:
+                self.cleanup_raw(output)
         self.update_status("DONE")
 
     def _run_item_on_parallel_worker(self, manifest_item):

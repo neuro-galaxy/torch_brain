@@ -1216,3 +1216,44 @@ class TestProcess:
                 eeg_pipeline_instance.process(download_output)
 
         mock_data.to_hdf5.assert_called_once()
+
+
+class TestCleanupRaw:
+    """Tests for cleanup_raw method (used by the delete_raw feature)."""
+
+    def test_deletes_only_files_prefixed_with_recording_id(
+        self, eeg_pipeline_instance, manifest_row
+    ):
+        subject_dir = eeg_pipeline_instance.raw_dir / manifest_row.subject_id
+        subject_dir.mkdir(parents=True)
+        recording_file = subject_dir / f"{manifest_row.Index}_eeg.edf"
+        sidecar_file = subject_dir / f"{manifest_row.Index}_eeg.json"
+        other_recording_file = subject_dir / "rec-002_eeg.edf"
+        recording_file.write_text("data")
+        sidecar_file.write_text("{}")
+        other_recording_file.write_text("data")
+
+        eeg_pipeline_instance.cleanup_raw(manifest_row)
+
+        assert not recording_file.exists()
+        assert not sidecar_file.exists()
+        assert other_recording_file.exists()
+
+    def test_does_not_delete_shared_dataset_level_files(
+        self, eeg_pipeline_instance, manifest_row
+    ):
+        subject_dir = eeg_pipeline_instance.raw_dir / manifest_row.subject_id
+        subject_dir.mkdir(parents=True)
+        (subject_dir / f"{manifest_row.Index}_eeg.edf").write_text("data")
+        dataset_description = eeg_pipeline_instance.raw_dir / "dataset_description.json"
+        dataset_description.write_text("{}")
+        participants_tsv = eeg_pipeline_instance.raw_dir / "participants.tsv"
+        participants_tsv.write_text("participant_id\n")
+
+        eeg_pipeline_instance.cleanup_raw(manifest_row)
+
+        assert dataset_description.exists()
+        assert participants_tsv.exists()
+
+    def test_no_error_if_subject_dir_missing(self, eeg_pipeline_instance, manifest_row):
+        eeg_pipeline_instance.cleanup_raw(manifest_row)  # should not raise

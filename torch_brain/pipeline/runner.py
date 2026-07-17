@@ -130,6 +130,11 @@ def run():
     parser.add_argument(
         "--download-only", action="store_true", help="Download raw data and exit"
     )
+    parser.add_argument(
+        "--delete-raw",
+        action="store_true",
+        help="Delete each item's raw data after processing.",
+    )
     args, remaining_args = parser.parse_known_args()
 
     pipeline_cls = import_pipeline_cls_from_file(args.pipeline_file)
@@ -178,6 +183,7 @@ def run():
                     processed_dir=processed_dir,
                     args=pipeline_args,
                     download_only=args.download_only,
+                    delete_raw=args.delete_raw,
                 )
                 for _ in range(args.cores)
             ]
@@ -196,6 +202,7 @@ def run():
             processed_dir=processed_dir,
             args=pipeline_args,
             download_only=args.download_only,
+            delete_raw=args.delete_raw,
         )
         pipeline._run_item(manifest_item)
 
