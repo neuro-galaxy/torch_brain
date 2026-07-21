@@ -15,7 +15,6 @@ from pathlib import Path
 import h5py
 import pandas as pd
 
-from torch_brain.data import serialize_fn_map
 from torch_brain.pipeline.openneuro import (
     OpenNeuroPipeline,
     base_openneuro_parser,
@@ -181,4 +180,4 @@ class Pipeline(OpenNeuroPipeline):
 
         self.update_status("Storing")
         with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file, serialize_fn_map=serialize_fn_map)
+            data.to_hdf5(file)
