@@ -110,6 +110,25 @@ class Interval(ArrayDict):
 
         self._timekeys = timekeys
 
+    @classmethod
+    def _from_scalar_bounds(cls, start: float, end: float) -> "Interval":
+        # Builds a single [start, end] interval directly and skips the usual validation.
+        if start != start or end != end:
+            raise ValueError(f"Interval bounds cannot be NaN, got [{start}, {end}].")
+        out = cls.__new__(cls)
+        d = out.__dict__
+        d["start"] = np.array([start], dtype=np.float64)
+        d["end"] = np.array([end], dtype=np.float64)
+        d["_timekeys"] = ["start", "end"]
+        d["_sorted"] = True
+        return out
+
+    def _shift(self, offset: float):
+        # Shifts start/end in place and skips the usual re-validation.
+        d = self.__dict__
+        d["start"] = d["start"] - offset
+        d["end"] = d["end"] - offset
+
     def timekeys(self):
         r"""Returns a list of all time-based attributes."""
         return self._timekeys

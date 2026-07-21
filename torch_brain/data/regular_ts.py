@@ -350,7 +350,7 @@ class RegularTimeSeries(ArrayDict):
         end_id, out_end = self._time_to_idx(end, eps=eps)
 
         # Intersect with the (possibly multi-interval) domain
-        new_domain = self.domain & Interval(out_start, out_end)
+        new_domain = self.domain & Interval._from_scalar_bounds(out_start, out_end)
 
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
@@ -376,8 +376,7 @@ class RegularTimeSeries(ArrayDict):
         end_id -= trailing_trim
 
         if reset_origin:
-            new_domain.start = new_domain.start - start
-            new_domain.end = new_domain.end - start
+            new_domain._shift(start)
 
         out._domain = new_domain
 
@@ -807,7 +806,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         end_id, out_end = self._time_to_idx(end, eps=eps)
 
         # Intersect with the (possibly multi-interval) domain
-        new_domain = self.domain & Interval(out_start, out_end)
+        new_domain = self.domain & Interval._from_scalar_bounds(out_start, out_end)
 
         is_empty = len(new_domain) == 0 or new_domain.start[0] == new_domain.end[-1]
         if is_empty:
@@ -838,8 +837,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         end_id -= trailing_trim
 
         if reset_origin:
-            new_domain.start = new_domain.start - start
-            new_domain.end = new_domain.end - start
+            new_domain._shift(start)
 
         out._domain = new_domain
 

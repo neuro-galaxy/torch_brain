@@ -250,10 +250,9 @@ class Data:
                 out.__dict__[key] = copy.copy(value)
 
         # update domain
-        out._domain = copy.copy(self._domain) & Interval(start, end)
+        out._domain = copy.copy(self._domain) & Interval._from_scalar_bounds(start, end)
         if reset_origin:
-            out._domain.start -= start
-            out._domain.end -= start
+            out._domain._shift(start)
 
             # update slice start time
             out._absolute_start = self._absolute_start + start
