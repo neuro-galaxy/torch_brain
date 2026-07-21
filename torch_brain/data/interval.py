@@ -889,10 +889,13 @@ class LazyInterval(Interval):
         return super()._maybe_first_dim()
 
     def __getattribute__(self, name):
-        if name not in ["__dict__", "keys"]:
-            # intercept attribute calls
-            if name in self.keys():
-                out = self.__dict__[name]
+        # Assumption: every lazy data array lives in __dict__ under its own
+        # non-underscore name, and nothing else non-underscore does. This lets
+        # us skip keys() (called on every access) and use a plain __dict__ lookup.
+        if not name.startswith("_"):
+            d = super().__getattribute__("__dict__")
+            if name in d:
+                out = d[name]
 
                 if isinstance(out, h5py.Dataset):
                     # convert into numpy array
@@ -915,12 +918,10 @@ class LazyInterval(Interval):
                         out = out.astype("U")
 
                     # store it
-                    self.__dict__[name] = out
+                    d[name] = out
 
                 # If all attributes are loaded, we can remove the lazy flag
-                all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-                )
+                all_loaded = all(isinstance(d[key], np.ndarray) for key in self.keys())
                 if all_loaded:
                     self.__class__ = Interval
                     del self._lazy_ops, self._unicode_keys

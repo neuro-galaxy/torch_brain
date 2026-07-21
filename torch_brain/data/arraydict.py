@@ -375,11 +375,13 @@ class LazyArrayDict(ArrayDict):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        if name not in ["__dict__", "keys"]:
-            # intercept attribute calls. this is where data that is not loaded is loaded
-            # and when any lazy operations are applied
-            if name in self.keys():
-                out = self.__dict__[name]
+        # Assumption: every lazy data array lives in __dict__ under its own
+        # non-underscore name, and nothing else non-underscore does. This lets
+        # us skip keys() (called on every access) and use a plain __dict__ lookup.
+        if not name.startswith("_"):
+            d = super().__getattribute__("__dict__")
+            if name in d:
+                out = d[name]
 
                 if isinstance(out, h5py.Dataset):
                     # apply any mask, and return the numpy array
@@ -393,12 +395,10 @@ class LazyArrayDict(ArrayDict):
                         out = out.astype("U")
 
                     # store it, now the array is loaded
-                    self.__dict__[name] = out
+                    d[name] = out
 
                 # if all attributes are loaded, we can remove the lazy flag
-                all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-                )
+                all_loaded = all(isinstance(d[key], np.ndarray) for key in self.keys())
                 if all_loaded:
                     self.__class__ = ArrayDict
                     # delete special private attributes
