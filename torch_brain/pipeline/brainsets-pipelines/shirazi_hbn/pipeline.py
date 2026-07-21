@@ -111,6 +111,11 @@ class Pipeline(OpenNeuroPipeline):
         # Capture the runner-assigned raw dir once, before we start repointing it,
         # then nest per-release subdirs inside it: <raw>/shirazi_hbn/R{n}.
         if not hasattr(self, "_base_raw_dir"):
+            name = self.raw_dir.name
+            if name.startswith("R") and name[1:].isdigit():
+                raise RuntimeError(
+                    f"Cannot capture base raw dir from release path {self.raw_dir}; "
+                )
             self._base_raw_dir = self.raw_dir
         return self._base_raw_dir / f"R{int(release_id)}"
 
@@ -120,11 +125,10 @@ class Pipeline(OpenNeuroPipeline):
             self._participants_by_release = {}
         release_id = int(release_id)
         if release_id not in self._participants_by_release:
-            participants_path = self.raw_dir / "participants.tsv"
+            raw_dir = self._release_raw_dir(release_id)
+            participants_path = raw_dir / "participants.tsv"
             self._participants_by_release[release_id] = (
-                load_participants_tsv(self.raw_dir)
-                if participants_path.exists()
-                else None
+                load_participants_tsv(raw_dir) if participants_path.exists() else None
             )
         return self._participants_by_release[release_id]
 
