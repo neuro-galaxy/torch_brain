@@ -7,8 +7,23 @@ from torch_brain.datasets import DatasetIndex
 from torch_brain.samplers import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
+    SessionBatchSampler,
     TrialSampler,
 )
+
+
+# helper
+class _FakeSampler(torch.utils.data.Sampler):
+    """Yields a fixed, pre-defined list of DatasetIndex objects, in order."""
+
+    def __init__(self, indices):
+        self.indices = indices
+
+    def __iter__(self):
+        return iter(self.indices)
+
+    def __len__(self):
+        return len(self.indices)
 
 
 # helper
@@ -199,3 +214,58 @@ def test_trial_sampler():
     sampler1 = TrialSampler(sampling_intervals=sampling_intervals, shuffle=False)
     samples1 = list(sampler1)
     assert compare_slice_indices(samples1[0], DatasetIndex("session1", 0.0, 2.0))
+
+
+def test_session_batch_sampler():
+    # 4 indices for session1, 3 for session2, interleaved to check that the
+    # batch sampler groups them correctly regardless of the inner sampler's order.
+    indices = [
+        DatasetIndex("session1", 0.0, 1.0),
+        DatasetIndex("session2", 0.0, 1.0),
+        DatasetIndex("session1", 1.0, 2.0),
+        DatasetIndex("session2", 1.0, 2.0),
+        DatasetIndex("session1", 2.0, 3.0),
+        DatasetIndex("session2", 2.0, 3.0),
+        DatasetIndex("session1", 3.0, 4.0),
+    ]
+
+    # batch_size must be positive
+    with pytest.raises(ValueError):
+        SessionBatchSampler(_FakeSampler(indices), batch_size=0)
+
+    # drop_last=True: session1 (4 items) -> 2 batches of 2; session2 (3 items)
+    # -> 1 batch of 2, remainder of 1 dropped.
+    sampler = SessionBatchSampler(_FakeSampler(indices), batch_size=2, drop_last=True)
+    assert len(sampler) == 3
+
+    batches = list(sampler)
+    assert len(batches) == 3
+    for batch in batches:
+        assert len(batch) == 2
+        # every index in a batch must belong to the same session
+        assert len({idx.recording_id for idx in batch}) == 1
+
+    session_batch_counts = {"session1": 0, "session2": 0}
+    for batch in batches:
+        session_batch_counts[batch[0].recording_id] += 1
+    assert session_batch_counts == {"session1": 2, "session2": 1}
+
+    # drop_last=False: session1 -> 2 batches of 2; session2 -> 1 batch of 2
+    # and 1 batch of 1 (the remainder is kept).
+    sampler = SessionBatchSampler(_FakeSampler(indices), batch_size=2, drop_last=False)
+    assert len(sampler) == 4
+
+    batches = list(sampler)
+    assert len(batches) == 4
+    for batch in batches:
+        assert len({idx.recording_id for idx in batch}) == 1
+
+    batch_sizes_by_session = {"session1": [], "session2": []}
+    for batch in batches:
+        batch_sizes_by_session[batch[0].recording_id].append(len(batch))
+    assert sorted(batch_sizes_by_session["session1"]) == [2, 2]
+    assert sorted(batch_sizes_by_session["session2"]) == [1, 2]
+
+    # len() should stay consistent with a second pass over the sampler
+    # (the internal batch cache is rebuilt on every new __iter__ call).
+    assert len(sampler) == len(list(sampler))
