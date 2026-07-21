@@ -45,7 +45,17 @@ class ArrayDict:
 
     def keys(self) -> list[str]:
         r"""Returns a list of all array attribute names."""
-        return list(filter(lambda x: not x.startswith("_"), self.__dict__))
+        # Cache the public-key list; lazy attribute access calls keys() on every
+        # access, so rebuilding it each time is a hotspot. Invalidated on a
+        # len(__dict__) change and in __setattr__/__delattr__. A fresh list is
+        # returned so callers may safely mutate the result.
+        d = self.__dict__
+        if d.get("_keys_cache_len") != len(d):
+            d["_keys_cache"] = None  # reserve slots so len() below is stable
+            d["_keys_cache_len"] = None
+            d["_keys_cache"] = [k for k in d if not k.startswith("_")]
+            d["_keys_cache_len"] = len(d)
+        return list(d["_keys_cache"])
 
     def _maybe_first_dim(self):
         # If self has at least one attribute, returns the first dimension of
@@ -83,6 +93,13 @@ class ArrayDict:
                     f"is {first_dim}."
                 )
         super().__setattr__(name, value)
+        # invalidate keys() cache: a len(__dict__) check alone is unsafe since
+        # private keys (e.g. _sorted) change size independently of public ones.
+        self.__dict__.pop("_keys_cache_len", None)
+
+    def __delattr__(self, name):
+        super().__delattr__(name)
+        self.__dict__.pop("_keys_cache_len", None)
 
     def __getattr__(self, name) -> np.ndarray:
         raise AttributeError(f"Attribute {name} not found.")

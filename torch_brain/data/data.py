@@ -172,6 +172,11 @@ class Data:
                 f"({name})."
             )
         super().__setattr__(name, value)
+        self.__dict__.pop("_keys_cache_len", None)  # invalidate keys() cache
+
+    def __delattr__(self, name):
+        super().__delattr__(name)
+        self.__dict__.pop("_keys_cache_len", None)
 
     def __getattr__(self, name) -> Any:
         raise AttributeError(f"Attribute {name} not found.")
@@ -548,7 +553,14 @@ class Data:
 
     def keys(self) -> list[str]:
         r"""Returns a list of all attribute names."""
-        return list(filter(lambda x: not x.startswith("_"), self.__dict__))
+        # Cached public-key list; see ArrayDict.keys.
+        d = self.__dict__
+        if d.get("_keys_cache_len") != len(d):
+            d["_keys_cache"] = None  # reserve slots so len() below is stable
+            d["_keys_cache_len"] = None
+            d["_keys_cache"] = [k for k in d if not k.startswith("_")]
+            d["_keys_cache_len"] = len(d)
+        return list(d["_keys_cache"])
 
     def __contains__(self, key: str) -> bool:
         r"""Returns :obj:`True` if the attribute :obj:`key` is present in the
