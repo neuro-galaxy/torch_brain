@@ -94,14 +94,14 @@ class BrainsetPipeline(ABC):
         args: Namespace | None,
         tracker_handle: ray.actor.ActorHandle | None = None,
         download_only: bool = False,
-        delete_raw: bool = False,
+        keep_raw: bool = False,
     ):
         self.raw_dir = raw_dir
         self.processed_dir = processed_dir
         self.args = args
         self._tracker_handle = tracker_handle
         self._download_only = download_only
-        self._delete_raw = delete_raw
+        self._keep_raw = keep_raw
 
     @classmethod
     @abstractmethod
@@ -170,7 +170,7 @@ class BrainsetPipeline(ABC):
     def cleanup_raw(self, download_output: Any) -> None:
         r"""Delete the raw file(s) for a manifest item, once it has been
         successfully processed. Called automatically after :meth:`process()`
-        when the pipeline is run with ``delete_raw=True``.
+        unless the pipeline is run with ``keep_raw=True``.
 
         The default implementation deletes every :class:`~pathlib.Path` found
         in `download_output` (including inside lists/tuples, or behind a
@@ -188,9 +188,9 @@ class BrainsetPipeline(ABC):
         paths = self._extract_raw_paths(download_output)
         if not paths:
             logger.warning(
-                f"{type(self).__name__}: delete_raw is enabled, but no raw file "
-                "paths could be inferred from the download() return value. "
-                "Override cleanup_raw() in this pipeline to support delete_raw."
+                f"{type(self).__name__}: raw data deletion is enabled, but no raw "
+                "file paths could be inferred from the download() return value. "
+                "Override cleanup_raw() in this pipeline to support deleting raw data."
             )
             return
         self.update_status("Deleting Raw Files")
@@ -221,7 +221,7 @@ class BrainsetPipeline(ABC):
         output = self.download(manifest_item)
         if not self._download_only:
             self.process(output)
-            if self._delete_raw:
+            if not self._keep_raw:
                 self.cleanup_raw(output)
         self.update_status("DONE")
 

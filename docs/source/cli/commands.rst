@@ -162,9 +162,9 @@ Download and process a single brainset.
 
 .. rst-class:: cli-option
 
-``--delete-raw``
+``--keep-raw``
 
-    Delete each item's raw data after processing.
+    Keep each item's raw data after processing (default: delete it).
 
 .. rst-class:: cli-option
 

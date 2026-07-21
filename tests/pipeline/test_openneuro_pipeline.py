@@ -1219,7 +1219,7 @@ class TestProcess:
 
 
 class TestCleanupRaw:
-    """Tests for cleanup_raw method (used by the delete_raw feature)."""
+    """Tests for cleanup_raw method (used by the keep_raw feature)."""
 
     def test_deletes_only_files_prefixed_with_recording_id(
         self, eeg_pipeline_instance, manifest_row

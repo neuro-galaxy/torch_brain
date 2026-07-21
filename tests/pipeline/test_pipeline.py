@@ -1,4 +1,4 @@
-"""Unit tests for BrainsetPipeline base class, in particular the delete_raw feature."""
+"""Unit tests for BrainsetPipeline base class, in particular the keep_raw feature."""
 
 from argparse import Namespace
 
@@ -26,12 +26,12 @@ class _DummyPipeline(BrainsetPipeline):
 
 @pytest.fixture
 def make_pipeline(tmp_path):
-    def _make(download_return, delete_raw=True, download_only=False):
+    def _make(download_return, keep_raw=False, download_only=False):
         pipeline = _DummyPipeline(
             raw_dir=tmp_path / "raw",
             processed_dir=tmp_path / "processed",
             args=Namespace(),
-            delete_raw=delete_raw,
+            keep_raw=keep_raw,
             download_only=download_only,
         )
         pipeline._download_return = download_return
@@ -104,7 +104,7 @@ class TestCleanupRaw:
         with caplog.at_level("WARNING"):
             pipeline.cleanup_raw("not_a_path")
 
-        assert "delete_raw is enabled" in caplog.text
+        assert "raw data deletion is enabled" in caplog.text
 
     def test_missing_file_does_not_raise(self, make_pipeline, tmp_path):
         fpath = tmp_path / "already_gone.mat"
@@ -113,20 +113,20 @@ class TestCleanupRaw:
         pipeline.cleanup_raw(fpath)  # should not raise
 
 
-class TestRunItemDeleteRaw:
-    def test_delete_raw_disabled_keeps_file(self, make_pipeline, tmp_path):
+class TestRunItemKeepRaw:
+    def test_keep_raw_enabled_keeps_file(self, make_pipeline, tmp_path):
         fpath = tmp_path / "raw_file.mat"
         fpath.write_text("data")
-        pipeline = make_pipeline(fpath, delete_raw=False)
+        pipeline = make_pipeline(fpath, keep_raw=True)
 
         pipeline._run_item(pd.Series({"Index": "item0"}))
 
         assert fpath.exists()
 
-    def test_delete_raw_enabled_deletes_after_process(self, make_pipeline, tmp_path):
+    def test_keep_raw_disabled_deletes_after_process(self, make_pipeline, tmp_path):
         fpath = tmp_path / "raw_file.mat"
         fpath.write_text("data")
-        pipeline = make_pipeline(fpath, delete_raw=True)
+        pipeline = make_pipeline(fpath, keep_raw=False)
 
         pipeline._run_item(pd.Series({"Index": "item0"}))
 
@@ -136,7 +136,7 @@ class TestRunItemDeleteRaw:
     def test_download_only_skips_process_and_cleanup(self, make_pipeline, tmp_path):
         fpath = tmp_path / "raw_file.mat"
         fpath.write_text("data")
-        pipeline = make_pipeline(fpath, delete_raw=True, download_only=True)
+        pipeline = make_pipeline(fpath, keep_raw=False, download_only=True)
 
         pipeline._run_item(pd.Series({"Index": "item0"}))
 
@@ -146,7 +146,7 @@ class TestRunItemDeleteRaw:
     def test_cleanup_not_called_if_process_raises(self, make_pipeline, tmp_path):
         fpath = tmp_path / "raw_file.mat"
         fpath.write_text("data")
-        pipeline = make_pipeline(fpath, delete_raw=True)
+        pipeline = make_pipeline(fpath, keep_raw=False)
 
         def _raise(download_output):
             raise RuntimeError("boom")

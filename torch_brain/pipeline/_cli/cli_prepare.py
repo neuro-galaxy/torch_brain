@@ -87,10 +87,10 @@ def complete_brainset(ctx, param, incomplete):
     help="Only download raw data, skip processing.",
 )
 @click.option(
-    "--delete-raw",
+    "--keep-raw",
     is_flag=True,
     default=False,
-    help="Delete each item's raw data after processing.",
+    help="Keep each item's raw data after processing (default: delete it).",
 )
 @click.option(
     "-v",
@@ -106,7 +106,7 @@ def prepare(
     cores: int,
     verbose: bool,
     download_only: bool,
-    delete_raw: bool,
+    keep_raw: bool,
     list_flag_: bool,
     single: str,
     use_active_env: bool,
@@ -122,7 +122,7 @@ def prepare(
     Examples:
     $ brainsets prepare pei_pandarinath_nlb_2021
     $ brainsets prepare pei_pandarinath_nlb_2021 --download-only
-    $ brainsets prepare pei_pandarinath_nlb_2021 --delete-raw
+    $ brainsets prepare pei_pandarinath_nlb_2021 --keep-raw
     $ brainsets prepare pei_pandarinath_nlb_2021 --cores 8 --raw-dir ~/data/raw --processed-dir ~/data/processed
     $ brainsets prepare pei_pandarinath_nlb_2021 --list
     $ brainsets prepare pei_pandarinath_nlb_2021 --single jenkins_maze_train
@@ -177,7 +177,7 @@ def prepare(
         f"--processed-dir={processed_dir}",
         f"-c{cores}",
         *(["--download-only"] if download_only else []),
-        *(["--delete-raw"] if delete_raw else []),
+        *(["--keep-raw"] if keep_raw else []),
         *(["--list"] if list_flag_ else []),
         *([f"--single={single}"] if single is not None else []),
         *ctx.args,  # extra arguments
