@@ -167,13 +167,16 @@ class Pipeline(OpenNeuroPipeline):
                 value = row.get(field, None)
                 return None if pd.isna(value) else value
 
-            data.subject.ehq_total = _value("ehq_total")
-            data.subject.commercial_use = _value("commercial_use")
-            data.subject.full_pheno = _value("full_pheno")
-            data.subject.p_factor = _value("p_factor")
-            data.subject.attention = _value("attention")
-            data.subject.internalizing = _value("internalizing")
-            data.subject.externalizing = _value("externalizing")
+            for field in (
+                "ehq_total",
+                "commercial_use",
+                "full_pheno",
+                "p_factor",
+                "attention",
+                "internalizing",
+                "externalizing",
+            ):
+                setattr(data.subject, field, _value(field))
 
         data.release_id = release_id
         data.release_dataset_id = str(download_output.release_dataset_id)
