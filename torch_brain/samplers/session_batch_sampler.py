@@ -49,6 +49,8 @@ class SessionBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         generator: torch.Generator | None = None,
         drop_last: bool = True,
     ):
+        if isinstance(batch_size, bool) or not isinstance(batch_size, int):
+            raise TypeError("batch_size must be an integer.")
         if batch_size <= 0:
             raise ValueError("batch_size must be positive.")
         self.sampler = sampler
@@ -88,11 +90,16 @@ class SessionBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         return len(self._batches_cache)
 
     def __iter__(self) -> Iterator[list[DatasetIndex]]:
-        r"""Yields per-session batches of :class:`~torch_brain.datasets.DatasetIndex`."""
+        r"""Returns an iterator over per-session batches of
+        :class:`~torch_brain.datasets.DatasetIndex`."""
         self._prepare_cache()
         batches = self._batches_cache
         self._batches_cache = None  # reset so next epoch rebuilds
+        return self._yield_batches(batches)
 
+    def _yield_batches(
+        self, batches: list[list[DatasetIndex]]
+    ) -> Iterator[list[DatasetIndex]]:
         if self.shuffle_batches and batches:
             for idx in torch.randperm(len(batches), generator=self.generator).tolist():
                 yield batches[idx]
