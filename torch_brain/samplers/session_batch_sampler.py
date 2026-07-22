@@ -37,7 +37,11 @@ class SessionBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         ...     sampling_intervals=sampling_intervals,
         ...     window_length=1.0,
         ... )
-        >>> sampler = SessionBatchSampler(inner_sampler, batch_size=16)
+        >>> batch_sampler = SessionBatchSampler(inner_sampler, batch_size=16)
+        >>> loader = torch.utils.data.DataLoader(
+        ...     dataset=your_dataset,
+        ...     batch_sampler=batch_sampler,
+        ... )
     """
 
     def __init__(
