@@ -7,7 +7,7 @@ from torch_brain.datasets import DatasetIndex
 from torch_brain.samplers import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
-    SessionBatchSampler,
+    SessionWiseBatchSampler,
     TrialSampler,
 )
 
@@ -231,11 +231,13 @@ def test_session_batch_sampler():
 
     # batch_size must be positive
     with pytest.raises(ValueError):
-        SessionBatchSampler(_FakeSampler(indices), batch_size=0)
+        SessionWiseBatchSampler(_FakeSampler(indices), batch_size=0)
 
     # drop_last=True: session1 (4 items) -> 2 batches of 2; session2 (3 items)
     # -> 1 batch of 2, remainder of 1 dropped.
-    sampler = SessionBatchSampler(_FakeSampler(indices), batch_size=2, drop_last=True)
+    sampler = SessionWiseBatchSampler(
+        _FakeSampler(indices), batch_size=2, drop_last=True
+    )
     assert len(sampler) == 3
 
     batches = list(sampler)
@@ -252,7 +254,9 @@ def test_session_batch_sampler():
 
     # drop_last=False: session1 -> 2 batches of 2; session2 -> 1 batch of 2
     # and 1 batch of 1 (the remainder is kept).
-    sampler = SessionBatchSampler(_FakeSampler(indices), batch_size=2, drop_last=False)
+    sampler = SessionWiseBatchSampler(
+        _FakeSampler(indices), batch_size=2, drop_last=False
+    )
     assert len(sampler) == 4
 
     batches = list(sampler)
