@@ -1,9 +1,12 @@
 import logging
+from collections.abc import Iterator
 
 import torch
 
+from torch_brain.datasets import DatasetIndex
 
-class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
+
+class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler[DatasetIndex]):
     r"""Wraps any sampler for use in distributed evaluation without dropping samples.
 
     Unlike the standard distributed samplers from PyTorch and PyTorch Lightning, which
@@ -47,7 +50,7 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
 
     def __init__(
         self,
-        sampler: torch.utils.data.Sampler,
+        sampler: torch.utils.data.Sampler[DatasetIndex],
         num_replicas: int | None = None,
         rank: int | None = None,
     ):
@@ -69,10 +72,10 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
         self.num_replicas = num_replicas
         self.rank = rank
 
-    def _check_params(self):
+    def _check_params(self) -> bool:
         return (self.num_replicas is not None) and (self.rank is not None)
 
-    def rank_len(self):
+    def rank_len(self) -> int:
         r"""Returns the number of samples assigned to the current process."""
         if self.num_replicas is None or self.rank is None:
             raise RuntimeError(
@@ -84,7 +87,7 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
         extra = int(self.rank < (total_len % self.num_replicas))
         return evenly_split + extra
 
-    def __len__(self):
+    def __len__(self) -> int:
         r"""Returns the number of samples assigned to the current process if
         the rank and num_replicas are set. Otherwise, returns the total number
         of samples in the original sampler.
@@ -94,7 +97,7 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler):
         else:
             return self.rank_len()
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[DatasetIndex]:
         r"""Yields the subset of indices assigned to :attr:`rank` via strided interleaving.
 
         Raises:
