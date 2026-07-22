@@ -35,6 +35,10 @@ class SessionBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import RandomFixedWindowSampler, SessionBatchSampler
 
+        >>> class ToyDataset(torch.utils.data.Dataset):
+        ...     def __getitem__(self, index: DatasetIndex):
+        ...         return index
+        >>> your_dataset = ToyDataset()
         >>> sampling_intervals = {
         ...     "session_1": Interval(0.0, 100.0),
         ...     "session_2": Interval(0.0, 200.0),
