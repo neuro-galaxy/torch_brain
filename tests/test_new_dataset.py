@@ -46,7 +46,6 @@ def create_spiking_data(brainset_id, subject_id, session_id, length):
         lfp=RegularTimeSeries(
             sampling_rate=10.0,
             value=np.random.normal(0.0, 1.0, (int(length * 10.0), 30)),
-            domain="auto",
         ),
         domain=Interval(0, length),
     )
@@ -69,7 +68,6 @@ def create_multichannel_data(
         multichannel_data=RegularTimeSeries(
             sampling_rate=sampling_rate,
             value=np.random.normal(0.0, 1.0, (int(length * sampling_rate), n_channels)),
-            domain="auto",
         ),
         channels=ArrayDict(
             id=np.array([f"ch{i}" for i in range(n_channels)]),

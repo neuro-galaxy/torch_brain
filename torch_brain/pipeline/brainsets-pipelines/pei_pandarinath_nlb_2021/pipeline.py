@@ -233,14 +233,12 @@ def extract_behavior(nwbfile, trials):
         sampling_rate=samp_rate,
         pos=hand_pos,
         vel=hand_vel,
-        domain="auto",
         domain_start=start_time,
     )
 
     eye = RegularTimeSeries(
         sampling_rate=samp_rate,
         pos=eye_pos,
-        domain="auto",
         domain_start=start_time,
     )
 
