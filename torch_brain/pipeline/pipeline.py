@@ -193,6 +193,10 @@ def _redirect_stdio(log_out_path, log_err_path):
     This is useful when running pipelines in parallel."""
     stdout_prev = sys.stdout
     stderr_prev = sys.stderr
+    # `_run_item` reconfigures the root logger via `logging.basicConfig(force=True, ...)`,
+    # which only ever mutates `handlers` and `level` on the root logger (see
+    # https://docs.python.org/3/library/logging.html#logging.basicConfig), so those are
+    # the only two attributes that need to be saved/restored here.
     root_logger = logging.getLogger()
     handlers_prev = root_logger.handlers[:]
     level_prev = root_logger.level
