@@ -23,6 +23,12 @@ class SessionBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
             If ``None`` (default), uses the default global PyTorch generator.
         drop_last: If ``True`` (default), the last incomplete batch for each
             session is dropped.
+        cache_batches: If ``True``, batches are built once and reused across
+            epochs instead of being rebuilt on every :meth:`__iter__` call.
+            Useful when the inner sampler is deterministic and rebuilding is
+            wasted work. Leave ``False`` (default) if the inner sampler is
+            random (e.g. :class:`RandomFixedWindowSampler`), since caching
+            would freeze the same batches for the lifetime of the sampler.
 
     Example::
 
@@ -52,6 +58,7 @@ class SessionBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         shuffle_batches: bool = True,
         generator: torch.Generator | None = None,
         drop_last: bool = True,
+        cache_batches: bool = False,
     ):
         if isinstance(batch_size, bool) or not isinstance(batch_size, int):
             raise TypeError("batch_size must be an integer.")
@@ -62,6 +69,7 @@ class SessionBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         self.shuffle_batches = shuffle_batches
         self.generator = generator
         self.drop_last = drop_last
+        self.cache_batches = cache_batches
         self._batches_cache: list[list[DatasetIndex]] | None = None
 
     def _build_batches(self) -> list[list[DatasetIndex]]:
@@ -98,7 +106,8 @@ class SessionBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         :class:`~torch_brain.datasets.DatasetIndex`."""
         self._prepare_cache()
         batches = self._batches_cache
-        self._batches_cache = None  # reset so next epoch rebuilds
+        if not self.cache_batches:
+            self._batches_cache = None  # reset so next epoch rebuilds
         return self._yield_batches(batches)
 
     def _yield_batches(
