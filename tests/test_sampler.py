@@ -27,6 +27,27 @@ class _FakeSampler(torch.utils.data.Sampler[DatasetIndex]):
 
 
 # helper
+class _CountingSampler(torch.utils.data.Sampler[DatasetIndex]):
+    """Yields indices shifted by an offset that increments on every __iter__
+    call, to simulate a stateful/random inner sampler for cache tests."""
+
+    def __init__(self, indices):
+        self.indices = indices
+        self.call_count = 0
+
+    def __iter__(self):
+        offset = self.call_count
+        self.call_count += 1
+        return iter(
+            DatasetIndex(idx.recording_id, idx.start + offset, idx.end + offset)
+            for idx in self.indices
+        )
+
+    def __len__(self):
+        return len(self.indices)
+
+
+# helper
 def compare_slice_indices(a, b):
     return (
         (a.recording_id == b.recording_id)
@@ -271,5 +292,72 @@ def test_session_batch_sampler():
     assert sorted(batch_sizes_by_session["session2"]) == [1, 2]
 
     # len() should stay consistent with a second pass over the sampler
-    # (the internal batch cache is rebuilt on every new __iter__ call).
+    # (cache_batches defaults to True, so both calls see the same batches).
     assert len(sampler) == len(list(sampler))
+
+
+def test_session_batch_sampler_shuffle():
+    torch.manual_seed(0)
+    indices = [
+        DatasetIndex(f"session{s}", float(i), float(i) + 1.0)
+        for s in range(3)
+        for i in range(4)
+    ]
+
+    def batch_signature(batches):
+        return [
+            tuple((idx.recording_id, idx.start, idx.end) for idx in batch)
+            for batch in batches
+        ]
+
+    # shuffle=False (default): batches are always yielded in build order.
+    batch_sampler = SessionWiseBatchSampler(
+        _FakeSampler(indices), batch_size=2, shuffle=False
+    )
+    order1 = batch_signature(list(batch_sampler))
+    order2 = batch_signature(list(batch_sampler))
+    assert order1 == order2
+
+    # shuffle=True: the batch order changes across successive epochs.
+    batch_sampler = SessionWiseBatchSampler(
+        _FakeSampler(indices), batch_size=2, shuffle=True
+    )
+    shuffled1 = batch_signature(list(batch_sampler))
+    shuffled2 = batch_signature(list(batch_sampler))
+    assert sorted(shuffled1) == sorted(shuffled2)  # same set of batches
+    assert shuffled1 != shuffled2  # different order
+
+
+def test_session_batch_sampler_cache_batches():
+    indices = [
+        DatasetIndex("session1", 0.0, 1.0),
+        DatasetIndex("session2", 0.0, 1.0),
+        DatasetIndex("session1", 1.0, 2.0),
+        DatasetIndex("session2", 1.0, 2.0),
+    ]
+
+    # NOTE: we deliberately iterate via `list(iter(batch_sampler))` rather than
+    # `list(batch_sampler)`. The latter triggers CPython's length_hint
+    # optimization, which calls len(batch_sampler) (and therefore
+    # _prepare_cache()) before __iter__ is consumed, causing a spurious extra
+    # rebuild when cache_batches=False. Iterating an explicit iterator avoids
+    # that.
+
+    # cache_batches=True (default): batches are built once from the inner
+    # sampler and reused verbatim across epochs, even if the inner sampler
+    # is stateful and would otherwise yield different indices each time.
+    inner = _CountingSampler(indices)
+    batch_sampler = SessionWiseBatchSampler(inner, batch_size=2, cache_batches=True)
+    batches1 = list(iter(batch_sampler))
+    batches2 = list(iter(batch_sampler))
+    assert batches1 == batches2
+    assert inner.call_count == 1
+
+    # cache_batches=False: batches are rebuilt on every __iter__ call, so a
+    # stateful inner sampler produces different batches each epoch.
+    inner = _CountingSampler(indices)
+    batch_sampler = SessionWiseBatchSampler(inner, batch_size=2, cache_batches=False)
+    batches1 = list(iter(batch_sampler))
+    batches2 = list(iter(batch_sampler))
+    assert batches1 != batches2
+    assert inner.call_count == 2
