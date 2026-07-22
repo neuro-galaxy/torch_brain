@@ -10,14 +10,14 @@ class SessionWiseBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
     groups its output into per-session batches.
 
     All indices in a batch share the same session id. The inner sampler controls
-    the order of indices within each session; :obj:`shuffle_batches` controls the
+    the order of indices within each session; :obj:`shuffle` controls the
     order of batches across sessions.
 
     Args:
         sampler: Inner sampler whose :meth:`__iter__` yields
             :class:`~torch_brain.datasets.DatasetIndex` objects.
         batch_size: Number of samples per batch.
-        shuffle_batches: If ``True``, the final batch order is shuffled.
+        shuffle: If ``True``, the final batch order is shuffled.
             If ``False`` (default), batches are yielded in the order they were built.
         cache_batches: If ``True`` (default), batches are built once and reused
             across epochs instead of being rebuilt on every :meth:`__iter__`
@@ -25,7 +25,7 @@ class SessionWiseBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
             :class:`RandomFixedWindowSampler`), since with caching on it would
             otherwise freeze the same batches for the lifetime of the sampler
             instead of re-drawing new windows each epoch.
-        generator: Optional RNG used when :obj:`shuffle_batches` is ``True``.
+        generator: Optional RNG used when :obj:`shuffle` is ``True``.
             If ``None`` (default), uses the default global PyTorch generator.
         drop_last: If ``True`` (default), the last incomplete batch for each
             session is dropped.
@@ -59,7 +59,7 @@ class SessionWiseBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         sampler: torch.utils.data.Sampler[DatasetIndex],
         batch_size: int,
         *,
-        shuffle_batches: bool = False,
+        shuffle: bool = False,
         cache_batches: bool = True,
         generator: torch.Generator | None = None,
         drop_last: bool = True,
@@ -70,7 +70,7 @@ class SessionWiseBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
             raise ValueError("batch_size must be positive.")
         self.sampler = sampler
         self.batch_size = batch_size
-        self.shuffle_batches = shuffle_batches
+        self.shuffle = shuffle
         self.generator = generator
         self.drop_last = drop_last
         self.cache_batches = cache_batches
@@ -117,7 +117,7 @@ class SessionWiseBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
     def _yield_batches(
         self, batches: list[list[DatasetIndex]]
     ) -> Iterator[list[DatasetIndex]]:
-        if self.shuffle_batches and batches:
+        if self.shuffle and batches:
             for idx in torch.randperm(len(batches), generator=self.generator).tolist():
                 yield batches[idx]
         else:
