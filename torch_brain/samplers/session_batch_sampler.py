@@ -17,8 +17,8 @@ class SessionBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         sampler: Inner sampler whose :meth:`__iter__` yields
             :class:`~torch_brain.datasets.DatasetIndex` objects.
         batch_size: Number of samples per batch.
-        shuffle_batches: If ``True``, the final batch order is shuffled.
-            Defaults to ``False``.
+        shuffle_batches: If ``True`` (default), the final batch order is shuffled.
+            If ``False``, batches are yielded in the order they were built.
         generator: Optional RNG used when :obj:`shuffle_batches` is ``True``.
             If ``None`` (default), uses the default global PyTorch generator.
         drop_last: If ``True`` (default), the last incomplete batch for each
@@ -45,7 +45,7 @@ class SessionBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         sampler: torch.utils.data.Sampler,
         batch_size: int,
         *,
-        shuffle_batches: bool = False,
+        shuffle_batches: bool = True,
         generator: torch.Generator | None = None,
         drop_last: bool = True,
     ):
