@@ -13,7 +13,7 @@ from torch_brain.samplers import (
 
 
 # helper
-class _FakeSampler(torch.utils.data.Sampler):
+class _FakeSampler(torch.utils.data.Sampler[DatasetIndex]):
     """Yields a fixed, pre-defined list of DatasetIndex objects, in order."""
 
     def __init__(self, indices):

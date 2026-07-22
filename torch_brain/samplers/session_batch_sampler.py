@@ -42,7 +42,7 @@ class SessionBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
 
     def __init__(
         self,
-        sampler: torch.utils.data.Sampler,
+        sampler: torch.utils.data.Sampler[DatasetIndex],
         batch_size: int,
         *,
         shuffle_batches: bool = True,
