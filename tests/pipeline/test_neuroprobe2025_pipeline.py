@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import h5py
 import numpy as np
+import pandas as pd
 from _utils import add_pipelines_to_path
 
 from torch_brain.data import RegularTimeSeries
@@ -116,6 +117,52 @@ def test_get_brainset_description_records_dataset_and_neuroprobe_versions():
     description = neuroprobe_pipeline.get_brainset_description()
 
     assert description.origin_version == "dataset=0.0.0; neuroprobe=0.1.7"
+    assert description.derived_version == "1.1.1"
+
+
+def test_extract_channel_data_adds_btb_lip_and_xyz_coordinate_fields(
+    tmp_path, monkeypatch
+):
+    localization_dir = tmp_path / "localization"
+    localization_dir.mkdir(parents=True)
+    pd.DataFrame(
+        [
+            {
+                "Subject": "sub_1",
+                "Electrode": "A*",
+                "X": 11.0,
+                "Y": 22.0,
+                "Z": 33.0,
+            }
+        ]
+    ).to_csv(localization_dir / "elec_coords_full.csv", index=False)
+
+    class _FakeSubject:
+        subject_id = 1
+        h5_neural_data_keys = {"A": "electrode_1", "B": "electrode_2"}
+        localization_data = pd.DataFrame(
+            {
+                "Electrode": ["A", "B"],
+                "L": [1.0, 2.0],
+                "I": [3.0, 4.0],
+                "P": [5.0, 6.0],
+            }
+        )
+        electrode_labels = ["A", "B"]
+
+    neuroprobe_pipeline._BTB_XYZ_COORDINATE_CACHE.clear()
+    monkeypatch.setenv("ROOT_DIR_BRAINTREEBANK", str(tmp_path))
+
+    channels = neuroprobe_pipeline._extract_channel_data(_FakeSubject())
+
+    assert channels.type.tolist() == [31, 31]
+    np.testing.assert_allclose(channels.coord_btb_lip_l, [1.0, 2.0])
+    np.testing.assert_allclose(channels.coord_btb_lip_i, [3.0, 4.0])
+    np.testing.assert_allclose(channels.coord_btb_lip_p, [5.0, 6.0])
+    np.testing.assert_allclose(channels.coord_btb_x[:1], [11.0])
+    np.testing.assert_allclose(channels.coord_btb_y[:1], [22.0])
+    np.testing.assert_allclose(channels.coord_btb_z[:1], [33.0])
+    assert np.isnan(channels.coord_btb_x[1])
 
 
 def test_iterate_extract_splits_prepares_and_deduplicates_subject_initialization(
