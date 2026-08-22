@@ -19,6 +19,7 @@ __all__ = [
     "KlinzingSleepDS005555",
     "AllenVisualCodingOphys2016",
     "Neuroprobe2025",
+    "NeuroprobeV2",
     "KochiVisualNamingDS006914",
     "KempSleepEDF2013",
     "OpenNeuroDataset",
@@ -38,6 +39,7 @@ from .mixins import (
 )
 from .nested import NestedDataset, NestedSpikingDataset
 from .Neuroprobe2025 import Neuroprobe2025
+from .NeuroprobeV2 import NeuroprobeV2
 from .OdohertySabesNonhuman2017 import OdohertySabesNonhuman2017
 from .OpenNeuroDataset import OpenNeuroDataset, OpenNeuroSplitType
 from .PeiPandarinathNLB2021 import PeiPandarinathNLB2021
@@ -125,6 +127,7 @@ __api_ref__ = {
             "template": "dataset.rst",
             "autosummary": [
                 "Neuroprobe2025",
+                "NeuroprobeV2",
                 "KochiVisualNamingDS006914",
             ],
         },
