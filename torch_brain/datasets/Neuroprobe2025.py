@@ -6,6 +6,7 @@ from numbers import Integral
 from pathlib import Path
 from typing import Literal, get_args
 
+import h5py
 import numpy as np
 
 from torch_brain.data import Data, Interval
@@ -57,6 +58,64 @@ H5_REGIME_BY_REGIME: dict[Regime, str] = {
 DS_DM_TRAIN_SUBJECT_ID = 2
 # Fixed train trial id for benchmark-default DS-DM configuration.
 DS_DM_TRAIN_TRIAL_ID = 4
+
+
+def _stack_coordinate_frame(
+    *,
+    channels,
+    recording_id: str,
+    dataset_name: str,
+    frame_name: str,
+    field_names: tuple[str, str, str],
+    expected_length: int,
+) -> np.ndarray:
+    """Stack and validate one three-axis channel coordinate frame."""
+    values: list[np.ndarray] = []
+    for field_name in field_names:
+        try:
+            field_values = np.asarray(
+                getattr(channels, field_name), dtype=float
+            ).reshape(-1)
+        except AttributeError as exc:
+            expected_fields = ", ".join(f"channels.{name}" for name in field_names)
+            raise AttributeError(
+                f"Missing required channel coordinate fields for {dataset_name} "
+                f"recording '{recording_id}'. Expected {expected_fields}."
+            ) from exc
+        if len(field_values) != expected_length:
+            raise ValueError(
+                f"Channel coordinate field length mismatch for recording "
+                f"'{recording_id}' in frame '{frame_name}': {field_name} expected "
+                f"length {expected_length}, actual length {len(field_values)}."
+            )
+        values.append(field_values)
+    return np.stack(values, axis=1)
+
+
+def _read_seeg_signal_metadata(
+    h5_path: Path, *, recording_id: str
+) -> dict[str, str | float]:
+    """Read required physical-unit metadata for one SEEG signal."""
+    with h5py.File(h5_path, "r") as handle:
+        try:
+            seeg_data = handle["seeg_data"]
+        except KeyError as exc:
+            raise ValueError(
+                "Missing required brainsets 1.1.0 neural signal metadata for "
+                f"recording '{recording_id}': /seeg_data group not found."
+            ) from exc
+        attrs = seeg_data.attrs
+        if "unit" not in attrs or "scale_to_uV" not in attrs:
+            raise ValueError(
+                "Missing required brainsets 1.1.0 neural signal metadata for "
+                f"recording '{recording_id}': /seeg_data attrs 'unit' and "
+                "'scale_to_uV' are required."
+            )
+        return {
+            "unit": str(attrs["unit"]),
+            "scale_to_uV": float(attrs["scale_to_uV"]),
+        }
+
 
 # Eligible (subject, trial) pairs for Neuroprobe Lite benchmark mode.
 NEUROPROBE_LITE_SUBJECT_TRIALS = {
@@ -324,7 +383,7 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
         """Recording sampling rate in Hz."""
         return 2048.0
 
-    def get_channel_metadata(self, recording_id: str) -> dict[str, np.ndarray | str]:
+    def get_channel_metadata(self, recording_id: str) -> dict[str, object]:
         """Return normalized channel metadata arrays for one recording."""
         rec = self.get_recording(recording_id)
         channels = rec.channels
@@ -344,35 +403,41 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
                 f"len(mask)={len(included_mask)} vs len(ids)={len(ids)}"
             )
 
-        try:
-            lip = np.stack(
-                (
-                    np.asarray(channels.localization_L, dtype=float),
-                    np.asarray(channels.localization_I, dtype=float),
-                    np.asarray(channels.localization_P, dtype=float),
-                ),
-                axis=1,
-            )
-        except AttributeError as exc:
-            raise AttributeError(
-                "Missing required channel localization fields for Neuroprobe2025 "
-                f"recording '{recording_id}'. Expected channels.localization_L, "
-                "channels.localization_I, and channels.localization_P."
-            ) from exc
-        if len(lip) != len(ids):
-            raise ValueError(
-                f"Channel localization length mismatch for recording '{recording_id}': "
-                f"len(lip)={len(lip)} vs len(ids)={len(ids)}"
-            )
-
         return {
             "ids": ids,
             "names": names,
             "included_mask": included_mask,
-            "coords": lip,
-            "coords_type": "lip",
+            "coordinate_frames": {
+                "btb_lip": _stack_coordinate_frame(
+                    channels=channels,
+                    recording_id=recording_id,
+                    dataset_name="Neuroprobe2025",
+                    frame_name="btb_lip",
+                    field_names=(
+                        "coord_btb_lip_l",
+                        "coord_btb_lip_i",
+                        "coord_btb_lip_p",
+                    ),
+                    expected_length=len(ids),
+                ),
+                "btb_xyz": _stack_coordinate_frame(
+                    channels=channels,
+                    recording_id=recording_id,
+                    dataset_name="Neuroprobe2025",
+                    frame_name="btb_xyz",
+                    field_names=("coord_btb_x", "coord_btb_y", "coord_btb_z"),
+                    expected_length=len(ids),
+                ),
+            },
             "indices": np.arange(len(ids), dtype=int),
         }
+
+    def get_neural_signal_metadata(self, recording_id: str) -> dict[str, str | float]:
+        """Return physical-unit metadata for one recording's SEEG signal."""
+        return _read_seeg_signal_metadata(
+            self._dataset_dir / f"{recording_id}.h5",
+            recording_id=recording_id,
+        )
 
     def get_recording_hook(self, data: Data):
         """Apply split-specific channel inclusion mask when available."""
