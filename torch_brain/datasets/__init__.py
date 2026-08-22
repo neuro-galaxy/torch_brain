@@ -5,6 +5,7 @@ as well as a library of pre-written Dataset classes for a number of brainsets.
 __all__ = [
     "Dataset",
     "DatasetIndex",
+    "KelesBYD2024",
     "NestedDataset",
     "NestedSpikingDataset",
     "SpikingDatasetMixin",
@@ -29,6 +30,7 @@ __all__ = [
 from .AllenVisualCodingOphys2016 import AllenVisualCodingOphys2016
 from .ChurchlandShenoyNeural2012 import ChurchlandShenoyNeural2012
 from .dataset import Dataset, DatasetIndex
+from .KelesBYD2024 import KelesBYD2024
 from .KempSleepEDF2013 import KempSleepEDF2013
 from .KlinzingSleepDS005555 import KlinzingSleepDS005555
 from .KochiVisualNamingDS006914 import KochiVisualNamingDS006914
@@ -114,6 +116,11 @@ __api_ref__ = {
                 "VollanMoserAlternating2025",
                 "ShiraziHBNR1DS005505",
             ],
+        },
+        {
+            "title": "Keles BYD Dataset",
+            "template": "dataset.rst",
+            "autosummary": ["KelesBYD2024"],
         },
         {
             "title": "Calcium Imaging Datasets",
