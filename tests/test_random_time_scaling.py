@@ -59,7 +59,6 @@ def test_regular_scaling():
     lfps = RegularTimeSeries(
         sampling_rate=10.0,
         data=np.random.randn(100),
-        domain="auto",
     )
     data = Data(lfps=lfps, domain=lfps.domain)
 

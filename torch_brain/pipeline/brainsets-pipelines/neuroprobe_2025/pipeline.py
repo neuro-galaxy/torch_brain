@@ -592,7 +592,6 @@ def _extract_neural_data(input_file: Path, channels: ArrayDict) -> RegularTimeSe
     seeg_data = RegularTimeSeries(
         data=data,
         sampling_rate=float(neuroprobe_config.SAMPLING_RATE),
-        domain="auto",
     )
 
     return seeg_data

@@ -240,7 +240,6 @@ def extract_behavior(h5file):
         pos=cursor_pos,
         vel=cursor_vel,
         acc=cursor_acc,
-        domain="auto",
     )
 
     # The position of the working fingertip in Cartesian coordinates (z, -x, -y), as
@@ -251,7 +250,6 @@ def extract_behavior(h5file):
         domain_start=timestamps[0],
         pos_3d=finger_pos[:, :3],
         vel_3d=finger_vel[:, :3],
-        domain="auto",
     )
     if finger_pos.shape[1] == 6:
         finger.orientation = finger_pos[:, 3:]

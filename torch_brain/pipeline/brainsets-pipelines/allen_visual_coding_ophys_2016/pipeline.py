@@ -252,7 +252,6 @@ def extract_calcium_traces(nwbfile):
     calcium_traces = RegularTimeSeries(
         df_over_f=np.array(traces),
         sampling_rate=sampling_rate,
-        domain="auto",
         domain_start=timestamps[0],
     )
 
