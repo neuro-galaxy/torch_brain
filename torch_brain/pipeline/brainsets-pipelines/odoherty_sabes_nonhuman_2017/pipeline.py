@@ -28,8 +28,6 @@ from torch_brain.data import (
 from torch_brain.pipeline import BrainsetPipeline
 from torch_brain.utils import calculate_sampling_rate
 
-logging.basicConfig(level=logging.INFO)
-
 parser = ArgumentParser()
 parser.add_argument("--redownload", action="store_true")
 parser.add_argument("--reprocess", action="store_true")
