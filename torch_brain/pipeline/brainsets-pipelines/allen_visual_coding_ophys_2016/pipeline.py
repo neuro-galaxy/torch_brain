@@ -96,6 +96,14 @@ class Pipeline(BrainsetPipeline):
 
         return nwb_dataset, session_id
 
+    def cleanup_raw(self, download_output):
+        # download() returns the in-memory NWB dataset, not its path, so the
+        # base class's default implementation can't infer what to delete.
+        _, session_id = download_output
+        nwb_path = self.raw_dir / "ophys_experiment_data" / f"{session_id}.nwb"
+        if nwb_path.exists():
+            nwb_path.unlink()
+
     def process(self, download_output):
         nwb_dataset, session_id = download_output
 
