@@ -659,12 +659,18 @@ def test_pipeline_process_uses_downloaded_asset_recording_id_for_skip(
 def test_pipeline_process_passes_downloaded_asset_metadata_to_process_file(
     tmp_path, monkeypatch
 ):
+    labels_dir = tmp_path / "labels"
+    labels_dir.mkdir()
+    _write_text(
+        labels_dir / "speech_binary_labels.csv",
+        "start_time_s,label\n0.0,1\n",
+    )
     pipeline_instance = pippi_pipeline.Pipeline.__new__(pippi_pipeline.Pipeline)
     pipeline_instance.processed_dir = tmp_path / "processed"
     pipeline_instance.args = SimpleNamespace(
         reprocess=True,
         labels=None,
-        labels_dir=str(tmp_path / "labels"),
+        labels_dir=str(labels_dir),
         pre_offset_s=0.25,
         post_offset_s=0.75,
         no_splits=True,

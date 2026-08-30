@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed `utils.get_sinusoidal_encoding` (legacy) ([#200](https://github.com/neuro-galaxy/torch_brain/pull/200))
 
 ### Changed
+- BYD and PIPPI Brainsets preparation now defaults to each pipeline's packaged label CSVs while retaining `--labels-dir` overrides.
 - `delattr` on `Data`, `ArrayDict`, `IrregularTimeSeries`, and `Interval` now raises `AttributeError` for `IrregularTimeSeries.timestamps` and `Interval.start`/`end`; deleting other registered timekeys auto-deregisters them
 - Moved collate utilities from `torch_brain.data.collate` to `torch_brain.batching`; the old module now raises a descriptive `ImportError` directing users to the new location ([#232](https://github.com/neuro-galaxy/torch_brain/pull/232))
 - Changed minimum `temporaldata` version to `v0.1.4` ([#209](https://github.com/neuro-galaxy/torch_brain/pull/209))
