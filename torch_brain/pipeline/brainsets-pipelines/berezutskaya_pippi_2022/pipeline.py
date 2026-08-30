@@ -109,8 +109,11 @@ parser.add_argument("--redownload", action="store_true")
 parser.add_argument("--reprocess", action="store_true")
 parser.add_argument(
     "--labels-dir",
-    required=True,
-    help="Directory containing label CSVs.",
+    default=None,
+    help=(
+        "Directory containing label CSVs. Defaults to the labels packaged with "
+        "this pipeline."
+    ),
 )
 parser.add_argument(
     "--labels",
@@ -119,6 +122,20 @@ parser.add_argument(
         "Comma-separated list of label CSV filenames. If omitted, all CSVs in labels-dir are used."
     ),
 )
+
+
+def _resolve_labels_dir(labels_dir: str | Path | None) -> Path:
+    """Resolve an explicit label directory or the pipeline's packaged labels."""
+    using_packaged_default = labels_dir is None
+    path = PIPELINE_DIR / "labels" if using_packaged_default else Path(labels_dir)
+    source = "Packaged label directory" if using_packaged_default else "Label directory"
+    if not path.is_dir():
+        raise FileNotFoundError(f"{source} not found: '{path}'.")
+    if not any(path.glob("*.csv")):
+        raise FileNotFoundError(f"{source} contains no CSV files: '{path}'.")
+    return path
+
+
 parser.add_argument(
     "--pre-offset-s",
     type=float,
@@ -1126,10 +1143,11 @@ class Pipeline(BrainsetPipeline):
         if self.args and self.args.labels:
             label_files = [x.strip() for x in self.args.labels.split(",") if x.strip()]
 
+        labels_dir = _resolve_labels_dir(self.args.labels_dir if self.args else None)
         process_file(
             vhdr_path=vhdr_path,
             output_dir=self.processed_dir,
-            labels_dir=Path(self.args.labels_dir),
+            labels_dir=labels_dir,
             label_files=label_files or (),
             pre_offset_s=self.args.pre_offset_s if self.args else 0.0,
             post_offset_s=self.args.post_offset_s if self.args else 1.0,
