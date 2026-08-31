@@ -33,7 +33,7 @@ from torch_brain.data import (
     SessionDescription,
     SubjectDescription,
 )
-from torch_brain.datasets._pippi import (
+from torch_brain.data.pippi import (
     PIPPI_SUBSET_TIERS,
     pippi_subset_tiers_for_subject,
 )

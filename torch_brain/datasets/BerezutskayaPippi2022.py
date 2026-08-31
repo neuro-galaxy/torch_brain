@@ -10,11 +10,11 @@ import h5py
 import numpy as np
 
 from torch_brain.data import Data, Interval
-
-from ._pippi import (
+from torch_brain.data.pippi import (
     PIPPI_SUBSET_TIERS,
     pippi_subject_numbers_for_subset_tier,
 )
+
 from ._utils import get_processed_dir
 from .dataset import Dataset
 from .mixins import MultiChannelDatasetMixin
