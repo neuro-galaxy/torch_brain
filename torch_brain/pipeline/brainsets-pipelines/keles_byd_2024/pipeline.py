@@ -1050,7 +1050,7 @@ def process_file(
     input_file: str,
     output_dir: str,
     *,
-    labels_dir: str | None,
+    labels_dir: str | Path | None,
     label_files: Iterable[str],
     pre_offset_s: float,
     post_offset_s: float,
@@ -1059,10 +1059,7 @@ def process_file(
     balance_seed: int = 0,
 ) -> str:
     """Process a single NWB file into a brainsets HDF5 output."""
-    labels_dir = (
-        labels_dir
-        or "/home/geeling/Projects/ieeg_project/movie-features/output_labels/byd"
-    )
+    labels_dir = _resolve_labels_dir(None) if labels_dir is None else Path(labels_dir)
     recording_id, subject_number, session_number = _parse_recording_id_from_input_file(
         input_file
     )

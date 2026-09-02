@@ -19,9 +19,7 @@ def test_labels_dir_defaults_to_packaged_csvs(pipeline_module):
 
 
 @pytest.mark.parametrize("pipeline_module", [byd_pipeline, pippi_pipeline])
-def test_labels_dir_explicit_override_is_preserved(
-    pipeline_module, tmp_path: Path
-):
+def test_labels_dir_explicit_override_is_preserved(pipeline_module, tmp_path: Path):
     labels_dir = tmp_path / "custom-labels"
     labels_dir.mkdir()
     (labels_dir / "custom.csv").write_text("start_time_s,label\n0.0,1\n")
@@ -67,6 +65,32 @@ def test_byd_process_passes_packaged_default_to_processor(tmp_path, monkeypatch)
     pipeline.process(tmp_path / "sub-CS41_ses-P41CSR1_behavior+ecephys.nwb")
 
     assert captured["labels_dir"] == str(labels_dir)
+
+
+def test_byd_processor_resolves_packaged_default(tmp_path, monkeypatch):
+    captured = {}
+
+    def resolve_labels_dir(value):
+        captured["value"] = value
+        return tmp_path
+
+    def stop_after_resolve(*args, **kwargs):
+        raise RuntimeError("stop after resolve")
+
+    monkeypatch.setattr(byd_pipeline, "_resolve_labels_dir", resolve_labels_dir)
+    monkeypatch.setattr(byd_pipeline, "NWBHDF5IO", stop_after_resolve)
+
+    with pytest.raises(RuntimeError, match="stop after resolve"):
+        byd_pipeline.process_file(
+            "sub-CS41_ses-P41CSR1_behavior+ecephys.nwb",
+            str(tmp_path),
+            labels_dir=None,
+            label_files=[],
+            pre_offset_s=0.0,
+            post_offset_s=1.0,
+        )
+
+    assert captured["value"] is None
 
 
 def test_pippi_process_passes_packaged_default_to_processor(tmp_path, monkeypatch):

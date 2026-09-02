@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import numpy as np
@@ -14,15 +15,15 @@ from keles_byd_2024.pipeline import (  # noqa: E402
     _extract_lfp,
 )
 
-RAW_CS41_DIR = Path(
-    "/home/geeling/Projects/tb_buildathon/data/BYD_brainsets/raw/keles_byd_2024/sub-CS41"
-)
-
 
 def _pick_cs41_nwb() -> Path:
-    nwb_files = sorted(RAW_CS41_DIR.glob("*.nwb"))
+    raw_dir_value = os.environ.get("BYD_CS41_RAW_DIR")
+    if not raw_dir_value:
+        pytest.skip("Set BYD_CS41_RAW_DIR to run the real-data alignment test")
+    raw_dir = Path(raw_dir_value).expanduser()
+    nwb_files = sorted(raw_dir.glob("*.nwb"))
     if len(nwb_files) == 0:
-        pytest.skip(f"No NWB files found under {RAW_CS41_DIR}")
+        pytest.skip(f"No NWB files found under {raw_dir}")
     return nwb_files[0]
 
 
