@@ -144,6 +144,26 @@ def test_recording_id_roundtrip():
     assert _from_recording_id(recording_id) == (44, 1)
 
 
+@pytest.mark.parametrize("integer_type", [np.int32, np.int64, np.uint64])
+def test_numpy_selectors_preserve_selection_and_stored_values(tmp_path, integer_type):
+    recording_id = "sub-CS44_ses-P44CSR1"
+    path = _mock_dataset_dir(tmp_path) / f"{recording_id}.h5"
+    _write_mock_h5(path, subset_tier="full")
+    with h5py.File(path, "a") as handle:
+        handle["seeg_data/data"] = np.arange(12, dtype=np.int16).reshape(6, 2)
+    before = path.read_bytes()
+    baseline = _make_dataset(tmp_path)
+    selected = _make_dataset(
+        tmp_path, test_subject=integer_type(44), test_session=integer_type(1)
+    )
+    assert selected.recording_ids == baseline.recording_ids == [recording_id]
+    assert selected.describe_selection() == baseline.describe_selection()
+    assert selected.get_neural_signal_metadata(
+        recording_id
+    ) == baseline.get_neural_signal_metadata(recording_id)
+    assert path.read_bytes() == before
+
+
 @pytest.mark.parametrize(
     ("subject", "session"),
     [
@@ -152,6 +172,8 @@ def test_recording_id_roundtrip():
         ("44", 1),
         (44, False),
         (44, "1"),
+        (44.0, 1),
+        (np.bool_(True), 1),
     ],
 )
 def test_recording_id_rejects_invalid_inputs(subject, session):

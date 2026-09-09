@@ -125,14 +125,14 @@ def _read_seeg_signal_metadata(
         }
 
 
-def _to_recording_id(subject: int, session: int) -> str:
+def _to_recording_id(subject: Integral, session: Integral) -> str:
     # Normalize integer subject/session into the canonical H5 recording id.
     if (
         isinstance(subject, bool)
-        or not isinstance(subject, int)
+        or not isinstance(subject, Integral)
         or subject < 0
         or isinstance(session, bool)
-        or not isinstance(session, int)
+        or not isinstance(session, Integral)
         or session < 0
     ):
         raise ValueError(
@@ -140,7 +140,8 @@ def _to_recording_id(subject: int, session: int) -> str:
             f"subject={subject!r}, session={session!r}. Expected subject and "
             "session to be non-negative integers."
         )
-    return f"sub-CS{subject}_ses-P{subject}CSR{session}"
+    subject_int, session_int = int(subject), int(session)
+    return f"sub-CS{subject_int}_ses-P{subject_int}CSR{session_int}"
 
 
 def _from_recording_id(recording_id: str) -> tuple[int, int]:

@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Fixed
+- BYD subject/session selectors consistently accept integral NumPy values without changing stored data.
 - BYD preparation writes processed HDF5 files atomically and retries incomplete existing outputs.
 - PIPPI preparation resumes incomplete multipart downloads instead of treating a header as a complete recording.
 
