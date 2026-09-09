@@ -18,6 +18,7 @@ import re
 from argparse import ArgumentParser, Namespace
 from collections.abc import Callable, Iterable
 from pathlib import Path
+from uuid import uuid4
 
 import h5py
 import numpy as np
@@ -244,9 +245,13 @@ class Pipeline(BrainsetPipeline):
         recording_id, _, _ = _parse_recording_id_from_input_file(str(fpath))
         output_path = self.processed_dir / f"{recording_id}.h5"
         if output_path.exists() and not (self.args and self.args.reprocess):
-            logging.info(f"Skipping processing for {output_path} because it exists")
-            self.update_status("Skipped Processing")
-            return
+            if _is_valid_processed_file(output_path):
+                logging.info(f"Skipping processing for valid output {output_path}")
+                self.update_status("Skipped Processing")
+                return
+            logging.warning(
+                "Incomplete or unreadable output %s; reprocessing", output_path
+            )
 
         logging.info(f"Processing {fpath} to {self.processed_dir}")
 
@@ -266,6 +271,28 @@ class Pipeline(BrainsetPipeline):
             balance_splits=self.args.balance_splits if self.args else True,
             balance_seed=self.args.balance_seed if self.args else 0,
         )
+
+
+def _is_valid_processed_file(path: Path) -> bool:
+    """Check structure and signal metadata without loading the full recording."""
+    try:
+        with h5py.File(path, "r") as handle:
+            signal = handle["seeg_data"]
+            samples = signal["data"]
+            # Signal units are written after serialization, so interrupted writes
+            # lacking these attributes must be processed again.
+            return (
+                samples.ndim == 2
+                and all(size > 0 for size in samples.shape)
+                and signal.attrs.get("unit") == "V"
+                and signal.attrs.get("scale_to_uV") == 1e6
+                and all(
+                    key in handle
+                    for key in ("channels", "subject", "session", "domain")
+                )
+            )
+    except (OSError, KeyError, TypeError, AttributeError):
+        return False
 
 
 def _compute_included_mask(electrode_df: pd.DataFrame) -> np.ndarray:
@@ -1247,10 +1274,17 @@ def process_file(
             label_maps = _build_label_maps(label_tasks_for_maps)
             data.label_maps_json = json.dumps(label_maps, sort_keys=True)
 
-        with h5py.File(output_path, "w") as file:
-            data.to_hdf5(file)
-            file["seeg_data"].attrs["unit"] = "V"
-            file["seeg_data"].attrs["scale_to_uV"] = 1e6
+        # Publish only a closed, fully serialized HDF5 file. A failed overwrite
+        # leaves the previous recording intact; orphaned .tmp files are ignored.
+        temporary_path = output_path.with_name(f".{output_path.name}.{uuid4().hex}.tmp")
+        try:
+            with h5py.File(temporary_path, "w") as file:
+                data.to_hdf5(file)
+                file["seeg_data"].attrs["unit"] = "V"
+                file["seeg_data"].attrs["scale_to_uV"] = 1e6
+            temporary_path.replace(output_path)
+        finally:
+            temporary_path.unlink(missing_ok=True)
 
         logging.info(f"Saved processed file to {output_path}")
         _log_prepare_audit(

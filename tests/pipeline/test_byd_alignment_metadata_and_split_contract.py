@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -55,6 +56,7 @@ class _FakeH5File:
 
     def __init__(self, *args, **kwargs):
         self._store = {}
+        Path(args[0]).touch()
 
     def __enter__(self):
         _FakeH5File.last_store = self._store

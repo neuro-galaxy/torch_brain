@@ -1,6 +1,8 @@
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
+import h5py
 import numpy as np
 import pandas as pd
 import pytest
@@ -50,6 +52,7 @@ class _FakeData:
 class _FakeH5File:
     def __init__(self, *args, **kwargs):
         self._store = {}
+        Path(args[0]).touch()
 
     def __enter__(self):
         return self._store
@@ -216,3 +219,73 @@ def test_process_file_emits_failure_audit_log(monkeypatch, caplog, tmp_path):
     assert evt["failure_type"] == "ValueError"
     assert "no encoding phase" in evt["failure_reason"]
     assert evt["alignment_version"] == "2.0.0"
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_interrupted_hdf5_write_preserves_previous_output(
+    tmp_path, monkeypatch, existing
+):
+    real_h5_file = h5py.File
+    output = tmp_path / "sub-CS41_ses-P41CSR1.h5"
+    if existing:
+        with real_h5_file(output, "w") as handle:
+            handle["previous"] = np.arange(5, dtype=np.int16)
+        previous_bytes = output.read_bytes()
+    _install_common_patches(monkeypatch)
+    monkeypatch.setattr(m.h5py, "File", real_h5_file)
+    monkeypatch.setattr(m, "_extract_encoding_interval", lambda trials_df: (0.0, 10.0))
+
+    def interrupted_save(self, handle):
+        handle["partial"] = np.arange(3)
+        handle.flush()
+        if existing:
+            assert output.read_bytes() == previous_bytes
+        else:
+            assert not output.exists()
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(_FakeData, "to_hdf5", interrupted_save)
+    with pytest.raises(KeyboardInterrupt):
+        m.process_file(
+            str(tmp_path / "sub-CS41_ses-P41CSR1_behavior+ecephys.nwb"),
+            str(tmp_path),
+            labels_dir=str(tmp_path),
+            label_files=[],
+            pre_offset_s=0.0,
+            post_offset_s=1.0,
+            no_splits=True,
+        )
+    assert output.exists() is existing
+    if existing:
+        assert output.read_bytes() == previous_bytes
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+@pytest.mark.parametrize("corruption", ["empty", "truncated", "incomplete_hdf5"])
+def test_pipeline_reprocesses_malformed_hdf5(tmp_path, monkeypatch, corruption):
+    output = tmp_path / "sub-CS41_ses-P41CSR1.h5"
+    if corruption == "incomplete_hdf5":
+        with h5py.File(output, "w") as handle:
+            handle.create_group("seeg_data")
+    else:
+        output.write_bytes(b"" if corruption == "empty" else b"partial")
+    calls = []
+
+    def process_file(*args, **kwargs):
+        calls.append(args)
+        with h5py.File(output, "w") as handle:
+            signal = handle.create_group("seeg_data")
+            signal["data"] = np.zeros((10, 2), dtype=np.float32)
+            signal.attrs["unit"] = "V"
+            signal.attrs["scale_to_uV"] = 1e6
+            for key in ("channels", "subject", "session", "domain"):
+                handle.create_group(key)
+
+    monkeypatch.setattr(m, "process_file", process_file)
+    pipeline = m.Pipeline(tmp_path, tmp_path, args=None)
+    raw = tmp_path / "sub-CS41_ses-P41CSR1_behavior+ecephys.nwb"
+    pipeline.process(raw)
+    assert len(calls) == 1
+    assert m._is_valid_processed_file(output)
+    pipeline.process(raw)
+    assert len(calls) == 1
