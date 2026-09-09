@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- PIPPI preparation resumes incomplete multipart downloads instead of treating a header as a complete recording.
+
 ### Added
 - Added `Data.delete_nested_attribute` to delete a nested attribute by dot-separated path ([#299](https://github.com/neuro-galaxy/torch_brain/pull/299))
 - Added `MultiChannelDatasetMixin` to provide `get_channel_ids` and prefixing interface for EEG-like datasets ([#173](https://github.com/neuro-galaxy/torch_brain/pull/173))

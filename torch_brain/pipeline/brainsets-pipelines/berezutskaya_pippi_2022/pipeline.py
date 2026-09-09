@@ -502,10 +502,21 @@ def _discover_local_manifest_rows(raw_dir: Path) -> list[dict[str, object]]:
     for channel_path in sorted(
         raw_dir.glob("sub-*/ses-iemu/ieeg/*task-film*_channels.tsv")
     ):
+        recording_id = channel_path.name.removesuffix("_channels.tsv")
+        required = _recording_relative_paths(recording_id)
+        if any(
+            name != "participants" and path not in available
+            for name, path in required.items()
+        ):
+            # Downloads are multipart; let remote discovery complete partial assets.
+            logging.info(
+                "Incomplete local recording %s; consulting remote manifest",
+                recording_id,
+            )
+            continue
         channel_table = pd.read_csv(channel_path, sep="\t")
         if not _channel_table_has_seeg(channel_table):
             continue
-        recording_id = channel_path.name.removesuffix("_channels.tsv")
         rows.append(_build_manifest_row(recording_id, available_relpaths=available))
     return rows
 
@@ -1088,9 +1099,8 @@ class Pipeline(BrainsetPipeline):
             subject_number=int(manifest_item.test_subject),
             run=int(manifest_item.test_run),
         )
-        if vhdr_path.exists() and not (self.args and self.args.redownload):
-            return download_output
-
+        # A header alone is not a complete recording. Each companion independently
+        # skips an existing file, so interrupted downloads can fill the gaps.
         s3_client = get_cached_s3_client()
         overwrite = bool(self.args and self.args.redownload)
         for field_name in (

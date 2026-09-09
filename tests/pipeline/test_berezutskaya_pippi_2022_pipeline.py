@@ -593,7 +593,7 @@ def test_load_seeg_signal_uses_brainvision_header_sampling_rate(tmp_path, monkey
     assert seeg_names == ["A1", "A2"]
 
 
-def test_pipeline_download_returns_manifest_derived_asset(tmp_path):
+def test_pipeline_download_returns_manifest_derived_asset(tmp_path, monkeypatch):
     pipeline_instance = pippi_pipeline.Pipeline.__new__(pippi_pipeline.Pipeline)
     pipeline_instance.raw_dir = tmp_path
     pipeline_instance.args = SimpleNamespace(redownload=False)
@@ -603,12 +603,26 @@ def test_pipeline_download_returns_manifest_derived_asset(tmp_path):
     vhdr_path = tmp_path / vhdr_relpath
     vhdr_path.parent.mkdir(parents=True, exist_ok=True)
     vhdr_path.write_text("dummy", encoding="utf-8")
-    manifest_item = SimpleNamespace(
-        Index="sub-01_ses-iemu_task-film_acq-clinical_run-1",
-        vhdr_relpath=vhdr_relpath,
-        acquisition="clinical",
-        test_subject=1,
-        test_run=1,
+    recording_id = "sub-01_ses-iemu_task-film_acq-clinical_run-1"
+    row = pippi_pipeline._build_manifest_row(
+        recording_id,
+        available_relpaths=set(
+            pippi_pipeline._recording_relative_paths(recording_id).values()
+        ),
+    )
+    row["vhdr_relpath"] = vhdr_relpath
+    manifest_item = SimpleNamespace(Index=recording_id, **row)
+    downloaded = []
+
+    def download_file(bucket, key, target):
+        assert bucket == pippi_pipeline.OPENNEURO_BUCKET
+        downloaded.append(key.removeprefix(pippi_pipeline.OPENNEURO_PREFIX))
+        Path(target).write_text("downloaded")
+
+    monkeypatch.setattr(
+        pippi_pipeline,
+        "get_cached_s3_client",
+        lambda: SimpleNamespace(download_file=download_file),
     )
 
     download_output = pippi_pipeline.Pipeline.download(pipeline_instance, manifest_item)
@@ -619,6 +633,26 @@ def test_pipeline_download_returns_manifest_derived_asset(tmp_path):
     assert download_output.acquisition == "clinical"
     assert download_output.subject_number == 1
     assert download_output.run == 1
+    assert set(downloaded) == {
+        value
+        for key, value in row.items()
+        if key.endswith("_relpath") and key != "vhdr_relpath"
+    }
+    assert vhdr_path.read_text() == "dummy"
+    downloaded.clear()
+    pippi_pipeline.Pipeline.download(pipeline_instance, manifest_item)
+    assert downloaded == []
+
+
+def test_manifest_recovers_recording_with_missing_companion(tmp_path, monkeypatch):
+    _write_local_bids_fixture(tmp_path)
+    remote_rows = pippi_pipeline._discover_local_manifest_rows(tmp_path)
+    (tmp_path / remote_rows[0]["eeg_relpath"]).unlink()
+    monkeypatch.setattr(
+        pippi_pipeline, "_discover_remote_manifest_rows", lambda raw_dir: remote_rows
+    )
+    manifest = pippi_pipeline.Pipeline.get_manifest(tmp_path, args=None)
+    assert list(manifest.index) == [remote_rows[0]["recording_id"]]
 
 
 def test_pipeline_process_uses_downloaded_asset_recording_id_for_skip(
