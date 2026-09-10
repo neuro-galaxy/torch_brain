@@ -69,7 +69,7 @@ import numpy as np
 from torch_brain.data import Data, IrregularTimeSeries, RegularTimeSeries, Interval
 
 data = Data(
-    spikes=IrregularTimeSeries(                       # event stream
+    spikes=IrregularTimeSeries(  # event stream
         timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
         unit_index=[0, 0, 1, 0, 1, 2],
         domain="auto",
@@ -106,6 +106,7 @@ from torch_brain.datasets import PeiPandarinathNLB2021, DatasetIndex
 from torch_brain.samplers import TrialSampler
 from torch_brain.utils import bin_spikes
 
+
 # torch_brain ships loaders for many public datasets.
 # Subclass one to define the two things specific to your task:
 class MyDataset(PeiPandarinathNLB2021):
@@ -129,10 +130,13 @@ class MyDataset(PeiPandarinathNLB2021):
         Y = data.hand.vel
         return torch.from_numpy(X).float(), torch.from_numpy(Y).float()
 
+
 dataset = MyDataset(root="data/processed", recording_ids=["jenkins_maze_train"])
 
 # The sampler turns those intervals into per-sample DatasetIndex objects.
-sampler = TrialSampler(sampling_intervals=dataset.get_sampling_intervals(), shuffle=True)
+sampler = TrialSampler(
+    sampling_intervals=dataset.get_sampling_intervals(), shuffle=True
+)
 loader = DataLoader(dataset, sampler=sampler, batch_size=8)
 
 # From here on it's plain PyTorch

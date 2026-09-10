@@ -38,7 +38,6 @@ dev = [
     "pre-commit>=3.5.0",
     "omegaconf",           # TODO: only needed for old Dataset, remove after cleanup
     "flake8",
-    "boto3",
     "tqdm",
     "pytest-cov",
     "scikit-learn>=1.6.1",
