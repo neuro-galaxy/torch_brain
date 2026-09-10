@@ -8,14 +8,14 @@ Please check out [POYO's official code repository](https://github.com/nerdslab/p
 
 In addition to installing `torch_brain`, you need to:
 ```bash
-pip install wandb brainsets torchmetrics>=1.6.0
+pip install wandb brainsets "torchmetrics>=1.6.0"
 ```
 
 ### Training POYO-MP
-To train POYO-MP you first need to download and preprocess the [`perich_miller_population_2018`](https://brainsets.readthedocs.io/en/latest/_generated/brainsets.datasets.PerichMillerPopulation2018.html#brainsets.datasets.PerichMillerPopulation2018) data using [brainsets](https://github.com/neuro-galaxy/brainsets).
+To train POYO-MP you first need to download and preprocess the [`perich_miller_population_2018`](https://torch-brain.readthedocs.io/en/latest/generated/api/autosummary/torch_brain.datasets.PerichMillerPopulation2018.html#torch_brain.datasets.PerichMillerPopulation2018) data using [brainsets](https://github.com/neuro-galaxy/brainsets).
 
 ```bash
-brainsets config --raw-dir data/raw --processed-dir data/processed
+brainsets config set --raw-dir data/raw --processed-dir data/processed
 brainsets prepare perich_miller_population_2018
 ```
 
@@ -31,7 +31,7 @@ Checkout `configs/defaults.yaml` and `configs/train_poyo_mp.yaml` for all config
 To train POYO-1 you first need to download all datasets using `brainsets`.
 
 ```bash
-brainsets config --raw-dir data/raw --processed-dir data/processed
+brainsets config set --raw-dir data/raw --processed-dir data/processed
 brainsets prepare perich_miller_population_2018
 brainsets prepare churchland_shenoy_neural_2012
 brainsets prepare odoherty_sabes_nonhuman_2017
