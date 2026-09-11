@@ -95,6 +95,14 @@ myst_enable_extensions = [
 
 nb_execution_mode = "off"
 
+# sphinx-copybutton: for REPL-style blocks (``pycon``, ``console``), copy only the
+# input lines with their prompts stripped, so users don't paste ">>>" or printed
+# output. Blocks with no prompts (plain ``python``/``bash``) are copied in full.
+# Note: do not set ``copybutton_exclude`` to skip ``.gp`` (the prompt spans) -- the
+# prompts must survive text extraction for the regex below to find them.
+copybutton_prompt_text = r">>> |\.\.\. |\$ "
+copybutton_prompt_is_regexp = True
+
 bokeh_plot_pyfile_include_dirs = [
     "concepts/examples",
 ]
