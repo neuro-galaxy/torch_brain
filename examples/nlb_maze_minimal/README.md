@@ -27,10 +27,6 @@ This example shows how to:
 1. Install some packages:
 ```bash
 pip install scikit-learn
-pip install git+https://github.com/neuro-galaxy/brainsets
-# ^ Needed since the latest brainsets has not been released yet.
-# The latest version has some fixes for the NLB dataset which are
-# needed for this example to work.
 ```
 
 2. Preprocess the dataset (takes ~1 minute and ~50MB of disk):

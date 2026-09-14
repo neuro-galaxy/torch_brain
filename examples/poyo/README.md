@@ -12,7 +12,7 @@ pip install wandb brainsets "torchmetrics>=1.6.0"
 ```
 
 ### Training POYO-MP
-To train POYO-MP you first need to download and preprocess the [`perich_miller_population_2018`](https://torch-brain.readthedocs.io/en/latest/generated/api/autosummary/torch_brain.datasets.PerichMillerPopulation2018.html#torch_brain.datasets.PerichMillerPopulation2018) data using [brainsets](https://github.com/neuro-galaxy/brainsets).
+To train POYO-MP you first need to download and preprocess the [`perich_miller_population_2018`](https://torch-brain.readthedocs.io/en/latest/generated/api/autosummary/torch_brain.datasets.PerichMillerPopulation2018.html#torch_brain.datasets.PerichMillerPopulation2018) data.
 
 ```bash
 brainsets config set --raw-dir data/raw --processed-dir data/processed
