@@ -46,7 +46,7 @@ Here's a working minimal pipeline:
 
 **That's it!** The rest is inherited (but can be customized 🛠️).
 
-Add your new pipeline class in its own directory under ``brainsets_pipelines/`` (for example, ``brainsets_pipelines/my_sleep_study_ds005555/pipeline.py``). To run it:
+Add your new pipeline class in its own directory under ``pipeline/brainsets-pipelines/`` (for example, ``pipeline/brainsets-pipelines/my_sleep_study_ds005555/pipeline.py``). To run it:
 
 .. code-block:: console
 
@@ -57,7 +57,7 @@ Add your new pipeline class in its own directory under ``brainsets_pipelines/`` 
 Real-World Examples
 -------------------
 
-Before diving into details, check out working implementations in the `brainsets_pipelines` directory:
+Before diving into details, check out working implementations in the `pipeline/brainsets-pipelines` directory:
 
 .. list-table::
    :header-rows: 1
@@ -65,10 +65,10 @@ Before diving into details, check out working implementations in the `brainsets_
    * - Example
      - Use When
      - Complexity
-   * - `shirazi_hbnr1_ds005505 <https://github.com/neuro-galaxy/brainsets/blob/main/brainsets_pipelines/shirazi_hbnr1_ds005505/pipeline.py>`_
+   * - `shirazi_hbnr1_ds005505 <https://github.com/neuro-galaxy/torch_brain/blob/main/torch_brain/pipeline/brainsets-pipelines/shirazi_hbnr1_ds005505/pipeline.py>`_
      - All recordings have identical channels
      - Simple ⭐
-   * - `klinzing_sleep_ds005555 <https://github.com/neuro-galaxy/brainsets/blob/main/brainsets_pipelines/klinzing_sleep_ds005555/pipeline.py>`_
+   * - `klinzing_sleep_ds005555 <https://github.com/neuro-galaxy/torch_brain/blob/main/torch_brain/pipeline/brainsets-pipelines/klinzing_sleep_ds005555/pipeline.py>`_
      - Different recordings need different channel mappings
      - Complex ⭐⭐⭐
 
@@ -111,7 +111,7 @@ The dataset identifier must use strict OpenNeuro format: ``ds`` followed by exac
 3. ``brainset_id`` - Your unique name
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A descriptive ID for your processed brainset. This should be unique within the ``brainsets_pipelines/`` directory and should be a valid Python identifier. Recommended naming scheme:
+A descriptive ID for your processed brainset. This should be unique within the ``pipeline/brainsets-pipelines/`` directory and should be a valid Python identifier. Recommended naming scheme:
 
 .. code-block:: python
 

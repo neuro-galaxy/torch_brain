@@ -49,7 +49,7 @@ jobs:
     - name: Download sample dataset
       run: |
         source venv/bin/activate
-        brainsets config --raw-dir data/raw --processed-dir data/processed
+        brainsets config set --raw-dir data/raw --processed-dir data/processed
         brainsets prepare pei_pandarinath_nlb_2021
     - name: Test NLB minimal example
       run: |
