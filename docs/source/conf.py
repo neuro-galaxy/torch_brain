@@ -95,6 +95,12 @@ myst_enable_extensions = [
 
 nb_execution_mode = "off"
 
+# Copybutton config to compensate for REPL-style blocks (python, console, ipython).
+# Taken from:
+# https://sphinx-copybutton.readthedocs.io/en/latest/use.html#strip-and-configure-input-prompts-for-code-cells
+copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+copybutton_prompt_is_regexp = True
+
 bokeh_plot_pyfile_include_dirs = [
     "concepts/examples",
 ]
