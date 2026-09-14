@@ -2,6 +2,7 @@
 # python-version = "3.11"
 # dependencies = [
 #   "setuptools==80.9.0",
+#   "statsmodels==0.14.6",
 #   "allensdk==2.16.2",
 #   "psycopg2-binary==2.9.10",
 # ]
