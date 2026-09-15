@@ -1,33 +1,43 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+import h5py
 import numpy as np
 
 
-def _size_repr(key: Any, value: Any, indent: int = 0) -> str:
+def _size_repr(key: Any, value: Any, indent: int = 0, first_dim: int = None) -> str:
     pad = " " * indent
     if isinstance(value, np.ndarray):
-        out = str(list(value.shape))
+        out = f": array, shape={value.shape}, dtype={value.dtype}"
+    elif isinstance(value, h5py.Dataset):
+        shape = value.shape
+        if first_dim is not None:
+            if first_dim > shape[0]:
+                raise ValueError(
+                    f"first_dim ({first_dim}) is greater than the dataset's first dimension ({shape[0]})."
+                )
+            shape = tuple([int(first_dim), *shape[1:]])
+        out = f": lazy array, shape={shape}, dtype={value.dtype}"
     elif isinstance(value, str):
-        out = f"'{value}'"
+        out = f"='{value}'"
     elif isinstance(value, Sequence):
-        out = str([len(value)])
+        out = f": sequence, length={len(value)}"
     elif isinstance(value, Mapping) and len(value) == 0:
-        out = "{}"
+        out = "={}"
     elif (
         isinstance(value, Mapping)
         and len(value) == 1
         and not isinstance(list(value.values())[0], Mapping)
     ):
-        lines = [_size_repr(k, v, 0) for k, v in value.items()]
-        out = "{ " + ", ".join(lines) + " }"
+        lines = [_size_repr(k, v, 0, first_dim) for k, v in value.items()]
+        out = "={ " + ", ".join(lines) + " }"
     elif isinstance(value, Mapping):
-        lines = [_size_repr(k, v, indent + 2) for k, v in value.items()]
-        out = "{\n" + ",\n".join(lines) + "\n" + pad + "}"
+        lines = [_size_repr(k, v, indent + 2, first_dim) for k, v in value.items()]
+        out = "={\n" + ",\n".join(lines) + "\n" + pad + "}"
     else:
-        out = str(value)
+        out = f"={value}"
     key = str(key).replace("'", "")
-    return f"{pad}{key}={out}"
+    return f"{pad}{key}{out}"
 
 
 def _validate_select_by_mask_input(mask, length):

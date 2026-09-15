@@ -66,7 +66,7 @@ def dummy_data(tmp_path):
             pos_2d=np.random.normal(GABOR_POS_2D_MEAN, GABOR_POS_2D_STD, (1000, 2)),
             domain="auto",
         ),
-        units=ArrayDict(id=np.array(["unit1", "unit2", "unit3"])),
+        units=ArrayDict(id=np.array(["unit01", "unit02", "unit03"])),
     )
 
     filename = tmp_path / dummy_data.brainset.id / f"{dummy_data.session.id}.h5"
