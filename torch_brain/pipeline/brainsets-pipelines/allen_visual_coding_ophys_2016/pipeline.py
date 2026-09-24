@@ -9,7 +9,6 @@
 # ///
 
 
-import logging
 import os
 from argparse import ArgumentParser
 from pathlib import Path
@@ -39,8 +38,6 @@ from torch_brain.data import (
     SubjectDescription,
 )
 from torch_brain.pipeline import BrainsetPipeline
-
-logging.basicConfig(level=logging.INFO)
 
 parser = ArgumentParser()
 parser.add_argument("--redownload", action="store_true")

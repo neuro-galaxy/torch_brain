@@ -34,9 +34,6 @@ from torch_brain.data import (
 )
 from torch_brain.pipeline import BrainsetPipeline
 
-logging.basicConfig(level=logging.INFO)
-
-
 BASE_URL = "https://braintreebank.dev"
 DOWNLOAD_TIMEOUT_SECONDS = 60
 DOWNLOAD_MAX_RETRIES = 2
