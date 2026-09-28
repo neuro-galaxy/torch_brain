@@ -32,8 +32,8 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
 
         >>> sampling_intervals = {
         ...     "session_1": Interval(
-        ...         start=[0.0, 5.0, 10.0],
-        ...         end=[2.0, 8.0, 15.0],
+        ...         start=[0., 5., 10.],
+        ...         end=[2., 8., 15.],
         ...     ),
         ... }
         >>> sampler = TrialSampler(

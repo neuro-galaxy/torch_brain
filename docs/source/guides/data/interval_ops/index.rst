@@ -81,7 +81,7 @@ on both sides.
 .. code-block:: pycon
 
    >>> # Create three intervals [1., 5.), [10., 13.5), and [14., 18.)
-   >>> interval = Interval(start=[1.0, 10.0, 14.0], end=[5.0, 13.5, 18.])
+   >>> interval = Interval(start=[1., 10., 14.], end=[5., 13.5, 18.])
 
    >>> # Dilate by 0.5 on each side
    >>> dilated = interval.dilate(0.5)
@@ -149,7 +149,7 @@ not disjoint, but its start times are still in increasing order:
 .. code-block:: pycon
 
    >>> # Create two intervals [1., 1.1), and [1., 2.)
-   >>> interval = Interval(start=[0., 1.], end=[1.1, 2.0])
+   >>> interval = Interval(start=[0., 1.], end=[1.1, 2.])
    >>> interval.is_disjoint(), interval.is_sorted()
    (False, True)
 
