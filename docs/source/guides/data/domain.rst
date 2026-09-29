@@ -19,9 +19,10 @@ spikes scattered randomly over a 10-second window, and inspect its domain:
 
    >>> spikes.domain
    Interval(
-     start=[1],
-     end=[1]
+     start: array, shape=(1,), dtype=float64,
+     end: array, shape=(1,), dtype=float64,
    )
+   
    >>> spikes.domain.start, spikes.domain.end
    (array([0.01541473]), array([9.99930563]))
 
@@ -48,9 +49,10 @@ object:
 
    >>> spikes.domain
    Interval(
-     start=[2],
-     end=[2]
+     start: array, shape=(2,), dtype=float64,
+     end: array, shape=(2,), dtype=float64,
    )
+   
    >>> spikes.domain.start, spikes.domain.end
    (array([0., 4.]), array([3., 10.]))
 

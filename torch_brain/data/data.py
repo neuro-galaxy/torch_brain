@@ -73,48 +73,48 @@ class Data:
         Data(
           session_id='session_0',
           spikes=IrregularTimeSeries(
-            timestamps: array, shape=(6,),
-            unit_index: array, shape=(6,),
-            waveforms: array, shape=(6, 48),
+            timestamps: array, shape=(6,), dtype=float64,
+            unit_index: array, shape=(6,), dtype=int64,
+            waveforms: array, shape=(6, 48), dtype=float64,
           ),
           lfp=RegularTimeSeries(
-            raw: array, shape=(1000, 3),
+            raw: array, shape=(1000, 3), dtype=float64,
           ),
           units=ArrayDict(
-            id: array, shape=(3,),
-            brain_region: array, shape=(3,),
+            id: array, shape=(3,), dtype=<U6,
+            brain_region: array, shape=(3,), dtype=<U3,
           ),
           trials=Interval(
-            start: array, shape=(3,),
-            end: array, shape=(3,),
-            go_cue_time: array, shape=(3,),
-            drifting_gratings_dir: array, shape=(3,),
+            start: array, shape=(3,), dtype=float64,
+            end: array, shape=(3,), dtype=float64,
+            go_cue_time: array, shape=(3,), dtype=float64,
+            drifting_gratings_dir: array, shape=(3,), dtype=int64,
           ),
-          drifting_gratings_imgs: array, shape=(8, 3, 32, 32),
+          drifting_gratings_imgs: array, shape=(8, 3, 32, 32), dtype=float64,
         )
 
         >>> data.slice(1, 3)
         Data(
           session_id='session_0',
           spikes=IrregularTimeSeries(
-            timestamps: array, shape=(3,),
-            unit_index: array, shape=(3,),
-            waveforms: array, shape=(3, 48),
+            timestamps: array, shape=(3,), dtype=float64,
+            unit_index: array, shape=(3,), dtype=int64,
+            waveforms: array, shape=(3, 48), dtype=float64,
           ),
           lfp=RegularTimeSeries(
-            raw: array, shape=(500, 3),
+            raw: array, shape=(500, 3), dtype=float64,
           ),
           units=ArrayDict(
-            id: array, shape=(3,),
-            brain_region: array, shape=(3,),
+            id: array, shape=(3,), dtype=<U6,
+            brain_region: array, shape=(3,), dtype=<U3,
           ),
           trials=Interval(
-            start: array, shape=(2,),
-            end: array, shape=(2,),
-            go_cue_time: array, shape=(2,),
-            drifting_gratings_dir: array, shape=(2,),
+            start: array, shape=(2,), dtype=float64,
+            end: array, shape=(2,), dtype=float64,
+            go_cue_time: array, shape=(2,), dtype=float64,
+            drifting_gratings_dir: array, shape=(2,), dtype=int64,
           ),
-          drifting_gratings_imgs: array, shape=(8, 3, 32, 32),
+          drifting_gratings_imgs: array, shape=(8, 3, 32, 32), dtype=float64,
           _absolute_start=1.0,
         )
     """

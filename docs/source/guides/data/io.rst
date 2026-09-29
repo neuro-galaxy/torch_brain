@@ -59,16 +59,17 @@ Let's first load it "non-lazily" by passing ``lazy=False``:
     >>> sliced = session.slice(2., 4.)
     >>> sliced
     Data(
-      behavior=RegularTimeSeries(
-        eye_pos=[200, 2],
-        hand_vel=[200, 2],
-        pupil_size=[200]
-      ),
-      spikes=IrregularTimeSeries(
-        timestamps=[2],
-        unit_id=[2]
-      ),
-    )
+     behavior=RegularTimeSeries(
+       eye_pos: array, shape=(200, 2), dtype=float64,
+       hand_vel: array, shape=(200, 2), dtype=float64,
+       pupil_size: array, shape=(200,), dtype=float64,
+     ),
+     spikes=IrregularTimeSeries(
+       timestamps: array, shape=(2,), dtype=float64,
+       unit_id: array, shape=(2,), dtype=int64,
+     ),
+     _absolute_start=2.0,
+   )
 
 By setting ``lazy=False``, we load the entire dataset into memory upfront.
 This quickly becomes infeasible for datasets of any real size (a few hundred GBs
@@ -100,18 +101,19 @@ To load data in lazy mode, simply omit the ``lazy=False`` flag we used above:
    >>> session
    Data(
      behavior=LazyRegularTimeSeries(
-       eye_pos=<HDF5 dataset "eye_pos": shape (400, 2), type "<f8">,
-       hand_vel=<HDF5 dataset "hand_vel": shape (400, 2), type "<f8">,
-       pupil_size=<HDF5 dataset "pupil_size": shape (400,), type "<f8">
+       eye_pos: lazy array, shape=(400, 2), dtype=float64,
+       hand_vel: lazy array, shape=(400, 2), dtype=float64,
+       pupil_size: lazy array, shape=(400,), dtype=float64,
      ),
      spikes=LazyIrregularTimeSeries(
-       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
-       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+       timestamps: lazy array, shape=(3,), dtype=float64,
+       unit_id: lazy array, shape=(3,), dtype=int64,
      ),
+     _absolute_start=0.0,
    )
 
 First note that the internal objects are :obj:`LazyRegularTimeSeries` and
-:obj:`LazyIrregularTimeSeries`. Secondly, the presence of ``<HDF5 dataset...>``
+:obj:`LazyIrregularTimeSeries`. Secondly, the presence of ``lazy array``
 indicates that the arrays are yet to be loaded. Let's see what happens when we
 access ``eye_pos``:
 
@@ -125,14 +127,15 @@ access ``eye_pos``:
    >>> session
    Data(
      behavior=LazyRegularTimeSeries(
-       eye_pos=[400, 2],
-       hand_vel=<HDF5 dataset "hand_vel": shape (400, 2), type "<f8">,
-       pupil_size=<HDF5 dataset "pupil_size": shape (400,), type "<f8">
+       eye_pos: array, shape=(400, 2), dtype=float64,
+       hand_vel: lazy array, shape=(400, 2), dtype=float64,
+       pupil_size: lazy array, shape=(400,), dtype=float64,
      ),
      spikes=LazyIrregularTimeSeries(
-       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
-       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+       timestamps: lazy array, shape=(3,), dtype=float64,
+       unit_id: lazy array, shape=(3,), dtype=int64,
      ),
+     _absolute_start=0.0,
    )
 
 We can see that ``eye_pos`` has been loaded, and the remaining attributes
@@ -151,14 +154,15 @@ will then turn into a :obj:`RegularTimeSeries` object:
    >>> session
    Data(
      behavior=RegularTimeSeries(
-       eye_pos=[400, 2],
-       hand_vel=[400, 2],
-       pupil_size=[400]
+       eye_pos: array, shape=(400, 2), dtype=float64,
+       hand_vel: array, shape=(400, 2), dtype=float64,
+       pupil_size: array, shape=(400,), dtype=float64,
      ),
      spikes=LazyIrregularTimeSeries(
-       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
-       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+       timestamps: lazy array, shape=(3,), dtype=float64,
+       unit_id: lazy array, shape=(3,), dtype=int64,
      ),
+     _absolute_start=0.0,
    )
 
 We can also slice a lazy object:
@@ -169,14 +173,15 @@ We can also slice a lazy object:
    >>> sliced
    Data(
      behavior=RegularTimeSeries(
-       eye_pos=[200, 2],
-       hand_vel=[200, 2],
-       pupil_size=[200]
+       eye_pos: array, shape=(200, 2), dtype=float64,
+       hand_vel: array, shape=(200, 2), dtype=float64,
+       pupil_size: array, shape=(200,), dtype=float64,
      ),
-     spikes=LazyIrregularTimeSeries(  # Note that this remains lazy!!
-       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
-       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+     spikes=LazyIrregularTimeSeries(
+       timestamps: lazy array, shape=(3,), dtype=float64,
+       unit_id: lazy array, shape=(3,), dtype=int64,
      ),
+     _absolute_start=2.0,
    )
 
    >>> sliced.spikes.timestamps
