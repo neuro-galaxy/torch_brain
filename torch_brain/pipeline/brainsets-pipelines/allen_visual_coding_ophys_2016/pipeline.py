@@ -8,23 +8,32 @@
 # ]
 # ///
 
-
 import logging
 import os
+import warnings
 from argparse import ArgumentParser
 from pathlib import Path
 
 import h5py
 import numpy as np
 import pandas as pd
-from allensdk.core.brain_observatory_cache import (
-    BrainObservatoryCache,
-    BrainObservatoryNwbDataSet,
-)
-from allensdk.core.brain_observatory_nwb_data_set import (
-    EpochSeparationException,
-    NoEyeTrackingException,
-)
+
+with warnings.catch_warnings():
+    warnings.filterwarnings(
+        "ignore",
+        category=UserWarning,
+        message="pkg_resources is deprecated",
+        module=r"allensdk(\..*)?",
+    )
+
+    from allensdk.core.brain_observatory_cache import (
+        BrainObservatoryCache,
+        BrainObservatoryNwbDataSet,
+    )
+    from allensdk.core.brain_observatory_nwb_data_set import (
+        EpochSeparationException,
+        NoEyeTrackingException,
+    )
 from split import generate_train_valid_test_splits
 
 from torch_brain.data import (

@@ -145,7 +145,7 @@ def run():
         raw_dir=raw_dir,
         args=pipeline_args,
     )
-    print(f"Discovered {len(manifest)} manifest items")
+    print(f"Discovered {len(manifest)} manifest items.")
 
     if args.list:
         with pd.option_context("display.max_rows", None):
