@@ -138,7 +138,9 @@ class Interval(ArrayDict):
             assert value.ndim == 1, f"{name} must be 1D."
             assert ~np.isnan(value).any(), f"{name} cannot contain NaNs."
             if value.dtype != np.float64:
-                logging.warning(f"{name} is of type {value.dtype} not of type float64.")
+                logging.warning(
+                    f"Interval {name} is of type {value.dtype} not of type float64."
+                )
             # start or end have been updated, we no longer know whether it is sorted
             # or not
             self._sorted = None
@@ -531,8 +533,8 @@ class Interval(ArrayDict):
             >>> from torch_brain.data import Interval
 
             >>> interval = Interval(
-            ...     start=[0.0, 20.0],
-            ...     end=[10.0, 30.0],
+            ...     start=[0., 20.],
+            ...     end=[10., 30.],
             ...     trial_id=[1, 2]
             ... )
             >>> subdivided = interval.subdivide(2.5)
@@ -685,8 +687,8 @@ class Interval(ArrayDict):
                 from torch_brain.data import Interval
 
                 interval = Interval(
-                    start=[0, 1, 2],
-                    end=[1, 2, 3],
+                    start=[0., 1., 2.],
+                    end=[1., 2., 3.],
                     go_cue_time=[0.5, 1.5, 2.5],
                     drifting_gratins_dir=[0, 45, 90],
                     timekeys=["start", "end", "go_cue_time"],

@@ -43,7 +43,7 @@ object:
    >>> spikes = IrregularTimeSeries(
    ...     timestamps=...,
    ...     unit_id=...,
-   ...     domain=Interval(start=[0.0, 4.0], end=[3.0, 10.0]),
+   ...     domain=Interval(start=[0., 4.], end=[3., 10.]),
    ... )
 
    >>> spikes.domain

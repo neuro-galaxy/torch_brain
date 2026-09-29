@@ -59,8 +59,8 @@ class Data:
         ...         brain_region=["M1", "M1", "PMd"],
         ...     ),
         ...     trials=Interval(
-        ...         start=[0, 1, 2],
-        ...         end=[1, 2, 3],
+        ...         start=[0., 1., 2.],
+        ...         end=[1., 2., 3.],
         ...         go_cue_time=[0.5, 1.5, 2.5],
         ...         drifting_gratings_dir=[0, 45, 90],
         ...     ),

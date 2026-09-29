@@ -75,7 +75,7 @@ data = Data(
         domain="auto",
     ),
     lfp=RegularTimeSeries(raw=np.zeros((1000, 3)), sampling_rate=250.0),  # 4s @ 250Hz
-    trials=Interval(start=[0, 1, 2], end=[1, 2, 3]),  # annotations
+    trials=Interval(start=[0.0, 1.0, 2.0], end=[1.0, 2.0, 3.0]),  # annotations
     domain=Interval(0.0, 4.0),
 )
 ```
