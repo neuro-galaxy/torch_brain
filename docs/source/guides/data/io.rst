@@ -178,8 +178,8 @@ We can also slice a lazy object:
        pupil_size: array, shape=(200,), dtype=float64,
      ),
      spikes=LazyIrregularTimeSeries(
-       timestamps: lazy array, shape=(3,), dtype=float64,
-       unit_id: lazy array, shape=(3,), dtype=int64,
+       timestamps: lazy array, shape=(2,), dtype=float64,
+       unit_id: lazy array, shape=(2,), dtype=int64,
      ),
      _absolute_start=2.0,
    )

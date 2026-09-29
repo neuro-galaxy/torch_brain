@@ -351,7 +351,7 @@ recordings:
     ...     ],
     ... )
     >>> dataset.get_sampling_intervals("train")
-   {'c_20131003_center_out_reaching': LazyInterval(
+    {'c_20131003_center_out_reaching': LazyInterval(
       end: lazy array, shape=(38,), dtype=float64,
       start: lazy array, shape=(38,), dtype=float64,
     ),

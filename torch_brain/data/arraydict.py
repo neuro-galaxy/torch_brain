@@ -93,9 +93,14 @@ class ArrayDict:
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        info = [_size_repr(k, self.__dict__[k], indent=2) for k in self.keys()]
+        info = [
+            _size_repr(k, self.__dict__[k], indent=2, first_dim=self._maybe_first_dim())
+            for k in self.keys()
+        ]
         info = ",\n".join(info)
-        return f"{cls}(\n{info},\n)"
+        if len(info):
+            info = f"{info},"
+        return f"{cls}(\n{info}\n)"
 
     def select_by_mask(self, mask: ArrayLike):
         r"""Index all arrays with a boolean mask and return a copy.
