@@ -36,7 +36,6 @@ dev = [
     "scipy>=1.10.1",
     "pytest<9",
     "pre-commit>=3.5.0",
-    "omegaconf",           # TODO: only needed for old Dataset, remove after cleanup
     "flake8",
     "tqdm",
     "pytest-cov",
@@ -57,11 +56,9 @@ docs = [
     "sphinx-inline-tabs",
     "sphinx-rtd-theme",
     "sphinx-tabs",
-    "bokeh==3.4.3",
     "sphinx-design",
     "sphinx-copybutton",
     "sphinxcontrib-sass",
-    "omegaconf",                # TODO: only needed for old Dataset, remove after cleanup
 ]
 
 [project.urls]

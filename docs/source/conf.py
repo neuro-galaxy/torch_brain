@@ -27,7 +27,6 @@ extensions = [
     "myst_nb",
     "sphinx_autodoc_typehints",
     "sphinx_inline_tabs",
-    "bokeh.sphinxext.bokeh_plot",
     "sphinx_copybutton",
     "sphinx_design",
     "sphinxcontrib.sass",
@@ -101,9 +100,6 @@ nb_execution_mode = "off"
 copybutton_prompt_text = r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
 copybutton_prompt_is_regexp = True
 
-bokeh_plot_pyfile_include_dirs = [
-    "concepts/examples",
-]
 html_copy_source = False
 html_show_sourcelink = True
 html_favicon = "_static/torch_brain_logo.png"
