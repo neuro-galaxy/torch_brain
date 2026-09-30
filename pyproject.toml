@@ -57,7 +57,7 @@ docs = [
     "sphinx-inline-tabs",
     "sphinx-rtd-theme",
     "sphinx-tabs",
-    "bokeh==3.10.0",
+    "bokeh==3.9.2",
     "sphinx-design",
     "sphinx-copybutton",
     "sphinxcontrib-sass",
