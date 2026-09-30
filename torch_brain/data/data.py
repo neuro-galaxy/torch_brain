@@ -56,7 +56,7 @@ class Data:
         ...         sampling_rate=250.,
         ...     ),
         ...     units=ArrayDict(
-        ...         id=["unit_0", "unit_1", "unit_2"],
+        ...         id=["unit01", "unit02", "unit03"],
         ...         brain_region=["M1", "M1", "PMd"],
         ...     ),
         ...     trials=Interval(

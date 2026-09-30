@@ -93,8 +93,9 @@ class ArrayDict:
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
+        first_dim = self._maybe_first_dim()
         info = [
-            _size_repr(k, self.__dict__[k], indent=2, first_dim=self._maybe_first_dim())
+            _size_repr(k, self.__dict__[k], indent=2, first_dim=first_dim)
             for k in self.keys()
         ]
         info = ",\n".join(info)

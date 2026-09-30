@@ -46,7 +46,7 @@ def test_materialize(test_filepath):
             sampling_rate=250.0,
         ),
         units=ArrayDict(
-            id=np.array(["unit_0", "unit_1", "unit_2"]),
+            id=np.array(["unit01", "unit02", "unit03"]),
             brain_region=np.array(["M1", "M1", "PMd"]),
         ),
         trials=Interval(

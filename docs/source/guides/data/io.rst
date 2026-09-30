@@ -17,19 +17,23 @@ To save a data object to disk, use the :obj:`~Data.save()` method:
 .. code-block:: pycon
 
    >>> import numpy as np
-   >>> from torch_brain.data import RegularTimeSeries, IrregularTimeSeries, Data
+   >>> from torch_brain.data import RegularTimeSeries, IrregularTimeSeries, ArrayDict, Data
 
    >>> # Create a complex data object
    >>> session = Data(
    ...     spikes=IrregularTimeSeries(
    ...         timestamps=np.array([1.2, 2.3, 3.1]),
-   ...         unit_id=np.array([1, 2, 1]),
+   ...         unit_index=np.array([0, 1, 0]),
    ...     ),
    ...     behavior=RegularTimeSeries(
    ...         sampling_rate=100.0,
    ...         hand_vel=np.random.randn(400, 2),
    ...         eye_pos=np.random.randn(400, 2),
    ...         pupil_size=np.random.randn(400),
+   ...     ),
+   ...     units=ArrayDict(
+   ...      id=["unit01", "unit02", "unit03"],
+   ...      brain_region=["M1", "M1", "PMd"],
    ...     ),
    ...     domain="auto",
    ... )
@@ -46,19 +50,19 @@ Let's first load it "non-lazily" by passing ``lazy=False``:
 
 .. code-block:: pycon
 
-    >>> # Read neural data from HDF5 file on disk
-    >>> session = Data.load("neural_data.h5", lazy=False)
+   >>> # Read neural data from HDF5 file on disk
+   >>> session = Data.load("neural_data.h5", lazy=False)
 
-    >>> # Access neural data
-    >>> session.spikes.timestamps
-    array([1.2, 2.3, 3.1])
-    >>> session.behavior.sampling_rate
-    np.float64(100.0)
+   >>> # Access neural data
+   >>> session.spikes.timestamps
+   array([1.2, 2.3, 3.1])
+   >>> session.behavior.sampling_rate
+   np.float64(100.0)
 
-    >>> # Slice
-    >>> sliced = session.slice(2., 4.)
-    >>> sliced
-    Data(
+   >>> # Slice
+   >>> sliced = session.slice(2., 4.)
+   >>> sliced
+   Data(
      behavior=RegularTimeSeries(
        eye_pos: array, shape=(200, 2), dtype=float64,
        hand_vel: array, shape=(200, 2), dtype=float64,
@@ -66,7 +70,11 @@ Let's first load it "non-lazily" by passing ``lazy=False``:
      ),
      spikes=IrregularTimeSeries(
        timestamps: array, shape=(2,), dtype=float64,
-       unit_id: array, shape=(2,), dtype=int64,
+       unit_index: array, shape=(2,), dtype=int64,
+     ),
+     units=ArrayDict(
+       brain_region: array, shape=(3,), dtype=<U3,
+       id: array, shape=(3,), dtype=<U6,
      ),
      _absolute_start=2.0,
    )
@@ -107,7 +115,11 @@ To load data in lazy mode, simply omit the ``lazy=False`` flag we used above:
      ),
      spikes=LazyIrregularTimeSeries(
        timestamps: lazy array, shape=(3,), dtype=float64,
-       unit_id: lazy array, shape=(3,), dtype=int64,
+       unit_index: lazy array, shape=(3,), dtype=int64,
+     ),
+     units=LazyArrayDict(
+       brain_region: lazy array, shape=(3,), dtype=|S3,
+       id: lazy array, shape=(3,), dtype=|S6,
      ),
      _absolute_start=0.0,
    )
@@ -133,7 +145,11 @@ access ``eye_pos``:
      ),
      spikes=LazyIrregularTimeSeries(
        timestamps: lazy array, shape=(3,), dtype=float64,
-       unit_id: lazy array, shape=(3,), dtype=int64,
+       unit_index: lazy array, shape=(3,), dtype=int64,
+     ),
+     units=LazyArrayDict(
+       brain_region: lazy array, shape=(3,), dtype=|S3,
+       id: lazy array, shape=(3,), dtype=|S6,
      ),
      _absolute_start=0.0,
    )
@@ -160,7 +176,38 @@ will then turn into a :obj:`RegularTimeSeries` object:
      ),
      spikes=LazyIrregularTimeSeries(
        timestamps: lazy array, shape=(3,), dtype=float64,
-       unit_id: lazy array, shape=(3,), dtype=int64,
+       unit_index: lazy array, shape=(3,), dtype=int64,
+     ),
+     units=LazyArrayDict(
+       brain_region: lazy array, shape=(3,), dtype=|S3,
+       id: lazy array, shape=(3,), dtype=|S6,
+     ),
+     _absolute_start=0.0,
+   )
+
+In some cases, loading an attribute leads to a change in datatype. Strings, for 
+example, are stored as bytes in HDF5, so when we access ``units.id``, it will be 
+converted into a unicode array, and the dtype will change from ``|S6`` to ``<U6``:
+
+.. code-block:: pycon
+
+   >>> session.units.id
+   array(['unit01', 'unit02', 'unit03'], dtype='<U6')
+
+   >>> session
+   Data(
+     behavior=RegularTimeSeries(
+       eye_pos: array, shape=(400, 2), dtype=float64,
+       hand_vel: array, shape=(400, 2), dtype=float64,
+       pupil_size: array, shape=(400,), dtype=float64,
+     ),
+     spikes=LazyIrregularTimeSeries(
+       timestamps: lazy array, shape=(3,), dtype=float64,
+       unit_index: lazy array, shape=(3,), dtype=int64,
+     ),
+     units=LazyArrayDict(
+       brain_region: lazy array, shape=(3,), dtype=|S3,
+       id: array, shape=(3,), dtype=<U6,
      ),
      _absolute_start=0.0,
    )
@@ -179,7 +226,11 @@ We can also slice a lazy object:
      ),
      spikes=LazyIrregularTimeSeries(
        timestamps: lazy array, shape=(2,), dtype=float64,
-       unit_id: lazy array, shape=(2,), dtype=int64,
+       unit_index: lazy array, shape=(2,), dtype=int64,
+     ),
+     units=LazyArrayDict(
+       brain_region: lazy array, shape=(3,), dtype=|S3,
+       id: array, shape=(3,), dtype=<U6,
      ),
      _absolute_start=2.0,
    )
