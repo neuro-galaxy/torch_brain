@@ -137,6 +137,65 @@ class ArrayDict:
 
         return out
 
+    def __getitem__(self, index: slice | ArrayLike):
+        r"""Index all arrays along the first dimension and return a copy.
+
+        Two kinds of indices are supported:
+
+        - A :obj:`slice` with a positive step, e.g. ``obj[2:10]`` or ``obj[::2]``.
+          This is index-based (as opposed to :meth:`slice`, which is time-based on
+          time series objects).
+        - A boolean, 1-dimensional array-like mask of equal length as the object,
+          e.g. ``obj[mask]``. This is equivalent to ``obj.select_by_mask(mask)``.
+
+        Slices are converted to a boolean mask, and both cases are dispatched to
+        :meth:`select_by_mask`, so subclasses and lazy variants behave exactly as
+        they do for masking.
+
+        Args:
+            index: A :obj:`slice` object, or a boolean array-like mask of shape (N,).
+
+        Example ::
+
+            >>> from torch_brain.data import ArrayDict
+            >>> import numpy as np
+
+            >>> units = ArrayDict(
+            ...     unit_id=["unit01", "unit02", "unit03"],
+            ...     waveform_mean=np.random.rand(3, 48),
+            ... )
+
+            >>> units[1:]
+            ArrayDict(
+              unit_id=[2],
+              waveform_mean=[2, 48]
+            )
+
+            >>> units[np.array([True, False, True])]
+            ArrayDict(
+              unit_id=[2],
+              waveform_mean=[2, 48]
+            )
+        """
+        if isinstance(index, slice):
+            if index.step is not None and index.step <= 0:
+                raise ValueError(
+                    f"{self.__class__.__name__} only supports slices with a positive "
+                    f"step, got step={index.step}."
+                )
+            mask = np.zeros(len(self), dtype=bool)
+            mask[index] = True
+            return self.select_by_mask(mask)
+
+        mask = np.asarray(index)
+        if mask.dtype != bool:
+            raise TypeError(
+                f"{self.__class__.__name__} only supports indexing with a slice "
+                f"(e.g. obj[a:b]) or a boolean mask, got {type(index).__name__} "
+                f"with dtype {mask.dtype}."
+            )
+        return self.select_by_mask(mask)
+
     @classmethod
     def from_dataframe(cls, df, unsigned_to_long=True, **kwargs):
         r"""Creates an :obj:`ArrayDict` object from a pandas DataFrame.
