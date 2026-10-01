@@ -423,8 +423,7 @@ class Data:
 
     @classmethod
     def load(cls, path: Path | str, lazy: bool = True) -> Data:
-        r"""Loads the :class:`Data` object from an HDF5 file (.h5 format) given its
-        file path.
+        r"""Loads the :class:`Data` object from an HDF5 file (``.h5`` format).
 
         When ``lazy=True`` (default), the underlying HDF5 file remains open and
         data is loaded on demand. The caller is responsible for closing the file
@@ -487,7 +486,8 @@ class Data:
             raise RuntimeError("No file handle is open")
 
     def save(self, path: Path | str):
-        r"""Saves the data object to an HDF5 file (.h5 format) at the given path.
+        r"""Saves the data object to an HDF5 file (``.h5`` format) at the given path.
+
         If no file extension is provided, the default extension ".h5" is added.
 
         Args:
@@ -503,7 +503,9 @@ class Data:
 
         if path.suffix == "":
             path = path.with_suffix(".h5")
-            logger.info(f"No file extension provided for saving data. Using: {path}.")
+            logger.warning(
+                f"No file extension provided for saving data. Using: {path}."
+            )
 
         with h5py.File(path, "w") as f:
             self.to_hdf5(f)
