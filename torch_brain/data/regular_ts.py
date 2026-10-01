@@ -12,6 +12,7 @@ from .arraydict import ArrayDict
 from .interval import Interval
 from .irregular_ts import IrregularTimeSeries
 from .typing import ArrayLike
+from .utils import _validate_object_shapes
 
 _NP_DTYPE_KINDS = {"b", "i", "u", "f", "c", "m", "M", "O", "S", "U", "V"}
 # ^ From https://numpy.org/doc/2.2/reference/generated/numpy.dtype.kind.html
@@ -159,7 +160,12 @@ class RegularTimeSeries(ArrayDict):
 
         super().__init__(**kwargs)
 
-        self._sampling_rate = sampling_rate
+        if not (sampling_rate > 0):
+            raise ValueError(
+                f"sampling_rate must be a strictly positive number, but got {sampling_rate}."
+            )
+
+        self._sampling_rate = float(sampling_rate)
 
         if not isinstance(domain_start, (int, float)):
             raise ValueError(
@@ -474,7 +480,7 @@ class RegularTimeSeries(ArrayDict):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file: HDF5 file.
+            file: HDF5 file or group.
 
         .. note::
             This method will load all data in memory, if you would like to use lazy
@@ -872,7 +878,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file: HDF5 file.
+            file: HDF5 file or group.
 
         .. code-block:: python
 
@@ -887,12 +893,30 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         )
 
         obj = cls.__new__(cls)
+
+        missing_domain = True
+        shape_dict = {}
         for key, value in file.items():
             if key == "domain":
-                obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
+                obj.__dict__["_domain"] = Interval.from_hdf5(value)
+                missing_domain = False
             else:
                 obj.__dict__[key] = value
+                shape_dict[key] = value.shape
+
+        if missing_domain:
+            raise OSError(
+                f"HDF5 file is missing required key 'domain' for {cls.__name__} object."
+            )
+
         obj._lazy_ops = {}
-        obj._sampling_rate = file.attrs["sampling_rate"]
+        sampling_rate = file.attrs["sampling_rate"]
+        if not (sampling_rate > 0):
+            raise ValueError(
+                f"sampling_rate must be a strictly positive number, but got {sampling_rate}."
+            )
+        obj._sampling_rate = float(sampling_rate)
+
+        _validate_object_shapes(**shape_dict)
 
         return obj
