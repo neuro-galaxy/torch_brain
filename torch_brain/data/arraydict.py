@@ -437,6 +437,44 @@ class LazyArrayDict(ArrayDict):
         raise NotImplementedError("Cannot save a lazy array dict to hdf5.")
 
     @classmethod
+    def _check_hdf5(cls, file):
+        r"""Checks for incompatabilities in the HDF5 file missed when using ``.from_hdf5()``.
+
+        Args:
+            file: HDF5 file.
+        """
+        assert file.attrs["object"] == ArrayDict.__name__, (
+            f"File contains data for a {file.attrs['object']} object, expected "
+            f"{ArrayDict.__name__} object."
+        )
+
+        error_msg = (
+            f"{cls.__name__} should be loaded from a file created using torch_brain's "
+            f"save() or to_hdf5() methods. Any manual modifications to the file may "
+            "break the lazy loading functionality. At least one error was detected while "
+            f"loading from {file.file.filename}"
+        )
+
+        if "_unicode_keys" not in file.attrs:
+            raise OSError(f"{error_msg}: Missing required attribute '_unicode_keys'.")
+
+        first_dim = None
+        for key, value in file.items():
+            if value.ndim == 0:
+                raise OSError(
+                    f"{error_msg}: {key} must be at least 1-dimensional, got 0-dimensional array."
+                )
+            if first_dim is None:
+                first_dim = value.shape[0]
+
+            elif value.shape[0] != first_dim:
+                raise OSError(
+                    f"{error_msg}: All elements of {cls.__name__} must have the same "
+                    f"first dimension. The first dimension of {key} is {value.shape[0]} "
+                    f"but the first dimension of other elements is {first_dim}."
+                )
+
+    @classmethod
     def from_hdf5(cls, file):
         r"""Loads the data object from an HDF5 file.
 
@@ -451,10 +489,7 @@ class LazyArrayDict(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == ArrayDict.__name__, (
-            f"File contains data for a {file.attrs['object']} object, expected "
-            f"{ArrayDict.__name__} object."
-        )
+        cls._check_hdf5(file)
 
         obj = cls.__new__(cls)
         for key, value in file.items():

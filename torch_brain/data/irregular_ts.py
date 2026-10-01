@@ -699,6 +699,108 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         raise NotImplementedError("Cannot save a lazy array dict to hdf5.")
 
     @classmethod
+    def _check_hdf5(cls, file):
+        r"""Checks for incompatabilities in the HDF5 file missed when using ``.from_hdf5()``.
+
+        Args:
+            file: HDF5 file.
+        """
+        assert file.attrs["object"] == IrregularTimeSeries.__name__, (
+            f"File contains data for a {file.attrs['object']} object, expected "
+            f"{IrregularTimeSeries.__name__} object."
+        )
+
+        error_msg = (
+            f"{cls.__name__} should be loaded from a file created using torch_brain's "
+            f"save() or to_hdf5() methods. Any manual modifications to the file may "
+            "break the lazy loading functionality. At least one error was detected while "
+            f"loading from {file.file.filename}"
+        )
+
+        irregular_ts_keys = ["timestamps", "timestamp_indices_1s", "domain"]
+        missing_keys = [key for key in irregular_ts_keys if key not in file.keys()]
+        if len(missing_keys) > 0:
+            raise OSError(f"{error_msg}: Missing required keys {missing_keys}.")
+
+        irregular_ts_attrs = ["_unicode_keys", "timekeys"]
+        missing_attrs = [key for key in irregular_ts_attrs if key not in file.attrs]
+        if len(missing_attrs) > 0:
+            raise OSError(f"{error_msg}: Missing required attributes {missing_attrs}.")
+
+        first_dim = None
+        for key, value in file.items():
+            if key == "timestamp_indices_1s":
+                if value.ndim != 1:
+                    raise OSError(
+                        f"{error_msg}: timestamp_indices_1s must be 1-dimensional, got "
+                        f"{value.ndim}-dimensional array."
+                    )
+            elif key != "domain":  # domain is checked during loading
+                if key == "timestamps" and value.ndim != 1:
+                    raise OSError(
+                        f"{error_msg}: timestamps must be 1-dimensional, got {value.ndim}-"
+                        "dimensional array."
+                    )
+                elif value.ndim == 0:
+                    raise OSError(
+                        f"{error_msg}: {key} must be at least 1-dimensional, got 0-dimensional "
+                        "array."
+                    )
+                if first_dim is None:
+                    first_dim = value.shape[0]
+
+                elif value.shape[0] != first_dim:
+                    raise OSError(
+                        f"{error_msg}: Other than 'domain' and 'timestamp_indices_1D', all elements "
+                        f"of {cls.__name__} must have the same first dimension. The first dimension "
+                        f"of {key} is {value.shape[0]} but the first dimension of other elements is "
+                        f"{first_dim}."
+                    )
+
+    @classmethod
+    def _load_timestamp_indices_1s(cls, file):
+        r"""Loads the timestamp_indices_1s from an HDF5 file and checks validity.
+
+        Args:
+            file: HDF5 file.
+        """
+        error_msg = (
+            f"{cls.__name__} should be loaded from a file created using torch_brain's "
+            f"save() or to_hdf5() methods. Any manual modifications to the file may "
+            "break the lazy loading functionality. At least one error was detected while "
+            f"loading from {file.file.filename}"
+        )
+
+        required_keys = ["timestamps", "timestamp_indices_1s"]
+
+        for key in required_keys:
+            if key not in file.keys():
+                raise OSError(f"Missing required key '{key}'.")
+
+        timestamps_len = file["timestamps"].shape[0]
+        timestamp_indices_1s = file["timestamp_indices_1s"][()]
+
+        if timestamp_indices_1s.min() < 0:
+            raise OSError(
+                f"{error_msg}: timestamp_indices_1s contains negative indices. "
+                f"Min index is {timestamp_indices_1s.min()}."
+            )
+
+        if timestamp_indices_1s.max() > timestamps_len:
+            raise OSError(
+                f"{error_msg}: timestamp_indices_1s contains indices that are out of bounds. "
+                f"Max index is {timestamp_indices_1s.max()}, but timestamps has length "
+                f"{timestamps_len}."
+            )
+
+        if not np.all(np.diff(timestamp_indices_1s) >= 0):
+            raise OSError(
+                f"{error_msg}: timestamp_indices_1s must be sorted in ascending order."
+            )
+
+        return timestamp_indices_1s
+
+    @classmethod
     def from_hdf5(cls, file):
         r"""Loads the data object from an HDF5 file.
 
@@ -713,16 +815,16 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == IrregularTimeSeries.__name__, (
-            "object type mismatch"
-        )
+        cls._check_hdf5(file)
 
         obj = cls.__new__(cls)
         for key, value in file.items():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
             elif key == "timestamp_indices_1s":
-                obj.__dict__["_timestamp_indices_1s"] = value[:]
+                obj.__dict__["_timestamp_indices_1s"] = cls._load_timestamp_indices_1s(
+                    file
+                )
             else:
                 obj.__dict__[key] = value
 
