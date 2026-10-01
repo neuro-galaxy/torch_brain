@@ -11,7 +11,7 @@ import pandas as pd
 from .arraydict import ArrayDict
 from .interval import Interval
 from .typing import ArrayLike
-from .utils import _validate_select_by_mask_input
+from .utils import _validate_object_shapes, _validate_select_by_mask_input
 
 
 class IrregularTimeSeries(ArrayDict):
@@ -391,7 +391,7 @@ class IrregularTimeSeries(ArrayDict):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file: HDF5 file.
+            file: HDF5 file or group.
 
         .. note::
             This method will load all data in memory, if you would like to use lazy
@@ -533,6 +533,13 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                         del self._timestamp_indices_1s
 
                 return out
+
+            elif name == "_timestamp_indices_1s":
+                self._validate_timestamp_indices_1s()
+                out = self.__dict__[name]
+
+                return out
+
         return super().__getattribute__(name)
 
     def select_by_mask(self, mask: ArrayLike):
@@ -551,11 +558,13 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
 
         out = self.__class__.__new__(self.__class__)
         for key, value in self.__dict__.items():
-            if key.startswith("_"):
+            if key.startswith("_") and key != "_timestamp_indices_1s":
                 out.__dict__[key] = copy.deepcopy(value)
             elif isinstance(value, h5py.Dataset):
                 # mask will be applied lazily on attribute access via _lazy_ops
                 out.__dict__[key] = value
+            elif key == "_timestamp_indices_1s":
+                out.__dict__[key] = value.copy()
             elif isinstance(value, np.ndarray):
                 out.__dict__[key] = value[mask].copy()
             else:
@@ -579,7 +588,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         start, end, sequence_start, origin_translation = self._lazy_ops[
             "unresolved_slice"
         ]
-        # sequence_start: Time corresponding to _timstamps_indices_1s[0]
+        # sequence_start: Time corresponding to _timestamps_indices_1s[0]
 
         start_closest_sec_idx = np.clip(
             np.floor(start - sequence_start).astype(int),
@@ -609,6 +618,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         self.__dict__["timestamps"] = timestamps - origin_translation
 
     def slice(self, start: float, end: float, reset_origin: bool = True):
+
         out = self.__class__.__new__(self.__class__)
         out._unicode_keys = self._unicode_keys
         out._lazy_ops = {}
@@ -698,12 +708,51 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
     def to_hdf5(self, file):
         raise NotImplementedError("Cannot save a lazy array dict to hdf5.")
 
+    def _validate_timestamp_indices_1s(self):
+        r"""Checks the validity of timestamp_indices_1s.
+
+        Only applied to unloaded timestamp_indices_1s.
+        """
+
+        if not isinstance(self.__dict__["_timestamp_indices_1s"], h5py.Dataset):
+            return
+
+        timestamp_indices_1s = self.__dict__["_timestamp_indices_1s"][:]
+
+        error_msg = "timestamp_indices_1s is not structured as expected"
+
+        ndim = timestamp_indices_1s.ndim
+        if ndim != 1:
+            raise ValueError(
+                f"{error_msg}: must be 1-dimensional, got {ndim}-dimensional array."
+            )
+
+        if timestamp_indices_1s.min() < 0:
+            raise ValueError(
+                f"{error_msg}: contains negative indices (min index: {timestamp_indices_1s.min()})."
+            )
+
+        timestamps_len = self.__dict__["timestamps"].shape[0]
+        if timestamp_indices_1s.max() > timestamps_len:
+            raise ValueError(
+                f"{error_msg}: contains indices that are out of bounds. "
+                f"(max index is {timestamp_indices_1s.max()}, but timestamps has length "
+                f"{timestamps_len})."
+            )
+
+        if not np.all(np.diff(timestamp_indices_1s) >= 0):
+            raise ValueError("timestamp_indices_1s must be sorted in ascending order.")
+
+        self.__dict__["_timestamp_indices_1s"] = timestamp_indices_1s
+
+        return
+
     @classmethod
     def from_hdf5(cls, file):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file: HDF5 file.
+            file: HDF5 file or group.
 
         .. code-block:: python
 
@@ -713,22 +762,38 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
+
         assert file.attrs["object"] == IrregularTimeSeries.__name__, (
             "object type mismatch"
         )
 
         obj = cls.__new__(cls)
+
+        missing_keys = ["domain", "timestamp_indices_1s", "timestamps"]
+        shape_dict = {}
         for key, value in file.items():
             if key == "domain":
-                obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
+                obj.__dict__["_domain"] = Interval.from_hdf5(value)
+                missing_keys.remove(key)
             elif key == "timestamp_indices_1s":
-                obj.__dict__["_timestamp_indices_1s"] = value[:]
+                obj.__dict__["_timestamp_indices_1s"] = value
+                missing_keys.remove(key)
             else:
                 obj.__dict__[key] = value
+                shape_dict[key] = value.shape
+                if key == "timestamps":
+                    missing_keys.remove(key)
+
+        if len(missing_keys) > 0:
+            raise OSError(
+                f"HDF5 file is missing required keys for {cls.__name__} object: {missing_keys}."
+            )
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._timekeys = file.attrs["timekeys"].astype(str).tolist()
         obj._sorted = True
         obj._lazy_ops = {}
+
+        _validate_object_shapes(**shape_dict)
 
         return obj

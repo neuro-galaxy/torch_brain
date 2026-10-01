@@ -9,7 +9,7 @@ import pandas as pd
 
 from .arraydict import ArrayDict
 from .typing import ArrayLike
-from .utils import _validate_select_by_mask_input
+from .utils import _validate_object_shapes, _validate_select_by_mask_input
 
 
 class Interval(ArrayDict):
@@ -724,7 +724,7 @@ class Interval(ArrayDict):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file: HDF5 file.
+            file: HDF5 file or group.
 
         .. note::
             This method will load all data in memory, if you would like to use lazy
@@ -1072,7 +1072,7 @@ class LazyInterval(Interval):
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file: HDF5 file.
+            file: HDF5 file or group.
 
         .. code-block:: python
 
@@ -1085,12 +1085,34 @@ class LazyInterval(Interval):
         assert file.attrs["object"] == Interval.__name__, "object type mismatch"
 
         obj = cls.__new__(cls)
+
+        missing_keys = ["start", "end"]
+        num_start_end = None
+        shape_dict = {}
         for key, value in file.items():
             obj.__dict__[key] = value
+            if key in ["start", "end"]:
+                missing_keys.remove(key)
+                if num_start_end is None:
+                    num_start_end = value.shape[0]
+                elif value.shape[0] != num_start_end:
+                    other_key = "start" if key == "end" else "end"
+                    raise ValueError(
+                        f"Expected '{key}' and '{other_key}' to have the same length, but got {value.shape[0]} and {num_start_end}."
+                    )
+            else:
+                shape_dict[key] = value.shape
+
+        if len(missing_keys) > 0:
+            raise OSError(
+                f"HDF5 object is missing required keys for {cls.__name__} object: {missing_keys}."
+            )
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._timekeys = file.attrs["timekeys"].astype(str).tolist()
         obj._sorted = True
         obj._lazy_ops = {}
+
+        _validate_object_shapes(**shape_dict)
 
         return obj

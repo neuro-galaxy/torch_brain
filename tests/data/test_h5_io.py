@@ -6,10 +6,14 @@ import numpy as np
 import pytest
 
 from torch_brain.data import (
+    ArrayDict,
     Data,
     Interval,
     IrregularTimeSeries,
+    LazyArrayDict,
     LazyInterval,
+    LazyIrregularTimeSeries,
+    LazyRegularTimeSeries,
     RegularTimeSeries,
 )
 
@@ -121,6 +125,142 @@ def test_load_from_h5(test_filepath):
         assert np.all(d.x[:] == np.array([0, 1, 2]))
         assert np.all(d.y[:] == np.array([1, 2, 3]))
         assert np.all(d.z[:] == np.array([2, 3, 4]))
+
+
+def test_lazy_load_arraydict_from_broken_h5(test_filepath):
+
+    a = ArrayDict(
+        id=np.array(["unit_0", "unit_1", "unit_2"]),
+    )
+
+    # save
+    with h5py.File(test_filepath, "w") as file:
+        a.to_hdf5(file)
+
+    del a
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        del file["id"]
+        file["id"] = np.zeros(())  # 0 dim
+
+    # load again
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(ValueError, match="at least 1 dimension"):
+            LazyArrayDict.from_hdf5(file)
+
+
+def test_lazy_load_interval_from_broken_h5(test_filepath):
+
+    a = Interval(start=np.array([0.0, 1.0, 2.0]), end=np.array([1.0, 2.0, 3.0]))
+
+    # save
+    with h5py.File(test_filepath, "w") as file:
+        a.to_hdf5(file)
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        del file["start"]
+
+    # load again
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(OSError, match="missing required keys"):
+            LazyInterval.from_hdf5(file)
+
+    # save again
+    with h5py.File(test_filepath, "w") as file:
+        a.to_hdf5(file)
+
+    del a
+
+    # load and break again
+    with h5py.File(test_filepath, "r+") as file:
+        del file["start"]
+        file["start"] = np.array([0, 1])  # shorter than end
+
+    # load again
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(ValueError, match="have the same length"):
+            LazyInterval.from_hdf5(file)
+
+
+def test_lazy_load_regular_time_series_from_broken_h5(test_filepath):
+
+    a = RegularTimeSeries(x=np.random.random((100, 48)), sampling_rate=10)
+
+    # save
+    with h5py.File(test_filepath, "w") as file:
+        a.to_hdf5(file)
+
+    del a
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        file.attrs["sampling_rate"] = -1
+
+    # load again
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(ValueError, match="strictly positive"):
+            LazyRegularTimeSeries.from_hdf5(file)
+
+
+def test_lazy_load_irregular_time_series_from_broken_h5(test_filepath):
+
+    d = IrregularTimeSeries(
+        np.array([0.0, 1.0, 2.0]), x=np.array([1.0, 2.0, 3.0]), domain="auto"
+    )
+
+    # save
+    with h5py.File(test_filepath, "w") as file:
+        d.to_hdf5(file)
+
+    del d
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        file["timestamp_indices_1s"][-1] = (
+            file["timestamps"].shape[0] + 1
+        )  # out-of-bounds value
+
+    # load again
+    with h5py.File(test_filepath, "r") as file:
+        d = LazyIrregularTimeSeries.from_hdf5(file)
+        with pytest.raises(ValueError, match="out of bounds"):
+            d.slice(0.0, 1.5)
+
+    del d
+
+
+def test_lazy_load_data_from_broken_h5(test_filepath):
+
+    a = IrregularTimeSeries(
+        np.array([0.0, 1.0, 2.0]), x=np.array([1.0, 2.0, 3.0]), domain="auto"
+    )
+    b = Interval(start=np.array([0.0, 1.0, 2.0]), end=np.array([1.0, 2.0, 3.0]))
+    c = Data(
+        a_timeseries=a,
+        b_intervals=b,
+        x=np.array([0, 1, 2]),
+        y=np.array([1, 2, 3]),
+        z=np.array([2, 3, 4]),
+        domain=Interval(0.0, 3.0),
+    )
+
+    with h5py.File(test_filepath, "w") as file:
+        c.to_hdf5(file)
+
+    del c
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        del file["a_timeseries"]["timestamps"]
+        file["a_timeseries"]["timestamps"] = np.array(
+            [0.0, 1.0, 2.0, 3.0]
+        )  # longer than x
+
+    # load it again
+    with pytest.raises(ValueError, match="objects are inconsistent"):
+        Data.load(test_filepath)
 
 
 def test_load_classmethod(test_filepath):

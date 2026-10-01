@@ -1,3 +1,4 @@
+from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -41,4 +42,48 @@ def _validate_select_by_mask_input(mask, length):
     if len(mask) != length:
         raise ValueError(
             f"mask length {len(mask)} does not match object length ({length})"
+        )
+
+
+def _validate_object_shapes(*shape_list, **shape_dict):
+    objects = list(shape_dict.items()) + [(None, obj) for obj in shape_list]
+
+    zero_dim_names = [name for name, shape in objects if len(shape) == 0]
+
+    if len(zero_dim_names) > 0:
+        names = [name for name in zero_dim_names if name is not None]
+        if len(names) > 0:
+            if len(names) == len(zero_dim_names):
+                name_str = f": {names}"
+            else:
+                name_str = f", including {names}"
+
+        raise ValueError(
+            "Expected objects to have at least 1 dimension, but found "
+            f"{len(zero_dim_names)} 0-dimensional objects{name_str}."
+        )
+
+    counts = Counter(shape[0] for _, shape in objects)
+
+    if len(counts) > 1:
+        standard, standard_count = counts.most_common(1)[0]
+
+        by_dim = defaultdict(list)
+        for name, shape in objects:
+            if shape[0] != standard:
+                by_dim[shape[0]].append(name)
+
+        mismatches = sorted(
+            by_dim.items(),
+            key=lambda x: len(x[1]),
+            reverse=True,
+        )
+
+        details = "\n".join(
+            f"{dim} ({len(names)}): {', '.join(names)}" for dim, names in mismatches
+        )
+
+        raise ValueError(
+            f"First dimensions of objects are inconsistent. The most common is {standard} "
+            f"({standard_count} objects), but found:\n{details}."
         )

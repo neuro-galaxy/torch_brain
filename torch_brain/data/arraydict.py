@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .typing import ArrayLike
-from .utils import _size_repr, _validate_select_by_mask_input
+from .utils import _size_repr, _validate_object_shapes, _validate_select_by_mask_input
 
 
 class ArrayDict:
@@ -259,7 +259,7 @@ class ArrayDict:
         r"""Loads the data object from an HDF5 file.
 
         Args:
-            file: HDF5 file.
+            file: HDF5 file or group.
 
         .. note::
             This method will load all data in memory, if you would like to use lazy
@@ -451,16 +451,22 @@ class LazyArrayDict(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
+
         assert file.attrs["object"] == ArrayDict.__name__, (
             f"File contains data for a {file.attrs['object']} object, expected "
             f"{ArrayDict.__name__} object."
         )
 
         obj = cls.__new__(cls)
+
+        shape_dict = {}
         for key, value in file.items():
             obj.__dict__[key] = value
+            shape_dict[key] = value.shape
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._lazy_ops = {}
+
+        _validate_object_shapes(**shape_dict)
 
         return obj
