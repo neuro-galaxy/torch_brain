@@ -6,10 +6,14 @@ import numpy as np
 import pytest
 
 from torch_brain.data import (
+    ArrayDict,
     Data,
     Interval,
     IrregularTimeSeries,
+    LazyArrayDict,
     LazyInterval,
+    LazyIrregularTimeSeries,
+    LazyRegularTimeSeries,
     RegularTimeSeries,
 )
 
@@ -121,6 +125,109 @@ def test_load_from_h5(test_filepath):
         assert np.all(d.x[:] == np.array([0, 1, 2]))
         assert np.all(d.y[:] == np.array([1, 2, 3]))
         assert np.all(d.z[:] == np.array([2, 3, 4]))
+
+
+def test_lazy_load_from_broken_h5(test_filepath):
+    # create an object and save it
+    a = ArrayDict(
+        id=np.array(["unit_0", "unit_1", "unit_2"]),
+    )
+
+    with h5py.File(test_filepath, "w") as file:
+        a.to_hdf5(file)
+
+    del a
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        del file["id"]
+        file["id"] = np.zeros(())  # 0 dim
+
+    # load it again
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(OSError, match="at least 1-dimensional"):
+            LazyArrayDict.from_hdf5(file)
+
+    b = IrregularTimeSeries(
+        np.array([0.0, 1.0, 2.0]), x=np.array([1.0, 2.0, 3.0]), domain="auto"
+    )
+    with h5py.File(test_filepath, "w") as file:
+        b.to_hdf5(file)
+
+    del b
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        file["timestamp_indices_1s"][-1] = (
+            file["timestamps"].shape[0] + 1
+        )  # out-of-bounds value
+
+    # load it again
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(OSError, match="out of bounds"):
+            LazyIrregularTimeSeries.from_hdf5(file)
+
+    # create an object and save it
+    c = RegularTimeSeries(x=np.random.random((100, 48)), sampling_rate=10)
+    with h5py.File(test_filepath, "w") as file:
+        c.to_hdf5(file)
+
+    del c
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        del file.attrs["sampling_rate"]
+
+    # load it again
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(OSError, match="Missing required attribute"):
+            LazyRegularTimeSeries.from_hdf5(file)
+
+    d = Interval(start=np.array([0.0, 1.0, 2.0]), end=np.array([1.0, 2.0, 3.0]))
+
+    with h5py.File(test_filepath, "w") as file:
+        d.to_hdf5(file)
+
+    del d
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        del file["start"]
+        file["start"] = np.array([0, 1])  # shorter than end
+
+    # load it again
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(OSError, match="must have the same length"):
+            LazyInterval.from_hdf5(file)
+
+    a = IrregularTimeSeries(
+        np.array([0.0, 1.0, 2.0]), x=np.array([1.0, 2.0, 3.0]), domain="auto"
+    )
+    b = Interval(start=np.array([0.0, 1.0, 2.0]), end=np.array([1.0, 2.0, 3.0]))
+    c = Data(
+        a_timeseries=a,
+        b_intervals=b,
+        x=np.array([0, 1, 2]),
+        y=np.array([1, 2, 3]),
+        z=np.array([2, 3, 4]),
+        domain=Interval(0.0, 3.0),
+    )
+
+    with h5py.File(test_filepath, "w") as file:
+        c.to_hdf5(file)
+
+    del c
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        del file["a_timeseries"]["timestamps"]
+        file["a_timeseries"]["timestamps"] = np.array(
+            [0.0, 1.0, 2.0, 3.0]
+        )  # longer than x
+
+    # load it again
+    with pytest.raises(OSError, match="must have the same first dimension"):
+        Data.load(test_filepath)
 
 
 def test_load_classmethod(test_filepath):

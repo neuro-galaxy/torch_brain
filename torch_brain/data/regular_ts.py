@@ -159,7 +159,12 @@ class RegularTimeSeries(ArrayDict):
 
         super().__init__(**kwargs)
 
-        self._sampling_rate = sampling_rate
+        if sampling_rate <= 0:
+            raise ValueError(
+                f"sampling_rate must be a strictly positive number, but got {sampling_rate}."
+            )
+
+        self._sampling_rate = float(sampling_rate)
 
         if not isinstance(domain_start, (int, float)):
             raise ValueError(
@@ -868,6 +873,49 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         )
 
     @classmethod
+    def _check_hdf5(cls, file):
+        r"""Checks for incompatabilities in the HDF5 file missed when using ``.from_hdf5()``.
+
+        Args:
+            file: HDF5 file.
+        """
+        assert file.attrs["object"] == RegularTimeSeries.__name__, (
+            f"File contains data for a {file.attrs['object']} object, expected "
+            f"{RegularTimeSeries.__name__} object."
+        )
+
+        error_msg = (
+            f"{cls.__name__} should be loaded from a file created using torch_brain's "
+            f"save() or to_hdf5() methods. Any manual modifications to the file may "
+            "break the lazy loading functionality. At least one error was detected while "
+            f"loading from {file.file.filename}"
+        )
+
+        if "domain" not in file.keys():
+            raise OSError(f"{error_msg}: Missing required key 'domain'.")
+
+        if "sampling_rate" not in file.attrs:
+            raise OSError(f"{error_msg}: Missing required attribute 'sampling_rate'.")
+
+        first_dim = None
+        for key, value in file.items():
+            if key != "domain":  # domain is checked during loading
+                if value.ndim == 0:
+                    raise OSError(
+                        f"{error_msg}: {key} must be at least 1-dimensional, got 0-dimensional "
+                        "array."
+                    )
+                if first_dim is None:
+                    first_dim = value.shape[0]
+
+                elif value.shape[0] != first_dim:
+                    raise OSError(
+                        f"{error_msg}: Other than 'domain', all elements of {cls.__name__} must "
+                        f"have the same first dimension. The first dimension of {key} is "
+                        f"{value.shape[0]} but the first dimension of other elements is {first_dim}."
+                    )
+
+    @classmethod
     def from_hdf5(cls, file):
         r"""Loads the data object from an HDF5 file.
 
@@ -882,9 +930,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == RegularTimeSeries.__name__, (
-            "object type mismatch"
-        )
+        cls._check_hdf5(file)
 
         obj = cls.__new__(cls)
         for key, value in file.items():
@@ -893,6 +939,10 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             else:
                 obj.__dict__[key] = value
         obj._lazy_ops = {}
-        obj._sampling_rate = file.attrs["sampling_rate"]
+        obj._sampling_rate = float(file.attrs["sampling_rate"])
+        if obj._sampling_rate <= 0:
+            raise ValueError(
+                f"sampling_rate must be a strictly positive number, but got {obj._sampling_rate}."
+            )
 
         return obj

@@ -1068,6 +1068,65 @@ class LazyInterval(Interval):
         raise NotImplementedError("Cannot save a lazy interval object to hdf5.")
 
     @classmethod
+    def _check_hdf5(cls, file):
+        r"""Checks for incompatabilities in the HDF5 file missed when using ``.from_hdf5()``.
+
+        Args:
+            file: HDF5 file.
+        """
+        assert file.attrs["object"] == Interval.__name__, (
+            f"File contains data for a {file.attrs['object']} object, expected "
+            f"{Interval.__name__} object."
+        )
+
+        error_msg = (
+            f"{cls.__name__} should be loaded from a file created using torch_brain's "
+            f"save() or to_hdf5() methods. Any manual modifications to the file may "
+            "break the lazy loading functionality. At least one error was detected while "
+            f"loading from {file.file.filename}"
+        )
+
+        interval_keys = ["start", "end"]
+        missing_keys = [key for key in interval_keys if key not in file.keys()]
+        if len(missing_keys) > 0:
+            raise OSError(f"{error_msg}: Missing required keys {missing_keys}.")
+
+        interval_attrs = ["_unicode_keys", "timekeys"]
+        missing_attrs = [key for key in interval_attrs if key not in file.attrs]
+        if len(missing_attrs) > 0:
+            raise OSError(f"{error_msg}: Missing required attributes {missing_attrs}.")
+
+        start_end_len = None
+        first_dim = None
+        for key, value in file.items():
+            if key in ["start", "end"]:
+                if value.ndim != 1:
+                    raise OSError(
+                        f"{error_msg}: {key} must be 1-dimensional, got {value.ndim}-dimensional array."
+                    )
+                if start_end_len is None:
+                    start_end_len = value.shape[0]
+                elif value.shape[0] != start_end_len:
+                    raise OSError(
+                        f"{error_msg}: 'start' and 'end' must have the same length, but got "
+                        f"{value.shape[0]} and {start_end_len}."
+                    )
+            else:
+                if value.ndim == 0:
+                    raise OSError(
+                        f"{error_msg}: {key} must be at least 1-dimensional, got 0-dimensional array."
+                    )
+                if first_dim is None:
+                    first_dim = value.shape[0]
+
+                elif value.shape[0] != first_dim:
+                    raise OSError(
+                        f"{error_msg}: Other than 'start' and 'end', all elements of {cls.__name__} "
+                        f"must have the same first dimension. The first dimension of {key} is "
+                        f"{value.shape[0]} but the first dimension of other elements is {first_dim}."
+                    )
+
+    @classmethod
     def from_hdf5(cls, file):
         r"""Loads the data object from an HDF5 file.
 
@@ -1081,8 +1140,8 @@ class LazyInterval(Interval):
 
             with h5py
         """
-        # todo improve error message
-        assert file.attrs["object"] == Interval.__name__, "object type mismatch"
+
+        cls._check_hdf5(file)
 
         obj = cls.__new__(cls)
         for key, value in file.items():
