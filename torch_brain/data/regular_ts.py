@@ -116,13 +116,13 @@ class RegularTimeSeries(ArrayDict):
 
         >>> lfp.slice(0, 1)
         RegularTimeSeries(
-          raw=[250, 128]
+          raw: array, shape=(250, 128), dtype=float64,
         )
 
         >>> lfp.to_irregular()
         IrregularTimeSeries(
-          timestamps=[1000],
-          raw=[1000, 128]
+          timestamps: array, shape=(1000,), dtype=float64,
+          raw: array, shape=(1000, 128), dtype=float64,
         )
     """
 

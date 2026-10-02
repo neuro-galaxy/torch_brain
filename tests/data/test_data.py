@@ -46,7 +46,7 @@ def test_data():
             sampling_rate=250.0,
         ),
         units=ArrayDict(
-            id=["unit_0", "unit_1", "unit_2"],
+            id=["unit01", "unit02", "unit03"],
             brain_region=["M1", "M1", "PMd"],
         ),
         trials=Interval(
@@ -101,7 +101,7 @@ def test_data_copy():
             sampling_rate=250.0,
         ),
         units=ArrayDict(
-            id=["unit_0", "unit_1", "unit_2"],
+            id=["unit01", "unit02", "unit03"],
             brain_region=["M1", "M1", "PMd"],
         ),
         trials=Interval(
@@ -154,7 +154,7 @@ def test_lazy_data_copy(test_filepath):
             sampling_rate=250.0,
         ),
         units=ArrayDict(
-            id=["unit_0", "unit_1", "unit_2"],
+            id=["unit01", "unit02", "unit03"],
             brain_region=["M1", "M1", "PMd"],
         ),
         trials=Interval(
@@ -222,7 +222,7 @@ def test_data_absolute_start(test_filepath):
             sampling_rate=250.0,
         ),
         units=ArrayDict(
-            id=["unit_0", "unit_1", "unit_2"],
+            id=["unit01", "unit02", "unit03"],
             brain_region=["M1", "M1", "PMd"],
         ),
         trials=Interval(
@@ -355,7 +355,7 @@ def test_nested_attributes():
             domain="auto",
         ),
         units=ArrayDict(
-            id=["unit_0", "unit_1", "unit_2"],
+            id=["unit01", "unit02", "unit03"],
             brain_region=["M1", "M1", "PMd"],
         ),
     )
@@ -395,7 +395,7 @@ class TestSetNestedAttribute:
                 domain="auto",
             ),
             units=ArrayDict(
-                id=["unit_0", "unit_1", "unit_2"],
+                id=["unit01", "unit02", "unit03"],
                 brain_region=["M1", "M1", "PMd"],
             ),
         )
@@ -560,7 +560,7 @@ class TestDeleteNestedAttribute:
                 timekeys=["go_cue_time"],
             ),
             units=ArrayDict(
-                id=["unit_0", "unit_1", "unit_2"],
+                id=["unit01", "unit02", "unit03"],
                 brain_region=["M1", "M1", "PMd"],
             ),
         )
@@ -676,7 +676,7 @@ def test_data_auto_domain():
             sampling_rate=250.0,
         ),
         units=ArrayDict(
-            id=["unit_0", "unit_1", "unit_2"],
+            id=["unit01", "unit02", "unit03"],
             brain_region=["M1", "M1", "PMd"],
         ),
         trials=Interval(

@@ -17,19 +17,23 @@ To save a data object to disk, use the :obj:`~Data.save()` method:
 .. code-block:: pycon
 
    >>> import numpy as np
-   >>> from torch_brain.data import RegularTimeSeries, IrregularTimeSeries, Data
+   >>> from torch_brain.data import RegularTimeSeries, IrregularTimeSeries, ArrayDict, Data
 
    >>> # Create a complex data object
    >>> session = Data(
    ...     spikes=IrregularTimeSeries(
    ...         timestamps=np.array([1.2, 2.3, 3.1]),
-   ...         unit_id=np.array([1, 2, 1]),
+   ...         unit_index=np.array([0, 1, 0]),
    ...     ),
    ...     behavior=RegularTimeSeries(
    ...         sampling_rate=100.0,
    ...         hand_vel=np.random.randn(400, 2),
    ...         eye_pos=np.random.randn(400, 2),
    ...         pupil_size=np.random.randn(400),
+   ...     ),
+   ...     units=ArrayDict(
+   ...      id=["unit01", "unit02", "unit03"],
+   ...      brain_region=["M1", "M1", "PMd"],
    ...     ),
    ...     domain="auto",
    ... )
@@ -46,29 +50,34 @@ Let's first load it "non-lazily" by passing ``lazy=False``:
 
 .. code-block:: pycon
 
-    >>> # Read neural data from HDF5 file on disk
-    >>> session = Data.load("neural_data.h5", lazy=False)
+   >>> # Read neural data from HDF5 file on disk
+   >>> session = Data.load("neural_data.h5", lazy=False)
 
-    >>> # Access neural data
-    >>> session.spikes.timestamps
-    array([1.2, 2.3, 3.1])
-    >>> session.behavior.sampling_rate
-    np.float64(100.0)
+   >>> # Access neural data
+   >>> session.spikes.timestamps
+   array([1.2, 2.3, 3.1])
+   >>> session.behavior.sampling_rate
+   np.float64(100.0)
 
-    >>> # Slice
-    >>> sliced = session.slice(2., 4.)
-    >>> sliced
-    Data(
-      behavior=RegularTimeSeries(
-        eye_pos=[200, 2],
-        hand_vel=[200, 2],
-        pupil_size=[200]
-      ),
-      spikes=IrregularTimeSeries(
-        timestamps=[2],
-        unit_id=[2]
-      ),
-    )
+   >>> # Slice
+   >>> sliced = session.slice(2., 4.)
+   >>> sliced
+   Data(
+     behavior=RegularTimeSeries(
+       eye_pos: array, shape=(200, 2), dtype=float64,
+       hand_vel: array, shape=(200, 2), dtype=float64,
+       pupil_size: array, shape=(200,), dtype=float64,
+     ),
+     spikes=IrregularTimeSeries(
+       timestamps: array, shape=(2,), dtype=float64,
+       unit_index: array, shape=(2,), dtype=int64,
+     ),
+     units=ArrayDict(
+       brain_region: array, shape=(3,), dtype=<U3,
+       id: array, shape=(3,), dtype=<U6,
+     ),
+     _absolute_start=2.0,
+   )
 
 By setting ``lazy=False``, we load the entire dataset into memory upfront.
 This quickly becomes infeasible for datasets of any real size (a few hundred GBs
@@ -100,18 +109,23 @@ To load data in lazy mode, simply omit the ``lazy=False`` flag we used above:
    >>> session
    Data(
      behavior=LazyRegularTimeSeries(
-       eye_pos=<HDF5 dataset "eye_pos": shape (400, 2), type "<f8">,
-       hand_vel=<HDF5 dataset "hand_vel": shape (400, 2), type "<f8">,
-       pupil_size=<HDF5 dataset "pupil_size": shape (400,), type "<f8">
+       eye_pos: lazy array, shape=(400, 2), dtype=float64,
+       hand_vel: lazy array, shape=(400, 2), dtype=float64,
+       pupil_size: lazy array, shape=(400,), dtype=float64,
      ),
      spikes=LazyIrregularTimeSeries(
-       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
-       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+       timestamps: lazy array, shape=(3,), dtype=float64,
+       unit_index: lazy array, shape=(3,), dtype=int64,
      ),
+     units=LazyArrayDict(
+       brain_region: lazy array, shape=(3,), dtype=|S3,
+       id: lazy array, shape=(3,), dtype=|S6,
+     ),
+     _absolute_start=0.0,
    )
 
 First note that the internal objects are :obj:`LazyRegularTimeSeries` and
-:obj:`LazyIrregularTimeSeries`. Secondly, the presence of ``<HDF5 dataset...>``
+:obj:`LazyIrregularTimeSeries`. Secondly, the presence of ``lazy array``
 indicates that the arrays are yet to be loaded. Let's see what happens when we
 access ``eye_pos``:
 
@@ -125,14 +139,19 @@ access ``eye_pos``:
    >>> session
    Data(
      behavior=LazyRegularTimeSeries(
-       eye_pos=[400, 2],
-       hand_vel=<HDF5 dataset "hand_vel": shape (400, 2), type "<f8">,
-       pupil_size=<HDF5 dataset "pupil_size": shape (400,), type "<f8">
+       eye_pos: array, shape=(400, 2), dtype=float64,
+       hand_vel: lazy array, shape=(400, 2), dtype=float64,
+       pupil_size: lazy array, shape=(400,), dtype=float64,
      ),
      spikes=LazyIrregularTimeSeries(
-       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
-       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+       timestamps: lazy array, shape=(3,), dtype=float64,
+       unit_index: lazy array, shape=(3,), dtype=int64,
      ),
+     units=LazyArrayDict(
+       brain_region: lazy array, shape=(3,), dtype=|S3,
+       id: lazy array, shape=(3,), dtype=|S6,
+     ),
+     _absolute_start=0.0,
    )
 
 We can see that ``eye_pos`` has been loaded, and the remaining attributes
@@ -151,14 +170,46 @@ will then turn into a :obj:`RegularTimeSeries` object:
    >>> session
    Data(
      behavior=RegularTimeSeries(
-       eye_pos=[400, 2],
-       hand_vel=[400, 2],
-       pupil_size=[400]
+       eye_pos: array, shape=(400, 2), dtype=float64,
+       hand_vel: array, shape=(400, 2), dtype=float64,
+       pupil_size: array, shape=(400,), dtype=float64,
      ),
      spikes=LazyIrregularTimeSeries(
-       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
-       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+       timestamps: lazy array, shape=(3,), dtype=float64,
+       unit_index: lazy array, shape=(3,), dtype=int64,
      ),
+     units=LazyArrayDict(
+       brain_region: lazy array, shape=(3,), dtype=|S3,
+       id: lazy array, shape=(3,), dtype=|S6,
+     ),
+     _absolute_start=0.0,
+   )
+
+In some cases, loading an attribute leads to a change in datatype. Strings, for 
+example, are stored as bytes in HDF5, so when we access ``units.id``, it will be 
+converted into a unicode array, and the dtype will change from ``|S6`` to ``<U6``:
+
+.. code-block:: pycon
+
+   >>> session.units.id
+   array(['unit01', 'unit02', 'unit03'], dtype='<U6')
+
+   >>> session
+   Data(
+     behavior=RegularTimeSeries(
+       eye_pos: array, shape=(400, 2), dtype=float64,
+       hand_vel: array, shape=(400, 2), dtype=float64,
+       pupil_size: array, shape=(400,), dtype=float64,
+     ),
+     spikes=LazyIrregularTimeSeries(
+       timestamps: lazy array, shape=(3,), dtype=float64,
+       unit_index: lazy array, shape=(3,), dtype=int64,
+     ),
+     units=LazyArrayDict(
+       brain_region: lazy array, shape=(3,), dtype=|S3,
+       id: array, shape=(3,), dtype=<U6,
+     ),
+     _absolute_start=0.0,
    )
 
 We can also slice a lazy object:
@@ -169,14 +220,19 @@ We can also slice a lazy object:
    >>> sliced
    Data(
      behavior=RegularTimeSeries(
-       eye_pos=[200, 2],
-       hand_vel=[200, 2],
-       pupil_size=[200]
+       eye_pos: array, shape=(200, 2), dtype=float64,
+       hand_vel: array, shape=(200, 2), dtype=float64,
+       pupil_size: array, shape=(200,), dtype=float64,
      ),
-     spikes=LazyIrregularTimeSeries(  # Note that this remains lazy!!
-       timestamps=<HDF5 dataset "timestamps": shape (3,), type "<f8">,
-       unit_id=<HDF5 dataset "unit_id": shape (3,), type "<i8">
+     spikes=LazyIrregularTimeSeries(
+       timestamps: lazy array, shape=(2,), dtype=float64,
+       unit_index: lazy array, shape=(2,), dtype=int64,
      ),
+     units=LazyArrayDict(
+       brain_region: lazy array, shape=(3,), dtype=|S3,
+       id: array, shape=(3,), dtype=<U6,
+     ),
+     _absolute_start=2.0,
    )
 
    >>> sliced.spikes.timestamps
