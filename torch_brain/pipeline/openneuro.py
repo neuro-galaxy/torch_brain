@@ -438,6 +438,24 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
 
         return manifest_item
 
+    def cleanup_raw(self, download_output: pd.Series) -> None:
+        """Delete the raw BIDS files for this recording.
+
+        download() returns the manifest row, not a path, so the base class's
+        default implementation can't infer what to delete. This deletes only
+        files whose name is prefixed with the recording_id, which excludes
+        dataset-level shared files (dataset_description.json,
+        participants.tsv) and other recordings' files.
+        """
+        recording_id = download_output.Index
+        subject_id = download_output.subject_id
+        subject_dir = self.raw_dir / subject_id
+        if not subject_dir.exists():
+            return
+        self.update_status("Deleting Raw Files")
+        for file in subject_dir.rglob(f"{recording_id}_*"):
+            file.unlink()
+
     def process_common(self, download_output: pd.Series) -> tuple[Data, Path] | None:
         """Process data files and create a Data object.
 
