@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - PIPPI preparation resumes incomplete multipart downloads instead of treating a header as a complete recording.
 
 ### Added
+- Added `KelesBYD2024`, `BerezutskayaPippi2022`, and `NeuroprobeV2` dataset loaders, plus BYD and PIPPI preparation pipelines with packaged movie labels and channel metadata.
 - Added `Data.delete_nested_attribute` to delete a nested attribute by dot-separated path ([#299](https://github.com/neuro-galaxy/torch_brain/pull/299))
 - Added `MultiChannelDatasetMixin` to provide `get_channel_ids` and prefixing interface for EEG-like datasets ([#173](https://github.com/neuro-galaxy/torch_brain/pull/173))
 - Added `BinSpikes` transform ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
@@ -34,6 +35,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed `utils.get_sinusoidal_encoding` (legacy) ([#200](https://github.com/neuro-galaxy/torch_brain/pull/200))
 
 ### Changed
+- `Neuroprobe2025.get_channel_metadata` now returns `coordinate_frames` (`btb_lip` and `btb_xyz`) instead of `coords` and `coords_type`. Reprocess existing Neuroprobe recordings with the updated `neuroprobe_2025` pipeline to populate the required coordinate fields and the physical-unit attributes used by `get_neural_signal_metadata`; the derived dataset version is now `1.1.1`.
 - BYD and PIPPI Brainsets preparation now defaults to each pipeline's packaged label CSVs while retaining `--labels-dir` overrides.
 - `delattr` on `Data`, `ArrayDict`, `IrregularTimeSeries`, and `Interval` now raises `AttributeError` for `IrregularTimeSeries.timestamps` and `Interval.start`/`end`; deleting other registered timekeys auto-deregisters them
 - Moved collate utilities from `torch_brain.data.collate` to `torch_brain.batching`; the old module now raises a descriptive `ImportError` directing users to the new location ([#232](https://github.com/neuro-galaxy/torch_brain/pull/232))
