@@ -8,6 +8,7 @@ import pandas as pd
 import pytest
 
 from torch_brain.data import Interval, LazyRegularTimeSeries, RegularTimeSeries
+from torch_brain.data.utils import DeferredH5Dataset
 
 
 @contextmanager
@@ -157,16 +158,18 @@ def test_lazy_regular_timeseries(test_filepath):
         assert data.sampling_rate == 250.0
 
         # make sure that nothing is loaded yet
-        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys())
+        assert all(
+            isinstance(data.__dict__[key], DeferredH5Dataset) for key in data.keys()
+        )
 
         # make sure that the attribute is loaded
         assert isinstance(data.gamma, np.ndarray)
         # make sure that the attribute is loaded correctly
         assert np.allclose(data.gamma, gamma)
-        # make sure that the loaded attribute replaced the h5py.Dataset reference
+        # make sure that the loaded attribute replaced the DeferredH5Dataset reference
         assert isinstance(data.__dict__["gamma"], np.ndarray)
         assert all(
-            isinstance(data.__dict__[key], h5py.Dataset)
+            isinstance(data.__dict__[key], DeferredH5Dataset)
             for key in data.keys()
             if key != "gamma"
         )
@@ -188,7 +191,7 @@ def test_lazy_regular_timeseries(test_filepath):
         assert np.allclose(data.gamma, gamma[250:750])
 
         assert all(
-            isinstance(data.__dict__[key], h5py.Dataset)
+            isinstance(data.__dict__[key], DeferredH5Dataset)
             for key in data.keys()
             if key != "gamma"
         )

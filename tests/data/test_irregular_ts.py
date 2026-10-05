@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from torch_brain.data import Interval, IrregularTimeSeries, LazyIrregularTimeSeries
+from torch_brain.data.utils import DeferredH5Dataset
 
 
 @pytest.fixture
@@ -217,7 +218,9 @@ def test_lazy_irregular_timeseries(test_filepath):
         assert len(data) == 6
 
         # make sure that nothing is loaded yet
-        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys())
+        assert all(
+            isinstance(data.__dict__[key], DeferredH5Dataset) for key in data.keys()
+        )
 
         # try loading one attribute
         unit_index = data.unit_index
@@ -225,10 +228,10 @@ def test_lazy_irregular_timeseries(test_filepath):
         assert isinstance(unit_index, np.ndarray)
         # make sure that the attribute is loaded correctly
         assert np.array_equal(unit_index, np.array([0, 0, 1, 0, 1, 2]))
-        # make sure that the loaded attribute replaced the h5py.Dataset reference
+        # make sure that the loaded attribute replaced the DeferredH5Dataset reference
         assert isinstance(data.__dict__["unit_index"], np.ndarray)
         assert all(
-            isinstance(data.__dict__[key], h5py.Dataset)
+            isinstance(data.__dict__[key], DeferredH5Dataset)
             for key in data.keys()
             if key != "unit_index"
         )
@@ -255,7 +258,7 @@ def test_lazy_irregular_timeseries(test_filepath):
         # make sure only brain_region was loaded
         assert isinstance(data.__dict__["unit_index"], np.ndarray)
         assert all(
-            isinstance(data.__dict__[key], h5py.Dataset)
+            isinstance(data.__dict__[key], DeferredH5Dataset)
             for key in data.keys()
             if key != "unit_index"
         )
@@ -278,7 +281,7 @@ def test_lazy_irregular_timeseries(test_filepath):
 
         assert len(data2) == 1
         # make sure that the attribute was never accessed, is still not accessed
-        assert isinstance(data2.__dict__["waveforms"], h5py.Dataset)
+        assert isinstance(data2.__dict__["waveforms"], DeferredH5Dataset)
 
         # check if the mask was applied twice correctly!
         assert np.allclose(data2.waveforms, np.zeros((1, 48)))
@@ -299,7 +302,7 @@ def test_lazy_irregular_timeseries(test_filepath):
         assert np.allclose(data.timestamps, np.array([0.05, 0.15, 0.25, 0.35]))
 
         assert all(
-            isinstance(data.__dict__[key], h5py.Dataset)
+            isinstance(data.__dict__[key], DeferredH5Dataset)
             for key in data.keys()
             if key != "timestamps"
         )

@@ -3,12 +3,15 @@ from __future__ import annotations
 import copy
 import logging
 
-import h5py
 import numpy as np
 import pandas as pd
 
 from .typing import ArrayLike
-from .utils import _size_repr, _validate_select_by_mask_input
+from .utils import (
+    DeferredH5Dataset,
+    _size_repr,
+    _validate_select_by_mask_input,
+)
 
 
 class ArrayDict:
@@ -45,16 +48,16 @@ class ArrayDict:
 
     def keys(self) -> list[str]:
         r"""Returns a list of all array attribute names."""
-        return list(filter(lambda x: not x.startswith("_"), self.__dict__))
+        return [k for k in self.__dict__ if not k.startswith("_")]
 
     def _maybe_first_dim(self):
         # If self has at least one attribute, returns the first dimension of
-        # the first attribute. Otherwise, returns :obj:`None`.
-        keys = self.keys()
-        if len(keys) == 0:
+        # the first attribute. Otherwise, returns :obj:`None`. Called on every
+        # attribute assignment, so avoid building the full keys() list.
+        first_key = next((k for k in self.__dict__ if not k.startswith("_")), None)
+        if first_key is None:
             return None
-        else:
-            return self.__dict__[keys[0]].shape[0]
+        return self.__dict__[first_key].shape[0]
 
     def __len__(self):
         r"""Returns the first dimension shared by all attributes."""
@@ -307,7 +310,7 @@ class ArrayDict:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if isinstance(v, h5py.Dataset):
+            if isinstance(v, DeferredH5Dataset):
                 # h5py.File objects cannot be deepcopied
                 result.__dict__[k] = v
             else:
@@ -369,7 +372,7 @@ class LazyArrayDict(ArrayDict):
             if name in self.__dict__:  # == keys() for public names, but O(1)
                 out = self.__dict__[name]
 
-                if isinstance(out, h5py.Dataset):
+                if isinstance(out, DeferredH5Dataset):
                     # apply any mask, and return the numpy array
                     if "mask" in self._lazy_ops:
                         out = out[self._lazy_ops["mask"]]
@@ -414,7 +417,7 @@ class LazyArrayDict(ArrayDict):
         for key, value in self.__dict__.items():
             if key.startswith("_"):
                 out.__dict__[key] = copy.deepcopy(value)
-            elif isinstance(value, h5py.Dataset):
+            elif isinstance(value, DeferredH5Dataset):
                 # mask will be applied lazily on attribute access via _lazy_ops
                 out.__dict__[key] = value
             elif isinstance(value, np.ndarray):
@@ -422,7 +425,7 @@ class LazyArrayDict(ArrayDict):
             else:
                 raise RuntimeError(  # pragma: no cover
                     "Unknown state! Object has a non-private attribute that is neither "
-                    "a np.ndarray, nor an h5py.Dataset"
+                    "a np.ndarray, nor a DeferredH5Dataset"
                 )
 
         # combine mask with any pre-existing lazy mask
@@ -465,8 +468,9 @@ class LazyArrayDict(ArrayDict):
             )
 
         obj = cls.__new__(cls)
-        for key, value in file.items():
-            obj.__dict__[key] = value
+        # file.keys() only lists names; datasets are opened on first read
+        for key in file.keys():
+            obj.__dict__[key] = DeferredH5Dataset(file, key)
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._lazy_ops = {}
