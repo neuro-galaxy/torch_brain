@@ -13,8 +13,8 @@ Options:
     --save PATH       Append comparison results as JSONL to PATH.
     --suite NAME      Which benchmark suite to run: data, utils, or all (default: all).
     --markdown PATH   Also write a Markdown report to PATH (used for the PR comment):
-                      summary, critical benchmarks, regressions, improvements, and
-                      the full list in a collapsible block.
+                      summary, critical benchmarks, other benchmarks past a
+                      threshold (rows colored), and the unchanged ones collapsed.
     --regression-threshold X
                       Speedup below which a benchmark is a regression, shown in
                       red (default: 0.95, i.e. more than 5% slower).
@@ -254,6 +254,7 @@ def print_comparison(
 
 
 _MD_COLORS = {"regression": "red", "improvement": "green"}
+_MD_MARKERS = {"regression": "🔴", "improvement": "🟢"}
 
 
 def _md_label(label: str) -> str:
@@ -262,16 +263,11 @@ def _md_label(label: str) -> str:
     return "`" + label.replace("|", "\\|") + "`"
 
 
-def _md_speedup(row: dict, thresholds: Thresholds) -> str:
-    if row["target_error"]:
-        text = "ERROR"
-    elif row["speedup"] is None:
-        return ""
-    else:
-        text = f"{row['speedup']:.2f}x"
-    color = _MD_COLORS.get(classify(row, thresholds))
-    # GitHub renders inline LaTeX, which is the only way to color table text
-    return rf"$\color{{{color}}}{{\textsf{{{text}}}}}$" if color else text
+def _md_colored(text: str, color: str | None) -> str:
+    # GitHub strips inline styles, so inline LaTeX is the only way to color
+    # table text. Only used on numeric cells: labels contain "_", "&" and "|",
+    # which would need LaTeX escaping and break the table.
+    return rf"$\color{{{color}}}{{\textsf{{{text}}}}}$" if color and text else text
 
 
 def _md_table(
@@ -282,9 +278,20 @@ def _md_table(
         "|---|--:|--:|--:|",
     ]
     for row in rows:
+        kind = classify(row, thresholds)
+        color = _MD_COLORS.get(kind)
+        label = _md_label(row["label"])
+        if kind:
+            label = f"{_MD_MARKERS[kind]} {label}"
+        if row["target_error"]:
+            speedup = "ERROR"
+        elif row["speedup"] is not None:
+            speedup = f"{row['speedup']:.2f}x"
+        else:
+            speedup = ""
+        cells = [row["a"], row["b"], speedup]
         lines.append(
-            f"| {_md_label(row['label'])} | {row['a']} | {row['b']} | "
-            f"{_md_speedup(row, thresholds)} |"
+            f"| {label} | " + " | ".join(_md_colored(c, color) for c in cells) + " |"
         )
     return "\n".join(lines)
 
@@ -296,18 +303,26 @@ def markdown_comparison(
     label_b: str,
     thresholds: Thresholds = DEFAULT_THRESHOLDS,
 ) -> str:
+    """Every benchmark appears in exactly one table: critical ones, then any
+    other benchmark past a threshold, then the rest collapsed."""
     rows = comparison_rows(results_a, results_b)
-    critical = [r for r in rows if r["critical"]]
-    regressions = [r for r in rows if classify(r, thresholds) == "regression"]
-    improvements = [r for r in rows if classify(r, thresholds) == "improvement"]
+    kinds = [classify(r, thresholds) for r in rows]
+    n_regressed = kinds.count("regression")
+    n_improved = kinds.count("improvement")
     lo, hi = thresholds.regression, thresholds.improvement
 
-    if regressions:
-        summary = f"🔴 **{len(regressions)} regressed** (< {lo:.2f}x or error)"
+    critical = [r for r in rows if r["critical"]]
+    changed = [r for r, k in zip(rows, kinds, strict=True) if not r["critical"] and k]
+    unchanged = [
+        r for r, k in zip(rows, kinds, strict=True) if not r["critical"] and not k
+    ]
+
+    if n_regressed:
+        summary = f"🔴 **{n_regressed} regressed** (< {lo:.2f}x or error)"
     else:
         summary = "✅ **No regressions**"
-    if improvements:
-        summary += f" · 🟢 **{len(improvements)} improved** (> {hi:.2f}x)"
+    if n_improved:
+        summary += f" · 🟢 **{n_improved} improved** (> {hi:.2f}x)"
     summary += f" · {len(rows)} benchmarks"
 
     def table(subset):
@@ -316,18 +331,20 @@ def markdown_comparison(
     parts = [summary, ""]
     if critical:
         parts += ["### Critical benchmarks", "", table(critical), ""]
-    if regressions:
-        parts += [f"### Regressions (< {lo:.2f}x)", "", table(regressions), ""]
-    if improvements:
-        parts += [f"### Improvements (> {hi:.2f}x)", "", table(improvements), ""]
+    if changed:
+        parts += ["### Other changed benchmarks", "", table(changed), ""]
+    if unchanged:
+        parts += [
+            "<details>",
+            f"<summary>{len(unchanged)} unchanged benchmarks "
+            f"({lo:.2f}x – {hi:.2f}x)</summary>",
+            "",
+            table(unchanged),
+            "",
+            "</details>",
+            "",
+        ]
     parts += [
-        "<details>",
-        f"<summary>All {len(rows)} benchmarks</summary>",
-        "",
-        table(rows),
-        "",
-        "</details>",
-        "",
         f"Speedup = `{label_a}` time / `{label_b}` time (> 1 means `{label_b}` "
         f"is faster). Shared CI runners are noisy, so treat isolated changes "
         f"close to {lo:.2f}x or {hi:.2f}x with caution.",
