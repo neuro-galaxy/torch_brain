@@ -740,7 +740,9 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        if name not in ["__dict__", "keys"]:
+        # private names (incl. __dict__) are never in keys(), so skip the O(k)
+        # keys() lookup for them; this method itself reads several (_lazy_ops, ...)
+        if name != "keys" and not name.startswith("_"):
             # intercept attribute calls
             if name in self.keys():
                 out = self.__dict__[name]
