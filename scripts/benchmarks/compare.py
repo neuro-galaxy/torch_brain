@@ -13,8 +13,8 @@ Options:
     --save PATH       Append comparison results as JSONL to PATH.
     --suite NAME      Which benchmark suite to run: data, utils, or all (default: all).
     --markdown PATH   Also write a Markdown report to PATH (used for the PR comment):
-                      summary, critical benchmarks, other benchmarks past a
-                      threshold (rows colored), and the unchanged ones collapsed.
+                      summary, the outliers past either threshold (rows colored),
+                      and every other benchmark collapsed.
     --regression-threshold X
                       Speedup below which a benchmark is a regression, shown in
                       red (default: 0.95, i.e. more than 5% slower).
@@ -198,7 +198,6 @@ def comparison_rows(results_a: list[dict], results_b: list[dict]) -> list[dict]:
                 "b": _fmt_us(rb),
                 "speedup": speedup,
                 "target_error": rb is not None and "error" in rb,
-                "critical": any(r and r.get("critical") for r in (ra, rb)),
             }
         )
     return rows
@@ -303,19 +302,16 @@ def markdown_comparison(
     label_b: str,
     thresholds: Thresholds = DEFAULT_THRESHOLDS,
 ) -> str:
-    """Every benchmark appears in exactly one table: critical ones, then any
-    other benchmark past a threshold, then the rest collapsed."""
+    """Outliers (past either threshold, or erroring) are listed up front; every
+    other benchmark is collapsed, so each one appears exactly once."""
     rows = comparison_rows(results_a, results_b)
     kinds = [classify(r, thresholds) for r in rows]
     n_regressed = kinds.count("regression")
     n_improved = kinds.count("improvement")
     lo, hi = thresholds.regression, thresholds.improvement
 
-    critical = [r for r in rows if r["critical"]]
-    changed = [r for r, k in zip(rows, kinds, strict=True) if not r["critical"] and k]
-    unchanged = [
-        r for r, k in zip(rows, kinds, strict=True) if not r["critical"] and not k
-    ]
+    outliers = [r for r, k in zip(rows, kinds, strict=True) if k]
+    unchanged = [r for r, k in zip(rows, kinds, strict=True) if not k]
 
     if n_regressed:
         summary = f"🔴 **{n_regressed} regressed** (< {lo:.2f}x or error)"
@@ -329,10 +325,8 @@ def markdown_comparison(
         return _md_table(subset, label_a, label_b, thresholds)
 
     parts = [summary, ""]
-    if critical:
-        parts += ["### Critical benchmarks", "", table(critical), ""]
-    if changed:
-        parts += ["### Other changed benchmarks", "", table(changed), ""]
+    if outliers:
+        parts += ["### Outliers", "", table(outliers), ""]
     if unchanged:
         parts += [
             "<details>",

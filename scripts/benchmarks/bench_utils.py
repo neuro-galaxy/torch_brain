@@ -18,7 +18,7 @@ from harness import bench
 from torch_brain.data import Interval, IrregularTimeSeries
 
 
-def _run_bin_spikes(label, n_units, n_bins, n_spikes, duration, number, critical=False):
+def _run_bin_spikes(label, n_units, n_bins, n_spikes, duration, number):
     """Shared driver: build one spike window and time bin_spikes over it.
 
     bin_spikes is imported lazily so the rest of the suite still runs against
@@ -38,7 +38,7 @@ def _run_bin_spikes(label, n_units, n_bins, n_spikes, duration, number, critical
     def go():
         bin_spikes(spikes, num_units=n_units, bin_size=bin_size)
 
-    return bench(label, go, number=number, critical=critical)
+    return bench(label, go, number=number)
 
 
 def bench_bin_spikes_realistic():
@@ -50,7 +50,6 @@ def bench_bin_spikes_realistic():
         n_spikes=3_538,
         duration=1.0,
         number=2_000,
-        critical=True,
     )
 
 

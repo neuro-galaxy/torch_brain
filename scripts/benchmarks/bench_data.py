@@ -186,9 +186,7 @@ def bench_data_slice_lazy():
             def go():
                 lazy_data.slice(300.0, 301.0)
 
-            return bench(
-                "Data.slice() (lazy, realistic)", go, number=200, critical=True
-            )
+            return bench("Data.slice() (lazy, realistic)", go, number=200)
     finally:
         os.unlink(path)
 
@@ -200,7 +198,7 @@ def bench_data_slice_inmemory():
     def go():
         data.slice(300.0, 301.0)
 
-    return bench("Data.slice() (in-memory)", go, number=500, critical=True)
+    return bench("Data.slice() (in-memory)", go, number=500)
 
 
 def bench_its_slice():
@@ -218,7 +216,7 @@ def bench_its_slice():
     def go():
         its.slice(500.0, 501.0)
 
-    return bench("IrregularTimeSeries.slice()", go, number=1_000, critical=True)
+    return bench("IrregularTimeSeries.slice()", go, number=1_000)
 
 
 def bench_rts_slice():
@@ -234,7 +232,7 @@ def bench_rts_slice():
     def go():
         rts.slice(500.0, 501.0)
 
-    return bench("RegularTimeSeries.slice()", go, number=1_000, critical=True)
+    return bench("RegularTimeSeries.slice()", go, number=1_000)
 
 
 def bench_interval_slice():
@@ -246,7 +244,7 @@ def bench_interval_slice():
     def go():
         iv.slice(500.0, 501.0)
 
-    return bench("Interval.slice()", go, number=2_000, critical=True)
+    return bench("Interval.slice()", go, number=2_000)
 
 
 def bench_interval_and_single():
@@ -344,7 +342,7 @@ def _make_regular_ts(k, rng):
     )
 
 
-def _run_lazy_access(label, obj, lazy_cls, mode, number, critical=False):
+def _run_lazy_access(label, obj, lazy_cls, mode, number):
     """Shared driver: save obj to HDF5, then time one lazy-access pattern.
 
     mode:
@@ -379,13 +377,13 @@ def _run_lazy_access(label, obj, lazy_cls, mode, number, critical=False):
             materialized = type(go()) is not lazy_cls
             assert materialized == (mode != "slice-only"), f"{label}: wrong path"
 
-            return bench(label, go, number=number, critical=critical)
+            return bench(label, go, number=number)
     finally:
         if os.path.exists(path):
             os.unlink(path)
 
 
-def _lazy_access_bench(short_name, make, lazy_cls, k, mode="read", critical=False):
+def _lazy_access_bench(short_name, make, lazy_cls, k, mode="read"):
     suffix = "" if mode == "read" else f", {mode}"
     label = f"Lazy{short_name} access (k={k}{suffix})"
     # slice-only never reads from HDF5, so it is ~100x cheaper per call
@@ -393,7 +391,7 @@ def _lazy_access_bench(short_name, make, lazy_cls, k, mode="read", critical=Fals
 
     def fn():
         obj = make(k, np.random.RandomState(42))
-        return _run_lazy_access(label, obj, lazy_cls, mode, number, critical)
+        return _run_lazy_access(label, obj, lazy_cls, mode, number)
 
     fn.__name__ = f"bench_lazy_{short_name.lower()}_access_k{k}" + (
         "" if mode == "read" else "_" + mode.replace("-", "_")
@@ -420,15 +418,7 @@ LAZY_ACCESS_BENCHMARKS = (
     + [
         # slice()/unresolved_slice are resolved on first attribute read, so the
         # sliced read path has its own per-attribute cost
-        _lazy_access_bench(
-            name,
-            make,
-            lazy_cls,
-            k,
-            mode="sliced",
-            # the realistic __getitem__ pattern: slice a window, use all of it
-            critical=(name == "IrregularTS" and k == 50),
-        )
+        _lazy_access_bench(name, make, lazy_cls, k, mode="sliced")
         for name, make, lazy_cls in _SLICEABLE_LAZY_CLASSES
         for k in _LAZY_KS
     ]
