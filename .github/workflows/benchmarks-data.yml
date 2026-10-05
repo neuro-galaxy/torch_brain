@@ -43,14 +43,13 @@ jobs:
       - name: Run benchmark comparison (base vs PR HEAD)
         id: benchmark
         run: |
-          set -o pipefail
-          uv run python scripts/benchmarks/compare.py --suite data "origin/$BASE_REF" HEAD | tee benchmark-report.txt
+          uv run python scripts/benchmarks/compare.py --suite data --markdown benchmark-report.md "origin/$BASE_REF" HEAD
 
       - name: Upsert PR benchmark comment
-        if: ${{ !cancelled() && hashFiles('benchmark-report.txt') != '' }}
+        if: ${{ !cancelled() && hashFiles('benchmark-report.md') != '' }}
         uses: actions/github-script@v7
         env:
-          BENCHMARK_REPORT_PATH: benchmark-report.txt
+          BENCHMARK_REPORT_PATH: benchmark-report.md
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         with:
           script: |
@@ -63,12 +62,9 @@ jobs:
             const body = `${marker}
             ## Benchmark comparison vs ${baseRef} (torch_brain.data)
 
-            Baseline: \`origin/${baseRef}\`
-            Target: \`HEAD\`
+            Baseline: \`origin/${baseRef}\` · Target: \`HEAD\`
 
-            \`\`\`text
             ${report}
-            \`\`\`
             `;
 
             const { owner, repo } = context.repo;

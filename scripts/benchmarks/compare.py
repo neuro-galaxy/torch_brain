@@ -10,8 +10,19 @@ Usage:
     uv run python scripts/benchmarks/compare.py <commitA> <commitB>   # commitA vs commitB
 
 Options:
-    --save PATH    Append comparison results as JSONL to PATH.
-    --suite NAME   Which benchmark suite to run: data, utils, or all (default: all).
+    --save PATH       Append comparison results as JSONL to PATH.
+    --suite NAME      Which benchmark suite to run: data, utils, or all (default: all).
+    --markdown PATH   Also write a Markdown report to PATH (used for the PR comment):
+                      summary, critical benchmarks, regressions, improvements, and
+                      the full list in a collapsible block.
+    --regression-threshold X
+                      Speedup below which a benchmark is a regression, shown in
+                      red (default: 0.95, i.e. more than 5% slower).
+    --improvement-threshold X
+                      Speedup above which a benchmark is an improvement, shown in
+                      green (default: 1.05, i.e. more than 5% faster).
+
+Speedup is baseline time / target time, so > 1 means the target is faster.
 """
 
 from __future__ import annotations
@@ -24,6 +35,19 @@ import subprocess
 import sys
 import tempfile
 import time
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Thresholds:
+    """Speedup bounds; anything in between is reported as unchanged."""
+
+    regression: float = 0.95
+    improvement: float = 1.05
+
+
+DEFAULT_THRESHOLDS = Thresholds()
+
 
 BENCH_SCRIPT = os.path.join(os.path.dirname(__file__), "benchmark.py")
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
@@ -147,6 +171,53 @@ def run_benchmark(
     return data["results"]
 
 
+def _fmt_us(r: dict | None) -> str:
+    if r is None:
+        return "n/a"
+    if "error" in r:
+        return "ERROR"
+    return f"{r['mean_us']:.3f}"
+
+
+def comparison_rows(results_a: list[dict], results_b: list[dict]) -> list[dict]:
+    """Pair baseline/target results by label (baseline order, then target-only)."""
+    index_a = {r["label"]: r for r in results_a}
+    index_b = {r["label"]: r for r in results_b}
+    labels = list(index_a) + [lbl for lbl in index_b if lbl not in index_a]
+
+    rows = []
+    for label in labels:
+        ra, rb = index_a.get(label), index_b.get(label)
+        speedup = None
+        if ra and rb and "error" not in ra and "error" not in rb and rb["mean_us"] > 0:
+            speedup = ra["mean_us"] / rb["mean_us"]
+        rows.append(
+            {
+                "label": label,
+                "a": _fmt_us(ra),
+                "b": _fmt_us(rb),
+                "speedup": speedup,
+                "target_error": rb is not None and "error" in rb,
+                "critical": any(r and r.get("critical") for r in (ra, rb)),
+            }
+        )
+    return rows
+
+
+def classify(row: dict, thresholds: Thresholds) -> str | None:
+    """Return "regression", "improvement", or None (unchanged / not comparable)."""
+    # a target-side error is a regression too: the PR broke it
+    if row["target_error"]:
+        return "regression"
+    if row["speedup"] is None:
+        return None
+    if row["speedup"] < thresholds.regression:
+        return "regression"
+    if row["speedup"] > thresholds.improvement:
+        return "improvement"
+    return None
+
+
 def print_single(results: list[dict], label: str):
     print(f"\n  Results for {label}\n")
     print(f"  {'Benchmark':<42} {'Iters':>8} {'Mean (µs)':>12}")
@@ -159,42 +230,147 @@ def print_single(results: list[dict], label: str):
 
 
 def print_comparison(
-    results_a: list[dict], results_b: list[dict], label_a: str, label_b: str
+    results_a: list[dict],
+    results_b: list[dict],
+    label_a: str,
+    label_b: str,
+    thresholds: Thresholds = DEFAULT_THRESHOLDS,
 ):
-    index_b = {r["label"]: r for r in results_b}
+    # only emit ANSI colors on a terminal, never into tee'd CI logs/files
+    tty = sys.stdout.isatty()
+    colors = {"regression": "\033[31m", "improvement": "\033[32m"} if tty else {}
+    reset = "\033[0m" if tty else ""
 
     col_a = f"{label_a} (µs)"
     col_b = f"{label_b} (µs)"
     print(f"\n  {'Benchmark':<42} {col_a:>18} {col_b:>18} {'Speedup':>10}")
     print(f"  {'-' * 92}")
 
-    for ra in results_a:
-        label = ra["label"]
-        rb = index_b.get(label)
+    for row in comparison_rows(results_a, results_b):
+        speedup = f"{row['speedup']:.2f}x" if row["speedup"] is not None else ""
+        line = f"  {row['label']:<42} {row['a']:>18} {row['b']:>18} {speedup:>10}"
+        color = colors.get(classify(row, thresholds))
+        print(f"{color}{line}{reset}" if color else line)
 
-        val_a = f"{ra['mean_us']:.3f}" if "error" not in ra else "ERROR"
-        if rb is None:
-            val_b = "n/a"
-            speedup = ""
-        elif "error" in rb:
-            val_b = "ERROR"
-            speedup = ""
-        else:
-            val_b = f"{rb['mean_us']:.3f}"
-            if "error" not in ra and rb["mean_us"] > 0:
-                ratio = ra["mean_us"] / rb["mean_us"]
-                speedup = f"{ratio:.2f}x"
-            else:
-                speedup = ""
 
-        print(f"  {label:<42} {val_a:>18} {val_b:>18} {speedup:>10}")
+_MD_COLORS = {"regression": "red", "improvement": "green"}
 
-    # benchmarks only in B
-    labels_a = {r["label"] for r in results_a}
-    for rb in results_b:
-        if rb["label"] not in labels_a:
-            val_b = f"{rb['mean_us']:.3f}" if "error" not in rb else "ERROR"
-            print(f"  {rb['label']:<42} {'n/a':>18} {val_b:>18} {''!s:>10}")
+
+def _md_label(label: str) -> str:
+    # code span keeps "__or__" from rendering as bold; GitHub tables still need
+    # "|" escaped inside code spans ("Interval.__or__ (1k|100)")
+    return "`" + label.replace("|", "\\|") + "`"
+
+
+def _md_speedup(row: dict, thresholds: Thresholds) -> str:
+    if row["target_error"]:
+        text = "ERROR"
+    elif row["speedup"] is None:
+        return ""
+    else:
+        text = f"{row['speedup']:.2f}x"
+    color = _MD_COLORS.get(classify(row, thresholds))
+    # GitHub renders inline LaTeX, which is the only way to color table text
+    return rf"$\color{{{color}}}{{\textsf{{{text}}}}}$" if color else text
+
+
+def _md_table(
+    rows: list[dict], label_a: str, label_b: str, thresholds: Thresholds
+) -> str:
+    lines = [
+        f"| Benchmark | `{label_a}` (µs) | `{label_b}` (µs) | Speedup |",
+        "|---|--:|--:|--:|",
+    ]
+    for row in rows:
+        lines.append(
+            f"| {_md_label(row['label'])} | {row['a']} | {row['b']} | "
+            f"{_md_speedup(row, thresholds)} |"
+        )
+    return "\n".join(lines)
+
+
+def markdown_comparison(
+    results_a: list[dict],
+    results_b: list[dict],
+    label_a: str,
+    label_b: str,
+    thresholds: Thresholds = DEFAULT_THRESHOLDS,
+) -> str:
+    rows = comparison_rows(results_a, results_b)
+    critical = [r for r in rows if r["critical"]]
+    regressions = [r for r in rows if classify(r, thresholds) == "regression"]
+    improvements = [r for r in rows if classify(r, thresholds) == "improvement"]
+    lo, hi = thresholds.regression, thresholds.improvement
+
+    if regressions:
+        summary = f"🔴 **{len(regressions)} regressed** (< {lo:.2f}x or error)"
+    else:
+        summary = "✅ **No regressions**"
+    if improvements:
+        summary += f" · 🟢 **{len(improvements)} improved** (> {hi:.2f}x)"
+    summary += f" · {len(rows)} benchmarks"
+
+    def table(subset):
+        return _md_table(subset, label_a, label_b, thresholds)
+
+    parts = [summary, ""]
+    if critical:
+        parts += ["### Critical benchmarks", "", table(critical), ""]
+    if regressions:
+        parts += [f"### Regressions (< {lo:.2f}x)", "", table(regressions), ""]
+    if improvements:
+        parts += [f"### Improvements (> {hi:.2f}x)", "", table(improvements), ""]
+    parts += [
+        "<details>",
+        f"<summary>All {len(rows)} benchmarks</summary>",
+        "",
+        table(rows),
+        "",
+        "</details>",
+        "",
+        f"Speedup = `{label_a}` time / `{label_b}` time (> 1 means `{label_b}` "
+        f"is faster). Shared CI runners are noisy, so treat isolated changes "
+        f"close to {lo:.2f}x or {hi:.2f}x with caution.",
+    ]
+    return "\n".join(parts) + "\n"
+
+
+def markdown_single(results: list[dict], label: str, warning: str = "") -> str:
+    lines = [f"⚠️ **{warning}**", ""] if warning else []
+    lines += [
+        "<details>",
+        f"<summary>Results for `{label}` ({len(results)} benchmarks)</summary>",
+        "",
+        f"| Benchmark | `{label}` (µs) |",
+        "|---|--:|",
+    ]
+    lines += [f"| {_md_label(r['label'])} | {_fmt_us(r)} |" for r in results]
+    lines += ["", "</details>"]
+    return "\n".join(lines) + "\n"
+
+
+def report_comparison(
+    results_a: list[dict] | None,
+    results_b: list[dict] | None,
+    label_a: str,
+    label_b: str,
+    thresholds: Thresholds,
+) -> str | None:
+    """Print the comparison (or whichever side succeeded) and return Markdown."""
+    if results_a is not None and results_b is not None:
+        print_comparison(results_a, results_b, label_a, label_b, thresholds)
+        return markdown_comparison(results_a, results_b, label_a, label_b, thresholds)
+    if results_b is not None:
+        warning = f"Baseline ({label_a}) benchmark failed; no comparison."
+        print(f"\n  WARNING: {warning}")
+        print_single(results_b, label_b)
+        return markdown_single(results_b, label_b, warning)
+    if results_a is not None:
+        warning = f"Target ({label_b}) benchmark failed; no comparison."
+        print(f"\n  WARNING: {warning}")
+        print_single(results_a, label_a)
+        return markdown_single(results_a, label_a, warning)
+    return "❌ **Both benchmark runs failed.** See the workflow logs.\n"
 
 
 def main():
@@ -218,7 +394,31 @@ def main():
         default="all",
         help="Which benchmark suite to run (default: all)",
     )
+    parser.add_argument(
+        "--markdown",
+        type=str,
+        default=None,
+        help="Also write a Markdown report to this path",
+    )
+    parser.add_argument(
+        "--regression-threshold",
+        type=float,
+        default=Thresholds.regression,
+        help="Speedup below which a benchmark is flagged as a regression "
+        f"(default: {Thresholds.regression})",
+    )
+    parser.add_argument(
+        "--improvement-threshold",
+        type=float,
+        default=Thresholds.improvement,
+        help="Speedup above which a benchmark is flagged as an improvement "
+        f"(default: {Thresholds.improvement})",
+    )
     args = parser.parse_args()
+    if args.regression_threshold > args.improvement_threshold:
+        parser.error("--regression-threshold must be <= --improvement-threshold")
+    thresholds = Thresholds(args.regression_threshold, args.improvement_threshold)
+    markdown = None
 
     if len(args.commits) > 2:
         parser.error("At most 2 commit refs can be provided.")
@@ -232,6 +432,7 @@ def main():
                 had_failures = True
             else:
                 print_single(results, "working tree")
+                markdown = markdown_single(results, "working tree")
             save_record = {
                 "baseline": "working-tree",
                 "target": None,
@@ -251,14 +452,9 @@ def main():
 
             if results_a is None or results_b is None:
                 had_failures = True
-            if results_a is not None and results_b is not None:
-                print_comparison(results_a, results_b, label_a, "working tree")
-            elif results_b is not None:
-                print(f"\n  WARNING: baseline ({label_a}) benchmark failed.")
-                print_single(results_b, "working tree")
-            elif results_a is not None:
-                print("\n  WARNING: target (working tree) benchmark failed.")
-                print_single(results_a, label_a)
+            markdown = report_comparison(
+                results_a, results_b, label_a, "working tree", thresholds
+            )
 
             save_record = {
                 "baseline": label_a,
@@ -283,14 +479,9 @@ def main():
 
             if results_a is None or results_b is None:
                 had_failures = True
-            if results_a is not None and results_b is not None:
-                print_comparison(results_a, results_b, label_a, label_b)
-            elif results_b is not None:
-                print(f"\n  WARNING: baseline ({label_a}) benchmark failed.")
-                print_single(results_b, label_b)
-            elif results_a is not None:
-                print(f"\n  WARNING: target ({label_b}) benchmark failed.")
-                print_single(results_a, label_a)
+            markdown = report_comparison(
+                results_a, results_b, label_a, label_b, thresholds
+            )
 
             save_record = {
                 "baseline": label_a,
@@ -304,6 +495,11 @@ def main():
             with open(args.save, "a") as f:
                 f.write(json.dumps(save_record) + "\n")
             print(f"\nResults saved to {args.save}")
+
+        if args.markdown and markdown is not None:
+            with open(args.markdown, "w") as f:
+                f.write(markdown)
+            print(f"Markdown report written to {args.markdown}")
 
     finally:
         for d in tmpdirs:

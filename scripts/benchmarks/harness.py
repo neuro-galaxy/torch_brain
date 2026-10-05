@@ -11,7 +11,15 @@ import timeit
 import numpy as np
 
 
-def bench(label: str, stmt, number: int) -> dict:
+def bench(label: str, stmt, number: int, critical: bool = False) -> dict:
+    """Time ``stmt`` and return its mean per-call time in µs.
+
+    ``critical`` marks benchmarks that model the training hot path; compare.py
+    always lists them in the report summary instead of only in the full table.
+    """
     times = timeit.repeat(stmt, number=number, repeat=5)
     mean_us = np.mean(times) / number * 1e6
-    return {"label": label, "number": number, "mean_us": round(mean_us, 3)}
+    result = {"label": label, "number": number, "mean_us": round(mean_us, 3)}
+    if critical:
+        result["critical"] = True
+    return result
