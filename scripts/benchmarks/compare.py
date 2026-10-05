@@ -13,7 +13,7 @@ Options:
     --save PATH       Append comparison results as JSONL to PATH.
     --suite NAME      Which benchmark suite to run: data, utils, or all (default: all).
     --markdown PATH   Also write a Markdown report to PATH (used for the PR comment):
-                      summary, the outliers past either threshold (rows colored),
+                      summary, the outliers past either threshold (marked 🔴/🟢),
                       and every other benchmark collapsed.
     --regression-threshold X
                       Speedup below which a benchmark is a regression, shown in
@@ -176,7 +176,7 @@ def _fmt_us(r: dict | None) -> str:
         return "n/a"
     if "error" in r:
         return "ERROR"
-    return f"{r['mean_us']:.3f}"
+    return f"{r['mean_us']:.3e}"
 
 
 def comparison_rows(results_a: list[dict], results_b: list[dict]) -> list[dict]:
@@ -225,7 +225,7 @@ def print_single(results: list[dict], label: str):
         if "error" in r:
             print(f"  {r['label']:<42} {'ERROR':>8} {'---':>12}")
         else:
-            print(f"  {r['label']:<42} {r['number']:>8} {r['mean_us']:>12.3f}")
+            print(f"  {r['label']:<42} {r['number']:>8} {r['mean_us']:>12.3e}")
 
 
 def print_comparison(
@@ -252,7 +252,6 @@ def print_comparison(
         print(f"{color}{line}{reset}" if color else line)
 
 
-_MD_COLORS = {"regression": "red", "improvement": "green"}
 _MD_MARKERS = {"regression": "🔴", "improvement": "🟢"}
 
 
@@ -260,13 +259,6 @@ def _md_label(label: str) -> str:
     # code span keeps "__or__" from rendering as bold; GitHub tables still need
     # "|" escaped inside code spans ("Interval.__or__ (1k|100)")
     return "`" + label.replace("|", "\\|") + "`"
-
-
-def _md_colored(text: str, color: str | None) -> str:
-    # GitHub strips inline styles, so inline LaTeX is the only way to color
-    # table text. Only used on numeric cells: labels contain "_", "&" and "|",
-    # which would need LaTeX escaping and break the table.
-    return rf"$\color{{{color}}}{{\textsf{{{text}}}}}$" if color and text else text
 
 
 def _md_table(
@@ -278,7 +270,6 @@ def _md_table(
     ]
     for row in rows:
         kind = classify(row, thresholds)
-        color = _MD_COLORS.get(kind)
         label = _md_label(row["label"])
         if kind:
             label = f"{_MD_MARKERS[kind]} {label}"
@@ -288,10 +279,7 @@ def _md_table(
             speedup = f"{row['speedup']:.2f}x"
         else:
             speedup = ""
-        cells = [row["a"], row["b"], speedup]
-        lines.append(
-            f"| {label} | " + " | ".join(_md_colored(c, color) for c in cells) + " |"
-        )
+        lines.append(f"| {label} | {row['a']} | {row['b']} | {speedup} |")
     return "\n".join(lines)
 
 
@@ -339,9 +327,8 @@ def markdown_comparison(
             "",
         ]
     parts += [
-        f"Speedup = `{label_a}` time / `{label_b}` time (> 1 means `{label_b}` "
-        f"is faster). Shared CI runners are noisy, so treat isolated changes "
-        f"close to {lo:.2f}x or {hi:.2f}x with caution.",
+        f"Shared CI runners are noisy, so treat isolated changes close to "
+        f"{lo:.2f}x or {hi:.2f}x with caution.",
     ]
     return "\n".join(parts) + "\n"
 
