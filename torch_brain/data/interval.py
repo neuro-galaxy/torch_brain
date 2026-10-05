@@ -720,7 +720,7 @@ class Interval(ArrayDict):
         file.attrs["object"] = self.__class__.__name__
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _object_checked: bool = False):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -738,7 +738,10 @@ class Interval(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 interval = Interval.from_hdf5(f)
         """
-        assert file.attrs["object"] == cls.__name__, "object type mismatch"
+        # Data.from_hdf5 passes _object_checked=True: it already read attrs["object"]
+        # to pick this class, and each HDF5 attribute read is costly.
+        if not _object_checked:
+            assert file.attrs["object"] == cls.__name__, "object type mismatch"
         data = {}
         _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         for key, value in file.items():
@@ -1070,7 +1073,7 @@ class LazyInterval(Interval):
         raise NotImplementedError("Cannot save a lazy interval object to hdf5.")
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _object_checked: bool = False):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -1084,7 +1087,10 @@ class LazyInterval(Interval):
             with h5py
         """
         # todo improve error message
-        assert file.attrs["object"] == Interval.__name__, "object type mismatch"
+        # Data.from_hdf5 passes _object_checked=True: it already read attrs["object"]
+        # to pick this class, and each HDF5 attribute read is costly.
+        if not _object_checked:
+            assert file.attrs["object"] == Interval.__name__, "object type mismatch"
 
         obj = cls.__new__(cls)
         for key, value in file.items():

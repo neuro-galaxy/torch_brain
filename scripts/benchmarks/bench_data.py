@@ -191,6 +191,26 @@ def bench_data_slice_lazy():
         os.unlink(path)
 
 
+def bench_data_from_hdf5_lazy():
+    """Data.from_hdf5(lazy=True) on the realistic recording: the per-file cost of
+    opening a recording lazily, before any slicing or reads."""
+    tmpfile = tempfile.NamedTemporaryFile(suffix=".h5", delete=False)
+    path = tmpfile.name
+    tmpfile.close()
+
+    try:
+        _build_realistic_data().save(path)
+
+        with h5py.File(path, "r") as f:
+
+            def go():
+                Data.from_hdf5(f, lazy=True)
+
+            return bench("Data.from_hdf5() (lazy, realistic)", go, number=200)
+    finally:
+        os.unlink(path)
+
+
 def bench_data_slice_inmemory():
     """Data.slice() on an in-memory realistic recording."""
     data = _build_realistic_data()
@@ -292,7 +312,8 @@ def bench_interval_difference():
 
 
 def bench_arraydict_keys():
-    """ArrayDict.keys() tests the caching optimization."""
+    """ArrayDict.keys() on 10 keys. keys() is not cached: it rebuilds a filtered
+    list from __dict__ on every call, so this tracks that per-call cost."""
     ad = ArrayDict(**{f"key_{i}": np.arange(100, dtype=np.float64) for i in range(10)})
 
     def go():
@@ -301,10 +322,10 @@ def bench_arraydict_keys():
     return bench("ArrayDict.keys() x100k", go, number=100_000)
 
 
-# Lazy attribute access. Every attribute read on a Lazy* object re-checks
-# whether *all* attributes are now loaded (an O(k) scan over keys), so reading
-# all k attributes costs O(k^2) bookkeeping on top of the k HDF5 reads. The k
-# sweep exposes that: per-attribute time should stay flat if the check is O(1).
+# Lazy attribute access. Bookkeeping in Lazy*.__getattribute__ that scales with
+# the number of attributes k (e.g. keys() lookups) makes reading all k
+# attributes O(k^2). The k sweep guards against that: per-attribute time should
+# stay flat as k grows.
 
 _LAZY_N_ROWS = 1_000
 _LAZY_DURATION = 100.0
@@ -348,8 +369,11 @@ def _run_lazy_access(label, obj, lazy_cls, mode, number):
     mode:
       "read"        load lazily, read every attribute (object materializes)
       "sliced"      load lazily, slice a 1s window, read every attribute
-      "slice-only"  load lazily, slice a 1s window, read nothing -- isolates the
-                    bookkeeping slice() does per attribute from the HDF5 reads
+      "load-only"   load lazily, nothing else -- the from_hdf5 cost alone
+      "slice-only"  load lazily, slice a 1s window, read nothing; subtract
+                    load-only to get the cost of slice() itself
+      "read-1"      load lazily, read a single attribute -- the "load many,
+                    use few" pattern, where from_hdf5 dominates
     """
     tmpfile = tempfile.NamedTemporaryFile(suffix=".h5", delete=False)
     path = tmpfile.name
@@ -363,19 +387,19 @@ def _run_lazy_access(label, obj, lazy_cls, mode, number):
             obj.to_hdf5(f)
 
         with h5py.File(path, "r") as f:
+            to_read = {"read": keys, "sliced": keys, "read-1": keys[-1:]}.get(mode, [])
 
             def go():
                 lazy = lazy_cls.from_hdf5(f)
-                if mode != "read":
+                if mode in ("sliced", "slice-only"):
                     lazy = lazy.slice(*window)
-                if mode != "slice-only":
-                    for key in keys:
-                        getattr(lazy, key)
+                for key in to_read:
+                    getattr(lazy, key)
                 return lazy
 
             # sanity check: we must be timing the code path we think we are
             materialized = type(go()) is not lazy_cls
-            assert materialized == (mode != "slice-only"), f"{label}: wrong path"
+            assert materialized == (mode in ("read", "sliced")), f"{label}: wrong path"
 
             return bench(label, go, number=number)
     finally:
@@ -386,8 +410,9 @@ def _run_lazy_access(label, obj, lazy_cls, mode, number):
 def _lazy_access_bench(short_name, make, lazy_cls, k, mode="read"):
     suffix = "" if mode == "read" else f", {mode}"
     label = f"Lazy{short_name} access (k={k}{suffix})"
-    # slice-only never reads from HDF5, so it is ~100x cheaper per call
-    number = 2_000 // k * (20 if mode == "slice-only" else 1)
+    # modes that read at most one attribute are far cheaper per call
+    cheap = mode in ("load-only", "slice-only", "read-1")
+    number = 2_000 // k * (20 if cheap else 1)
 
     def fn():
         obj = make(k, np.random.RandomState(42))
@@ -423,6 +448,11 @@ LAZY_ACCESS_BENCHMARKS = (
         for k in _LAZY_KS
     ]
     + [
+        _lazy_access_bench(name, make, lazy_cls, 100, mode=mode)
+        for name, make, lazy_cls in _LAZY_CLASSES
+        for mode in ("load-only", "read-1")
+    ]
+    + [
         _lazy_access_bench(name, make, lazy_cls, 100, mode="slice-only")
         for name, make, lazy_cls in _SLICEABLE_LAZY_CLASSES
     ]
@@ -453,6 +483,7 @@ DATA_SLICE_CHILDREN_BENCHMARKS = [_data_slice_many_children_bench(n) for n in (1
 
 
 BENCHMARKS = [
+    bench_data_from_hdf5_lazy,
     bench_data_slice_lazy,
     bench_data_slice_inmemory,
     bench_its_slice,
