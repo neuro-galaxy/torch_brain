@@ -76,7 +76,7 @@ def main():
             if "error" in r:
                 print(f"{r['label']:<42} {'ERROR':>8} {'---':>12}")
             else:
-                print(f"{r['label']:<42} {r['number']:>8} {r['mean_us']:>12.3e}")
+                print(f"{r['label']:<42} {r['number']:>8} {r['mean_us']:>12.2e}")
 
     if args.json:
         print(json.dumps({"results": results}))

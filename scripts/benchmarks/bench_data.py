@@ -308,7 +308,7 @@ def bench_arraydict_keys():
 
 _LAZY_N_ROWS = 1_000
 _LAZY_DURATION = 100.0
-_LAZY_KS = (10, 50, 200)
+_LAZY_KS = (10, 50, 100)
 
 
 def _extra_attrs(n_attrs, rng):
@@ -423,7 +423,7 @@ LAZY_ACCESS_BENCHMARKS = (
         for k in _LAZY_KS
     ]
     + [
-        _lazy_access_bench(name, make, lazy_cls, 200, mode="slice-only")
+        _lazy_access_bench(name, make, lazy_cls, 100, mode="slice-only")
         for name, make, lazy_cls in _SLICEABLE_LAZY_CLASSES
     ]
 )

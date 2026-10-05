@@ -176,7 +176,7 @@ def _fmt_us(r: dict | None) -> str:
         return "n/a"
     if "error" in r:
         return "ERROR"
-    return f"{r['mean_us']:.3e}"
+    return f"{r['mean_us']:.2e}"
 
 
 def comparison_rows(results_a: list[dict], results_b: list[dict]) -> list[dict]:
@@ -225,7 +225,7 @@ def print_single(results: list[dict], label: str):
         if "error" in r:
             print(f"  {r['label']:<42} {'ERROR':>8} {'---':>12}")
         else:
-            print(f"  {r['label']:<42} {r['number']:>8} {r['mean_us']:>12.3e}")
+            print(f"  {r['label']:<42} {r['number']:>8} {r['mean_us']:>12.2e}")
 
 
 def print_comparison(
