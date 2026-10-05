@@ -1,8 +1,9 @@
 """torch_brain.data benchmarks.
 
 Data.slice() on realistic lazy/in-memory recordings, IrregularTimeSeries /
-RegularTimeSeries / Interval inner-loop slicing, Interval set operations, and
-ArrayDict / LazyInterval access, all at production-typical sizes. The fixtures
+RegularTimeSeries / Interval inner-loop slicing, Interval set operations,
+ArrayDict access, and lazy attribute access for every Lazy* class (swept over
+the number of attributes), all at production-typical sizes. The fixtures
 that build the synthetic recordings live here alongside the benchmarks.
 
 The sys.path shim that resolves ``torch_brain`` lives in benchmark.py and runs
@@ -24,7 +25,10 @@ from torch_brain.data import (
     Data,
     Interval,
     IrregularTimeSeries,
+    LazyArrayDict,
     LazyInterval,
+    LazyIrregularTimeSeries,
+    LazyRegularTimeSeries,
     RegularTimeSeries,
 )
 
@@ -297,54 +301,113 @@ def bench_arraydict_keys():
     return bench("ArrayDict.keys() x100k", go, number=100_000)
 
 
-def bench_lazy_interval_access():
-    """LazyInterval with 10 attributes stresses the _n_lazy O(1) counter."""
+# Lazy attribute access. Every attribute read on a Lazy* object re-checks
+# whether *all* attributes are now loaded (an O(k) scan over keys), so reading
+# all k attributes costs O(k^2) bookkeeping on top of the k HDF5 reads. The k
+# sweep exposes that: per-attribute time should stay flat if the check is O(1).
+
+_LAZY_N_ROWS = 1_000
+_LAZY_DURATION = 100.0
+_LAZY_KS = (10, 50, 200)
+
+
+def _extra_attrs(n_attrs, rng):
+    return {f"attr_{i}": rng.standard_normal(_LAZY_N_ROWS) for i in range(n_attrs)}
+
+
+def _make_arraydict(k, rng):
+    return ArrayDict(**_extra_attrs(k, rng))
+
+
+def _make_interval(k, rng):
+    # start/end count toward k
+    starts = np.arange(_LAZY_N_ROWS) * (_LAZY_DURATION / _LAZY_N_ROWS)
+    return Interval(start=starts, end=starts + 0.05, **_extra_attrs(k - 2, rng))
+
+
+def _make_irregular_ts(k, rng):
+    # timestamps counts toward k
+    return IrregularTimeSeries(
+        timestamps=np.sort(rng.uniform(0.0, _LAZY_DURATION, _LAZY_N_ROWS)),
+        domain=Interval(0.0, _LAZY_DURATION),
+        **_extra_attrs(k - 1, rng),
+    )
+
+
+def _make_regular_ts(k, rng):
+    return RegularTimeSeries(
+        sampling_rate=_LAZY_N_ROWS / _LAZY_DURATION,
+        domain_start=0.0,
+        **_extra_attrs(k, rng),
+    )
+
+
+def _run_lazy_access(label, obj, lazy_cls, sliced, number):
+    """Shared driver: save obj to HDF5, then time "load lazily (optionally slice a
+    1s window), read every attribute" until the object materializes."""
     tmpfile = tempfile.NamedTemporaryFile(suffix=".h5", delete=False)
     path = tmpfile.name
     tmpfile.close()
 
-    rng = np.random.RandomState(42)
-    n_intervals = 200
-    starts = np.sort(rng.uniform(0, 10_000, n_intervals))
-    ends = starts + rng.uniform(0.5, 2.0, n_intervals)
-
-    iv = Interval(
-        start=starts,
-        end=ends,
-        trial_type=rng.randint(0, 5, n_intervals),
-        condition=rng.randint(0, 3, n_intervals),
-        reward=rng.standard_normal(n_intervals),
-        go_cue_time=starts + rng.uniform(0.1, 0.3, n_intervals),
-        reaction_time=rng.uniform(0.15, 0.5, n_intervals),
-        success=rng.randint(0, 2, n_intervals),
-        target_pos_x=rng.standard_normal(n_intervals),
-        target_pos_y=rng.standard_normal(n_intervals),
-        timekeys=["start", "end", "go_cue_time"],
-    )
+    keys = list(obj.keys())
+    window = (_LAZY_DURATION / 2, _LAZY_DURATION / 2 + 1.0)
 
     try:
         with h5py.File(path, "w") as f:
-            iv.to_hdf5(f)
+            obj.to_hdf5(f)
 
         with h5py.File(path, "r") as f:
 
             def go():
-                lazy = LazyInterval.from_hdf5(f)
-                _ = lazy.start
-                _ = lazy.end
-                _ = lazy.trial_type
-                _ = lazy.condition
-                _ = lazy.reward
-                _ = lazy.go_cue_time
-                _ = lazy.reaction_time
-                _ = lazy.success
-                _ = lazy.target_pos_x
-                _ = lazy.target_pos_y
+                lazy = lazy_cls.from_hdf5(f)
+                if sliced:
+                    lazy = lazy.slice(*window)
+                for key in keys:
+                    getattr(lazy, key)
+                return lazy
 
-            return bench("LazyInterval access (10 attrs)", go, number=2_000)
+            # sanity check: reading every attribute must materialize the object,
+            # otherwise we'd be timing the wrong code path
+            assert type(go()) is not lazy_cls, f"{label}: object stayed lazy"
+
+            return bench(label, go, number=number)
     finally:
         if os.path.exists(path):
             os.unlink(path)
+
+
+def _lazy_access_bench(short_name, make, lazy_cls, k, sliced=False):
+    suffix = ", sliced" if sliced else ""
+    label = f"Lazy{short_name} access (k={k}{suffix})"
+
+    def fn():
+        obj = make(k, np.random.RandomState(42))
+        return _run_lazy_access(label, obj, lazy_cls, sliced, number=2_000 // k)
+
+    fn.__name__ = f"bench_lazy_{short_name.lower()}_access_k{k}" + (
+        "_sliced" if sliced else ""
+    )
+    fn.__doc__ = f"{label}: {_LAZY_N_ROWS} rows, read all {k} attributes."
+    return fn
+
+
+_LAZY_CLASSES = [
+    ("ArrayDict", _make_arraydict, LazyArrayDict),
+    ("Interval", _make_interval, LazyInterval),
+    ("IrregularTS", _make_irregular_ts, LazyIrregularTimeSeries),
+    ("RegularTS", _make_regular_ts, LazyRegularTimeSeries),
+]
+
+LAZY_ACCESS_BENCHMARKS = [
+    _lazy_access_bench(name, make, lazy_cls, k)
+    for name, make, lazy_cls in _LAZY_CLASSES
+    for k in _LAZY_KS
+] + [
+    # sliced path: slice()/unresolved_slice are resolved on first attribute read
+    _lazy_access_bench(name, make, lazy_cls, 50, sliced=True)
+    for name, make, lazy_cls in _LAZY_CLASSES
+    if name != "ArrayDict"  # LazyArrayDict has no slice()
+]
 
 
 BENCHMARKS = [
@@ -358,5 +421,5 @@ BENCHMARKS = [
     bench_interval_or,
     bench_interval_difference,
     bench_arraydict_keys,
-    bench_lazy_interval_access,
+    *LAZY_ACCESS_BENCHMARKS,
 ]
