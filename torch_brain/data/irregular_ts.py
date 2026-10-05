@@ -480,7 +480,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         # keys() lookup for them; this method itself reads several (_lazy_ops, ...)
         if name != "keys" and not name.startswith("_"):
             # intercept attribute calls
-            if name in self.keys():
+            if name in self.__dict__:  # == keys() for public names, but O(1)
                 # out could either be a numpy array or a reference to a h5py dataset
                 # if is not loaded, now is the time to load it and apply any outstanding
                 # slicing or masking.
