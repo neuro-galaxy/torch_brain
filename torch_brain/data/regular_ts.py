@@ -740,9 +740,11 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        if name not in ["__dict__", "keys"]:
+        # private names (incl. __dict__) are never in keys(), so skip the O(k)
+        # keys() lookup for them; this method itself reads several (_lazy_ops, ...)
+        if name != "keys" and not name.startswith("_"):
             # intercept attribute calls
-            if name in self.keys():
+            if name in self.__dict__:  # == keys() for public names, but O(1)
                 out = self.__dict__[name]
 
                 if isinstance(out, h5py.Dataset):
