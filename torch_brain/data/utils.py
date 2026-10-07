@@ -1,7 +1,59 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+import h5py
 import numpy as np
+
+
+class DeferredH5Dataset:
+    r"""Reference to an HDF5 dataset that is only opened when first needed.
+
+    Lazy objects store one of these for every attribute that has not been loaded
+    yet. Opening an :obj:`h5py.Dataset` costs ~20 µs, so opening all of them in
+    ``from_hdf5`` dominated loading objects with many attributes, even when only
+    a few were ever read. Supports the subset of the :obj:`h5py.Dataset` API the
+    lazy classes use: indexing, ``shape``, ``dtype`` and ``len()``.
+    """
+
+    # no __slots__: like h5py.Dataset this needs a __dict__, which
+    # Data.has_nested_attribute walks (a path past it must return False)
+
+    def __init__(self, group: h5py.Group, name: str):
+        self._group = group
+        self._name = name
+        self._dataset = None
+
+    @property
+    def dataset(self) -> h5py.Dataset:
+        if self._dataset is None:
+            self._dataset = self._group[self._name]
+        return self._dataset
+
+    def __getitem__(self, idx):
+        return self.dataset[idx]
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        return self.dataset.shape
+
+    @property
+    def dtype(self) -> np.dtype:
+        return self.dataset.dtype
+
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, memo):
+        # read-only reference into an open file: share it, like h5py.Dataset
+        return self
+
+    def __repr__(self) -> str:
+        if not self._group.id.valid:
+            return f'<DeferredH5Dataset "{self._name}" (file closed)>'
+        return f"<DeferredH5Dataset of {self.dataset!r}>"
 
 
 def _size_repr(key: Any, value: Any, indent: int = 0) -> str:

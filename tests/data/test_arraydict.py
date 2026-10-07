@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from torch_brain.data import ArrayDict, LazyArrayDict
+from torch_brain.data.utils import DeferredH5Dataset
 
 
 @pytest.fixture
@@ -99,7 +100,9 @@ def test_lazy_array_dict(test_filepath):
         assert len(data) == 4
 
         # make sure that nothing is loaded yet
-        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys())
+        assert all(
+            isinstance(data.__dict__[key], DeferredH5Dataset) for key in data.keys()
+        )
 
         # try loading one attribute
         unit_id = data.unit_id
@@ -109,10 +112,10 @@ def test_lazy_array_dict(test_filepath):
         assert np.array_equal(
             unit_id, np.array(["unit01", "unit02", "unit03", "unit04"])
         )
-        # make sure that the loaded attribute replaced the h5py.Dataset reference
+        # make sure that the loaded attribute replaced the DeferredH5Dataset reference
         assert isinstance(data.__dict__["unit_id"], np.ndarray)
         assert all(
-            isinstance(data.__dict__[key], h5py.Dataset)
+            isinstance(data.__dict__[key], DeferredH5Dataset)
             for key in data.keys()
             if key != "unit_id"
         )
@@ -139,7 +142,7 @@ def test_lazy_array_dict(test_filepath):
         # make sure only brain_region was loaded
         assert isinstance(data.__dict__["brain_region"], np.ndarray)
         assert all(
-            isinstance(data.__dict__[key], h5py.Dataset)
+            isinstance(data.__dict__[key], DeferredH5Dataset)
             for key in data.keys()
             if key != "brain_region"
         )
@@ -162,7 +165,7 @@ def test_lazy_array_dict(test_filepath):
 
         assert len(data2) == 1
         # make sure that the attribute was never accessed, is still not accessed
-        assert isinstance(data2.__dict__["waveform_mean"], h5py.Dataset)
+        assert isinstance(data2.__dict__["waveform_mean"], DeferredH5Dataset)
 
         # check if the mask was applied twice correctly!
         assert np.allclose(data2.waveform_mean, np.zeros((1, 48)))

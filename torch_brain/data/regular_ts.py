@@ -5,13 +5,13 @@ import math
 import warnings
 from typing import Any
 
-import h5py
 import numpy as np
 
 from .arraydict import ArrayDict
 from .interval import Interval
 from .irregular_ts import IrregularTimeSeries
 from .typing import ArrayLike
+from .utils import DeferredH5Dataset
 
 _NP_DTYPE_KINDS = {"b", "i", "u", "f", "c", "m", "M", "O", "S", "U", "V"}
 # ^ From https://numpy.org/doc/2.2/reference/generated/numpy.dtype.kind.html
@@ -745,7 +745,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         if not name.startswith("_") and name in self.__dict__:
             out = self.__dict__[name]
 
-            if isinstance(out, h5py.Dataset):
+            if isinstance(out, DeferredH5Dataset):
                 # convert into numpy array
                 if "slice" in self._lazy_ops:
                     idx_l, idx_r = self._lazy_ops["slice"]
@@ -841,7 +841,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         out._domain = new_domain
 
         for key in self.keys():
-            if isinstance(self.__dict__[key], h5py.Dataset):
+            if isinstance(self.__dict__[key], DeferredH5Dataset):
                 out.__dict__[key] = self.__dict__[key]
             else:
                 out.__dict__[key] = self.__dict__[key][start_id:end_id].copy()
@@ -887,11 +887,12 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         )
 
         obj = cls.__new__(cls)
-        for key, value in file.items():
+        # file.keys() only lists names; datasets are opened on first read
+        for key in file.keys():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
             else:
-                obj.__dict__[key] = value
+                obj.__dict__[key] = DeferredH5Dataset(file, key)
         obj._lazy_ops = {}
         obj._sampling_rate = file.attrs["sampling_rate"]
 

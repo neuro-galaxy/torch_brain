@@ -3,13 +3,12 @@ from __future__ import annotations
 import copy
 import logging
 
-import h5py
 import numpy as np
 import pandas as pd
 
 from .arraydict import ArrayDict
 from .typing import ArrayLike
-from .utils import _validate_select_by_mask_input
+from .utils import DeferredH5Dataset, _validate_select_by_mask_input
 
 
 class Interval(ArrayDict):
@@ -896,7 +895,7 @@ class LazyInterval(Interval):
         if not name.startswith("_") and name in self.__dict__:
             out = self.__dict__[name]
 
-            if isinstance(out, h5py.Dataset):
+            if isinstance(out, DeferredH5Dataset):
                 # convert into numpy array
                 if "unresolved_slice" in self._lazy_ops:
                     self._resolve_start_end_after_slice()
@@ -946,7 +945,7 @@ class LazyInterval(Interval):
         for key, value in self.__dict__.items():
             if key.startswith("_"):
                 out.__dict__[key] = copy.deepcopy(value)
-            elif isinstance(value, h5py.Dataset):
+            elif isinstance(value, DeferredH5Dataset):
                 # mask will be applied lazily on attribute access via _lazy_ops
                 out.__dict__[key] = value
             elif isinstance(value, np.ndarray):
@@ -954,7 +953,7 @@ class LazyInterval(Interval):
             else:
                 raise RuntimeError(  # pragma: no cover
                     "Unknown state! Object has a non-private attribute that is neither "
-                    "a np.ndarray, nor an h5py.Dataset"
+                    "a np.ndarray, nor a DeferredH5Dataset"
                 )
 
         # combine mask with any pre-existing lazy mask
@@ -999,7 +998,7 @@ class LazyInterval(Interval):
         out._lazy_ops = {}
         out._timekeys = self._timekeys
 
-        if isinstance(self.__dict__["start"], h5py.Dataset):
+        if isinstance(self.__dict__["start"], DeferredH5Dataset):
             assert "slice" not in self._lazy_ops, "slice already exists"
             origin_translation = start if reset_origin else 0.0
             if "unresolved_slice" not in self._lazy_ops:
@@ -1041,7 +1040,7 @@ class LazyInterval(Interval):
 
         for key in self.keys():
             value = self.__dict__[key]
-            if isinstance(value, h5py.Dataset):
+            if isinstance(value, DeferredH5Dataset):
                 out.__dict__[key] = value
             else:
                 if idx_l is None:
@@ -1083,8 +1082,9 @@ class LazyInterval(Interval):
         assert file.attrs["object"] == Interval.__name__, "object type mismatch"
 
         obj = cls.__new__(cls)
-        for key, value in file.items():
-            obj.__dict__[key] = value
+        # file.keys() only lists names; datasets are opened on first read
+        for key in file.keys():
+            obj.__dict__[key] = DeferredH5Dataset(file, key)
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._timekeys = file.attrs["timekeys"].astype(str).tolist()
