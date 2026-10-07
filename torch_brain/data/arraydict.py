@@ -274,8 +274,7 @@ class ArrayDict:
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        # Data.from_hdf5 passes _object_checked=True: it already read attrs["object"]
-        # to pick this class, and each HDF5 attribute read is costly.
+        # Data.from_hdf5 already read attrs["object"] to pick this class
         if not _object_checked:
             if file.attrs["object"] != cls.__name__:
                 raise ValueError(
@@ -455,8 +454,7 @@ class LazyArrayDict(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        # Data.from_hdf5 passes _object_checked=True: it already read attrs["object"]
-        # to pick this class, and each HDF5 attribute read is costly.
+        # Data.from_hdf5 already read attrs["object"] to pick this class
         if not _object_checked:
             assert file.attrs["object"] == ArrayDict.__name__, (
                 f"File contains data for a {file.attrs['object']} object, expected "
