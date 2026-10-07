@@ -15,8 +15,7 @@ class DeferredH5Dataset:
     lazy classes use: indexing, ``shape``, ``dtype`` and ``len()``.
     """
 
-    # no __slots__: like h5py.Dataset this needs a __dict__, which
-    # Data.has_nested_attribute walks (a path past it must return False)
+    # no __slots__: Data.has_nested_attribute walks __dict__, as on h5py.Dataset
 
     def __init__(self, group: h5py.Group, name: str):
         self._group = group
