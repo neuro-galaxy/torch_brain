@@ -63,7 +63,7 @@ def main():
 
     results = []
     if not args.json:
-        print(f"{'Benchmark':<42} {'Iters':>8} {'Mean (µs)':>12}")
+        print(f"{'Benchmark':<42} {'Iters':>8} {'Time (µs)':>12}")
         print("-" * 65)
 
     for bench_fn in SUITES[args.suite]:
@@ -76,7 +76,7 @@ def main():
             if "error" in r:
                 print(f"{r['label']:<42} {'ERROR':>8} {'---':>12}")
             else:
-                print(f"{r['label']:<42} {r['number']:>8} {r['mean_us']:>12.3f}")
+                print(f"{r['label']:<42} {r['number']:>8} {r['time_us']:>12.2e}")
 
     if args.json:
         print(json.dumps({"results": results}))
