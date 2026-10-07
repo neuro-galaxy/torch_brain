@@ -145,6 +145,16 @@ class Interval(ArrayDict):
             # or not
             self._sorted = None
 
+    def _shift(self, offset: float):
+        r"""Subtracts ``offset`` from ``start`` and ``end`` in place.
+
+        Bypasses :meth:`__setattr__` validation: shifting by a constant keeps
+        ``start``/``end`` 1D, NaN-free, float and in the same order, so the checks
+        (and resetting ``_sorted``) would be wasted work on every slice.
+        """
+        self.__dict__["start"] = self.start - offset
+        self.__dict__["end"] = self.end - offset
+
     def __iter__(self):
         r"""Iterates over the intervals. Will return a tuple of (start, end).
         This iterator will not include other optional attributes.
