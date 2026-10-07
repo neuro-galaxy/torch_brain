@@ -391,12 +391,14 @@ class Data:
                 if class_name == "Data":
                     data[key] = group_cls.from_hdf5(value, lazy=lazy)
                 else:
-                    data[key] = group_cls.from_hdf5(value)
+                    data[key] = group_cls.from_hdf5(value, _object_checked=True)
             else:
                 # if array, it will be loaded no matter what, always prefer ArrayDict
                 data[key] = value[:]
 
-        for key, value in file.attrs.items():
+        # read each HDF5 attribute once; every read is costly
+        attrs = dict(file.attrs)
+        for key, value in attrs.items():
             if key == "object" or key == "absolute_start":
                 continue
             data[key] = value
@@ -404,7 +406,7 @@ class Data:
         obj = cls(**data)
 
         # restore the absolute start time
-        obj._absolute_start = file.attrs["absolute_start"]
+        obj._absolute_start = attrs["absolute_start"]
 
         if lazy and isinstance(file, h5py.File):
             obj._file = file

@@ -387,7 +387,7 @@ class IrregularTimeSeries(ArrayDict):
         file.attrs["object"] = self.__class__.__name__
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _object_checked: bool = False):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -405,11 +405,14 @@ class IrregularTimeSeries(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = IrregularTimeSeries.from_hdf5(f)
         """
-        if file.attrs["object"] != cls.__name__:
-            raise ValueError(
-                f"File contains data for a {file.attrs['object']} object, expected "
-                f"{cls.__name__} object."
-            )
+        # Data.from_hdf5 passes _object_checked=True: it already read attrs["object"]
+        # to pick this class, and each HDF5 attribute read is costly.
+        if not _object_checked:
+            if file.attrs["object"] != cls.__name__:
+                raise ValueError(
+                    f"File contains data for a {file.attrs['object']} object, expected "
+                    f"{cls.__name__} object."
+                )
 
         _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
 
@@ -697,7 +700,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         raise NotImplementedError("Cannot save a lazy array dict to hdf5.")
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _object_checked: bool = False):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -711,9 +714,12 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == IrregularTimeSeries.__name__, (
-            "object type mismatch"
-        )
+        # Data.from_hdf5 passes _object_checked=True: it already read attrs["object"]
+        # to pick this class, and each HDF5 attribute read is costly.
+        if not _object_checked:
+            assert file.attrs["object"] == IrregularTimeSeries.__name__, (
+                "object type mismatch"
+            )
 
         obj = cls.__new__(cls)
         for key, value in file.items():
