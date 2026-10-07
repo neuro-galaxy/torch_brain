@@ -318,6 +318,11 @@ class ArrayDict:
     def materialize(self) -> ArrayDict:
         r"""Materializes the data object, i.e., loads into memory all of the data that
         is still referenced in the HDF5 file."""
+        # open all HDF5 datasets in one batch before reading any of them
+        for value in self.__dict__.values():
+            if isinstance(value, DeferredH5Dataset):
+                _ = value.dataset
+
         for key in self.keys():
             # simply access all attributes to trigger the lazy loading
             getattr(self, key)
