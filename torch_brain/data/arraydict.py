@@ -49,9 +49,7 @@ class ArrayDict:
         return [k for k in self.__dict__ if not k.startswith("_")]
 
     def _maybe_first_dim(self):
-        # If self has at least one attribute, returns the first dimension of
-        # the first attribute. Otherwise, returns :obj:`None`. Called on every
-        # attribute assignment, so avoid building the full keys() list.
+        # first dim of the first attribute (None if empty), without building keys()
         first_key = next((k for k in self.__dict__ if not k.startswith("_")), None)
         if first_key is None:
             return None
