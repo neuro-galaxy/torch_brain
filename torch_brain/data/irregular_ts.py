@@ -270,17 +270,30 @@ class IrregularTimeSeries(ArrayDict):
 
     def select_by_interval(self, interval: Interval):
         r"""Return a new :obj:`IrregularTimeSeries` object where all timestamps are
-        within the interval.
+        within the interval. For each interval, the end time is exclusive, the selection
+        will only include data in :math:`[\textrm{start}, \textrm{end})`.
 
         Args:
             interval: Interval object.
         """
-        idx_l = np.searchsorted(self.timestamps, interval.start)
-        idx_r = np.searchsorted(self.timestamps, interval.end)
 
-        mask = np.zeros(len(self), dtype=bool)
+        timestamps = self.timestamps
+
+        sorted_indices = None
+        if not self.is_sorted():
+            sorted_indices = np.argsort(timestamps)
+            timestamps = timestamps[sorted_indices]
+
+        idx_l = np.searchsorted(timestamps, interval.start)
+        idx_r = np.searchsorted(timestamps, interval.end)
+
+        mask = np.zeros(len(timestamps), dtype=bool)
         for i in range(len(interval)):
             mask[idx_l[i] : idx_r[i]] = True
+
+        if sorted_indices is not None:
+            inverse_sorted_indices = np.argsort(sorted_indices)
+            mask = mask[inverse_sorted_indices]
 
         out = self.select_by_mask(mask)
         out._domain = out._domain & interval
@@ -578,7 +591,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         start, end, sequence_start, origin_translation = self._lazy_ops[
             "unresolved_slice"
         ]
-        # sequence_start: Time corresponding to _timstamps_indices_1s[0]
+        # sequence_start: Time corresponding to _timestamps_indices_1s[0]
 
         start_closest_sec_idx = np.clip(
             np.floor(start - sequence_start).astype(int),
@@ -617,6 +630,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         if reset_origin:
             out._domain._shift(start)
 
+        check_all_loaded = False
         if isinstance(self.__dict__["timestamps"], h5py.Dataset):
             # lazy loading, we will only resolve timestamps if an attribute is accessed
             assert "slice" not in self._lazy_ops, "slice already exists"
@@ -629,8 +643,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                     origin_translation,
                 )
             else:
-                # for some reason, blind slicing was done twice, and there is no need to
-                # resolve the timestamps again
+                # not the first blind slice, so we just update the existing unresolved_slice
                 curr_start, curr_end, sequence_start, origin_translation = (
                     self._lazy_ops["unresolved_slice"]
                 )
@@ -641,9 +654,26 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                     origin_translation + (start if reset_origin else 0.0),
                 )
 
-            idx_l = idx_r = None
             out.__dict__["timestamps"] = self.__dict__["timestamps"]
             out._timestamp_indices_1s = self._timestamp_indices_1s
+
+            # if a mask already exists, resolve and mask timestamps, then update
+            # local idx_l and idx_r to correctly slice loaded (already masked) data below
+            if "mask" in self._lazy_ops:
+                out._resolve_timestamps_after_slice()  # resolve
+                check_all_loaded = True
+
+                idx_l, idx_r, start, origin_translation = out._lazy_ops["slice"]
+                out._lazy_ops["mask"] = self._lazy_ops["mask"][idx_l:idx_r].copy()
+                out.__dict__["timestamps"] = out.__dict__["timestamps"][
+                    out._lazy_ops["mask"]
+                ].copy()
+
+                idx_l = np.count_nonzero(self._lazy_ops["mask"][:idx_l])
+                idx_r = np.count_nonzero(self._lazy_ops["mask"][:idx_r])
+            else:
+                idx_l = idx_r = None
+
         else:
             assert "unresolved_slice" not in self._lazy_ops, (
                 "unresolved slice already exists"
@@ -659,12 +689,23 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
 
             origin_translation = start if reset_origin else 0.0
 
+            # if a mask exists, timestamps were already masked before slicing.
+            # Saved indices must be adjusted to work correctly for slice -> mask
+            h5_adj_l, h5_adj_r = idx_l, idx_r
+            if "mask" in self._lazy_ops:
+                h5_adj_idxs = np.flatnonzero(self._lazy_ops["mask"])
+                sentinel = h5_adj_idxs[-1] + 1 if h5_adj_idxs.size else 0
+                h5_adj_idxs = np.append(h5_adj_idxs, sentinel)
+                h5_adj_l = h5_adj_idxs[idx_l]
+                h5_adj_r = h5_adj_idxs[idx_r]
+                out._lazy_ops["mask"] = self._lazy_ops["mask"][h5_adj_l:h5_adj_r].copy()
+
             if "slice" not in self._lazy_ops:
-                out._lazy_ops["slice"] = (idx_l, idx_r, start, origin_translation)
+                out._lazy_ops["slice"] = (h5_adj_l, h5_adj_r, start, origin_translation)
             else:
                 out._lazy_ops["slice"] = (
-                    self._lazy_ops["slice"][0] + idx_l,
-                    self._lazy_ops["slice"][0] + idx_r,
+                    self._lazy_ops["slice"][0] + h5_adj_l,
+                    self._lazy_ops["slice"][0] + h5_adj_r,
                     self._lazy_ops["slice"][2] - start,
                     self._lazy_ops["slice"][3] + origin_translation,
                 )
@@ -676,21 +717,17 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                     out.__dict__[key] = value
                 else:
                     if idx_l is None:
-                        raise NotImplementedError(
-                            f"An attribute ({key}) was accessed, but timestamps failed "
-                            "to load. This is an edge case that was not handled."
-                        )
+                        out._resolve_timestamps_after_slice()  # resolve now
+                        check_all_loaded = True
+                        idx_l, idx_r, start, _ = out._lazy_ops["slice"]
+
                     out.__dict__[key] = value[idx_l:idx_r].copy()
                     if reset_origin and key in self._timekeys:
                         out.__dict__[key] = out.__dict__[key] - start
 
-        if "mask" in self._lazy_ops:
-            if idx_l is None:
-                raise NotImplementedError(
-                    "A mask was somehow created without accessing any attribute in the "
-                    "data. This has not been taken into account."
-                )
-            out._lazy_ops["mask"] = self._lazy_ops["mask"][idx_l:idx_r]
+        if check_all_loaded:
+            out.timestamps  # noqa: B018  # TO DO: eventually change to an all_loaded check
+
         return out
 
     def to_hdf5(self, file):
