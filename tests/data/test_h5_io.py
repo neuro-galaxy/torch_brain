@@ -180,7 +180,7 @@ def test_lazy_load_interval_from_broken_h5(test_filepath):
 
     # load again
     with h5py.File(test_filepath, "r") as file:
-        with pytest.raises(ValueError, match="have the same length"):
+        with pytest.raises(ValueError, match="objects are inconsistent"):
             LazyInterval.from_hdf5(file)
 
 

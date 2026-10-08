@@ -917,6 +917,6 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             )
         obj._sampling_rate = float(sampling_rate)
 
-        _validate_object_shapes(**shape_dict)
+        _validate_object_shapes(shape_dict)
 
         return obj
