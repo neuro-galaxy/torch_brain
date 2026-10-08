@@ -467,6 +467,6 @@ class LazyArrayDict(ArrayDict):
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._lazy_ops = {}
 
-        _validate_object_shapes(**shape_dict)
+        _validate_object_shapes(shape_dict)
 
         return obj

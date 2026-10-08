@@ -11,7 +11,11 @@ import pandas as pd
 from .arraydict import ArrayDict
 from .interval import Interval
 from .typing import ArrayLike
-from .utils import _validate_object_shapes, _validate_select_by_mask_input
+from .utils import (
+    _validate_object_ndims,
+    _validate_object_shapes,
+    _validate_select_by_mask_input,
+)
 
 
 class IrregularTimeSeries(ArrayDict):
@@ -794,6 +798,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         obj._sorted = True
         obj._lazy_ops = {}
 
-        _validate_object_shapes(**shape_dict)
+        _validate_object_shapes(shape_dict)
+        _validate_object_ndims({"timestamps": shape_dict["timestamps"]}, ndims=1)
 
         return obj

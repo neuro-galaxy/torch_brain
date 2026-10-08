@@ -1087,19 +1087,13 @@ class LazyInterval(Interval):
         obj = cls.__new__(cls)
 
         missing_keys = ["start", "end"]
-        num_start_end = None
         shape_dict = {}
+        interval_shape_dict = {}
         for key, value in file.items():
             obj.__dict__[key] = value
             if key in ["start", "end"]:
                 missing_keys.remove(key)
-                if num_start_end is None:
-                    num_start_end = value.shape[0]
-                elif value.shape[0] != num_start_end:
-                    other_key = "start" if key == "end" else "end"
-                    raise ValueError(
-                        f"Expected '{key}' and '{other_key}' to have the same length, but got {value.shape[0]} and {num_start_end}."
-                    )
+                interval_shape_dict[key] = value.shape
             else:
                 shape_dict[key] = value.shape
 
@@ -1113,6 +1107,7 @@ class LazyInterval(Interval):
         obj._sorted = True
         obj._lazy_ops = {}
 
-        _validate_object_shapes(**shape_dict)
+        _validate_object_shapes(interval_shape_dict, ndims=1)
+        _validate_object_shapes(shape_dict)
 
         return obj

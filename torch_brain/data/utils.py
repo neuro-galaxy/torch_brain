@@ -1,4 +1,3 @@
-from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -31,7 +30,7 @@ def _size_repr(key: Any, value: Any, indent: int = 0) -> str:
     return f"{pad}{key}={out}"
 
 
-def _validate_select_by_mask_input(mask, length):
+def _validate_select_by_mask_input(mask: np.ndarray, length: int) -> None:
     if not isinstance(mask, np.ndarray):
         raise ValueError("mask must be a numpy array (bool, 1D)")
     if mask.ndim != 1:
@@ -45,45 +44,54 @@ def _validate_select_by_mask_input(mask, length):
         )
 
 
-def _validate_object_shapes(*shape_list, **shape_dict):
-    objects = list(shape_dict.items()) + [(None, obj) for obj in shape_list]
+def _validate_object_shapes(
+    shape_dict: Mapping[str, Sequence[int]], ndims: int | None = None
+) -> None:
 
-    zero_dim_names = [name for name, shape in objects if len(shape) == 0]
+    try:
+        first_dims = {shape[0] for shape in shape_dict.values()}
 
-    if len(zero_dim_names) > 0:
-        names = [name for name in zero_dim_names if name is not None]
-        if len(names) > 0:
-            if len(names) == len(zero_dim_names):
-                name_str = f": {names}"
-            else:
-                name_str = f", including {names}"
-
+    except IndexError:
+        names = [name for name, shape in shape_dict.items() if len(shape) == 0]
         raise ValueError(
             "Expected objects to have at least 1 dimension, but found "
-            f"{len(zero_dim_names)} 0-dimensional objects{name_str}."
-        )
+            f"{len(names)} 0-dimensional objects: {names}."
+        ) from None  # Suppress the context of the IndexError
 
-    counts = Counter(shape[0] for _, shape in objects)
+    if len(first_dims) > 1:
+        if len(shape_dict) == 2:
+            first_obj, second_obj = shape_dict.items()
 
-    if len(counts) > 1:
-        standard, standard_count = counts.most_common(1)[0]
+            raise ValueError(
+                f"First dimensions of objects are inconsistent: {first_obj[1]} ({first_obj[0]}) "
+                f"and {second_obj[1]} ({second_obj[0]})."
+            )
 
-        by_dim = defaultdict(list)
-        for name, shape in objects:
-            if shape[0] != standard:
-                by_dim[shape[0]].append(name)
-
-        mismatches = sorted(
-            by_dim.items(),
-            key=lambda x: len(x[1]),
-            reverse=True,
-        )
-
-        details = "\n".join(
-            f"{dim} ({len(names)}): {', '.join(names)}" for dim, names in mismatches
-        )
+        dims = [shape[0] for shape in shape_dict.values()]
+        standard = max(dims, key=dims.count)
+        mismatched = [
+            f"{name} ({shape[0]})"
+            for name, shape in shape_dict.items()
+            if shape[0] != standard
+        ]
 
         raise ValueError(
-            f"First dimensions of objects are inconsistent. The most common is {standard} "
-            f"({standard_count} objects), but found:\n{details}."
+            f"First dimensions of objects are inconsistent. The most common is {standard}, "
+            f"but these differ: ({', '.join(mismatched)})."
+        )
+
+    if ndims is not None:
+        _validate_object_ndims(shape_dict, ndims=ndims)
+
+
+def _validate_object_ndims(shape_dict: Mapping[str, Sequence[int]], ndims: int) -> None:
+
+    if not set(map(len, shape_dict.values())) <= {ndims}:
+        bad_ndims = [
+            f"{name} ({len(shape)}D)"
+            for name, shape in shape_dict.items()
+            if len(shape) != ndims
+        ]
+        raise ValueError(
+            f"Objects are expected to have {ndims} dimensions, but these objects do not: ({', '.join(bad_ndims)})."
         )
