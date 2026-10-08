@@ -740,32 +740,31 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        # private names are never in keys(): skip the O(k) keys() lookup for them
-        if name != "keys" and not name.startswith("_"):
-            # intercept attribute calls
-            if name in self.__dict__:  # == keys() for public names, but O(1)
-                out = self.__dict__[name]
+        # intercept attribute calls
+        # O(1) equivalent of `name in self.keys()`
+        if not name.startswith("_") and name in self.__dict__:
+            out = self.__dict__[name]
 
-                if isinstance(out, h5py.Dataset):
-                    # convert into numpy array
-                    if "slice" in self._lazy_ops:
-                        idx_l, idx_r = self._lazy_ops["slice"]
-                        out = out[idx_l:idx_r]
-                    else:
-                        out = out[:]
+            if isinstance(out, h5py.Dataset):
+                # convert into numpy array
+                if "slice" in self._lazy_ops:
+                    idx_l, idx_r = self._lazy_ops["slice"]
+                    out = out[idx_l:idx_r]
+                else:
+                    out = out[:]
 
-                    # store it
-                    self.__dict__[name] = out
+                # store it
+                self.__dict__[name] = out
 
-                # If all attributes are loaded, we can remove the lazy flag
-                all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-                )
-                if all_loaded:
-                    self.__class__ = RegularTimeSeries
-                    del self._lazy_ops
+            # If all attributes are loaded, we can remove the lazy flag
+            all_loaded = all(
+                isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
+            )
+            if all_loaded:
+                self.__class__ = RegularTimeSeries
+                del self._lazy_ops
 
-                return out
+            return out
         return super().__getattribute__(name)
 
     def slice(

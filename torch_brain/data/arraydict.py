@@ -45,6 +45,7 @@ class ArrayDict:
 
     def keys(self) -> list[str]:
         r"""Returns a list of all array attribute names."""
+        # O(k) in the number of attributes: avoid in hot paths
         return list(filter(lambda x: not x.startswith("_"), self.__dict__))
 
     def _maybe_first_dim(self):
@@ -358,36 +359,35 @@ class LazyArrayDict(ArrayDict):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        # private names are never in keys(): skip the O(k) keys() lookup for them
-        if name != "keys" and not name.startswith("_"):
-            # intercept attribute calls. this is where data that is not loaded is loaded
-            # and when any lazy operations are applied
-            if name in self.__dict__:  # == keys() for public names, but O(1)
-                out = self.__dict__[name]
+        # intercept attribute calls. this is where data that is not loaded is loaded
+        # and when any lazy operations are applied
+        # O(1) equivalent of `name in self.keys()`
+        if not name.startswith("_") and name in self.__dict__:
+            out = self.__dict__[name]
 
-                if isinstance(out, h5py.Dataset):
-                    # apply any mask, and return the numpy array
-                    if "mask" in self._lazy_ops:
-                        out = out[self._lazy_ops["mask"]]
-                    else:
-                        out = out[:]
+            if isinstance(out, h5py.Dataset):
+                # apply any mask, and return the numpy array
+                if "mask" in self._lazy_ops:
+                    out = out[self._lazy_ops["mask"]]
+                else:
+                    out = out[:]
 
-                    # if the array was originally unicode, convert it back to unicode
-                    if name in self._unicode_keys:
-                        out = out.astype("U")
+                # if the array was originally unicode, convert it back to unicode
+                if name in self._unicode_keys:
+                    out = out.astype("U")
 
-                    # store it, now the array is loaded
-                    self.__dict__[name] = out
+                # store it, now the array is loaded
+                self.__dict__[name] = out
 
-                # if all attributes are loaded, we can remove the lazy flag
-                all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-                )
-                if all_loaded:
-                    self.__class__ = ArrayDict
-                    # delete special private attributes
-                    del self._lazy_ops, self._unicode_keys
-                return out
+            # if all attributes are loaded, we can remove the lazy flag
+            all_loaded = all(
+                isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
+            )
+            if all_loaded:
+                self.__class__ = ArrayDict
+                # delete special private attributes
+                del self._lazy_ops, self._unicode_keys
+            return out
 
         return super().__getattribute__(name)
 

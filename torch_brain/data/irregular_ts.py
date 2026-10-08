@@ -476,64 +476,61 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        # private names are never in keys(): skip the O(k) keys() lookup for them
-        if name != "keys" and not name.startswith("_"):
-            # intercept attribute calls
-            if name in self.__dict__:  # == keys() for public names, but O(1)
-                # out could either be a numpy array or a reference to a h5py dataset
-                # if is not loaded, now is the time to load it and apply any outstanding
-                # slicing or masking.
-                out = self.__dict__[name]
+        # intercept attribute calls
+        # O(1) equivalent of `name in self.keys()`
+        if not name.startswith("_") and name in self.__dict__:
+            # out could either be a numpy array or a reference to a h5py dataset
+            # if is not loaded, now is the time to load it and apply any outstanding
+            # slicing or masking.
+            out = self.__dict__[name]
 
-                if isinstance(out, h5py.Dataset):
-                    # convert into numpy array
+            if isinstance(out, h5py.Dataset):
+                # convert into numpy array
 
-                    # first we check if timestamps was resolved
-                    if "unresolved_slice" in self._lazy_ops:
-                        # slice and unresolved_slice cannot both be queued
-                        assert "slice" not in self._lazy_ops
-                        # slicing never happened, and we need to resolve timestamps
-                        # to identify the time points that we need
-                        self._resolve_timestamps_after_slice()
-                        # after this "unresolved_slice" is replaced with "slice"
+                # first we check if timestamps was resolved
+                if "unresolved_slice" in self._lazy_ops:
+                    # slice and unresolved_slice cannot both be queued
+                    assert "slice" not in self._lazy_ops
+                    # slicing never happened, and we need to resolve timestamps
+                    # to identify the time points that we need
+                    self._resolve_timestamps_after_slice()
+                    # after this "unresolved_slice" is replaced with "slice"
 
-                    # timestamps are resolved and there is a "slice"
-                    if "slice" in self._lazy_ops:
-                        idx_l, idx_r, start, origin_translation = self._lazy_ops[
-                            "slice"
-                        ]
-                        out = out[idx_l:idx_r]
-                        if name in self._timekeys:
-                            out = out - origin_translation
+                # timestamps are resolved and there is a "slice"
+                if "slice" in self._lazy_ops:
+                    idx_l, idx_r, start, origin_translation = self._lazy_ops["slice"]
+                    out = out[idx_l:idx_r]
+                    if name in self._timekeys:
+                        out = out - origin_translation
 
-                    # there could have been masking, so apply it
-                    if "mask" in self._lazy_ops:
-                        out = out[self._lazy_ops["mask"]]
+                # there could have been masking, so apply it
+                if "mask" in self._lazy_ops:
+                    out = out[self._lazy_ops["mask"]]
 
-                    # no lazy operations found, just load the entire array
-                    if len(self._lazy_ops) == 0:
-                        out = out[:]
+                # no lazy operations found, just load the entire array
+                if len(self._lazy_ops) == 0:
+                    out = out[:]
 
-                    if name in self._unicode_keys:
-                        # convert back to unicode
-                        out = out.astype("U")
+                if name in self._unicode_keys:
+                    # convert back to unicode
+                    out = out.astype("U")
 
-                    # store it in memory now that it is loaded
-                    self.__dict__[name] = out
+                # store it in memory now that it is loaded
+                self.__dict__[name] = out
 
-                # if all attributes are loaded, we can remove the lazy flag
-                all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-                )
-                if all_loaded:
-                    # simply change classes
-                    self.__class__ = IrregularTimeSeries
-                    # delete unnecessary attributes
-                    del self._lazy_ops, self._unicode_keys
-                    if hasattr(self, "_timestamp_indices_1s"):
-                        del self._timestamp_indices_1s
+            # if all attributes are loaded, we can remove the lazy flag
+            all_loaded = all(
+                isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
+            )
+            if all_loaded:
+                # simply change classes
+                self.__class__ = IrregularTimeSeries
+                # delete unnecessary attributes
+                del self._lazy_ops, self._unicode_keys
+                if hasattr(self, "_timestamp_indices_1s"):
+                    del self._timestamp_indices_1s
 
-                return out
+            return out
         return super().__getattribute__(name)
 
     def select_by_mask(self, mask: ArrayLike):

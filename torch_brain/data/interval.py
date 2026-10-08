@@ -891,44 +891,41 @@ class LazyInterval(Interval):
         return super()._maybe_first_dim()
 
     def __getattribute__(self, name):
-        # private names are never in keys(): skip the O(k) keys() lookup for them
-        if name != "keys" and not name.startswith("_"):
-            # intercept attribute calls
-            if name in self.__dict__:  # == keys() for public names, but O(1)
-                out = self.__dict__[name]
+        # intercept attribute calls
+        # O(1) equivalent of `name in self.keys()`
+        if not name.startswith("_") and name in self.__dict__:
+            out = self.__dict__[name]
 
-                if isinstance(out, h5py.Dataset):
-                    # convert into numpy array
-                    if "unresolved_slice" in self._lazy_ops:
-                        self._resolve_start_end_after_slice()
-                    if "slice" in self._lazy_ops:
-                        idx_l, idx_r, start, origin_translation = self._lazy_ops[
-                            "slice"
-                        ]
-                        out = out[idx_l:idx_r]
-                        if name in self._timekeys:
-                            out = out - origin_translation
-                    if "mask" in self._lazy_ops:
-                        out = out[self._lazy_ops["mask"]]
-                    if len(self._lazy_ops) == 0:
-                        out = out[:]
+            if isinstance(out, h5py.Dataset):
+                # convert into numpy array
+                if "unresolved_slice" in self._lazy_ops:
+                    self._resolve_start_end_after_slice()
+                if "slice" in self._lazy_ops:
+                    idx_l, idx_r, start, origin_translation = self._lazy_ops["slice"]
+                    out = out[idx_l:idx_r]
+                    if name in self._timekeys:
+                        out = out - origin_translation
+                if "mask" in self._lazy_ops:
+                    out = out[self._lazy_ops["mask"]]
+                if len(self._lazy_ops) == 0:
+                    out = out[:]
 
-                    if name in self._unicode_keys:
-                        # convert back to unicode
-                        out = out.astype("U")
+                if name in self._unicode_keys:
+                    # convert back to unicode
+                    out = out.astype("U")
 
-                    # store it
-                    self.__dict__[name] = out
+                # store it
+                self.__dict__[name] = out
 
-                # If all attributes are loaded, we can remove the lazy flag
-                all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-                )
-                if all_loaded:
-                    self.__class__ = Interval
-                    del self._lazy_ops, self._unicode_keys
+            # If all attributes are loaded, we can remove the lazy flag
+            all_loaded = all(
+                isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
+            )
+            if all_loaded:
+                self.__class__ = Interval
+                del self._lazy_ops, self._unicode_keys
 
-                return out
+            return out
         return super().__getattribute__(name)
 
     def select_by_mask(self, mask: ArrayLike):
