@@ -17,13 +17,14 @@ permissions:
 jobs:
   compare-with-base:
     runs-on: ubuntu-latest
-    env:
-      BASE_REF: ${{ github.event.pull_request.base.ref }}
     steps:
+      # Default pull_request checkout: the PR merged into the current base tip.
+      # Its first parent (HEAD^1) is that base tip, so the comparison measures only
+      # the PR's changes even when the PR branch is behind the base branch.
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 2
           persist-credentials: false
 
       - name: Set up Python
@@ -37,20 +38,16 @@ jobs:
       - name: Install package and dependencies
         run: uv pip install --system -e ".[dev]"
 
-      - name: Fetch base branch
-        run: git fetch origin "$BASE_REF"
-
-      - name: Run benchmark comparison (base vs PR HEAD)
+      - name: Run benchmark comparison (base vs PR merged into base)
         id: benchmark
         run: |
-          set -o pipefail
-          uv run python scripts/benchmarks/compare.py --suite utils "origin/$BASE_REF" HEAD | tee benchmark-report.txt
+          uv run python scripts/benchmarks/compare.py --suite utils --markdown benchmark-report.md HEAD^1 HEAD
 
       - name: Upsert PR benchmark comment
-        if: ${{ !cancelled() && hashFiles('benchmark-report.txt') != '' }}
+        if: ${{ !cancelled() && hashFiles('benchmark-report.md') != '' }}
         uses: actions/github-script@v7
         env:
-          BENCHMARK_REPORT_PATH: benchmark-report.txt
+          BENCHMARK_REPORT_PATH: benchmark-report.md
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         with:
           script: |
@@ -63,12 +60,9 @@ jobs:
             const body = `${marker}
             ## Benchmark comparison vs ${baseRef} (torch_brain.utils)
 
-            Baseline: \`origin/${baseRef}\`
-            Target: \`HEAD\`
+            Baseline: \`${baseRef}\` tip · Target: this PR merged into \`${baseRef}\`
 
-            \`\`\`text
             ${report}
-            \`\`\`
             `;
 
             const { owner, repo } = context.repo;
