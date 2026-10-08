@@ -7,7 +7,7 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from .arraydict import ArrayDict
+from .arraydict import ArrayDict, _all_loaded
 from .typing import ArrayLike
 from .utils import _validate_select_by_mask_input
 
@@ -918,12 +918,9 @@ class LazyInterval(Interval):
                 self.__dict__[name] = out
 
             # If all attributes are loaded, we can remove the lazy flag
-            all_loaded = all(
-                isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-            )
-            if all_loaded:
+            if _all_loaded(self, name):
                 self.__class__ = Interval
-                del self._lazy_ops, self._unicode_keys
+                del self._lazy_ops, self._unicode_keys, self._unloaded
 
             return out
         return super().__getattribute__(name)

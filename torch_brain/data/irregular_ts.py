@@ -8,7 +8,7 @@ import h5py
 import numpy as np
 import pandas as pd
 
-from .arraydict import ArrayDict
+from .arraydict import ArrayDict, _all_loaded
 from .interval import Interval
 from .typing import ArrayLike
 from .utils import _validate_select_by_mask_input
@@ -519,14 +519,11 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                 self.__dict__[name] = out
 
             # if all attributes are loaded, we can remove the lazy flag
-            all_loaded = all(
-                isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-            )
-            if all_loaded:
+            if _all_loaded(self, name):
                 # simply change classes
                 self.__class__ = IrregularTimeSeries
                 # delete unnecessary attributes
-                del self._lazy_ops, self._unicode_keys
+                del self._lazy_ops, self._unicode_keys, self._unloaded
                 if hasattr(self, "_timestamp_indices_1s"):
                     del self._timestamp_indices_1s
 

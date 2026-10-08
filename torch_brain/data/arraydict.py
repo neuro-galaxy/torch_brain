@@ -322,6 +322,37 @@ class ArrayDict:
         return self
 
 
+def _unloaded_keys(obj) -> set[str]:
+    r"""Public attributes of a lazy object that are not loaded into memory yet."""
+    return {k for k in obj.keys() if not isinstance(obj.__dict__[k], np.ndarray)}
+
+
+def _all_loaded(obj, loaded_key: str) -> bool:
+    r"""Amortized O(1) check of whether a lazy object has loaded every attribute.
+
+    ``obj._unloaded`` holds the keys that may still be unloaded; it is built on first
+    use so that objects which are never read (e.g. sliced but unused) don't pay for
+    it. Entries made stale by writes that bypass this check are dropped as they are
+    found, and an empty set is confirmed with one full scan, since shallow copies
+    can share it.
+    """
+    d = obj.__dict__
+    pending = d.get("_unloaded")
+    if pending is None:
+        pending = d["_unloaded"] = _unloaded_keys(obj)
+    pending.discard(loaded_key)
+    while pending:
+        key = next(iter(pending))
+        if key in d and not isinstance(d[key], np.ndarray):
+            return False
+        pending.discard(key)
+    remaining = _unloaded_keys(obj)
+    if remaining:
+        d["_unloaded"] = remaining
+        return False
+    return True
+
+
 class LazyArrayDict(ArrayDict):
     r"""Lazy variant of :obj:`ArrayDict`. The data is not loaded until it is accessed.
     This class is meant to be used when the data is too large to fit in memory, and
@@ -380,13 +411,10 @@ class LazyArrayDict(ArrayDict):
                 self.__dict__[name] = out
 
             # if all attributes are loaded, we can remove the lazy flag
-            all_loaded = all(
-                isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-            )
-            if all_loaded:
+            if _all_loaded(self, name):
                 self.__class__ = ArrayDict
                 # delete special private attributes
-                del self._lazy_ops, self._unicode_keys
+                del self._lazy_ops, self._unicode_keys, self._unloaded
             return out
 
         return super().__getattribute__(name)
