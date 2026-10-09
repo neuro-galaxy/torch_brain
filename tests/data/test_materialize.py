@@ -13,6 +13,7 @@ from torch_brain.data import (
     LazyInterval,
     RegularTimeSeries,
 )
+from torch_brain.data.utils import DeferredH5Dataset
 
 
 @pytest.fixture
@@ -68,18 +69,19 @@ def test_materialize(test_filepath):
 
         # check that the data is lazy loaded
         assert all(
-            isinstance(data.spikes.__dict__[key], h5py.Dataset)
+            isinstance(data.spikes.__dict__[key], DeferredH5Dataset)
             for key in data.spikes.keys()
         )
         assert all(
-            isinstance(data.lfp.__dict__[key], h5py.Dataset) for key in data.lfp.keys()
+            isinstance(data.lfp.__dict__[key], DeferredH5Dataset)
+            for key in data.lfp.keys()
         )
         assert all(
-            isinstance(data.units.__dict__[key], h5py.Dataset)
+            isinstance(data.units.__dict__[key], DeferredH5Dataset)
             for key in data.units.keys()
         )
         assert all(
-            isinstance(data.trials.__dict__[key], h5py.Dataset)
+            isinstance(data.trials.__dict__[key], DeferredH5Dataset)
             for key in data.trials.keys()
         )
 

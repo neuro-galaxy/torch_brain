@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from torch_brain.data import Interval, LazyInterval
+from torch_brain.data.utils import DeferredH5Dataset
 
 
 @pytest.fixture
@@ -139,7 +140,9 @@ def test_lazy_interval(test_filepath):
         assert len(data) == 9
 
         # make sure that nothing is loaded yet
-        assert all(isinstance(data.__dict__[key], h5py.Dataset) for key in data.keys())
+        assert all(
+            isinstance(data.__dict__[key], DeferredH5Dataset) for key in data.keys()
+        )
 
         # try loading one attribute
         start = data.start
@@ -147,10 +150,10 @@ def test_lazy_interval(test_filepath):
         assert isinstance(start, np.ndarray)
         # make sure that the attribute is loaded correctly
         assert np.array_equal(start, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]))
-        # make sure that the loaded attribute replaced the h5py.Dataset reference
+        # make sure that the loaded attribute replaced the DeferredH5Dataset reference
         assert isinstance(data.__dict__["start"], np.ndarray)
         assert all(
-            isinstance(data.__dict__[key], h5py.Dataset)
+            isinstance(data.__dict__[key], DeferredH5Dataset)
             for key in data.keys()
             if key != "start"
         )
@@ -177,7 +180,7 @@ def test_lazy_interval(test_filepath):
         # make sure only brain_region was loaded
         assert isinstance(data.__dict__["drifting_gratings_dir"], np.ndarray)
         assert all(
-            isinstance(data.__dict__[key], h5py.Dataset)
+            isinstance(data.__dict__[key], DeferredH5Dataset)
             for key in data.keys()
             if key != "drifting_gratings_dir"
         )
@@ -200,7 +203,7 @@ def test_lazy_interval(test_filepath):
 
         assert len(data2) == 1
         # make sure that the attribute was never accessed, is still not accessed
-        assert isinstance(data2.__dict__["end"], h5py.Dataset)
+        assert isinstance(data2.__dict__["end"], DeferredH5Dataset)
 
         # check if the mask was applied twice correctly!
         assert np.allclose(data2.end, np.array([8]))
@@ -221,7 +224,7 @@ def test_lazy_interval(test_filepath):
         assert np.allclose(data.end, np.array([1, 2, 3, 4]))
 
         assert all(
-            isinstance(data.__dict__[key], h5py.Dataset)
+            isinstance(data.__dict__[key], DeferredH5Dataset)
             for key in data.keys()
             if key not in ["start", "end"]
         )

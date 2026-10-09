@@ -3,12 +3,15 @@ from __future__ import annotations
 import copy
 import logging
 
-import h5py
 import numpy as np
 import pandas as pd
 
 from .typing import ArrayLike
-from .utils import _size_repr, _validate_select_by_mask_input
+from .utils import (
+    DeferredH5Dataset,
+    _size_repr,
+    _validate_select_by_mask_input,
+)
 
 
 class ArrayDict:
@@ -305,7 +308,7 @@ class ArrayDict:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if isinstance(v, h5py.Dataset):
+            if isinstance(v, DeferredH5Dataset):
                 # h5py.File objects cannot be deepcopied
                 result.__dict__[k] = v
             else:
@@ -315,6 +318,11 @@ class ArrayDict:
     def materialize(self) -> ArrayDict:
         r"""Materializes the data object, i.e., loads into memory all of the data that
         is still referenced in the HDF5 file."""
+        # open all HDF5 datasets in one batch before reading any of them
+        for value in self.__dict__.values():
+            if isinstance(value, DeferredH5Dataset):
+                _ = value.dataset
+
         for key in self.keys():
             # simply access all attributes to trigger the lazy loading
             getattr(self, key)
@@ -365,7 +373,7 @@ class LazyArrayDict(ArrayDict):
         if not name.startswith("_") and name in self.__dict__:
             out = self.__dict__[name]
 
-            if isinstance(out, h5py.Dataset):
+            if isinstance(out, DeferredH5Dataset):
                 # apply any mask, and return the numpy array
                 if "mask" in self._lazy_ops:
                     out = out[self._lazy_ops["mask"]]
@@ -410,7 +418,7 @@ class LazyArrayDict(ArrayDict):
         for key, value in self.__dict__.items():
             if key.startswith("_"):
                 out.__dict__[key] = copy.deepcopy(value)
-            elif isinstance(value, h5py.Dataset):
+            elif isinstance(value, DeferredH5Dataset):
                 # mask will be applied lazily on attribute access via _lazy_ops
                 out.__dict__[key] = value
             elif isinstance(value, np.ndarray):
@@ -418,7 +426,7 @@ class LazyArrayDict(ArrayDict):
             else:
                 raise RuntimeError(  # pragma: no cover
                     "Unknown state! Object has a non-private attribute that is neither "
-                    "a np.ndarray, nor an h5py.Dataset"
+                    "a np.ndarray, nor a DeferredH5Dataset"
                 )
 
         # combine mask with any pre-existing lazy mask
@@ -458,8 +466,9 @@ class LazyArrayDict(ArrayDict):
         )
 
         obj = cls.__new__(cls)
-        for key, value in file.items():
-            obj.__dict__[key] = value
+        # file.keys() only lists names; datasets are opened on first read
+        for key in file.keys():
+            obj.__dict__[key] = DeferredH5Dataset(file, key)
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._lazy_ops = {}

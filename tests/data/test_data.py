@@ -14,6 +14,7 @@ from torch_brain.data import (
     IrregularTimeSeries,
     RegularTimeSeries,
 )
+from torch_brain.data.utils import DeferredH5Dataset
 
 
 @pytest.fixture
@@ -173,7 +174,7 @@ def test_lazy_data_copy(test_filepath):
 
     with h5py.File(test_filepath, "r") as f:
         data = Data.from_hdf5(f, lazy=True)
-        assert isinstance(data.spikes.__dict__["unit_index"], h5py.Dataset)
+        assert isinstance(data.spikes.__dict__["unit_index"], DeferredH5Dataset)
 
         # this will copy all references to any h5py datasets
         data_copy = copy.copy(data)
@@ -186,9 +187,9 @@ def test_lazy_data_copy(test_filepath):
         # this is a shallow copy, so the original object should be modified
         assert data.some_numpy_array[0] == 10
 
-        assert isinstance(data.spikes.__dict__["unit_index"], h5py.Dataset)
+        assert isinstance(data.spikes.__dict__["unit_index"], DeferredH5Dataset)
         data_copy.spikes.unit_index[0] = 2
-        assert isinstance(data.spikes.__dict__["unit_index"], h5py.Dataset)
+        assert isinstance(data.spikes.__dict__["unit_index"], DeferredH5Dataset)
         # this is a shallow copy, but the unit_index is a h5py dataset, so
         # the original object will not be modified
         assert data.spikes.unit_index[0] == 0
@@ -273,7 +274,7 @@ def test_timeless_data(test_filepath):
         assert data.description == "À89!ÜÞ"
 
         # TODO(mehdi) image is a numpy array so it should be lazy loaded
-        # assert isinstance(data.__dict__["image"], h5py.Dataset)
+        # assert isinstance(data.__dict__["image"], DeferredH5Dataset)
         assert np.allclose(data.image, np.ones((32, 32, 3)))
 
     data = Data(
@@ -474,11 +475,12 @@ def test_data_has_nested_attribute_lazy(test_filepath):
     with h5py.File(test_filepath, "r") as f:
         lazy_data = Data.from_hdf5(f, lazy=True)
 
-        # Pre-checks for laziness: ensure some attributes are indeed h5py.Dataset
-        assert isinstance(lazy_data.spikes.__dict__["unit_index"], h5py.Dataset)
-        assert isinstance(lazy_data.units.__dict__["id"], h5py.Dataset)
+        # Pre-checks for laziness: ensure some attributes are indeed DeferredH5Dataset
+        assert isinstance(lazy_data.spikes.__dict__["unit_index"], DeferredH5Dataset)
+        assert isinstance(lazy_data.units.__dict__["id"], DeferredH5Dataset)
         assert isinstance(
-            lazy_data.nested_data.level2_array_dict.__dict__["l2_field"], h5py.Dataset
+            lazy_data.nested_data.level2_array_dict.__dict__["l2_field"],
+            DeferredH5Dataset,
         )
 
         # === Test existing paths ===
@@ -494,14 +496,15 @@ def test_data_has_nested_attribute_lazy(test_filepath):
         assert lazy_data.has_nested_attribute("nested_data.level2_primitive")
 
         # Check attributes remain lazy after has_nested_attribute calls
-        assert isinstance(lazy_data.spikes.__dict__["unit_index"], h5py.Dataset), (
+        assert isinstance(lazy_data.spikes.__dict__["unit_index"], DeferredH5Dataset), (
             "spikes.unit_index was loaded"
         )
-        assert isinstance(lazy_data.units.__dict__["id"], h5py.Dataset), (
+        assert isinstance(lazy_data.units.__dict__["id"], DeferredH5Dataset), (
             "units.id was loaded"
         )
         assert isinstance(
-            lazy_data.nested_data.level2_array_dict.__dict__["l2_field"], h5py.Dataset
+            lazy_data.nested_data.level2_array_dict.__dict__["l2_field"],
+            DeferredH5Dataset,
         ), "nested_data.l2_array_dict.l2_field was loaded"
 
         # === Test non-existent paths (should return False) ===

@@ -4,14 +4,13 @@ import copy
 import logging
 from typing import Literal
 
-import h5py
 import numpy as np
 import pandas as pd
 
 from .arraydict import ArrayDict
 from .interval import Interval
 from .typing import ArrayLike
-from .utils import _validate_select_by_mask_input
+from .utils import DeferredH5Dataset, _validate_select_by_mask_input
 
 
 class IrregularTimeSeries(ArrayDict):
@@ -484,7 +483,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             # slicing or masking.
             out = self.__dict__[name]
 
-            if isinstance(out, h5py.Dataset):
+            if isinstance(out, DeferredH5Dataset):
                 # convert into numpy array
 
                 # first we check if timestamps was resolved
@@ -551,7 +550,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         for key, value in self.__dict__.items():
             if key.startswith("_"):
                 out.__dict__[key] = copy.deepcopy(value)
-            elif isinstance(value, h5py.Dataset):
+            elif isinstance(value, DeferredH5Dataset):
                 # mask will be applied lazily on attribute access via _lazy_ops
                 out.__dict__[key] = value
             elif isinstance(value, np.ndarray):
@@ -559,7 +558,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             else:
                 raise RuntimeError(  # pragma: no cover
                     "Unknown state! Object has a non-private attribute that is neither "
-                    "a np.ndarray, nor an h5py.Dataset"
+                    "a np.ndarray, nor a DeferredH5Dataset"
                 )
 
         # combine mask with any pre-existing lazy mask
@@ -617,7 +616,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             out._domain.start = out._domain.start - start
             out._domain.end = out._domain.end - start
 
-        if isinstance(self.__dict__["timestamps"], h5py.Dataset):
+        if isinstance(self.__dict__["timestamps"], DeferredH5Dataset):
             # lazy loading, we will only resolve timestamps if an attribute is accessed
             assert "slice" not in self._lazy_ops, "slice already exists"
             if "unresolved_slice" not in self._lazy_ops:
@@ -672,7 +671,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         for key in self.keys():
             if key != "timestamps":
                 value = self.__dict__[key]
-                if isinstance(value, h5py.Dataset):
+                if isinstance(value, DeferredH5Dataset):
                     out.__dict__[key] = value
                 else:
                     if idx_l is None:
@@ -716,13 +715,14 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         )
 
         obj = cls.__new__(cls)
-        for key, value in file.items():
+        # file.keys() only lists names; datasets are opened on first read
+        for key in file.keys():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
             elif key == "timestamp_indices_1s":
-                obj.__dict__["_timestamp_indices_1s"] = value[:]
+                obj.__dict__["_timestamp_indices_1s"] = file[key][:]
             else:
-                obj.__dict__[key] = value
+                obj.__dict__[key] = DeferredH5Dataset(file, key)
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._timekeys = file.attrs["timekeys"].astype(str).tolist()
