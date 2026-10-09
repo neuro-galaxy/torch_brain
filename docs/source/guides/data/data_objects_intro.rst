@@ -28,11 +28,10 @@ sampled. This could be anything from behavior measurements to EEG signals.
    >>> # Printing the object shows the shapes of the underlying data
    >>> behavior
    RegularTimeSeries(
-     hand_vel=[1000, 2],
-     eye_pos=[1000, 2],
-     pupil_size=[1000]
+     hand_vel: array, shape=(1000, 2), dtype=float64,
+     eye_pos: array, shape=(1000, 2), dtype=float64,
+     pupil_size: array, shape=(1000,), dtype=float64,
    )
-
    >>> # length represents the number of timepoints
    >>> len(behavior)
    1000
@@ -54,9 +53,9 @@ Since our signals are sampled at 100Hz, we should get 200 samples.
    >>> sliced = behavior.slice(2., 4.)
    >>> sliced
    RegularTimeSeries(
-     hand_vel=[200, 2],
-     eye_pos=[200, 2],
-     pupil_size=[200]
+     hand_vel: array, shape=(200, 2), dtype=float64,
+     eye_pos: array, shape=(200, 2), dtype=float64,
+     pupil_size: array, shape=(200,), dtype=float64,
    )
 
    >>> len(sliced)
@@ -108,10 +107,10 @@ In this example, slicing ``spikes`` from 2 to 4 seconds should give us the
    >>> sliced = spikes.slice(2.0, 4.0)
    >>> sliced
    IrregularTimeSeries(
-     timestamps=[2],
-     unit_id=[2],
-     amplitude=[2],
-     waveforms=[2, 32]
+     timestamps: array, shape=(2,), dtype=float64,
+     unit_id: array, shape=(2,), dtype=int64,
+     amplitude: array, shape=(2,), dtype=float64,
+     waveforms: array, shape=(2, 32), dtype=float64,
    )
 
    >>> sliced.timestamps
@@ -155,10 +154,10 @@ common use of this is to represent the trial structure of an experiment:
    ... )
    >>> trials
    Interval(
-     start=[3],
-     end=[3],
-     stimulus=[3],
-     outcome=[3]
+     start: array, shape=(3,), dtype=float64,
+     end: array, shape=(3,), dtype=float64,
+     stimulus: array, shape=(3,), dtype=<U5,
+     outcome: array, shape=(3,), dtype=<U7,
    )
 
 This says that during the interval :math:`[0, 1)` the stimulus was ``'left'``
@@ -208,9 +207,9 @@ different recording channels, or any other data in a tabular form.
 
    >>> channels
    ArrayDict(
-     channel_id=[3],
-     brain_region=[3],
-     position=[3, 2]
+     channel_id: array, shape=(3,), dtype=int64,
+     brain_region: array, shape=(3,), dtype=<U2,
+     position: array, shape=(3, 2), dtype=float64,
    )
 
    >>> # Access any attribute
@@ -251,32 +250,34 @@ The nice thing about this container is that it can be sliced *as a whole*:
    >>> sliced
    Data(
      channels=ArrayDict(
-       channel_id=[3],
-       brain_region=[3],
-       position=[3, 2]
+       channel_id: array, shape=(3,), dtype=int64,
+       brain_region: array, shape=(3,), dtype=<U2,
+       position: array, shape=(3, 2), dtype=float64,
      ),
      spikes=IrregularTimeSeries(
-       timestamps=[2],
-       unit_id=[2],
-       amplitude=[2],
-       waveforms=[2, 32]
+       timestamps: array, shape=(2,), dtype=float64,
+       unit_id: array, shape=(2,), dtype=int64,
+       amplitude: array, shape=(2,), dtype=float64,
+       waveforms: array, shape=(2, 32), dtype=float64,
      ),
      behavior=RegularTimeSeries(
-       hand_vel=[200, 2],
-       eye_pos=[200, 2],
-       pupil_size=[200]
+       hand_vel: array, shape=(200, 2), dtype=float64,
+       eye_pos: array, shape=(200, 2), dtype=float64,
+       pupil_size: array, shape=(200,), dtype=float64,
      ),
      trials=Interval(
-       start=[1],
-       end=[1],
-       stimulus=[1],
-       outcome=[1]
+       start: array, shape=(1,), dtype=float64,
+       end: array, shape=(1,), dtype=float64,
+       stimulus: array, shape=(1,), dtype=<U5,
+       outcome: array, shape=(1,), dtype=<U7,
      ),
+     absolute_start=2.0,
    )
+   
    >>> sliced.spikes.timestamps
    array([0.3, 1.1])  # same as the IrregularTimeSeries example above
 
-The sliced object also remembers the absolute time at which it was sliced:
+As this example shows, the sliced object also remembers the absolute time at which it was sliced:
 
 .. code-block:: pycon
 
@@ -294,27 +295,28 @@ you can slice it again:
    >>> sliced_again
    Data(
      channels=ArrayDict(
-       channel_id=[3],
-       brain_region=[3],
-       position=[3, 2]
+       channel_id: array, shape=(3,), dtype=int64,
+       brain_region: array, shape=(3,), dtype=<U2,
+       position: array, shape=(3, 2), dtype=float64,
      ),
      spikes=IrregularTimeSeries(
-       timestamps=[1],
-       unit_id=[1],
-       amplitude=[1],
-       waveforms=[1, 32]
+       timestamps: array, shape=(1,), dtype=float64,
+       unit_id: array, shape=(1,), dtype=int64,
+       amplitude: array, shape=(1,), dtype=float64,
+       waveforms: array, shape=(1, 32), dtype=float64,
      ),
      behavior=RegularTimeSeries(
-       hand_vel=[100, 2],
-       eye_pos=[100, 2],
-       pupil_size=[100]
+       hand_vel: array, shape=(100, 2), dtype=float64,
+       eye_pos: array, shape=(100, 2), dtype=float64,
+       pupil_size: array, shape=(100,), dtype=float64,
      ),
      trials=Interval(
-       start=[0],
-       end=[0],
-       stimulus=[0],
-       outcome=[0]
+       start: array, shape=(0,), dtype=float64,
+       end: array, shape=(0,), dtype=float64,
+       stimulus: array, shape=(0,), dtype=<U5,
+       outcome: array, shape=(0,), dtype=<U7,
      ),
+     absolute_start=3.0,
    )
 
 You can also store a few other things in :obj:`Data`: numpy arrays and Python

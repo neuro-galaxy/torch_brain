@@ -46,9 +46,9 @@ class IrregularTimeSeries(ArrayDict):
 
         >>> spikes
         IrregularTimeSeries(
-          timestamps=[6],
-          unit_index=[6],
-          waveforms=[6, 48]
+          timestamps: array, shape=(6,), dtype=float64,
+          unit_index: array, shape=(6,), dtype=int64,
+          waveforms: array, shape=(6, 48), dtype=float64,
         )
 
         >>> spikes.domain.start, spikes.domain.end
@@ -63,9 +63,9 @@ class IrregularTimeSeries(ArrayDict):
         >>> slice_of_spikes = spikes.slice(0.2, 0.5)
         >>> slice_of_spikes
         IrregularTimeSeries(
-          timestamps=[3],
-          unit_index=[3],
-          waveforms=[3, 48]
+          timestamps: array, shape=(3,), dtype=float64,
+          unit_index: array, shape=(3,), dtype=int64,
+          waveforms: array, shape=(3, 48), dtype=float64,
         )
 
         >>> slice_of_spikes.domain.start, slice_of_spikes.domain.end
