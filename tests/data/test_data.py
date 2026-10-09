@@ -724,3 +724,30 @@ def test_data_save(tmp_path):
 
     assert np.all(saved_data.domain.start == data_to_save.domain.start)
     assert np.all(saved_data.domain.end == data_to_save.domain.end)
+    saved_data.close()
+
+
+def test_data_save_load_no_extension(tmp_path):
+    data_to_save = Data(
+        session_id="session_0",
+        some_numpy_array=[10, 20, 30],
+        domain=Interval(0.0, 3.0),
+    )
+
+    data_to_save.save(tmp_path / "data_no_extension")
+    assert (tmp_path / "data_no_extension").exists() is False
+
+    saved_data = Data.load(tmp_path / "data_no_extension.h5")
+    saved_data.close()
+
+
+def test_data_save_load_random_extension(tmp_path):
+    data_to_save = Data(
+        session_id="session_0",
+        some_numpy_array=[10, 20, 30],
+        domain=Interval(0.0, 3.0),
+    )
+
+    data_to_save.save(tmp_path / "data_random_extension.data")
+    saved_data = Data.load(tmp_path / "data_random_extension.data")
+    saved_data.close()
