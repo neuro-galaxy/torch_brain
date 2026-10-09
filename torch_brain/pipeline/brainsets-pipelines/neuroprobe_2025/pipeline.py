@@ -79,6 +79,8 @@ ALL_EVAL_SETTINGS = {
     "eval_setting": get_args(EvalSettingOption),
 }
 
+_BTB_XYZ_COORDINATE_CACHE: dict[str, pd.DataFrame] = {}
+
 
 class DownloadedAsset(NamedTuple):
     path: Path
@@ -245,6 +247,8 @@ class Pipeline(BrainsetPipeline):
         path = self.processed_dir / download_output.path.name
         with h5py.File(path, "w") as file:
             data.to_hdf5(file)
+            file["seeg_data"].attrs["unit"] = "uV"
+            file["seeg_data"].attrs["scale_to_uV"] = 1.0
         logging.info(f"Saved data to {path}")
 
     def iterate_extract_splits(
@@ -321,7 +325,7 @@ def get_brainset_description() -> BrainsetDescription:
     return BrainsetDescription(
         id="neuroprobe_2025",
         origin_version="dataset=0.0.0; neuroprobe=0.1.7",
-        derived_version="1.0.0",
+        derived_version="1.1.1",
         source="https://neuroprobe.dev/",
         description="High-resolution neural datasets enable foundation models for the next generation of "
         "brain-computer interfaces and neurological treatments. The community requires rigorous benchmarks "
@@ -364,14 +368,40 @@ def _prepare_neuroprobe_lib(raw_dir: Path) -> None:
     import neuroprobe.train_test_splits as neuroprobe_train_test_splits
 
 
+def _load_btb_xyz_coordinates(raw_root: str) -> pd.DataFrame:
+    """Load and cache Brain Treebank XYZ coordinates keyed by contact."""
+    cached = _BTB_XYZ_COORDINATE_CACHE.get(raw_root)
+    if cached is not None:
+        return cached
+    coordinates = pd.read_csv(Path(raw_root) / "localization" / "elec_coords_full.csv")
+    coordinates = coordinates[["Subject", "Electrode", "X", "Y", "Z"]].copy()
+    coordinates["Electrode"] = (
+        coordinates["Electrode"]
+        .astype(str)
+        .str.replace("*", "", regex=False)
+        .str.replace("#", "", regex=False)
+    )
+    coordinates = coordinates.set_index(["Subject", "Electrode"]).sort_index()
+    _BTB_XYZ_COORDINATE_CACHE[raw_root] = coordinates
+    return coordinates
+
+
 # subject is neuroprobe.BrainTreebankSubject object
 def _extract_channel_data(subject) -> ArrayDict:
     channel_name_basis = np.array(
         list(subject.h5_neural_data_keys.keys()), dtype=np.str_
     )
-    aligned_localization = subject.localization_data.set_index("Electrode").reindex(
-        channel_name_basis
+    localization_by_electrode = subject.localization_data.set_index("Electrode")
+    xyz_table = _load_btb_xyz_coordinates(os.environ["ROOT_DIR_BRAINTREEBANK"])
+    subject_key = f"sub_{subject.subject_id}"
+    xyz_index = pd.MultiIndex.from_arrays(
+        [
+            np.full(len(channel_name_basis), subject_key, dtype=object),
+            channel_name_basis.astype(object),
+        ],
+        names=["Subject", "Electrode"],
     )
+    xyz_rows = xyz_table.reindex(xyz_index)
     channels = ArrayDict(
         id=np.arange(len(channel_name_basis)),
         name=channel_name_basis,  # e.g. T1bIc1
@@ -381,18 +411,29 @@ def _extract_channel_data(subject) -> ArrayDict:
         included=np.isin(channel_name_basis, subject.electrode_labels).astype(
             np.bool_
         ),  # excludes corrupted and trigger electrodes
+        # Preserve the v1.1 recording-technology contract (31 = stereo EEG).
+        type=np.full(len(channel_name_basis), 31, dtype=np.int64),
     )
+    channels.coord_btb_x = xyz_rows["X"].to_numpy(dtype=np.float32)
+    channels.coord_btb_y = xyz_rows["Y"].to_numpy(dtype=np.float32)
+    channels.coord_btb_z = xyz_rows["Z"].to_numpy(dtype=np.float32)
     # register localization data for each channel
-    for col in aligned_localization.columns:
-        loc_series = aligned_localization[col]
+    for col in subject.localization_data.columns:
+        if col == "Electrode":
+            continue
+        loc_series = localization_by_electrode[col]
+        full_column = loc_series.reindex(channel_name_basis)
         # not all channels have localization data
         if pd.api.types.is_string_dtype(loc_series):
-            full_column = loc_series.fillna("").to_numpy().astype(np.str_)
+            full_column = full_column.fillna("").to_numpy().astype(np.str_)
         elif pd.api.types.is_numeric_dtype(loc_series):
-            full_column = loc_series.fillna(np.nan).to_numpy().astype(np.float32)
+            full_column = full_column.fillna(np.nan).to_numpy().astype(np.float32)
         else:
             raise ValueError(f"Unsupported dtype: {loc_series.dtype}")
         setattr(channels, f"localization_{col}", full_column)
+    channels.coord_btb_lip_l = np.asarray(channels.localization_L, dtype=np.float32)
+    channels.coord_btb_lip_i = np.asarray(channels.localization_I, dtype=np.float32)
+    channels.coord_btb_lip_p = np.asarray(channels.localization_P, dtype=np.float32)
     return channels
 
 

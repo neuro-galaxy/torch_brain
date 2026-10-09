@@ -17,7 +17,12 @@ from .mixins import MultiChannelDatasetMixin
 
 SubsetTier = Literal["full", "lite", "nano"]
 LabelMode = Literal["binary", "multiclass"]
-Regime = Literal["SS-SM", "SS-DM", "DS-DM"]
+Regime = Literal[
+    "within-session",
+    "hold-in-session",
+    "hold-out-session",
+    "hold-out-subject",
+]
 Split = Literal["train", "val", "test"]
 
 VALID_SUBSET_TIERS = get_args(SubsetTier)
@@ -45,77 +50,14 @@ VALID_TASKS = (
 )
 
 H5_REGIME_BY_REGIME: dict[Regime, str] = {
-    "SS-SM": "within_session",
-    "SS-DM": "cross_x",
-    "DS-DM": "cross_x",
+    "within-session": "within_session",
+    "hold-in-session": "within_session",
+    "hold-out-session": "within_session",
+    "hold-out-subject": "within_session",
 }
 
 # Split interval and channel-mask keys share one selector key:
 # <subset_tier>$<label_mode>$<eval_setting>$<task>$fold<k>$<split>
-
-# Neuroprobe benchmark constants (mirrors neuroprobe.config)
-# Fixed train subject id for benchmark-default DS-DM configuration.
-DS_DM_TRAIN_SUBJECT_ID = 2
-# Fixed train trial id for benchmark-default DS-DM configuration.
-DS_DM_TRAIN_TRIAL_ID = 4
-
-
-def _stack_coordinate_frame(
-    *,
-    channels,
-    recording_id: str,
-    dataset_name: str,
-    frame_name: str,
-    field_names: tuple[str, str, str],
-    expected_length: int,
-) -> np.ndarray:
-    """Stack and validate one three-axis channel coordinate frame."""
-    values: list[np.ndarray] = []
-    for field_name in field_names:
-        try:
-            field_values = np.asarray(
-                getattr(channels, field_name), dtype=float
-            ).reshape(-1)
-        except AttributeError as exc:
-            expected_fields = ", ".join(f"channels.{name}" for name in field_names)
-            raise AttributeError(
-                f"Missing required channel coordinate fields for {dataset_name} "
-                f"recording '{recording_id}'. Expected {expected_fields}."
-            ) from exc
-        if len(field_values) != expected_length:
-            raise ValueError(
-                f"Channel coordinate field length mismatch for recording "
-                f"'{recording_id}' in frame '{frame_name}': {field_name} expected "
-                f"length {expected_length}, actual length {len(field_values)}."
-            )
-        values.append(field_values)
-    return np.stack(values, axis=1)
-
-
-def _read_seeg_signal_metadata(
-    h5_path: Path, *, recording_id: str
-) -> dict[str, str | float]:
-    """Read required physical-unit metadata for one SEEG signal."""
-    with h5py.File(h5_path, "r") as handle:
-        try:
-            seeg_data = handle["seeg_data"]
-        except KeyError as exc:
-            raise ValueError(
-                "Missing required brainsets 1.1.0 neural signal metadata for "
-                f"recording '{recording_id}': /seeg_data group not found."
-            ) from exc
-        attrs = seeg_data.attrs
-        if "unit" not in attrs or "scale_to_uV" not in attrs:
-            raise ValueError(
-                "Missing required brainsets 1.1.0 neural signal metadata for "
-                f"recording '{recording_id}': /seeg_data attrs 'unit' and "
-                "'scale_to_uV' are required."
-            )
-        return {
-            "unit": str(attrs["unit"]),
-            "scale_to_uV": float(attrs["scale_to_uV"]),
-        }
-
 
 # Eligible (subject, trial) pairs for Neuroprobe Lite benchmark mode.
 NEUROPROBE_LITE_SUBJECT_TRIALS = {
@@ -143,19 +85,60 @@ NEUROPROBE_NANO_SUBJECT_TRIALS = {
     (10, 1),
 }
 
-# Per-subject trials ranked by duration, used by full SS-DM train selection.
-NEUROPROBE_LONGEST_TRIALS_FOR_SUBJECT: dict[int, list[int]] = {
-    1: [0, 1],
-    2: [4, 6],
-    3: [2, 1],
-    4: [2, 1],
-    5: [0],
-    6: [0, 2],
-    7: [1, 0],
-    8: [0],
-    9: [0],
-    10: [1, 0],
-}
+
+def _stack_coordinate_frame(
+    *,
+    channels,
+    recording_id: str,
+    dataset_name: str,
+    field_names: tuple[str, str, str],
+    expected_length: int,
+) -> np.ndarray:
+    values: list[np.ndarray] = []
+    for field_name in field_names:
+        try:
+            field_values = np.asarray(
+                getattr(channels, field_name), dtype=float
+            ).reshape(-1)
+        except AttributeError as exc:
+            expected_fields = ", ".join(f"channels.{name}" for name in field_names)
+            raise AttributeError(
+                f"Missing required channel coordinate fields for {dataset_name} "
+                f"recording '{recording_id}'. Expected {expected_fields}."
+            ) from exc
+        if len(field_values) != expected_length:
+            raise ValueError(
+                f"Channel coordinate field length mismatch for recording "
+                f"'{recording_id}': {field_name} expected length {expected_length}, "
+                f"actual length {len(field_values)}."
+            )
+        values.append(field_values)
+    return np.stack(values, axis=1)
+
+
+def _read_seeg_signal_metadata(
+    h5_path: Path, *, recording_id: str
+) -> dict[str, str | float]:
+    with h5py.File(h5_path, "r") as handle:
+        try:
+            seeg_data = handle["seeg_data"]
+        except KeyError as exc:
+            raise ValueError(
+                "Missing required brainsets 1.1.0 neural signal metadata for "
+                f"recording '{recording_id}': /seeg_data group not found."
+            ) from exc
+        attrs = seeg_data.attrs
+        if "unit" not in attrs or "scale_to_uV" not in attrs:
+            raise ValueError(
+                "Missing required brainsets 1.1.0 neural signal metadata for "
+                f"recording '{recording_id}': /seeg_data attrs 'unit' and "
+                "'scale_to_uV' are required."
+            )
+        return {
+            "unit": str(attrs["unit"]),
+            "scale_to_uV": float(attrs["scale_to_uV"]),
+        }
+
 
 # Strict parser for canonical recording ids like "sub_1_trial004".
 _RECORDING_ID_RE = re.compile(r"^sub_(\d+)_trial(\d{3})$")
@@ -197,66 +180,38 @@ def _from_recording_id(recording_id: str) -> tuple[int, int]:
     return int(match.group(1)), int(match.group(2))
 
 
-class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
-    """Neuroprobe 2025 iEEG benchmark dataset.
-
-    .. admonition:: Preprocessing
-
-        To download and prepare this dataset, run
-
-        .. code:: shell
-
-            brainsets prepare neuroprobe_2025
+class NeuroprobeV2(MultiChannelDatasetMixin, Dataset):
+    """Neuroprobe V2 iEEG benchmark dataset.
 
     Each instance operates in exactly one of two mutually-exclusive modes:
-
-    - Neuroprobe benchmark mode (`recording_ids=None`): splits are resolved
-      from Neuroprobe benchmark split generators. Cross-session and Cross-subject
-      are condensed to 'cross-x' splits that will be selected for train and test.
-    - Recording id mode (`recording_ids` provided): no splits are resolved,
-      only recording_ids specified are preprocessed to be used as continuous data.
-
-    **References**
-
-    Zahorodnii, A., Wang, C., Stankovits, B., Moraitaki, C., Chau, G., Barbu, A., Katz, B., & Fiete, I. R.
-    *Neuroprobe: Evaluating Intracranial Brain Responses to Naturalistic Stimuli.*
-    `arXiv:2509.21671 <https://arxiv.org/abs/2509.21671>`_.
-
-    Data sources: `BrainTreeBank <https://braintreebank.dev>`_ and `Neuroprobe Benchmark <https://neuroprobe.dev>`_
+    - Split-selection mode (`recording_ids=None`): active recordings are resolved
+      from Neuroprobe benchmark selectors.
+    - Explicit-recording mode (`recording_ids` provided): active recordings come
+      directly from that subset and split selectors must not be provided.
 
     Args:
-        root: Root directory containing processed Neuroprobe artifacts. Defaults to ``processed_dir`` from brainsets config.
+        root: Root directory containing processed Neuroprobe artifacts.
         recording_ids: Optional explicit recording-id subset to expose from disk.
             If omitted, the dataset uses benchmark-required recording ids inferred
             from ``subset_tier/test_subject/test_session/split/label_mode/task/regime/fold``.
         transform: Optional sample transform.
         subset_tier: One of ``"full"``, ``"lite"``, ``"nano"``. Required in
-            benchmark mode; must be omitted in explicit-recording mode.
+            split-selection mode; must be omitted in explicit-recording mode.
         test_subject: Target test subject id (Neuroprobe semantics). Required in
-            benchmark mode; must be omitted in explicit-recording mode.
+            split-selection mode; must be omitted in explicit-recording mode.
         test_session: Target test trial/session id (Neuroprobe semantics). Required
-            in benchmark mode; must be omitted in explicit-recording mode.
+            in split-selection mode; must be omitted in explicit-recording mode.
         split: One of ``"train"``, ``"val"``, ``"test"``. Required in
-            benchmark mode; must be omitted in explicit-recording mode.
+            split-selection mode; must be omitted in explicit-recording mode.
         label_mode: One of ``"binary"``, ``"multiclass"``. Defaults to ``"binary"``
-            in benchmark mode.
-        task: Neuroprobe task name. Defaults to ``"speech"`` in benchmark mode.
-            Supported values are:
-            ``"delta_volume"``, ``"face_num"``, ``"frame_brightness"``,
-            ``"global_flow"``, ``"gpt2_surprisal"``, ``"local_flow"``,
-            ``"onset"``, ``"pitch"``, ``"speech"``, ``"volume"``,
-            ``"word_gap"``, ``"word_head_pos"``, ``"word_index"``,
-            ``"word_length"``, ``"word_part_speech"``.
-        regime: One of ``"SS-SM"``, ``"SS-DM"``, ``"DS-DM"``. Defaults to
-            ``"SS-SM"`` in benchmark mode. Neuroprobe regime semantics:
-            - ``"SS-SM"``: single-subject, single-session (within-session split)
-            - ``"SS-DM"``: single-subject, different-session (cross-x split)
-            - ``"DS-DM"``: different-subject, different-session (cross-x split)
-        fold: Fold index used only in benchmark mode. Defaults to ``0`` in
-            benchmark mode and must be omitted in explicit-recording mode.
-            Valid values depend on regime:
-            - ``within_session``: valid {0, 1}
-            - ``cross_x``: forced to 0
+            in split-selection mode.
+        task: Neuroprobe task name. Defaults to ``"speech"`` in split-selection mode.
+        regime: One of ``"within-session"``, ``"hold-in-session"``,
+            ``"hold-out-session"``, ``"hold-out-subject"``. Defaults to
+            ``"within-session"`` in split-selection mode.
+        fold: Fold index used only in split-selection mode. Defaults to ``0`` in
+            split-selection mode and must be omitted in explicit-recording mode.
+            Valid values for all regimes: ``0`` or ``1``.
         uniquify_channel_ids_with_subject: Whether to prefix channel IDs with
             ``subject.id`` via ``MultiChannelDatasetMixin``.
             Defaults to ``True``.
@@ -267,9 +222,10 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
     """
 
     _ALLOWED_FOLDS_BY_REGIME: dict[Regime, tuple[int, ...]] = {
-        "SS-SM": (0, 1),
-        "SS-DM": (0,),
-        "DS-DM": (0,),
+        "within-session": (0, 1),
+        "hold-in-session": (0, 1),
+        "hold-out-session": (0, 1),
+        "hold-out-subject": (0, 1),
     }
 
     def __init__(
@@ -296,16 +252,20 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
         # Resolve and validate constructor inputs before touching dataset records.
         self._dataset_dir = Path(root) / dirname
 
-        # XOR recording-source behavior (exactly one source of active recording ids):
-        # - no recording_ids => use neuroprobe benchmark split recordings
-        # - recording_ids provided => use the explicit subset of recordings
+        # XOR recording-source behavior:
+        # - no recording_ids => use split-resolved benchmark recordings
+        # - recording_ids provided => use the explicit subset as active recordings
         use_split_selection = recording_ids is None
         self._use_split_selection = use_split_selection
         if use_split_selection:
-            label_mode = label_mode or "binary"
-            task = task or "speech"
-            regime = regime or "SS-SM"
-            fold = fold or 0
+            if label_mode is None:
+                label_mode = "binary"
+            if task is None:
+                task = "speech"
+            if regime is None:
+                regime = "within-session"
+            if fold is None:
+                fold = 0
 
             self.subset_tier = subset_tier
             self.label_mode = label_mode
@@ -343,7 +303,7 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
             active_recording_ids = self._resolve_requested_recording_ids(recording_ids)
         if not active_recording_ids:
             raise ValueError(
-                "No active recording_ids resolved for Neuroprobe2025 construction."
+                "No active recording_ids resolved for NeuroprobeV2 construction."
             )
 
         super().__init__(
@@ -366,7 +326,7 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
         """Return split-specific sampling intervals for this dataset instance."""
         if not self._use_split_selection:
             raise RuntimeError(
-                "get_sampling_intervals is only available in benchmark mode."
+                "get_sampling_intervals is only available in split-selection mode."
             )
         intervals: dict[str, Interval] = {}
         for rid in self.recording_ids:
@@ -380,7 +340,7 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
 
     @property
     def sampling_rate(self) -> float:
-        """Recording sampling rate in Hz."""
+        """Return recording sampling rate in Hz."""
         return 2048.0
 
     def get_channel_metadata(self, recording_id: str) -> dict[str, object]:
@@ -411,8 +371,7 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
                 "btb_lip": _stack_coordinate_frame(
                     channels=channels,
                     recording_id=recording_id,
-                    dataset_name="Neuroprobe2025",
-                    frame_name="btb_lip",
+                    dataset_name="NeuroprobeV2",
                     field_names=(
                         "coord_btb_lip_l",
                         "coord_btb_lip_i",
@@ -423,8 +382,7 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
                 "btb_xyz": _stack_coordinate_frame(
                     channels=channels,
                     recording_id=recording_id,
-                    dataset_name="Neuroprobe2025",
-                    frame_name="btb_xyz",
+                    dataset_name="NeuroprobeV2",
                     field_names=("coord_btb_x", "coord_btb_y", "coord_btb_z"),
                     expected_length=len(ids),
                 ),
@@ -433,7 +391,6 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
         }
 
     def get_neural_signal_metadata(self, recording_id: str) -> dict[str, str | float]:
-        """Return physical-unit metadata for one recording's SEEG signal."""
         return _read_seeg_signal_metadata(
             self._dataset_dir / f"{recording_id}.h5",
             recording_id=recording_id,
@@ -441,8 +398,6 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
 
     def get_recording_hook(self, data: Data):
         """Apply split-specific channel inclusion mask when available."""
-
-        # Explicit-recording mode does not apply benchmark split routing.
         if not self._use_split_selection:
             super().get_recording_hook(data)
             return
@@ -457,7 +412,7 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
             split_interval = data.get_nested_attribute(interval_path)
         except (AttributeError, KeyError) as exc:
             raise KeyError(
-                "Missing required split-selection attributes for Neuroprobe2025 "
+                "Missing required split-selection attributes for NeuroprobeV2 "
                 f"recording '{recording_id}'. Expected channel mask at "
                 f"'{channel_split_path}', "
                 f"and split intervals at '{interval_path}'."
@@ -467,7 +422,7 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
         super().get_recording_hook(data)
 
     def describe_selection(self) -> dict[str, object]:
-        """Return a compact debug summary of the resolved benchmark selection."""
+        """Return a compact debug summary of the resolved split selection."""
         summary: dict[str, object] = {
             "uses_split_selection": self._use_split_selection,
             "active_recording_ids": list(self.recording_ids),
@@ -556,50 +511,6 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
                 f"test_session must be an int, got {type(self.test_session).__name__}."
             )
 
-        h5_regime = H5_REGIME_BY_REGIME[self.regime]
-        if h5_regime == "cross_x" and self.subset_tier == "nano":
-            raise ValueError(
-                "subset_tier 'nano' is not compatible with cross_x regimes."
-            )
-
-        if self.regime == "DS-DM" and self.test_subject == DS_DM_TRAIN_SUBJECT_ID:
-            raise ValueError(
-                "DS-DM benchmark-default uses subject 2 as fixed train subject; "
-                "test_subject cannot be 2."
-            )
-
-        # Enforce benchmark-allowed target subject/session pairs per subset-tier/regime.
-        requested_pair = (self.test_subject, self.test_session)
-        if (
-            self.subset_tier == "lite"
-            and requested_pair not in NEUROPROBE_LITE_SUBJECT_TRIALS
-        ):
-            raise ValueError(
-                f"Target pair {requested_pair} is not in NEUROPROBE_LITE_SUBJECT_TRIALS."
-            )
-        if (
-            self.subset_tier == "nano"
-            and requested_pair not in NEUROPROBE_NANO_SUBJECT_TRIALS
-        ):
-            raise ValueError(
-                f"Target pair {requested_pair} is not in NEUROPROBE_NANO_SUBJECT_TRIALS."
-            )
-        if self.regime == "SS-DM" and self.subset_tier == "full":
-            longest_trials = NEUROPROBE_LONGEST_TRIALS_FOR_SUBJECT.get(
-                self.test_subject, []
-            )
-            if len(longest_trials) < 2:
-                raise ValueError(
-                    "SS-DM full benchmark-default requires at least two longest trials "
-                    f"for subject {self.test_subject}, found {longest_trials}."
-                )
-            if self.test_session not in longest_trials:
-                raise ValueError(
-                    "SS-DM full benchmark-default only supports target sessions present "
-                    f"in NEUROPROBE_LONGEST_TRIALS_FOR_SUBJECT for subject {self.test_subject}: "
-                    f"{longest_trials}."
-                )
-
     @classmethod
     def num_folds_for_regime(cls, regime: str) -> int:
         """Return the number of available folds for one regime."""
@@ -627,74 +538,78 @@ class Neuroprobe2025(MultiChannelDatasetMixin, Dataset):
             _from_recording_id(rid)
         return ids
 
+    def _full_subset_recording_ids_from_disk(self) -> list[str]:
+        # Full tier should use all available recording ids in dataset_dir.
+        resolved_ids: set[str] = set()
+        for path in sorted(self._dataset_dir.glob("*.h5")):
+            recording_id = path.stem
+            try:
+                _from_recording_id(recording_id)
+            except ValueError:
+                # Ignore non-recording H5 artifacts in the same directory.
+                continue
+            resolved_ids.add(recording_id)
+        return sorted(resolved_ids)
+
+    def _eligible_recording_ids_for_subset_tier(self) -> list[str]:
+        if self.subset_tier == "full":
+            recording_ids = self._full_subset_recording_ids_from_disk()
+        elif self.subset_tier == "lite":
+            recording_ids = [
+                _to_recording_id(subject, session)
+                for subject, session in sorted(NEUROPROBE_LITE_SUBJECT_TRIALS)
+            ]
+        else:
+            recording_ids = [
+                _to_recording_id(subject, session)
+                for subject, session in sorted(NEUROPROBE_NANO_SUBJECT_TRIALS)
+            ]
+
+        if not recording_ids:
+            raise ValueError(
+                f"No eligible recording_ids found for subset_tier '{self.subset_tier}' "
+                f"under dataset_dir '{self._dataset_dir}'."
+            )
+        return sorted(recording_ids)
+
     def _split_recording_ids(self) -> list[str]:
         """Resolve split-participating recording ids for constructor inputs."""
         test_recording_id = _to_recording_id(self.test_subject, self.test_session)
+        eligible_recording_ids = self._eligible_recording_ids_for_subset_tier()
+        if test_recording_id not in eligible_recording_ids:
+            requested_pair = (self.test_subject, self.test_session)
+            raise ValueError(
+                f"Target pair {requested_pair} is not eligible for subset_tier "
+                f"'{self.subset_tier}'."
+            )
 
-        if self.regime == "SS-SM":
-            # Within-session uses a single target recording for all splits.
-            return [test_recording_id]
-
-        if self.regime == "SS-DM":
-            # Cross-session trains on a different session from the same subject.
+        if self.regime == "within-session":
+            resolved_ids = [test_recording_id]
+        elif self.regime == "hold-in-session":
             if self.split == "train":
-                return [self._ss_dm_train_recording_id_for_selection()]
-            # Val/test evaluate on the requested target recording.
-            return [test_recording_id]
+                resolved_ids = list(eligible_recording_ids)
+            else:
+                resolved_ids = [test_recording_id]
+        elif self.regime == "hold-out-session":
+            if self.split == "train":
+                resolved_ids = [
+                    rid for rid in eligible_recording_ids if rid != test_recording_id
+                ]
+            else:
+                resolved_ids = [test_recording_id]
+        else:
+            if self.split == "train":
+                resolved_ids = [
+                    rid
+                    for rid in eligible_recording_ids
+                    if _from_recording_id(rid)[0] != self.test_subject
+                ]
+            else:
+                resolved_ids = [test_recording_id]
 
-        # DS-DM
-        if self.split == "train":
-            # Cross-subject benchmark-default uses a fixed train anchor recording.
-            return [_to_recording_id(DS_DM_TRAIN_SUBJECT_ID, DS_DM_TRAIN_TRIAL_ID)]
-        # Val/test evaluate on the requested held-out target recording.
-        return [test_recording_id]
-
-    def _ss_dm_train_recording_id_for_selection(
-        self,
-    ) -> str:
-        # Compute SS-DM train recording using benchmark-default selection rules.
-        if self.subset_tier == "lite":
-            # Lite mode always defines exactly two eligible trials per subject.
-            # Training should use "the other lite trial" relative to the test trial.
-            subject_trials = sorted(
-                trial
-                for subject, trial in NEUROPROBE_LITE_SUBJECT_TRIALS
-                if subject == self.test_subject
+        resolved_ids = sorted(set(resolved_ids))
+        if self.split == "train" and not resolved_ids:
+            raise ValueError(
+                "No training recording_ids resolved after applying regime/subset filters."
             )
-            if len(subject_trials) != 2:
-                raise ValueError(
-                    "SS-DM lite benchmark-default expects exactly two lite trials "
-                    f"for subject {self.test_subject}, found {subject_trials}."
-                )
-            if self.test_session not in subject_trials:
-                raise ValueError(
-                    f"Target (test_subject={self.test_subject}, test_session={self.test_session}) "
-                    "is not eligible for lite SS-DM benchmark-default."
-                )
-            # Start with the first lite trial; if that is the test trial, swap to the second.
-            train_session = subject_trials[0]
-            if train_session == self.test_session:
-                train_session = subject_trials[1]
-            return _to_recording_id(self.test_subject, train_session)
-
-        if self.subset_tier == "full":
-            # Full mode uses the longest-trial ordering table from the benchmark.
-            # Normally pick the longest trial for training.
-            longest_trials = NEUROPROBE_LONGEST_TRIALS_FOR_SUBJECT.get(
-                self.test_subject, []
-            )
-            if len(longest_trials) < 2:
-                raise ValueError(
-                    "SS-DM full benchmark-default requires at least two longest trials "
-                    f"for subject {self.test_subject}, found {longest_trials}."
-                )
-            # If the longest trial is already the test target, fall back to second-longest
-            # to keep train/test recordings distinct.
-            train_session = longest_trials[0]
-            if train_session == self.test_session:
-                train_session = longest_trials[1]
-            return _to_recording_id(self.test_subject, train_session)
-
-        raise ValueError(
-            f"subset_tier '{self.subset_tier}' is not supported for SS-DM train selection."
-        )
+        return resolved_ids
