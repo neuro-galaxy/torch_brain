@@ -46,16 +46,14 @@ class ArrayDict:
     def keys(self) -> list[str]:
         r"""Returns a list of all array attribute names."""
         # O(k) in the number of attributes: avoid in hot paths
-        return list(filter(lambda x: not x.startswith("_"), self.__dict__))
+        return [k for k in self.__dict__ if not k.startswith("_")]
 
     def _maybe_first_dim(self):
-        # If self has at least one attribute, returns the first dimension of
-        # the first attribute. Otherwise, returns :obj:`None`.
-        keys = self.keys()
-        if len(keys) == 0:
+        # first dim of the first attribute (None if empty), without building keys()
+        first_key = next((k for k in self.__dict__ if not k.startswith("_")), None)
+        if first_key is None:
             return None
-        else:
-            return self.__dict__[keys[0]].shape[0]
+        return self.__dict__[first_key].shape[0]
 
     def __len__(self):
         r"""Returns the first dimension shared by all attributes."""
