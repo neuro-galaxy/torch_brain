@@ -256,7 +256,7 @@ class ArrayDict:
         file.attrs["_unicode_keys"] = np.array(_unicode_keys, dtype="S")
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _object_checked: bool = False):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -274,11 +274,13 @@ class ArrayDict:
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        if file.attrs["object"] != cls.__name__:
-            raise ValueError(
-                f"File contains data for a {file.attrs['object']} object, expected "
-                f"{cls.__name__} object."
-            )
+        # Data.from_hdf5 already read attrs["object"] to pick this class
+        if not _object_checked:
+            if file.attrs["object"] != cls.__name__:
+                raise ValueError(
+                    f"File contains data for a {file.attrs['object']} object, expected "
+                    f"{cls.__name__} object."
+                )
 
         _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
 
@@ -438,7 +440,7 @@ class LazyArrayDict(ArrayDict):
         raise NotImplementedError("Cannot save a lazy array dict to hdf5.")
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _object_checked: bool = False):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -452,10 +454,12 @@ class LazyArrayDict(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == ArrayDict.__name__, (
-            f"File contains data for a {file.attrs['object']} object, expected "
-            f"{ArrayDict.__name__} object."
-        )
+        # Data.from_hdf5 already read attrs["object"] to pick this class
+        if not _object_checked:
+            assert file.attrs["object"] == ArrayDict.__name__, (
+                f"File contains data for a {file.attrs['object']} object, expected "
+                f"{ArrayDict.__name__} object."
+            )
 
         obj = cls.__new__(cls)
         for key, value in file.items():
