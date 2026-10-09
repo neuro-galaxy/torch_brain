@@ -1,3 +1,4 @@
+import copy
 import os
 import tempfile
 
@@ -194,6 +195,61 @@ def test_lazy_array_dict_select_by_mask_preserves_unicode_keys(test_filepath):
         # materialize and confirm dtype is restored to unicode
         assert result.unit_id.dtype.kind == "U"
         assert np.array_equal(result.unit_id, np.array(["unit01", "unit03"]))
+
+
+def _write_lazy_array_dict(filepath, keys):
+    with h5py.File(filepath, "w") as f:
+        ArrayDict(**{key: np.arange(3) for key in keys}).to_hdf5(f)
+
+
+def test_lazy_array_dict_converts_only_when_all_loaded(test_filepath):
+    keys = [f"attr_{i}" for i in range(5)]
+    _write_lazy_array_dict(test_filepath, keys)
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyArrayDict.from_hdf5(f)
+        for key in keys[:-1]:
+            getattr(data, key)
+            assert type(data) is LazyArrayDict
+
+        getattr(data, keys[-1])
+        assert type(data) is ArrayDict
+        assert "_unloaded" not in data.__dict__
+
+
+def test_lazy_array_dict_shallow_copies_convert_independently(test_filepath):
+    keys = [f"attr_{i}" for i in range(5)]
+    _write_lazy_array_dict(test_filepath, keys)
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyArrayDict.from_hdf5(f)
+        getattr(data, keys[0])  # builds the set of unloaded keys
+        # a shallow copy shares that set with the original
+        other = copy.copy(data)
+        for key in keys[1:]:
+            getattr(data, key)
+        assert type(data) is ArrayDict
+
+        # the copy still has unloaded attributes, so it must stay lazy until read
+        for key in keys[1:-1]:
+            getattr(other, key)
+            assert type(other) is LazyArrayDict
+        getattr(other, keys[-1])
+        assert type(other) is ArrayDict
+
+
+def test_lazy_array_dict_converts_after_direct_dict_writes(test_filepath):
+    keys = [f"attr_{i}" for i in range(5)]
+    _write_lazy_array_dict(test_filepath, keys)
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyArrayDict.from_hdf5(f)
+        getattr(data, keys[0])  # builds the set of unloaded keys
+        # load an attribute without going through attribute access
+        data.__dict__[keys[1]] = np.arange(3)
+        for key in keys[2:]:
+            getattr(data, key)
+        assert type(data) is ArrayDict
 
 
 def test_array_dict_from_dataframe():

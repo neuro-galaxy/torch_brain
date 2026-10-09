@@ -8,7 +8,7 @@ from typing import Any
 import h5py
 import numpy as np
 
-from .arraydict import ArrayDict
+from .arraydict import ArrayDict, _all_loaded
 from .interval import Interval
 from .irregular_ts import IrregularTimeSeries
 from .typing import ArrayLike
@@ -757,12 +757,9 @@ class LazyRegularTimeSeries(RegularTimeSeries):
                 self.__dict__[name] = out
 
             # If all attributes are loaded, we can remove the lazy flag
-            all_loaded = all(
-                isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-            )
-            if all_loaded:
+            if _all_loaded(self, name):
                 self.__class__ = RegularTimeSeries
-                del self._lazy_ops
+                del self._lazy_ops, self._unloaded
 
             return out
         return super().__getattribute__(name)
