@@ -25,9 +25,6 @@ from torch_brain.data import (
     Data,
     Interval,
     IrregularTimeSeries,
-    LazyArrayDict,
-    LazyInterval,
-    LazyIrregularTimeSeries,
     LazyRegularTimeSeries,
     RegularTimeSeries,
 )
@@ -324,7 +321,7 @@ def bench_arraydict_keys():
 
 _LAZY_N_ROWS = 1_000
 _LAZY_DURATION = 100.0
-_LAZY_KS = (10, 50, 100)
+_LAZY_KS = 100
 
 
 def _extra_attrs(n_attrs, rng):
@@ -416,28 +413,28 @@ def _lazy_access_bench(short_name, make, lazy_cls, k, mode="read"):
 
 
 _LAZY_CLASSES = [
-    ("ArrayDict", _make_arraydict, LazyArrayDict),
-    ("Interval", _make_interval, LazyInterval),
-    ("IrregularTS", _make_irregular_ts, LazyIrregularTimeSeries),
+    # ("ArrayDict", _make_arraydict, LazyArrayDict),
+    # ("Interval", _make_interval, LazyInterval),
+    # ("IrregularTS", _make_irregular_ts, LazyIrregularTimeSeries),
     ("RegularTS", _make_regular_ts, LazyRegularTimeSeries),
 ]
 # LazyArrayDict has no slice()
 _SLICEABLE_LAZY_CLASSES = [c for c in _LAZY_CLASSES if c[0] != "ArrayDict"]
 
 LAZY_ACCESS_BENCHMARKS = (
+    # [
+    #     _lazy_access_bench(name, make, lazy_cls, k)
+    #     for name, make, lazy_cls in _LAZY_CLASSES
+    #     for k in _LAZY_KS
+    # ]
+    # + [
+    #     # slice()/unresolved_slice are resolved on first attribute read, so the
+    #     # sliced read path has its own per-attribute cost
+    #     _lazy_access_bench(name, make, lazy_cls, k, mode="sliced")
+    #     for name, make, lazy_cls in _SLICEABLE_LAZY_CLASSES
+    #     for k in _LAZY_KS
+    # ]
     [
-        _lazy_access_bench(name, make, lazy_cls, k)
-        for name, make, lazy_cls in _LAZY_CLASSES
-        for k in _LAZY_KS
-    ]
-    + [
-        # slice()/unresolved_slice are resolved on first attribute read, so the
-        # sliced read path has its own per-attribute cost
-        _lazy_access_bench(name, make, lazy_cls, k, mode="sliced")
-        for name, make, lazy_cls in _SLICEABLE_LAZY_CLASSES
-        for k in _LAZY_KS
-    ]
-    + [
         _lazy_access_bench(name, make, lazy_cls, 100, mode="read-1")
         for name, make, lazy_cls in _LAZY_CLASSES
     ]
@@ -468,17 +465,17 @@ DATA_SLICE_MANY_TS_BENCHMARKS = [_data_slice_many_ts_bench(n) for n in (10, 50)]
 
 
 BENCHMARKS = [
-    bench_data_from_hdf5_lazy,
-    bench_data_slice_lazy,
-    bench_data_slice_inmemory,
-    bench_its_slice,
-    bench_rts_slice,
-    bench_interval_slice,
-    bench_interval_and_single,
-    bench_interval_and_multi,
-    bench_interval_or,
-    bench_interval_difference,
-    bench_arraydict_keys,
-    *DATA_SLICE_MANY_TS_BENCHMARKS,
+    # bench_data_from_hdf5_lazy,
+    # bench_data_slice_lazy,
+    # bench_data_slice_inmemory,
+    # bench_its_slice,
+    # bench_rts_slice,
+    # bench_interval_slice,
+    # bench_interval_and_single,
+    # bench_interval_and_multi,
+    # bench_interval_or,
+    # bench_interval_difference,
+    # bench_arraydict_keys,
+    # *DATA_SLICE_MANY_TS_BENCHMARKS,
     *LAZY_ACCESS_BENCHMARKS,
 ]
