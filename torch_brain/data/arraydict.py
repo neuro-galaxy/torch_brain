@@ -33,9 +33,9 @@ class ArrayDict:
 
         >>> units
         ArrayDict(
-          unit_id=[2],
-          brain_region=[2],
-          waveform_mean=[2, 48]
+          unit_id: array, shape=(2,), dtype=<U6,
+          brain_region: array, shape=(2,), dtype=<U2,
+          waveform_mean: array, shape=(2, 48), dtype=float64,
         )
     """
 
@@ -94,8 +94,14 @@ class ArrayDict:
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        info = [_size_repr(k, self.__dict__[k], indent=2) for k in self.keys()]
+        first_dim = self._maybe_first_dim()
+        info = [
+            _size_repr(k, self.__dict__[k], indent=2, first_dim=first_dim)
+            for k in self.keys()
+        ]
         info = ",\n".join(info)
+        if len(info):
+            info = f"{info},"
         return f"{cls}(\n{info}\n)"
 
     def select_by_mask(self, mask: ArrayLike):
@@ -120,12 +126,12 @@ class ArrayDict:
             >>> units_subset = units.select_by_mask([True, False])
             >>> units_subset
             ArrayDict(
-              unit_id=[1],
-              brain_region=[1],
-              waveform_mean=[1, 48]
+              unit_id: array, shape=(1,), dtype=<U6,
+              brain_region: array, shape=(1,), dtype=<U2,
+              waveform_mean: array, shape=(1, 48), dtype=float64,
             )
-
         """
+
         mask = np.asarray(mask)
         _validate_select_by_mask_input(mask, len(self))
 
