@@ -35,7 +35,9 @@ class RandomFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
             :obj:`window_length` are silently skipped with a warning logged. If
             ``False``, a :exc:`ValueError` is raised for any short interval.
 
-    Example::
+    Example
+
+    .. code-block:: pycon
 
         >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import RandomFixedWindowSampler

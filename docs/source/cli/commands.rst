@@ -9,7 +9,7 @@ Command line interface for downloading and processing neural data with brainsets
 
 **Usage**
 
-.. code-block::
+.. code:: shell
 
     brainsets [OPTIONS] [COMMAND] [ARGS]
 
@@ -49,7 +49,7 @@ Manage brainsets configuration.
 
 **Usage**
 
-.. code-block::
+.. code:: shell
 
     brainsets config [OPTIONS] COMMAND [ARGS]
 
@@ -92,7 +92,7 @@ List all pipelines provided by the installed package.
 
 **Usage**
 
-.. code-block::
+.. code:: shell
 
     brainsets list
 
@@ -103,7 +103,7 @@ brainsets prepare
 
 Download and process a single brainset.
 
-.. code-block::
+.. code:: shell
 
     brainsets prepare [OPTIONS] BRAINSET
 

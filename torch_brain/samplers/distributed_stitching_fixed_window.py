@@ -45,7 +45,9 @@ class DistributedStitchingFixedWindowSampler(torch.utils.data.DistributedSampler
             Consecutive windows sharing the same value belong to the same interval and
             will be stitched together.
 
-    Example::
+    Example
+
+    .. code-block:: pycon
 
         >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import DistributedStitchingFixedWindowSampler

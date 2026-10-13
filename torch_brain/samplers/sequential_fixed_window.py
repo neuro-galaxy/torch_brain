@@ -32,7 +32,9 @@ class SequentialFixedWindowSampler(torch.utils.data.Sampler[DatasetIndex]):
             If ``True``, intervals shorter than :obj:`window_length` are
             silently skipped with a warning logged.
 
-    Example::
+    Example
+
+    .. code-block:: pycon
 
         >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import SequentialFixedWindowSampler

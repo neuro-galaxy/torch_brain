@@ -20,7 +20,9 @@ class ArrayDict:
         **kwargs: array-like objects (e.g. numpy arrays, lists or tuples) that share
             the same first dimension. Each value is cast to a numpy array internally.
 
-    Example ::
+    Example
+
+    .. code-block:: pycon
 
         >>> from torch_brain.data import ArrayDict
         >>> import numpy as np
@@ -112,7 +114,9 @@ class ArrayDict:
                 equal length as the object itself, and is cast to a numpy array
                 internally, so a numpy array, a list, a tuple, etc. are all accepted.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.data import ArrayDict
             >>> import numpy as np

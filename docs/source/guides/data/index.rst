@@ -20,17 +20,17 @@ This guide walks through the core data objects, how data is stored and loaded
 from disk, what lazy-loading means, and more.
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Getting Started
+    :maxdepth: 1
+    :caption: Getting Started
 
-   data_objects_intro
-   io
-   interval_ops/index
-   domain
+    data_objects_intro
+    io
+    interval_ops/index
+    domain
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Advanced Concepts
+    :maxdepth: 1
+    :caption: Advanced Concepts
 
-   gappy_regular_ts
+    gappy_regular_ts
 

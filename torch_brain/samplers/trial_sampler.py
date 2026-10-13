@@ -25,7 +25,9 @@ class TrialSampler(torch.utils.data.Sampler[DatasetIndex]):
         generator: Optional RNG used when
             :obj:`shuffle=True`. If ``None`` (default), uses the default global PyTorch generator.
 
-    Example::
+    Example
+
+    .. code-block:: pycon
 
         >>> from torch_brain.data import Interval
         >>> from torch_brain.samplers import TrialSampler

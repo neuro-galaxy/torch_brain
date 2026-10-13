@@ -4,25 +4,25 @@ Preparing a new Dataset
 This tutorial walks through how to prepare a new neural dataset using **brainsets**.
 
 
-**1. Pick a `brainset_id`**
+**1. Pick a** ``brainset_id``
 
-Pick a unique `brainset_id` for your dataset, you may format it as:
-``{first_author_last_name}_{last_author_last_name}_{first_word_in_title}_{publication_year}``.
+Pick a unique ``brainset_id`` for your dataset, you may format it as:
+``<first_author_last_name>_<last_author_last_name>_<first_word_in_title>_<publication_year>``.
 For example, the dataset from `Perich et al. 2018 <https://www.sciencedirect.com/science/article/pii/S0896627318308328>`_
 would be ``perich_miller_population_2018``.
 
 **2. Download the raw data**
 
-Download the raw data from the source and place it in a directory, e.g. ``./data/raw/{brainset_id}``.
+Download the raw data from the source and place it in a directory, e.g. ``./data/raw/<brainset_id>``.
 
-**3. Start with the prepare_data.py template**
+**3. Start with the** ``prepare_data.py`` **template**
 
 Write a ``prepare_data.py`` script to load the raw data from a single recording, extract all relevant data and save it as a :obj:`torch_brain.data.Data` object.
 
 The following is an example ``prepare_data.py`` script that can serve as a template:
 
 .. code-block:: python
-    :emphasize-lines: 15, 16, 18, 19, 21, 22, 23, 24
+    :emphasize-lines: 15, 18
 
     import argparse
     import os
@@ -171,11 +171,12 @@ Create a :class:`~torch_brain.data.DeviceDescription` object to store metadata:
 **9. Extract Neural Data**
 
 Extract and process the neural data. If you are working with spiking data,
-the expected outputs are ``spikes``and ``units``.
+the expected outputs are ``spikes`` and ``units``.
 
 .. tab:: Numpy File
 
     .. code-block:: python
+        :emphasize-lines: 4, 5, 13, 17
 
         import numpy as np
         from torch_brain.data  import IrregularTimeSeries, ArrayDict
@@ -213,6 +214,7 @@ Extract and process the behavioral data. If you are working with reaching task d
 the expected outputs are ``cursor``.
 
 .. code-block:: python
+    :emphasize-lines: 4, 5, 6, 7
 
     from torch_brain.data  import IrregularTimeSeries
 
@@ -229,6 +231,7 @@ the expected outputs are ``cursor``.
 If you are working with data that is structured into trials, extract the trial information using a :class:`~torch_brain.data.Interval`:
 
 .. code-block:: python
+    :emphasize-lines: 4, 5, 6, 7, 8
 
     from torch_brain.data  import Interval
 

@@ -34,11 +34,13 @@ If you are brand new to the brainsets CLI, start with
 Step 1 - Create a pipeline directory
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-A pipeline lives in a directory containing at least a ``pipeline.py`` file::
+A pipeline lives in a directory containing at least a ``pipeline.py`` file:
 
-   my_brainset/
-   ├── pipeline.py
-   └── ...              # optional supporting files
+.. code-block:: test
+
+    my_brainset/
+    ├── pipeline.py
+    └── ...              # optional supporting files
 
 ``pipeline.py`` contains your pipeline class along with any metadata (Python version,
 dependencies) declared inline at the top of the file. You may include additional
@@ -58,6 +60,7 @@ Pipelines can also expose custom CLI arguments by attaching an
 :class:`argparse.ArgumentParser` to the ``parser`` attribute.
 
 .. code-block:: python
+    :emphasize-lines: 27, 30, 33
 
     # /// brainset-pipeline
     # python-version = "3.11"
@@ -92,6 +95,7 @@ Pipelines can also expose custom CLI arguments by attaching an
 
         def process(self, download_output):
             ...
+            
 
 If your pipeline requires specific dependencies or a specific Python version,
 add an inline metadata block at the very top of ``pipeline.py`` (see
@@ -126,6 +130,7 @@ The Perich & Miller manifest calculation demonstrates how to build this table
 using the Dandi API:
 
 .. code-block:: python
+    :emphasize-lines: 10
 
     @classmethod
     def get_manifest(cls, raw_dir, args) -> pd.DataFrame:
@@ -160,6 +165,7 @@ As an example, here we download the file referred in a given manifest row, and
 return the path to that file.
 
 .. code-block:: python
+    :emphasize-lines: 9
 
     def download(self, manifest_item):
         self.update_status("DOWNLOADING")
@@ -188,6 +194,7 @@ Step 5 - Process into :obj:`Data` objects
 it into processed :obj:`torch_brain.data.Data` object(s), and stores these inside ``self.processed_dir``.
 
 .. code-block:: python
+    :emphasize-lines: 3, 10, 13, 16
 
     def process(self, fpath):
         self.update_status("Loading file")
@@ -229,20 +236,20 @@ Once your class is in place you can run it through the CLI.
 
 .. code-block:: console
 
-   $ brainsets prepare my_brainset --cores 8
-   Preparing my_brainset...
-   Raw data directory: /path/to/raw
-   Processed data directory: /path/to/processed
-   Building temporary virtual environment for .../pipeline.py
-   ...
+    $ brainsets prepare my_brainset --cores 8
+    Preparing my_brainset...
+    Raw data directory: /path/to/raw
+    Processed data directory: /path/to/processed
+    Building temporary virtual environment for .../pipeline.py
+    ...
 
 
 For local development outside the ``brainsets`` repository, you can point the CLI to any pipeline directory by adding
 ``--local``.
 
-.. code-block:: console
+.. code:: shell
 
-   $ brainsets prepare /path/to/my_brainset --local --cores 8
+    brainsets prepare /path/to/my_brainset --local --cores 8
 
 
 
@@ -266,6 +273,7 @@ at the top of ``pipeline.py``. This block is parsed by the CLI to create an
 isolated environment before running your pipeline.
 
 .. code-block:: python
+    :emphasize-lines: 10
 
     # /// brainset-pipeline
     # python-version = "3.11"
@@ -277,6 +285,7 @@ isolated environment before running your pipeline.
 
     from argparse import ArgumentParser
     ...
+
 
 The metadata block must:
 

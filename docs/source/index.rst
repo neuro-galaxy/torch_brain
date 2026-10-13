@@ -19,38 +19,38 @@ If you encounter any bugs or have feature requests, please submit them to our
 `GitHub Issues page <https://github.com/neuro-galaxy/torch_brain/issues>`_.
 
 .. image:: https://img.shields.io/pypi/v/torch_brain?color=blue&logo=pypi&logoColor=white
-   :target: https://pypi.org/project/torch_brain/
-   :alt: PyPI Package
+    :target: https://pypi.org/project/torch_brain/
+    :alt: PyPI Package
 
 .. image:: https://img.shields.io/badge/GitHub-Repository-black?logo=github&logoColor=white
-   :target: https://github.com/neuro-galaxy/torch_brain
-   :alt: GitHub Repository
+    :target: https://github.com/neuro-galaxy/torch_brain
+    :alt: GitHub Repository
 
 .. image:: https://img.shields.io/discord/1338561153089146962?color=3CB371&label=Discord&logo=discord&logoColor=white
-   :target: https://discord.gg/kQNKA6B8ZC
-   :alt: Discord
+    :target: https://discord.gg/kQNKA6B8ZC
+    :alt: Discord
 
 
 .. note::
-   We have merged ``temporaldata`` and ``brainsets`` into ``torch_brain``.
-   If you are migrating from v0.1.x, please see this
-   `migration guide <https://github.com/neuro-galaxy/torch_brain/blob/main/howto/MIGRATE_TO_v0.2.md>`_.
+    We have merged ``temporaldata`` and ``brainsets`` into ``torch_brain``.
+    If you are migrating from v0.1.x, please see this
+    `migration guide <https://github.com/neuro-galaxy/torch_brain/blob/main/howto/MIGRATE_TO_v0.2.md>`_.
 
 
 ----
 
 .. toctree::
-   :maxdepth: 3
+    :maxdepth: 3
 
-   installation
-   guides/index
-
-.. toctree::
-   :maxdepth: 1
-
-   cli/commands
+    installation
+    guides/index
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 1
 
-   generated/api/index
+    cli/commands
+
+.. toctree::
+    :maxdepth: 2
+
+    generated/api/index

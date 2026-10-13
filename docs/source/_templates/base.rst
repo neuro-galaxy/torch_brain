@@ -15,9 +15,9 @@
 .. currentmodule:: {{ module }}
 
 .. autoclass:: {{ objname }}
-   :members:
-   :show-inheritance:
-   :special-members: __getitem__
+    :members:
+    :show-inheritance:
+    :special-members: __getitem__
 
 {%- else -%}
 

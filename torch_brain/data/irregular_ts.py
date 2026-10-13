@@ -32,7 +32,9 @@ class IrregularTimeSeries(ArrayDict):
         **kwargs: array-like objects (e.g. numpy arrays, lists or tuples) that share
             the same first dimension N. Each value is cast to a numpy array internally.
 
-    Example ::
+    Example
+
+    .. code-block:: pycon
 
         >>> import numpy as np
         >>> from torch_brain.data import IrregularTimeSeries

@@ -35,7 +35,9 @@ class Data:
             of any time-based attributes.
             Defaults to :obj:`None`.
 
-    Example ::
+    Example
+
+    .. code-block:: pycon
 
         >>> import numpy as np
         >>> from torch_brain.data import (
@@ -200,7 +202,9 @@ class Data:
         r"""Returns the start time of this slice relative to the original start time.
         Should be 0. if the data object has not been sliced.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.data import Data
             >>> data = Data(domain=Interval(0., 4.))
@@ -331,12 +335,15 @@ class Data:
                 :func:`~torch_brain.data.get_default_serialize_fn_map` is used.
                 Defaults to :obj:`None`.
 
-        Example ::
-            >>> import h5py
-            >>> from torch_brain.data import Data
-            >>> data = Data(...)  # doctest: +SKIP
-            >>> with h5py.File("data.h5", "w") as f:  # doctest: +SKIP
-            ...     data.to_hdf5(f)
+        Example
+
+        .. code-block:: python
+
+            import h5py
+            from torch_brain.data import Data
+            data = Data(...)  # doctest: +SKIP
+            with h5py.File("data.h5", "w") as f:  # doctest: +SKIP
+                data.to_hdf5(f)
         """
         if serialize_fn_map is None:
             serialize_fn_map = _DEFAULT_SERIALIZE_FN_MAP
@@ -376,11 +383,14 @@ class Data:
         Args:
             file: HDF5 file.
 
-        Example ::
-            >>> import h5py  # doctest: +SKIP
-            >>> from torch_brain.data import Data  # doctest: +SKIP
-            >>> with h5py.File("data.h5", "r") as f:  # doctest: +SKIP
-            ...     data = Data.from_hdf5(f)
+        Example
+
+        .. code-block:: python
+
+            import h5py  # doctest: +SKIP
+            from torch_brain.data import Data  # doctest: +SKIP
+            with h5py.File("data.h5", "r") as f:  # doctest: +SKIP
+                data = Data.from_hdf5(f)
         """
         # check that the file is read-only
         if isinstance(file, h5py.File):
@@ -445,19 +455,22 @@ class Data:
         Returns:
             Data: The loaded :class:`Data` object from the HDF5 file.
 
-        Example ::
-            >>> from torch_brain.data import Data
-            >>> # lazy with context manager (recommended)
-            >>> with Data.load("data.h5") as data:  # doctest: +SKIP
-            ...     ...
+        Example
 
-            >>> # lazy with explicit close
-            >>> data = Data.load("data.h5")  # doctest: +SKIP
-            >>> ...  # doctest: +SKIP
-            >>> data.close()  # doctest: +SKIP
+        .. code-block:: python
 
-            >>> # non-lazy (no close needed)
-            >>> data = Data.load("data.h5", lazy=False)  # doctest: +SKIP
+            from torch_brain.data import Data
+            # lazy with context manager (recommended)
+            with Data.load("data.h5") as data:  # doctest: +SKIP
+                ...
+
+            # lazy with explicit close
+            data = Data.load("data.h5")  # doctest: +SKIP
+            ...  # doctest: +SKIP
+            data.close()  # doctest: +SKIP
+
+            # non-lazy (no close needed)
+            data = Data.load("data.h5", lazy=False)  # doctest: +SKIP
         """
         file = h5py.File(path)
         try:
@@ -496,10 +509,13 @@ class Data:
         Args:
             path: Destination file path
 
-        Example ::
-            >>> from torch_brain.data import Data  # doctest: +SKIP
-            >>> data = Data(...)  # doctest: +SKIP
-            >>> data.save("data.h5")  # doctest: +SKIP
+        Example
+
+        .. code-block:: python
+
+            from torch_brain.data import Data  # doctest: +SKIP
+            data = Data(...)  # doctest: +SKIP
+            data.save("data.h5")  # doctest: +SKIP
         """
 
         path = Path(path)
@@ -604,7 +620,10 @@ class Data:
         Raises:
             AttributeError: If any component of the path cannot be resolved.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
+
             >>> import numpy as np
             >>> from torch_brain.data import Data, IrregularTimeSeries, Interval
             >>> data = Data(
@@ -637,10 +656,12 @@ class Data:
         r"""Set a nested attribute specified by its dot-separated path, modifying
         the object in-place.
 
-        Example ::
+        Example
 
-            >>> data.set_nested_attribute("session.subject.age", 5)  # doctest: +SKIP
-            >>> data.set_nested_attribute("spikes.unit_index", remapped_units)  # doctest: +SKIP
+        .. code-block:: python
+
+            data.set_nested_attribute("session.subject.age", 5)  # doctest: +SKIP
+            data.set_nested_attribute("spikes.unit_index", remapped_units)  # doctest: +SKIP
 
         Args:
             path: Nested attribute path (dot-separated).
@@ -659,9 +680,12 @@ class Data:
     def has_nested_attribute(self, path: str) -> bool:
         """Return :obj:`True` if the dot-separated path resolves to an existing attribute.
 
-        Example ::
-            >>> if data.has_nested_attribute("spikes.waveforms"):  # doctest: +SKIP
-            ...     process(data.spikes.waveforms)
+        Example
+
+        .. code-block:: python
+
+            if data.has_nested_attribute("spikes.waveforms"):  # doctest: +SKIP
+                process(data.spikes.waveforms)
 
         .. note::
             Uses ``__dict__`` rather than ``getattr`` at each level of the path
@@ -698,10 +722,13 @@ class Data:
         r"""Delete a nested attribute specified by its dot-separated path, modifying
         the object in-place.
 
-        Example ::
-            >>> for path in ["spikes.waveforms", "lfp.raw"]:  # doctest: +SKIP
-            ...     if data.has_nested_attribute(path):
-            ...         data.delete_nested_attribute(path)
+        Example
+
+        .. code-block:: python
+
+            for path in ["spikes.waveforms", "lfp.raw"]:  # doctest: +SKIP
+                if data.has_nested_attribute(path):
+                    data.delete_nested_attribute(path)
 
         Args:
             path: Nested attribute path (dot-separated).

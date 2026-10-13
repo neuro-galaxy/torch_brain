@@ -14,15 +14,17 @@ and the updated `OpenReview submission <https://openreview.net/forum?id=n0WDVWqg
 Preparing the data
 ------------------
 
-Download and process the Neuroprobe data using the brainsets CLI::
+Download and process the Neuroprobe data using the brainsets CLI.
+
+.. code:: shell
 
     brainsets prepare neuroprobe_2025
 
 .. note::
 
-   Processing includes downloading raw BrainTreebank data and computing all
-   benchmark splits. This may take several hours depending on your hardware and
-   network connection. Use ``--cores <N>`` to parallelize.
+    Processing includes downloading raw BrainTreebank data and computing all
+    benchmark splits. This may take several hours depending on your hardware and
+    network connection. Use ``--cores <N>`` to parallelize.
 
 
 Key concepts
@@ -36,124 +38,124 @@ Auditory tasks
 ^^^^^^^^^^^^^^
 
 .. list-table::
-   :header-rows: 1
-   :widths: 55 35 55
-   :class: center-first-col
+    :header-rows: 1
+    :widths: 55 35 55
+    :class: center-first-col
 
-   * - Task
-     - Binary labels
-     - Multiclass labels
-   * - | ``volume`` 
-     - | 0 - low 
-       | 1 - high 
-     - | 0 - low (<25th percentile)
-       | 1 - medium (37.5th-62.5th)
-       | 2 - high (>=75th percentile)
-   * - | ``pitch``
-     - | 0 - low 
-       | 1 - high 
-     - | 0 - low (<25th percentile)
-       | 1 - medium (37.5th-62.5th)
-       | 2 - high (>=75th percentile)
-   * - | ``delta_volume`` 
-     - | 0 - low 
-       | 1 - high 
-     - | 0 - low (<25th percentile)
-       | 1 - medium (37.5th-62.5th)
-       | 2 - high (>=75th percentile)
+    * - Task
+      - Binary labels
+      - Multiclass labels
+    * - | ``volume`` 
+      - | 0 - low 
+        | 1 - high 
+      - | 0 - low (<25th percentile)
+        | 1 - medium (37.5th-62.5th)
+        | 2 - high (>=75th percentile)
+    * - | ``pitch``
+      - | 0 - low 
+        | 1 - high 
+      - | 0 - low (<25th percentile)
+        | 1 - medium (37.5th-62.5th)
+        | 2 - high (>=75th percentile)
+    * - | ``delta_volume`` 
+      - | 0 - low 
+        | 1 - high 
+      - | 0 - low (<25th percentile)
+        | 1 - medium (37.5th-62.5th)
+        | 2 - high (>=75th percentile)
 
 Language tasks
 ^^^^^^^^^^^^^^
 
 .. list-table::
-   :header-rows: 1
-   :widths: 55 35 55
-   :class: center-first-col
+    :header-rows: 1
+    :widths: 55 35 55
+    :class: center-first-col
 
-   * - Task
-     - Binary labels
-     - Multiclass labels
-   * - ``speech`` 
-     - | 1 - speech
-       | 0 - nonverbal 
-     - Not used (task remains binary)
-   * - ``onset`` 
-     - | 1 - sentence-start
-       | 0 - nonverbal
-     - Not used (task remains binary)
-   * - | ``gpt2_surprisal``
-     - | 0 - low 
-       | 1 - high 
-     - | 0 - low (<25th percentile)
-       | 1 - medium (37.5th-62.5th)
-       | 2 - high (>=75th percentile)
-   * - | ``word_length`` 
-     - | 0 - short 
-       | 1 - long
-     - | 0 - low (<25th percentile)
-       | 1 - medium (37.5th-62.5th)
-       | 2 - high (>=75th percentile)
-   * - | ``word_gap``
-     - | 0 - short
-       | 1 - long
-     - | 0 - short gap (<25th percentile)
-       | 1 - medium gap (37.5th-62.5th)
-       | 2 - long gap (>=75th percentile)
-   * - | ``word_index``
-     - | 0 - first word 
-       | 1 - other word
-     - | 0 - first word
-       | 1 - second word
-       | 2 - any later word
-   * - | ``word_head_pos``
-     - | 1 - ``bin_head == 0``
-       | 0 - ``bin_head == 1``
-     - Not used (task remains binary)
-   * - ``word_part_speech``
-     - | 1 - verb
-       | 0 - non-verb
-     - | 0 - noun
-       | 1 - verb
-       | 2 - pronoun
-       | 3 - determiner
-       | 4 - adjective
-       | 5 - adverb
+    * - Task
+      - Binary labels
+      - Multiclass labels
+    * - ``speech`` 
+      - | 1 - speech
+        | 0 - nonverbal 
+      - Not used (task remains binary)
+    * - ``onset`` 
+      - | 1 - sentence-start
+        | 0 - nonverbal
+      - Not used (task remains binary)
+    * - | ``gpt2_surprisal``
+      - | 0 - low 
+        | 1 - high 
+      - | 0 - low (<25th percentile)
+        | 1 - medium (37.5th-62.5th)
+        | 2 - high (>=75th percentile)
+    * - | ``word_length`` 
+      - | 0 - short 
+        | 1 - long
+      - | 0 - low (<25th percentile)
+        | 1 - medium (37.5th-62.5th)
+        | 2 - high (>=75th percentile)
+    * - | ``word_gap``
+      - | 0 - short
+        | 1 - long
+      - | 0 - short gap (<25th percentile)
+        | 1 - medium gap (37.5th-62.5th)
+        | 2 - long gap (>=75th percentile)
+    * - | ``word_index``
+      - | 0 - first word 
+        | 1 - other word
+      - | 0 - first word
+        | 1 - second word
+        | 2 - any later word
+    * - | ``word_head_pos``
+      - | 1 - ``bin_head == 0``
+        | 0 - ``bin_head == 1``
+      - Not used (task remains binary)
+    * - ``word_part_speech``
+      - | 1 - verb
+        | 0 - non-verb
+      - | 0 - noun
+        | 1 - verb
+        | 2 - pronoun
+        | 3 - determiner
+        | 4 - adjective
+        | 5 - adverb
 
 Visual tasks
 ^^^^^^^^^^^^
 
 .. list-table::
-   :header-rows: 1
-   :widths: 55 35 55
-   :class: center-first-col
+    :header-rows: 1
+    :widths: 55 35 55
+    :class: center-first-col
 
-   * - Task
-     - Binary labels
-     - Multiclass labels
-   * - | ``frame_brightness``
-     - | 0 - low 
-       | 1 - high
-     - | 0 - low (<25th percentile)
-       | 1 - medium (37.5th-62.5th)
-       | 2 - high (>=75th percentile)
-   * - | ``global_flow``
-     - | 0 - low
-       | 1 - high
-     - | 0 - low (<25th percentile)
-       | 1 - medium (37.5th-62.5th)
-       | 2 - high (>=75th percentile)
-   * - | ``local_flow``
-     - | 0 - low
-       | 1 - high
-     - | 0 - low (<25th percentile)
-       | 1 - medium (37.5th-62.5th)
-       | 2 - high (>=75th percentile)
-   * - | ``face_num``
-     - | 0 - no faces
-       | 1 - one or more 
-     - | 0 - no faces
-       | 1 - exactly one face
-       | 2 - more than one face
+    * - Task
+      - Binary labels
+      - Multiclass labels
+    * - | ``frame_brightness``
+      - | 0 - low 
+        | 1 - high
+      - | 0 - low (<25th percentile)
+        | 1 - medium (37.5th-62.5th)
+        | 2 - high (>=75th percentile)
+    * - | ``global_flow``
+      - | 0 - low
+        | 1 - high
+      - | 0 - low (<25th percentile)
+        | 1 - medium (37.5th-62.5th)
+        | 2 - high (>=75th percentile)
+    * - | ``local_flow``
+      - | 0 - low
+        | 1 - high
+      - | 0 - low (<25th percentile)
+        | 1 - medium (37.5th-62.5th)
+        | 2 - high (>=75th percentile)
+    * - | ``face_num``
+      - | 0 - no faces
+        | 1 - one or more 
+      - | 0 - no faces
+        | 1 - exactly one face
+        | 2 - more than one face
 
 **Label mode.** Neuroprobe supports both binary and multiclass classification.
 Use ``label_mode="multiclass"`` when constructing

@@ -25,7 +25,9 @@ class Interval(ArrayDict):
         **kwargs: array-like objects (e.g. numpy arrays, lists or tuples) that share
             the same first dimension N. Each value is cast to a numpy array internally.
 
-    Example ::
+    Example
+
+    .. code-block:: pycon
 
         >>> from torch_brain.data import Interval
 
@@ -66,7 +68,9 @@ class Interval(ArrayDict):
     An :obj:`Interval` object with a single interval can be simply created by passing
     a single float to the :obj:`start` and :obj:`end` arguments.
 
-    Example ::
+    Example
+
+    .. code-block:: pycon
 
         >>> Interval(0., 1.)
         Interval(
@@ -149,7 +153,9 @@ class Interval(ArrayDict):
         r"""Iterates over the intervals. Will return a tuple of (start, end).
         This iterator will not include other optional attributes.
 
-        .. Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.data import Interval
 
@@ -528,7 +534,9 @@ class Interval(ArrayDict):
         Returns:
             A new :obj:`Interval` object with the subdivided segments.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.data import Interval
 
@@ -586,7 +594,9 @@ class Interval(ArrayDict):
             end: End time.
             steps: Number of samples.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.data import Interval
 
@@ -660,7 +670,9 @@ class Interval(ArrayDict):
         Args:
             interval_list: List of (start, end) tuples.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.data import Interval
 
