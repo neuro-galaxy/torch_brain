@@ -244,6 +244,51 @@ def test_lazy_regular_timeseries(test_filepath):
         assert np.allclose(data.timestamps, np.arange(1.0, 3.0, 1 / 250.0))
 
 
+@pytest.mark.parametrize("load_between", [False, True])
+@pytest.mark.parametrize("reset_origin", [False, True])
+@pytest.mark.parametrize(
+    "first, second",
+    [
+        ((5.0, 12.0), (6.0, 10.0)),  # second slice nested in first
+        ((5.0, 12.0), (2.0, 10.0)),  # second slice starts before first
+        ((5.0, 12.0), (6.0, 15.0)),  # second slice ends after first
+        ((5.0, 12.0), (2.0, 15.0)),  # second slice contains first
+    ],
+)
+def test_lazy_regular_timeseries_double_slice(
+    test_filepath, reset_origin, first, second, load_between
+):
+    # Slicing twice must match slicing eagerly: the second slice cannot bring back
+    # data that the first slice excluded.
+    data = RegularTimeSeries(
+        values=np.arange(200, dtype=np.float64),
+        sampling_rate=10.0,
+    )
+    if reset_origin:
+        # express the second window relative to the first slice's new origin
+        second = (second[0] - first[0], second[1] - first[0])
+
+    expected = data.slice(*first, reset_origin=reset_origin).slice(
+        *second, reset_origin=reset_origin
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        lazy = LazyRegularTimeSeries.from_hdf5(f)
+        lazy = lazy.slice(*first, reset_origin=reset_origin)
+        if load_between:
+            # second slice then composes indices on an already-loaded array
+            _ = lazy.values
+        lazy = lazy.slice(*second, reset_origin=reset_origin)
+
+        np.testing.assert_array_equal(lazy.values, expected.values)
+        np.testing.assert_allclose(lazy.timestamps, expected.timestamps)
+        np.testing.assert_allclose(lazy.domain.start, expected.domain.start)
+        np.testing.assert_allclose(lazy.domain.end, expected.domain.end)
+
+
 def test_slice_numerical_instability():
     ts = RegularTimeSeries(value=np.zeros(40), sampling_rate=4)
     # Expected timestamps: [0.0, 0.25, 0.5, 0.75, 1.0, 1.25, ...]
