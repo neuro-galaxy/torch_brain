@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import copy
 import math
 import warnings
@@ -267,6 +268,15 @@ class RegularTimeSeries(ArrayDict):
         """
         # TODO: Implement once we support "gappy" regular timeseries
         raise NotImplementedError("Not implemented for RegularTimeSeries.")
+
+    def __getitem__(self, index: builtins.slice | ArrayLike):
+        """Raises a NotImplementedError as index-based slicing is not yet supported
+        for :obj:`RegularTimeSeries`. Use :meth:`slice` for time-based slicing.
+        """
+        # TODO: Implement index-based slicing (needs domain/sampling handling)
+        raise NotImplementedError(
+            "Index-based slicing is not implemented for RegularTimeSeries."
+        )
 
     def _time_to_idx(
         self,

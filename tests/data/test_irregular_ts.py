@@ -439,3 +439,85 @@ class TestIrregularTimeSeriesCoercion:
         assert len(data) == 6
         assert np.allclose(data.domain.start, np.array([0.1]))
         assert np.allclose(data.domain.end, np.array([0.6]))
+
+
+def test_irregular_timeseries_getitem_slice():
+    data = IrregularTimeSeries(
+        timestamps=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        unit_index=np.array([0, 0, 1, 0, 1, 2]),
+        waveforms=np.zeros((6, 48)),
+        domain="auto",
+    )
+
+    out = data[1:4]
+    assert isinstance(out, IrregularTimeSeries)
+    assert len(out) == 3
+    # index-based slicing does not reset the time origin
+    assert np.allclose(out.timestamps, [0.2, 0.3, 0.4])
+    assert np.array_equal(out.unit_index, [0, 1, 0])
+    assert out.waveforms.shape == (3, 48)
+    assert out.is_sorted()
+    # domain is left untouched, same as select_by_mask
+    assert np.allclose(out.domain.start, data.domain.start)
+    assert np.allclose(out.domain.end, data.domain.end)
+    assert out.timekeys() == data.timekeys()
+
+    assert np.allclose(data[::2].timestamps, [0.1, 0.3, 0.5])
+
+    with pytest.raises(TypeError):
+        data[0]
+    with pytest.raises(ValueError):
+        data[::-1]
+
+
+def test_lazy_irregular_timeseries_getitem_slice(test_filepath):
+    data = IrregularTimeSeries(
+        timestamps=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        unit_index=np.array([0, 0, 1, 0, 1, 2]),
+        domain="auto",
+    )
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        lazy = LazyIrregularTimeSeries.from_hdf5(f)
+        out = lazy[2:5]
+        assert isinstance(out, LazyIrregularTimeSeries)
+        assert np.array_equal(out.unit_index, [1, 0, 1])
+        assert np.allclose(out.timestamps, [0.3, 0.4, 0.5])
+
+        # index-slicing after a lazy time-based slice
+        lazy = LazyIrregularTimeSeries.from_hdf5(f)
+        out = lazy.slice(0.15, 0.55)[1:]
+        assert np.allclose(out.timestamps, [0.15, 0.25, 0.35])
+        assert np.array_equal(out.unit_index, [1, 0, 1])
+
+
+def test_irregular_timeseries_getitem_mask(test_filepath):
+    data = IrregularTimeSeries(
+        timestamps=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        unit_index=np.array([0, 0, 1, 0, 1, 2]),
+        domain="auto",
+    )
+    mask = data.unit_index == 1
+
+    out = data[mask]
+    assert isinstance(out, IrregularTimeSeries)
+    assert np.allclose(out.timestamps, [0.3, 0.5])
+    assert np.array_equal(out.unit_index, [1, 1])
+    assert out.is_sorted()
+    assert np.allclose(out.domain.start, data.domain.start)
+    assert np.allclose(out.domain.end, data.domain.end)
+
+    with pytest.raises(TypeError):
+        data[np.array([0, 2])]
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        lazy = LazyIrregularTimeSeries.from_hdf5(f)
+        out = lazy[mask]
+        assert isinstance(out, LazyIrregularTimeSeries)
+        assert np.allclose(out.timestamps, [0.3, 0.5])
+        assert np.array_equal(out.unit_index, [1, 1])

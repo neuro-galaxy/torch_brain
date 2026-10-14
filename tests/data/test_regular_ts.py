@@ -995,3 +995,11 @@ class TestDomainArg:
         np.testing.assert_array_equal(
             loaded.raw[~np.isnan(loaded.raw)], rts.raw[~np.isnan(rts.raw)]
         )
+
+
+def test_regular_timeseries_getitem_not_implemented():
+    data = RegularTimeSeries(
+        lfp=np.random.random((100, 4)), sampling_rate=10.0, domain="auto"
+    )
+    with pytest.raises(NotImplementedError):
+        data[1:3]

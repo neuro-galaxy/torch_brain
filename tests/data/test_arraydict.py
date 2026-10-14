@@ -296,3 +296,84 @@ class TestArrayDictCoercion:
         data = ArrayDict()
         with pytest.raises(ValueError):
             data.x = 5  # scalar → 0-d array → not at least 1-dimensional
+
+
+def test_array_dict_getitem_slice():
+    data = ArrayDict(
+        unit_id=np.array(["a", "b", "c", "d", "e"]),
+        waveform_mean=np.arange(10).reshape(5, 2),
+    )
+
+    out = data[1:3]
+    assert isinstance(out, ArrayDict)
+    assert len(out) == 2
+    assert np.array_equal(out.unit_id, ["b", "c"])
+    assert np.array_equal(out.waveform_mean, [[2, 3], [4, 5]])
+
+    assert np.array_equal(data[::2].unit_id, ["a", "c", "e"])
+    assert np.array_equal(data[-2:].unit_id, ["d", "e"])
+    assert len(data[10:]) == 0
+
+    # result is a copy
+    out.waveform_mean[0, 0] = 100
+    assert data.waveform_mean[1, 0] == 2
+
+    with pytest.raises(TypeError):
+        data[0]
+    with pytest.raises(TypeError):
+        data[np.array([0, 2])]
+    with pytest.raises(ValueError):
+        data[::-1]
+
+
+def test_array_dict_getitem_mask():
+    data = ArrayDict(
+        unit_id=np.array(["a", "b", "c", "d", "e"]),
+        waveform_mean=np.arange(10).reshape(5, 2),
+    )
+    mask = np.array([True, False, True, False, True])
+
+    out = data[mask]
+    assert isinstance(out, ArrayDict)
+    assert np.array_equal(out.unit_id, ["a", "c", "e"])
+    assert np.array_equal(out.waveform_mean, data.select_by_mask(mask).waveform_mean)
+
+    # array-likes are accepted
+    assert np.array_equal(data[mask.tolist()].unit_id, ["a", "c", "e"])
+
+    # mask of the wrong length
+    with pytest.raises(ValueError):
+        data[np.array([True, False])]
+
+
+def test_lazy_array_dict_getitem_slice(test_filepath):
+    data = ArrayDict(
+        unit_id=np.array(["a", "b", "c", "d", "e"]),
+        waveform_mean=np.arange(10).reshape(5, 2),
+    )
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        lazy = LazyArrayDict.from_hdf5(f)
+        out = lazy[1:4:2]
+        assert isinstance(out, LazyArrayDict)
+        assert len(out) == 2
+        assert np.array_equal(out.unit_id, ["b", "d"])
+        assert np.array_equal(out.waveform_mean, [[2, 3], [6, 7]])
+
+
+def test_lazy_array_dict_getitem_mask(test_filepath):
+    data = ArrayDict(
+        unit_id=np.array(["a", "b", "c", "d", "e"]),
+        waveform_mean=np.arange(10).reshape(5, 2),
+    )
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        lazy = LazyArrayDict.from_hdf5(f)
+        out = lazy[np.array([False, True, False, True, False])]
+        assert isinstance(out, LazyArrayDict)
+        assert np.array_equal(out.unit_id, ["b", "d"])
+        assert np.array_equal(out.waveform_mean, [[2, 3], [6, 7]])
