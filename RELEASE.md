@@ -3,13 +3,13 @@
 1. Ensure `main` is ready to release.
 2. Make sure `CHANGELOG.md` is up to date (review commit history to verify, open a Release PR if changes are needed).
 3. Verify the version in `CHANGELOG.md` matches the version you're about to tag.
-4. Create and push the release tag ([see here](#valid-version-numbers-and-their-meaning) for version syntax).
+4. Create and push the release tag ([see here](#valid-version-numbers-and-their-meaning) for version syntax), by running:
 
 ```bash
-$ git checkout main
-$ git pull origin main
-$ git tag vX.Y.Z
-$ git push origin vX.Y.Z
+git checkout main
+git pull origin main
+git tag vX.Y.Z
+git push origin vX.Y.Z
 ```
 
 5. Monitor the GitHub Actions workflow to ensure the build and publish succeed.

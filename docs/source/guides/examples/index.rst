@@ -2,7 +2,7 @@ Examples
 ========
 
 .. toctree::
-   :maxdepth: 1
+    :maxdepth: 1
 
-   ../../generated/notebooks/nlb_maze_minimal_example.ipynb
-   neuroprobe
+    ../../generated/notebooks/nlb_maze_minimal_example.ipynb
+    neuroprobe

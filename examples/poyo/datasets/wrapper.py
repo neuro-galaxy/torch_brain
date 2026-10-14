@@ -90,7 +90,10 @@ def _resolve_weights(timestamps, data, weight_cfg):
     The intervals and corresponding weights are specified in the config dictionary.
 
     The config dictionary maps interval names (nested notation allowed) to weight values.
-    For example::
+
+    Example
+
+    .. code-block:: python
 
         {
             'movement_periods.random_period': 1.0,

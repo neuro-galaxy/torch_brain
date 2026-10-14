@@ -86,8 +86,8 @@ domain that excludes the gap regions. For the example above:
 
 .. code-block:: pycon
 
-   >>> signal.domain.start, signal.domain.end
-   array([0., 4., 8.]), array([3., 6., 10.])
+    >>> signal.domain.start, signal.domain.end
+    array([0., 4., 8.]), array([3., 6., 10.])
 
 This is :math:`[0, 3) \cup [4, 6) \cup [8, 10)`.
 
@@ -101,12 +101,12 @@ boolean mask marking which positions hold real observations:
 
 .. code-block:: pycon
 
-   >>> signal.index_mask()
-   array([ True,  True,  True, False,  True,  True, False, False,  True,  True])
+    >>> signal.index_mask()
+    array([ True,  True,  True, False,  True,  True, False, False,  True,  True])
 
-   >>> # to get back "real" signal values:
-   >>> signal.values[signal.index_mask()]
-   array([0.1, 0.4, 0.2, 0.1, 0.0, 0.3, 0.5])
+    >>> # to get back "real" signal values:
+    >>> signal.values[signal.index_mask()]
+    array([0.1, 0.4, 0.2, 0.1, 0.0, 0.3, 0.5])
 
 For a contiguous series, :meth:`~RegularTimeSeries.index_mask` returns an
 all-``True`` array.
@@ -116,12 +116,12 @@ all-``True`` array.
 
 .. code-block:: pycon
 
-   >>> signal.is_gappy()
-   True
+    >>> signal.is_gappy()
+    True
 
-   >>> contiguous = RegularTimeSeries(values=[0.1, 0.4, 0.2], sampling_rate=1.0)
-   >>> contiguous.is_gappy()
-   False
+    >>> contiguous = RegularTimeSeries(values=[0.1, 0.4, 0.2], sampling_rate=1.0)
+    >>> contiguous.is_gappy()
+    False
 
 
 Slicing
@@ -141,8 +141,10 @@ additions specific to gappy series:
     >>> sliced = signal.slice(3.0, 9.0, reset_origin=False)
     >>> sliced.timestamps
     array([ 4.,  5.,  6.,  7.,  8.])
+
     >>> sliced.values
     array([0.1, 0. , nan, nan, 0.3])
+
     >>> sliced.domain.start, sliced.domain.end
     array([4., 8.]), array([6., 9.])
 
@@ -150,30 +152,32 @@ Notice that the domain does *not* start at :math:`t = 3`, and
 the gap between :math:`t = 6` and :math:`t = 8` is preserved.
 
 .. figure:: /_static/gappy-slice.png
-   :width: 65%
-   :align: center
+    :width: 65%
+    :align: center
 
-   Slicing gappy RegularTimeSeries
+    Slicing gappy RegularTimeSeries
 
 A slice that is entirely within a contiguous section is no longer gappy:
 
 .. code-block:: pycon
 
-   >>> sliced = signal.slice(0.0, 2.0, reset_origin=False)
-   >>> sliced.timestamps
-   array([ 0.,  1.])
-   >>> sliced.is_gappy()
-   False
+    >>> sliced = signal.slice(0.0, 2.0, reset_origin=False)
+    >>> sliced.timestamps
+    array([ 0.,  1.])
+
+    >>> sliced.is_gappy()
+    False
 
 A slice that falls entirely within a gap returns an empty series:
 
 .. code-block:: pycon
 
-   >>> empty = signal.slice(6.0, 8.0, reset_origin=False)
-   >>> empty.timestamps
-   array([])
-   >>> empty.values
-   array([])
+    >>> empty = signal.slice(6.0, 8.0, reset_origin=False)
+    >>> empty.timestamps
+    array([])
+
+    >>> empty.values
+    array([])
 
 
 
@@ -186,13 +190,15 @@ Conversion to IrregularTimeSeries
 
 .. code-block:: pycon
 
-   >>> irts = signal.to_irregular()
-   >>> irts.timestamps
-   array([0., 1., 2., 4., 5., 8., 9.])
-   >>> irts.values
-   array([0.1, 0.4, 0.2, 0.1, 0. , 0.3, 0.5])
-   >>> irts.domain.start, irts.domain.end
-   array([0., 4., 8.]), array([3., 6., 10.])
+    >>> irts = signal.to_irregular()
+    >>> irts.timestamps
+    array([0., 1., 2., 4., 5., 8., 9.])
+
+    >>> irts.values
+    array([0.1, 0.4, 0.2, 0.1, 0. , 0.3, 0.5])
+    
+    >>> irts.domain.start, irts.domain.end
+    array([0., 4., 8.]), array([3., 6., 10.])
 
 
 The resulting object's domain matches the original gappy series'

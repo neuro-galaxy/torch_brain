@@ -7,27 +7,27 @@ A **domain** is simply the span of time over which a data object is considered
 *valid*. Let's make this concrete. Below we create a spike train with 1000
 spikes scattered randomly over a 10-second window, and inspect its domain:
 
-.. code:: pycon
+.. code-block:: pycon
 
-   >>> import numpy as np
-   >>> from torch_brain.data import IrregularTimeSeries, Interval
+    >>> import numpy as np
+    >>> from torch_brain.data import IrregularTimeSeries, Interval
 
-   >>> spikes = IrregularTimeSeries(
-   ...     timestamps=np.sort(np.random.uniform(0.0, 10.0, size=1000)),
-   ...     unit_id=np.random.randint(0, 30, size=1000),
-   ... )
+    >>> spikes = IrregularTimeSeries(
+    ...     timestamps=np.sort(np.random.uniform(0.0, 10.0, size=1000)),
+    ...     unit_id=np.random.randint(0, 30, size=1000),
+    ... )
 
-   >>> spikes.domain
-   Interval(
-     start: array, shape=(1,), dtype=float64,
-     end: array, shape=(1,), dtype=float64,
-   )
-   
-   >>> spikes.domain.start, spikes.domain.end
-   (array([0.01541473]), array([9.99930563]))
+    >>> spikes.domain
+    Interval(
+      start: array, shape=(1,), dtype=float64,
+      end: array, shape=(1,), dtype=float64,
+    )
+    
+    >>> spikes.domain.start, spikes.domain.end
+    (array([0.01541473]), array([9.99930563]))
 
-   >>> min(spikes.timestamps), max(spikes.timestamps)
-   (np.float64(0.015414725327748124), np.float64(9.999305627648218))
+    >>> min(spikes.timestamps), max(spikes.timestamps)
+    (np.float64(0.015414725327748124), np.float64(9.999305627648218))
 
 The domain is itself an :obj:`Interval`, and here it was filled in automatically:
 by default, an :obj:`IrregularTimeSeries` sets its domain to the span between its
@@ -39,22 +39,22 @@ off between :math:`t=3` and :math:`t=4`, so no spikes *could* have been recorded
 there. You can express that by passing the domain yourself when constructing the
 object:
 
-.. code:: pycon
+.. code-block:: pycon
 
-   >>> spikes = IrregularTimeSeries(
-   ...     timestamps=...,
-   ...     unit_id=...,
-   ...     domain=Interval(start=[0., 4.], end=[3., 10.]),
-   ... )
+    >>> spikes = IrregularTimeSeries(
+    ...     timestamps=...,
+    ...     unit_id=...,
+    ...     domain=Interval(start=[0., 4.], end=[3., 10.]),
+    ... )
 
-   >>> spikes.domain
-   Interval(
-     start: array, shape=(2,), dtype=float64,
-     end: array, shape=(2,), dtype=float64,
-   )
-   
-   >>> spikes.domain.start, spikes.domain.end
-   (array([0., 4.]), array([3., 10.]))
+    >>> spikes.domain
+    Interval(
+      start: array, shape=(2,), dtype=float64,
+      end: array, shape=(2,), dtype=float64,
+    )
+    
+    >>> spikes.domain.start, spikes.domain.end
+    (array([0., 4.]), array([3., 10.]))
 
 Notice that the domain is now made up of *two* intervals. A domain can be any set
 of disjoint time periods, not just a single one.
@@ -92,46 +92,48 @@ A :obj:`Data` object groups several of the objects above into a single recording
 so any :obj:`Data` that holds time-based data must be given a domain. You can set
 it explicitly:
 
-.. code:: pycon
+.. code-block:: pycon
 
-   >>> import numpy as np
-   >>> from torch_brain.data import (
-   ...     Data, IrregularTimeSeries, RegularTimeSeries, Interval
-   ... )
+    >>> import numpy as np
+    >>> from torch_brain.data import (
+    ...     Data, IrregularTimeSeries, RegularTimeSeries, Interval
+    ... )
 
-   >>> spikes = IrregularTimeSeries(
-   ...     timestamps=np.sort(np.random.uniform(0.0, 10.0, size=1000)),
-   ...     unit_id=np.random.randint(0, 30, size=1000),
-   ...     domain=Interval(0.0, 10.0),
-   ... )
-   >>> behavior = RegularTimeSeries(
-   ...     sampling_rate=100.0,
-   ...     hand_vel=np.random.randn(800, 2),  # 800 samples at 100Hz = 8s long
-   ...     domain_start=1.0,  # means the domain of behavior is [1.0, 9.0)
-   ... )
+    >>> spikes = IrregularTimeSeries(
+    ...     timestamps=np.sort(np.random.uniform(0.0, 10.0, size=1000)),
+    ...     unit_id=np.random.randint(0, 30, size=1000),
+    ...     domain=Interval(0.0, 10.0),
+    ... )
 
-   >>> data = Data(
-   ...     spikes=spikes,
-   ...     behavior=behavior,
-   ...     domain=Interval(0.0, 10.0),
-   ... )
-   >>> data.domain.start, data.domain.end
-   (array([0.]), array([10.]))
+    >>> behavior = RegularTimeSeries(
+    ...     sampling_rate=100.0,
+    ...     hand_vel=np.random.randn(800, 2),  # 800 samples at 100Hz = 8s long
+    ...     domain_start=1.0,  # means the domain of behavior is [1.0, 9.0)
+    ... )
+
+    >>> data = Data(
+    ...     spikes=spikes,
+    ...     behavior=behavior,
+    ...     domain=Interval(0.0, 10.0),
+    ... )
+
+    >>> data.domain.start, data.domain.end
+    (array([0.]), array([10.]))
 
 You can also let :obj:`Data` work it out for you. Passing ``domain="auto"``
 tells the constructor to take the union of the domains of all the objects it
 contains. Here ``spikes`` spans the full :math:`[0, 10)` while ``behavior``
 spans only :math:`[1, 9)`, so the union is :math:`[0, 10)`:
 
-.. code:: pycon
+.. code-block:: pycon
 
-   >>> data = Data(
-   ...     spikes=spikes,      # domain [0.0, 10.0)
-   ...     behavior=behavior,  # domain [1.0, 9.0)
-   ...     domain="auto",
-   ... )
-   >>> data.domain.start, data.domain.end
-   (array([0.]), array([10.]))
+    >>> data = Data(
+    ...     spikes=spikes,      # domain [0.0, 10.0)
+    ...     behavior=behavior,  # domain [1.0, 9.0)
+    ...     domain="auto",
+    ... )
+    >>> data.domain.start, data.domain.end
+    (array([0.]), array([10.]))
 
 
 Why domains matter

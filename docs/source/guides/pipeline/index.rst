@@ -4,10 +4,10 @@ Brainsets: Dataset Pre-Processing Tools
 =======================================
 
 .. toctree::
-   :maxdepth: 1
+    :maxdepth: 1
 
-   using_existing_data
-   prepare_data
-   create_pipeline
-   openneuro_pipeline
+    using_existing_data
+    prepare_data
+    create_pipeline
+    openneuro_pipeline
 

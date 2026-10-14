@@ -16,33 +16,33 @@ an example of how these are used in practice.
 
 .. code:: python
 
-   import torch
-   from torch_brain.datasets import Dataset
-   from torch_brain.batching import collate, chain, pad, track_mask
+    import torch
+    from torch_brain.datasets import Dataset
+    from torch_brain.batching import collate, chain, pad, track_mask
 
-   class MyDataset(Dataset):
-       ...
+    class MyDataset(Dataset):
+        ...
 
-       def __getitem__(self, index):
-           # logic to gather data
-           ...
+        def __getitem__(self, index):
+            # logic to gather data
+            ...
 
-           return {
-               "spike_times": chain(spike_times),
-               "spike_seqlen": len(spike_times),
-               "query_times": pad(query_times),
-               "query_mask": track_mask(query_times),
-           }
+            return {
+                "spike_times": chain(spike_times),
+                "spike_seqlen": len(spike_times),
+                "query_times": pad(query_times),
+                "query_mask": track_mask(query_times),
+            }
 
-   ds = MyDataset(...)
+    ds = MyDataset(...)
 
-   loader = torch.utils.data.DataLoader(
-       dataset=ds,
-       sampler=...,
-       collate_fn=collate,  # <- specify collate from torch_brain.batching
-       num_workers=4,
-       ...
-   )
+    loader = torch.utils.data.DataLoader(
+        dataset=ds,
+        sampler=...,
+        collate_fn=collate,  # <- specify collate from torch_brain.batching
+        num_workers=4,
+        ...
+    )
 
 """
 

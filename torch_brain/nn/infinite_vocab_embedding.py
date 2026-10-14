@@ -71,7 +71,9 @@ class InfiniteVocabEmbedding(nn.Module):
         Args:
             vocab: A list of words to initialize the vocabulary.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.nn import InfiniteVocabEmbedding
 
@@ -117,7 +119,9 @@ class InfiniteVocabEmbedding(nn.Module):
             exist_ok: If True, the method will not raise an error if the new words
                 already exist in the vocabulary and will skip them. Default is False.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.nn import InfiniteVocabEmbedding
 
@@ -206,7 +210,9 @@ class InfiniteVocabEmbedding(nn.Module):
                 matrix in place. If False, a new InfiniteVocabEmbedding will be returned
                 with the selected words. Default is True.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.nn import InfiniteVocabEmbedding
 
@@ -272,7 +278,9 @@ class InfiniteVocabEmbedding(nn.Module):
         Returns:
             Union[int, List[int]]: A token index or a list of token indices.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.nn import InfiniteVocabEmbedding
 
@@ -303,7 +311,9 @@ class InfiniteVocabEmbedding(nn.Module):
         Returns:
             str: A word.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.nn import InfiniteVocabEmbedding
 
@@ -323,7 +333,9 @@ class InfiniteVocabEmbedding(nn.Module):
     def is_lazy(self):
         r"""Returns True if the module is not initialized.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> from torch_brain.nn import InfiniteVocabEmbedding
 

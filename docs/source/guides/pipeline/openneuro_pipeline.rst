@@ -48,7 +48,7 @@ Here's a working minimal pipeline:
 
 Add your new pipeline class in its own directory under ``pipeline/brainsets-pipelines/`` (for example, ``pipeline/brainsets-pipelines/my_sleep_study_ds005555/pipeline.py``). To run it:
 
-.. code-block:: console
+.. code:: shell
 
     uv run brainsets prepare my_sleep_study_ds005555
 
@@ -60,17 +60,17 @@ Real-World Examples
 Before diving into details, check out working implementations in the `pipeline/brainsets-pipelines` directory:
 
 .. list-table::
-   :header-rows: 1
+    :header-rows: 1
 
-   * - Example
-     - Use When
-     - Complexity
-   * - `shirazi_hbnr1_ds005505 <https://github.com/neuro-galaxy/torch_brain/blob/main/torch_brain/pipeline/brainsets-pipelines/shirazi_hbnr1_ds005505/pipeline.py>`_
-     - All recordings have identical channels
-     - Simple ⭐
-   * - `klinzing_sleep_ds005555 <https://github.com/neuro-galaxy/torch_brain/blob/main/torch_brain/pipeline/brainsets-pipelines/klinzing_sleep_ds005555/pipeline.py>`_
-     - Different recordings need different channel mappings
-     - Complex ⭐⭐⭐
+    * - Example
+      - Use When
+      - Complexity
+    * - `shirazi_hbnr1_ds005505 <https://github.com/neuro-galaxy/torch_brain/blob/main/torch_brain/pipeline/brainsets-pipelines/shirazi_hbnr1_ds005505/pipeline.py>`_
+      - All recordings have identical channels
+      - Simple ⭐
+    * - `klinzing_sleep_ds005555 <https://github.com/neuro-galaxy/torch_brain/blob/main/torch_brain/pipeline/brainsets-pipelines/klinzing_sleep_ds005555/pipeline.py>`_
+      - Different recordings need different channel mappings
+      - Complex ⭐⭐⭐
 
 
 The Five Required Attributes
@@ -105,7 +105,7 @@ The dataset identifier must use strict OpenNeuro format: ``ds`` followed by exac
 
 .. note::
 
-   Dataset ID validation happens internally during pipeline initialization. Invalid IDs raise an error before data discovery.
+    Dataset ID validation happens internally during pipeline initialization. Invalid IDs raise an error before data discovery.
 
 
 3. ``brainset_id`` - Your unique name
@@ -145,81 +145,81 @@ Set ``origin_version`` to the exact version of the OpenNeuro dataset you used wh
 ----
 
 .. important::
-   **What happens if versions mismatch during runtime?**
+    **What happens if versions mismatch during runtime?**
 
-   *This section is more relevant for pipeline users running* ``prepare`` *commands, not pipeline authors.*
+    *This section is more relevant for pipeline users running* ``prepare`` *commands, not pipeline authors.*
 
-   When you run a pipeline, the system automatically:
+    When you run a pipeline, the system automatically:
 
-   1. Fetches the latest snapshot tag from OpenNeuro
-   2. Compares it to the ``origin_version`` hardcoded in the pipeline class
-   3. If they differ, applies the ``--on-version-mismatch`` policy you specified (or ``prompt`` by default)
+    1. Fetches the latest snapshot tag from OpenNeuro
+    2. Compares it to the ``origin_version`` hardcoded in the pipeline class
+    3. If they differ, applies the ``--on-version-mismatch`` policy you specified (or ``prompt`` by default)
 
-   **Controlling mismatch behavior with --on-version-mismatch**
+    **Controlling mismatch behavior with --on-version-mismatch**
 
-   Users can control how an Open Neuro pipeline responds to version mismatches using the CLI flag ``--on-version-mismatch``:
+    Users can control how an Open Neuro pipeline responds to version mismatches using the CLI flag ``--on-version-mismatch``:
 
-   .. list-table::
-      :header-rows: 1
+    .. list-table::
+        :header-rows: 1
 
-      * - Option
-        - Behavior
-        - When to Use
-      * - ``prompt`` (default)
-        - Interactive session: asks user to confirm. Non-interactive: **raises ValueError immediately** with guidance to use ``continue`` or ``abort``.
-        - Local development; lets you decide per run whether to continue (interactive only).
-      * - ``continue``
-        - Warns and proceeds with latest version.
-        - Automation/CI: accept version drift when tests pass.
-      * - ``abort``
-        - Raises error immediately if mismatch detected.
-        - Strict reproducibility: fail fast rather than risk inconsistency.
+        * - Option
+          - Behavior
+          - When to Use
+        * - ``prompt`` (default)
+          - Interactive session: asks user to confirm. Non-interactive: **raises ValueError immediately** with guidance to use ``continue`` or ``abort``.
+          - Local development; lets you decide per run whether to continue (interactive only).
+        * - ``continue``
+          - Warns and proceeds with latest version.
+          - Automation/CI: accept version drift when tests pass.
+        * - ``abort``
+          - Raises error immediately if mismatch detected.
+          - Strict reproducibility: fail fast rather than risk inconsistency.
 
-   **Examples:**
+    **Examples:**
 
-   .. code-block:: console
+    .. code-block:: shell
 
-       # Interactive prompt (default behavior)
-       uv run brainsets prepare my_brainset
+        # Interactive prompt (default behavior)
+        uv run brainsets prepare my_brainset
 
-       # Always continue with a warning
-       uv run brainsets prepare my_brainset --on-version-mismatch continue
+        # Always continue with a warning
+        uv run brainsets prepare my_brainset --on-version-mismatch continue
 
-       # Fail if version mismatch
-       uv run brainsets prepare my_brainset --on-version-mismatch abort
+        # Fail if version mismatch
+        uv run brainsets prepare my_brainset --on-version-mismatch abort
 
-       # In CI/automation (non-interactive), must set to continue or abort
-       # This will fail with clear error message:
-       uv run brainsets prepare my_brainset  # (would error: prompt not allowed in non-interactive mode)
-       # Instead, use:
-       uv run brainsets prepare my_brainset --on-version-mismatch continue
+        # In CI/automation (non-interactive), must set to continue or abort
+        # This will fail with clear error message:
+        uv run brainsets prepare my_brainset  # (would error: prompt not allowed in non-interactive mode)
+        # Instead, use:
+        uv run brainsets prepare my_brainset --on-version-mismatch continue
 
-   **Important:** Regardless of which policy you choose, if you continue, OpenNeuro S3 will serve the latest snapshot for downloads. The version check is informational—it warns you to potential differences but does not download or use the original ``origin_version``.
+    **Important:** Regardless of which policy you choose, if you continue, OpenNeuro S3 will serve the latest snapshot for downloads. The version check is informational—it warns you to potential differences but does not download or use the original ``origin_version``.
 
-   **Example warning message:**
+    **Example warning message:**
 
-   .. code-block:: text
+    .. code-block:: text
 
-       ⚠️ Dataset version '1.0.0' was used to create the brainset pipeline for dataset 'ds005555',
-       but the latest available version on OpenNeuro is '1.2.0'.
-       Downloading data or running the pipeline now will use the latest version,
-       which may differ from the original version used, potentially causing errors or inconsistencies.
-       Check the CHANGES file of the dataset for details about the differences between versions.
+        ⚠️ Dataset version '1.0.0' was used to create the brainset pipeline for dataset 'ds005555',
+        but the latest available version on OpenNeuro is '1.2.0'.
+        Downloading data or running the pipeline now will use the latest version,
+        which may differ from the original version used, potentially causing errors or inconsistencies.
+        Check the CHANGES file of the dataset for details about the differences between versions.
 
 
-   **When versions don't match: What should I do?**
+    **When versions don't match: What should I do?**
 
-   .. list-table::
-      :header-rows: 1
+    .. list-table::
+        :header-rows: 1
 
-      * - Scenario
-        - Action
-      * - Changes are minor or unrelated to your pipeline
-        - Accept the warning and continue; the latest version is used.
-      * - You've tested with the new version
-        - Update ``origin_version`` to match, thoroughly test your pipeline, and re-run.
-      * - Changes break your pipeline
-        - Consider fetching the old version from OpenNeuro archives manually or adjust your pipeline for the new version.
+        * - Scenario
+          - Action
+        * - Changes are minor or unrelated to your pipeline
+          - Accept the warning and continue; the latest version is used.
+        * - You've tested with the new version
+          - Update ``origin_version`` to match, thoroughly test your pipeline, and re-run.
+        * - Changes break your pipeline
+          - Consider fetching the old version from OpenNeuro archives manually or adjust your pipeline for the new version.
 
 ----
 
@@ -307,7 +307,7 @@ Group channels by physiological type.
 
 .. note::
 
-   While brainsets permits flexibility in naming schemes to accommodate various datasets, we recommend using **UPPERCASE names** for all channel names and types—both keys and values—wherever possible. This helps to align with widespread EEG and iEEG naming conventions and ensures consistency across datasets, promoting standardization without reducing adaptability.
+    While brainsets permits flexibility in naming schemes to accommodate various datasets, we recommend using **UPPERCASE names** for all channel names and types—both keys and values—wherever possible. This helps to align with widespread EEG and iEEG naming conventions and ensures consistency across datasets, promoting standardization without reducing adaptability.
 
 
 Advanced: Customize Per Recording
@@ -362,6 +362,7 @@ Return different channel groupings based on the recording:
 Add custom processing beyond the default:
 
 .. code-block:: python
+    :emphasize-lines: 11
 
     def process(self, download_output):
         # Get default processing
@@ -373,7 +374,8 @@ Add custom processing beyond the default:
         
         # Add your custom processing here
         # e.g., apply filters, remove artifacts
-        
+        ...
+
         # Save the result
         import h5py
         with h5py.File(store_path, "w") as file:

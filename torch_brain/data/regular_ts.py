@@ -104,7 +104,9 @@ class RegularTimeSeries(ArrayDict):
         :meth:`from_gappy_timeseries` to construct from regular timeseries that has
         gaps or missing values.
 
-    Example ::
+    Example
+
+    .. code-block:: pycon
 
         >>> import numpy as np
         >>> from torch_brain.data import RegularTimeSeries
@@ -204,7 +206,9 @@ class RegularTimeSeries(ArrayDict):
         Returns:
             np.ndarray: 1-D boolean array of shape ``(len(self),)``.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from torch_brain.data import RegularTimeSeries
@@ -397,7 +401,9 @@ class RegularTimeSeries(ArrayDict):
         Returns:
             :obj:`IrregularTimeSeries` with timestamps and all attributes copied.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from torch_brain.data import RegularTimeSeries
@@ -560,7 +566,9 @@ class RegularTimeSeries(ArrayDict):
             * :meth:`is_gappy` to check whether a series has gaps.
             * :meth:`index_mask` for a boolean mask of real vs. gap-fill samples.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from torch_brain.data import RegularTimeSeries
@@ -680,7 +688,9 @@ class RegularTimeSeries(ArrayDict):
         See Also:
             :meth:`index_mask` for a boolean mask of real vs. gap-fill samples.
 
-        Example ::
+        Example
+
+        .. code-block:: pycon
 
             >>> import numpy as np
             >>> from torch_brain.data import RegularTimeSeries

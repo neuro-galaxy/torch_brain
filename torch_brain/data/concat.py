@@ -19,7 +19,9 @@ def concat(objs, sort=True):
         ValueError: If objects are not all of the same type or don't have matching keys.
         NotImplementedError: If concatenation is not implemented for the given object type.
 
-    Example ::
+    Example
+
+    .. code-block:: pycon
 
         >>> from torch_brain.data import IrregularTimeSeries, Interval, concat
 

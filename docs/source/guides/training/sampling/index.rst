@@ -41,26 +41,26 @@ time* intervals. This is achieved with the following design:
 - :obj:`~torch_brain.datasets.Dataset` tells the sampler where it is
   allowed to sample from. This is achieved with the
   :obj:`~torch_brain.datasets.Dataset.get_sampling_intervals` method.
--  The sampler uses this information to create samples, which are
-   effectively :math:`(t_{start}, t_{end})` pairs emitted as a
-   :obj:`~torch_brain.datasets.DatasetIndex` object.
--  :obj:`~torch_brain.datasets.Dataset` uses this sample information to load and slice
-   the data samples.
+- The sampler uses this information to create samples, which are
+  effectively :math:`(t_{start}, t_{end})` pairs emitted as a
+  :obj:`~torch_brain.datasets.DatasetIndex` object.
+- :obj:`~torch_brain.datasets.Dataset` uses this sample information to load and slice
+  the data samples.
 
 .. figure:: static/overview.png
-   :width: 80%
-   :align: center
+    :width: 80%
+    :align: center
 
-   Interplay between Dataset and Sampler.
+    Interplay between Dataset and Sampler.
 
 .. tip::
 
-   Typically, all this is orchestrated by a PyTorch :obj:`~torch.utils.data.DataLoader`.
-   In this guide, we will go through the logic of sampling *manually*,
-   to give you a more fundamental understanding of these concepts.
-   See
-   :doc:`this </generated/notebooks/nlb_maze_minimal_example>` minimal
-   training example for how it all fits with a DataLoader.
+    Typically, all this is orchestrated by a PyTorch :obj:`~torch.utils.data.DataLoader`.
+    In this guide, we will go through the logic of sampling *manually*,
+    to give you a more fundamental understanding of these concepts.
+    See
+    :doc:`this </generated/notebooks/nlb_maze_minimal_example>` minimal
+    training example for how it all fits with a DataLoader.
 
 Datasets in **torch_brain** typically contain multiple recordings, and
 so we define sampling intervals as *dictionaries* keyed by the recording
@@ -69,11 +69,11 @@ the valid start and end sampling times for that recording:
 
 .. code:: python
 
-   sampling_intervals = {
-       "recording_id1": Interval(...),
-       "recording_id2": Interval(...),
-       ...
-   }
+    sampling_intervals = {
+        "recording_id1": Interval(...),
+        "recording_id2": Interval(...),
+        ...
+    }
 
 These intervals do not have to be contiguous, and can be of any length.
 
@@ -81,7 +81,7 @@ Many **brainsets** provide default train/validation/test sampling
 intervals. For example, let’s load a single recording in the
 :obj:`~torch_brain.datasets.PerichMillerPopulation2018` dataset.
 
-.. code:: pycon
+.. code-block:: pycon
 
     >>> from torch_brain.datasets import PerichMillerPopulation2018
 
@@ -100,7 +100,7 @@ intervals. For example, let’s load a single recording in the
 We note that there are a total of 38 sampling intervals for the train
 part of the recording. Let’s print the first 5:
 
-.. code:: pycon
+.. code-block:: pycon
 
     >>> for recording_id in sampling_intervals:
     ...     for start, end in zip(sampling_intervals[recording_id].start[:5], sampling_intervals[recording_id].end[:5]):
@@ -116,8 +116,8 @@ Notice that the intervals are of different lengths. Visually, they look like:
 
 .. figure:: static/sampler_10_0.png
 
-   Train sampling intervals for one recording. Each gray block marks
-   an interval that a sampler is allowed to draw from.
+    Train sampling intervals for one recording. Each gray block marks
+    an interval that a sampler is allowed to draw from.
 
 The same dataset also exposes validation and test splits via
 ``get_sampling_intervals("valid")`` and ``get_sampling_intervals("test")``.
@@ -125,7 +125,7 @@ Overlaying all three shows how the brainset partitions the recording:
 
 .. figure:: static/sampler_12_0.png
 
-   Train, validation, and test sampling intervals on the same recording.
+    Train, validation, and test sampling intervals on the same recording.
 
 
 Samplers in action
@@ -136,14 +136,14 @@ generate samples for training, or evaluation. For example,
 
 
 .. list-table::
-   :widths: 25 125
+    :widths: 25 125
 
-   * - :obj:`~torch_brain.samplers.SequentialFixedWindowSampler`
-     - A Sequential sampler, that samples fixed-length windows.
-   * - :obj:`~torch_brain.samplers.RandomFixedWindowSampler`
-     - A Random sampler, that samples fixed-length windows.
-   * - :obj:`~torch_brain.samplers.TrialSampler`
-     - A sampler that randomly samples a full contiguous interval without slicing it into windows.
+    * - :obj:`~torch_brain.samplers.SequentialFixedWindowSampler`
+      - A Sequential sampler, that samples fixed-length windows.
+    * - :obj:`~torch_brain.samplers.RandomFixedWindowSampler`
+      - A Random sampler, that samples fixed-length windows.
+    * - :obj:`~torch_brain.samplers.TrialSampler`
+      - A sampler that randomly samples a full contiguous interval without slicing it into windows.
 
 
 RandomFixedWindowSampler
@@ -153,7 +153,7 @@ The most common sampler used in practice is the
 :obj:`~torch_brain.samplers.RandomFixedWindowSampler`,
 which randomly samples windows of a fixed length from the data.
 
-.. code:: pycon
+.. code-block:: pycon
 
     >>> from torch_brain.samplers import RandomFixedWindowSampler
 
@@ -173,7 +173,7 @@ short to sample 1 second windows from.
 
 We can visualize what the sampler is doing as we are iterating over it.
 
-.. code:: pycon
+.. code-block:: pycon
 
     >>> for i, sample_index in enumerate(sampler):
     ...     print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
@@ -186,9 +186,9 @@ We can visualize what the sampler is doing as we are iterating over it.
 
 .. figure:: static/sampler_1s.gif
 
-   Windows of length 1 s drawn by the random fixed-window sampler.
-   Each red block is one sample placed over the gray sampling
-   intervals.
+    Windows of length 1 s drawn by the random fixed-window sampler.
+    Each red block is one sample placed over the gray sampling
+    intervals.
 
 Note that the order of the samples is shuffled, and that temporal jitter
 is used, so that the windows are not sampled at the same time from epoch
@@ -198,7 +198,7 @@ We can also easily change the window length of the sampler to get
 different sized windows. This flexibility is achieved without having to
 reprocess the underlying data.
 
-.. code:: pycon
+.. code-block:: pycon
 
     >>> sampler = RandomFixedWindowSampler(
     ...     sampling_intervals=dataset.get_sampling_intervals("train"),
@@ -219,16 +219,16 @@ reprocess the underlying data.
 
 .. figure:: static/sampler_10s.gif
 
-   Same sampler with a window length of 10 seconds. Larger windows
-   mean fewer samples per epoch, and short intervals get skipped
-   because no 10 s window fits inside them.
+    Same sampler with a window length of 10 seconds. Larger windows
+    mean fewer samples per epoch, and short intervals get skipped
+    because no 10 s window fits inside them.
 
 While we're at it, let's also look at the other two samplers:
 
 SequentialFixedWindowSampler
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code:: pycon
+.. code-block:: pycon
 
     >>> from torch_brain.samplers import SequentialFixedWindowSampler
 
@@ -252,9 +252,9 @@ SequentialFixedWindowSampler
 
 .. figure:: static/sampler_sequential_10s.gif
 
-   Sequential fixed-window sampler with a window length of 10
-   seconds. Windows tile each interval from left to right without
-   overlap, and in deterministic order.
+    Sequential fixed-window sampler with a window length of 10
+    seconds. Windows tile each interval from left to right without
+    overlap, and in deterministic order.
 
 TrialSampler
 ~~~~~~~~~~~~
@@ -262,7 +262,7 @@ TrialSampler
 A :obj:`~torch_brain.samplers.TrialSampler` treats each interval start-end pair as
 a *"trial"*, and samples them as whole.
 
-.. code:: pycon
+.. code-block:: pycon
 
     >>> from torch_brain.samplers import TrialSampler
 
@@ -284,8 +284,8 @@ a *"trial"*, and samples them as whole.
 
 .. figure:: static/sampler_trial_10s.gif
 
-   The trial sampler returns each interval as-is, so samples are
-   *variable-length* and follow the trial structure of the data.
+    The trial sampler returns each interval as-is, so samples are
+    *variable-length* and follow the trial structure of the data.
 
 Notice that the samples are *variable-length* in this case!
 
@@ -299,18 +299,18 @@ sample comes from — which recording, and which time window:
 
 .. code:: python
 
-   @dataclass
-   class DatasetIndex:
-       recording_id: str
-       start: float
-       end: float
+    @dataclass
+    class DatasetIndex:
+        recording_id: str
+        start: float
+        end: float
 
 These three fields are everything a :obj:`~torch_brain.datasets.Dataset` needs to load a
 sample. Indexing the dataset with a :obj:`~torch_brain.datasets.DatasetIndex` returns a
 :obj:`~torch_brain.data.Data` object containing just that time slice of
 the underlying recording:
 
-.. code:: pycon
+.. code-block:: pycon
 
     >>> sample_index = next(iter(sampler))
     >>> sample_index
@@ -340,7 +340,7 @@ The sampler seamlessly works with datasets containing multiple
 recordings. For example, we can create a dataset with multiple
 recordings:
 
-.. code:: pycon
+.. code-block:: pycon
 
     >>> dataset = PerichMillerPopulation2018(
     ...     root="./data/processed",
@@ -371,7 +371,7 @@ three recordings.
 
 The sampler can be initialized in the same way as before.
 
-.. code:: pycon
+.. code-block:: pycon
 
     >>> sampler = RandomFixedWindowSampler(
     ...     sampling_intervals=dataset.get_sampling_intervals("train"),
@@ -397,9 +397,9 @@ We visualize this below:
 
 .. figure:: static/sampler_multi.gif
 
-   Sampling across three recordings simultaneously. Each row shows
-   one recording's intervals (gray) and the windows drawn from them
-   (red); samples interleave freely across recordings.
+    Sampling across three recordings simultaneously. Each row shows
+    one recording's intervals (gray) and the windows drawn from them
+    (red); samples interleave freely across recordings.
 
 
 Further Reading

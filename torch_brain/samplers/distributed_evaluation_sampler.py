@@ -31,21 +31,23 @@ class DistributedEvaluationSamplerWrapper(torch.utils.data.Sampler[DatasetIndex]
         rank: Rank of the current process. If ``None``, must be set
             later via :meth:`set_params`.
 
-    Example::
+    Example
 
-        >>> from torch_brain.data import Interval
-        >>> from torch_brain.samplers import SequentialFixedWindowSampler, DistributedEvaluationSamplerWrapper
+    .. code-block:: python
 
-        >>> sampling_intervals = {
-        ...     "session_1": Interval(0.0, 100.0),
-        ...     "session_2": Interval(0.0, 100.0),
-        ... }
-        >>> sampler = SequentialFixedWindowSampler(
-        ...     sampling_intervals=sampling_intervals,
-        ...     window_length=10.0,
-        ... )
-        >>> dist_sampler = DistributedEvaluationSamplerWrapper(sampler)
-        >>> dist_sampler.set_params(num_replicas=4, rank=0)
+        from torch_brain.data import Interval
+        from torch_brain.samplers import SequentialFixedWindowSampler, DistributedEvaluationSamplerWrapper
+
+        sampling_intervals = {
+            "session_1": Interval(0.0, 100.0),
+            "session_2": Interval(0.0, 100.0),
+        }
+        sampler = SequentialFixedWindowSampler(
+            sampling_intervals=sampling_intervals,
+            window_length=10.0,
+        )
+        dist_sampler = DistributedEvaluationSamplerWrapper(sampler)
+        dist_sampler.set_params(num_replicas=4, rank=0)
     """
 
     def __init__(
