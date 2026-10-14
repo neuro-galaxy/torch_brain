@@ -39,10 +39,10 @@ class Interval(ArrayDict):
 
         >>> intervals
         Interval(
-          start=[3],
-          end=[3],
-          go_cue_time=[3],
-          drifting_gratings_dir=[3]
+          start: array, shape=(3,), dtype=float64,
+          end: array, shape=(3,), dtype=float64,
+          go_cue_time: array, shape=(3,), dtype=float64,
+          drifting_gratings_dir: array, shape=(3,), dtype=int64,
         )
 
         >>> intervals.keys()
@@ -54,12 +54,13 @@ class Interval(ArrayDict):
         >>> intervals.is_disjoint()
         True
 
-        >>> intervals.slice(1.5, 2.5)
+        >>> sliced = intervals.slice(1.5, 2.5)
+        >>> sliced
         Interval(
-          start=[2],
-          end=[2],
-          go_cue_time=[2],
-          drifting_gratings_dir=[2]
+          start: array, shape=(2,), dtype=float64,
+          end: array, shape=(2,), dtype=float64,
+          go_cue_time: array, shape=(2,), dtype=float64,
+          drifting_gratings_dir: array, shape=(2,), dtype=int64,
         )
 
     An :obj:`Interval` object with a single interval can be simply created by passing
@@ -69,10 +70,9 @@ class Interval(ArrayDict):
 
         >>> Interval(0., 1.)
         Interval(
-          start=[1],
-          end=[1]
+          start: array, shape=(1,), dtype=float64,
+          end: array, shape=(1,), dtype=float64,
         )
-
     """
 
     _sorted: bool | None = None
@@ -540,10 +540,11 @@ class Interval(ArrayDict):
             >>> subdivided = interval.subdivide(2.5)
             >>> subdivided
             Interval(
-              start=[8],
-              end=[8],
-              trial_id=[8]
+              start: array, shape=(8,), dtype=float64,
+              end: array, shape=(8,), dtype=float64,
+              trial_id: array, shape=(8,), dtype=int64,
             )
+
             >>> subdivided.trial_id
             array([1, 1, 1, 1, 2, 2, 2, 2])
         """
@@ -593,8 +594,8 @@ class Interval(ArrayDict):
 
             >>> interval
             Interval(
-              start=[100],
-              end=[100]
+              start: array, shape=(100,), dtype=float64,
+              end: array, shape=(100,), dtype=float64,
             )
         """
         timestamps = np.linspace(start, end, steps + 1, dtype=np.float64)
@@ -891,43 +892,41 @@ class LazyInterval(Interval):
         return super()._maybe_first_dim()
 
     def __getattribute__(self, name):
-        if name not in ["__dict__", "keys"]:
-            # intercept attribute calls
-            if name in self.keys():
-                out = self.__dict__[name]
+        # intercept attribute calls
+        # O(1) equivalent of `name in self.keys()`
+        if not name.startswith("_") and name in self.__dict__:
+            out = self.__dict__[name]
 
-                if isinstance(out, h5py.Dataset):
-                    # convert into numpy array
-                    if "unresolved_slice" in self._lazy_ops:
-                        self._resolve_start_end_after_slice()
-                    if "slice" in self._lazy_ops:
-                        idx_l, idx_r, start, origin_translation = self._lazy_ops[
-                            "slice"
-                        ]
-                        out = out[idx_l:idx_r]
-                        if name in self._timekeys:
-                            out = out - origin_translation
-                    if "mask" in self._lazy_ops:
-                        out = out[self._lazy_ops["mask"]]
-                    if len(self._lazy_ops) == 0:
-                        out = out[:]
+            if isinstance(out, h5py.Dataset):
+                # convert into numpy array
+                if "unresolved_slice" in self._lazy_ops:
+                    self._resolve_start_end_after_slice()
+                if "slice" in self._lazy_ops:
+                    idx_l, idx_r, start, origin_translation = self._lazy_ops["slice"]
+                    out = out[idx_l:idx_r]
+                    if name in self._timekeys:
+                        out = out - origin_translation
+                if "mask" in self._lazy_ops:
+                    out = out[self._lazy_ops["mask"]]
+                if len(self._lazy_ops) == 0:
+                    out = out[:]
 
-                    if name in self._unicode_keys:
-                        # convert back to unicode
-                        out = out.astype("U")
+                if name in self._unicode_keys:
+                    # convert back to unicode
+                    out = out.astype("U")
 
-                    # store it
-                    self.__dict__[name] = out
+                # store it
+                self.__dict__[name] = out
 
-                # If all attributes are loaded, we can remove the lazy flag
-                all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-                )
-                if all_loaded:
-                    self.__class__ = Interval
-                    del self._lazy_ops, self._unicode_keys
+            # If all attributes are loaded, we can remove the lazy flag
+            all_loaded = all(
+                isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
+            )
+            if all_loaded:
+                self.__class__ = Interval
+                del self._lazy_ops, self._unicode_keys
 
-                return out
+            return out
         return super().__getattribute__(name)
 
     def select_by_mask(self, mask: ArrayLike):

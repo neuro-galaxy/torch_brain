@@ -37,9 +37,10 @@ def concat(objs, sort=True):
         >>> ts_concat = concat([ts1, ts2])
         >>> ts_concat
         IrregularTimeSeries(
-          timestamps=[4],
-          values=[4]
+          timestamps: array, shape=(4,), dtype=float64,
+          values: array, shape=(4,), dtype=float64,
         )
+
         >>> ts_concat.timestamps
         array([0., 1., 2., 3.])
     """

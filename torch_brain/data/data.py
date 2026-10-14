@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+import logging
+import textwrap
 import warnings
 from collections.abc import Callable
 from pathlib import Path
@@ -15,6 +17,8 @@ from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries  # noqa: 
 from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries  # noqa: F401
 from .serialization import _DEFAULT_SERIALIZE_FN_MAP
 from .utils import _size_repr
+
+logger = logging.getLogger(__name__)
 
 
 class Data:
@@ -55,7 +59,7 @@ class Data:
         ...         sampling_rate=250.,
         ...     ),
         ...     units=ArrayDict(
-        ...         id=["unit_0", "unit_1", "unit_2"],
+        ...         id=["unit01", "unit02", "unit03"],
         ...         brain_region=["M1", "M1", "PMd"],
         ...     ),
         ...     trials=Interval(
@@ -70,51 +74,51 @@ class Data:
 
         >>> data
         Data(
-        session_id='session_0',
-        spikes=IrregularTimeSeries(
-          timestamps=[6],
-          unit_index=[6],
-          waveforms=[6, 48]
-        ),
-        lfp=RegularTimeSeries(
-          raw=[1000, 3]
-        ),
-        units=ArrayDict(
-          id=[3],
-          brain_region=[3]
-        ),
-        trials=Interval(
-          start=[3],
-          end=[3],
-          go_cue_time=[3],
-          drifting_gratings_dir=[3]
-        ),
-        drifting_gratings_imgs=[8, 3, 32, 32],
+          session_id='session_0',
+          spikes=IrregularTimeSeries(
+            timestamps: array, shape=(6,), dtype=float64,
+            unit_index: array, shape=(6,), dtype=int64,
+            waveforms: array, shape=(6, 48), dtype=float64,
+          ),
+          lfp=RegularTimeSeries(
+            raw: array, shape=(1000, 3), dtype=float64,
+          ),
+          units=ArrayDict(
+            id: array, shape=(3,), dtype=<U6,
+            brain_region: array, shape=(3,), dtype=<U3,
+          ),
+          trials=Interval(
+            start: array, shape=(3,), dtype=float64,
+            end: array, shape=(3,), dtype=float64,
+            go_cue_time: array, shape=(3,), dtype=float64,
+            drifting_gratings_dir: array, shape=(3,), dtype=int64,
+          ),
+          drifting_gratings_imgs: array, shape=(8, 3, 32, 32), dtype=float64,
         )
 
         >>> data.slice(1, 3)
         Data(
-        session_id='session_0',
-        spikes=IrregularTimeSeries(
-          timestamps=[3],
-          unit_index=[3],
-          waveforms=[3, 48]
-        ),
-        lfp=RegularTimeSeries(
-          raw=[500, 3]
-        ),
-        units=ArrayDict(
-          id=[3],
-          brain_region=[3]
-        ),
-        trials=Interval(
-          start=[2],
-          end=[2],
-          go_cue_time=[2],
-          drifting_gratings_dir=[2]
-        ),
-        drifting_gratings_imgs=[8, 3, 32, 32],
-        _absolute_start=1.0,
+          session_id='session_0',
+          spikes=IrregularTimeSeries(
+            timestamps: array, shape=(3,), dtype=float64,
+            unit_index: array, shape=(3,), dtype=int64,
+            waveforms: array, shape=(3, 48), dtype=float64,
+          ),
+          lfp=RegularTimeSeries(
+            raw: array, shape=(500, 3), dtype=float64,
+          ),
+          units=ArrayDict(
+            id: array, shape=(3,), dtype=<U6,
+            brain_region: array, shape=(3,), dtype=<U3,
+          ),
+          trials=Interval(
+            start: array, shape=(2,), dtype=float64,
+            end: array, shape=(2,), dtype=float64,
+            go_cue_time: array, shape=(2,), dtype=float64,
+            drifting_gratings_dir: array, shape=(2,), dtype=int64,
+          ),
+          drifting_gratings_imgs: array, shape=(8, 3, 32, 32), dtype=float64,
+          absolute_start=1.0,
         )
     """
 
@@ -294,9 +298,11 @@ class Data:
             if key in ("_domain", "_file"):
                 pass
             elif isinstance(value, ArrayDict):
-                info = info + key + "=" + repr(value) + ",\n"
+                add = key + "=" + repr(value) + ",\n"
+                info = info + textwrap.indent(add, "  ")
             elif value is not None:
-                info = info + _size_repr(key, value) + ",\n"
+                _key = "absolute_start" if key == "_absolute_start" else key
+                info = info + _size_repr(_key, value, indent=2) + ",\n"
         info = info.rstrip()
         return f"{cls}(\n{info}\n)"
 
@@ -420,7 +426,7 @@ class Data:
 
     @classmethod
     def load(cls, path: Path | str, lazy: bool = True) -> Data:
-        r"""Loads the :class:`Data` object from an HDF5 file given its file path.
+        r"""Loads the :class:`Data` object from an HDF5 file (``.h5`` format).
 
         When ``lazy=True`` (default), the underlying HDF5 file remains open and
         data is loaded on demand. The caller is responsible for closing the file
@@ -483,7 +489,9 @@ class Data:
             raise RuntimeError("No file handle is open")
 
     def save(self, path: Path | str):
-        r"""Saves the data object to an HDF5 file at the given path.
+        r"""Saves the data object to an HDF5 file (``.h5`` format) at the given path.
+
+        If no file extension is provided, the default extension ".h5" is added.
 
         Args:
             path: Destination file path
@@ -493,6 +501,15 @@ class Data:
             >>> data = Data(...)  # doctest: +SKIP
             >>> data.save("data.h5")  # doctest: +SKIP
         """
+
+        path = Path(path)
+
+        if path.suffix == "":
+            path = path.with_suffix(".h5")
+            logger.warning(
+                f"No file extension provided for saving data. Using: {path}."
+            )
+
         with h5py.File(path, "w") as f:
             self.to_hdf5(f)
 

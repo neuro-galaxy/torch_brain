@@ -92,8 +92,8 @@ intervals. For example, let’s load a single recording in the
     >>> sampling_intervals = dataset.get_sampling_intervals("train")
     >>> print(sampling_intervals)
     {'c_20131003_center_out_reaching': LazyInterval(
-      end=<HDF5 dataset "end": shape (38,), type "<f8">,
-      start=<HDF5 dataset "start": shape (38,), type "<f8">
+      end: lazy array, shape=(38,), dtype=float64,
+      start: lazy array, shape=(38,), dtype=float64,
     )}
 
 
@@ -319,8 +319,8 @@ the underlying recording:
     >>> data = dataset[sample_index]
     >>> data
     Data(
-      spikes=IrregularTimeSeries(timestamps=..., unit_index=...),
-      cursor=IrregularTimeSeries(timestamps=..., pos=..., vel=...),
+      spikes=IrregularTimeSeries(timestamps: ..., unit_index: ...),
+      cursor=IrregularTimeSeries(timestamps: ..., pos: ..., vel: ...),
       trials=Interval(...),
       ...
     )
@@ -350,16 +350,18 @@ recordings:
     ...         "c_20131023_center_out_reaching",
     ...     ],
     ... )
-    >>> print(dataset.get_sampling_intervals("train"))
+    >>> dataset.get_sampling_intervals("train")
     {'c_20131003_center_out_reaching': LazyInterval(
-      end=<HDF5 dataset "end": shape (38,), type "<f8">,
-      start=<HDF5 dataset "start": shape (38,), type "<f8">
-    ), 'c_20131022_center_out_reaching': LazyInterval(
-      end=<HDF5 dataset "end": shape (33,), type "<f8">,
-      start=<HDF5 dataset "start": shape (33,), type "<f8">
-    ), 'c_20131023_center_out_reaching': LazyInterval(
-      end=<HDF5 dataset "end": shape (40,), type "<f8">,
-      start=<HDF5 dataset "start": shape (40,), type "<f8">
+      end: lazy array, shape=(38,), dtype=float64,
+      start: lazy array, shape=(38,), dtype=float64,
+    ),
+    'c_20131022_center_out_reaching': LazyInterval(
+      end: lazy array, shape=(33,), dtype=float64,
+      start: lazy array, shape=(33,), dtype=float64,
+    ),
+    'c_20131023_center_out_reaching': LazyInterval(
+      end: lazy array, shape=(40,), dtype=float64,
+      start: lazy array, shape=(40,), dtype=float64,
     )}
 
 

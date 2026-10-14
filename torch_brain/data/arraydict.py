@@ -33,9 +33,9 @@ class ArrayDict:
 
         >>> units
         ArrayDict(
-          unit_id=[2],
-          brain_region=[2],
-          waveform_mean=[2, 48]
+          unit_id: array, shape=(2,), dtype=<U6,
+          brain_region: array, shape=(2,), dtype=<U2,
+          waveform_mean: array, shape=(2, 48), dtype=float64,
         )
     """
 
@@ -45,6 +45,7 @@ class ArrayDict:
 
     def keys(self) -> list[str]:
         r"""Returns a list of all array attribute names."""
+        # O(k) in the number of attributes: avoid in hot paths
         return list(filter(lambda x: not x.startswith("_"), self.__dict__))
 
     def _maybe_first_dim(self):
@@ -93,8 +94,14 @@ class ArrayDict:
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        info = [_size_repr(k, self.__dict__[k], indent=2) for k in self.keys()]
+        first_dim = self._maybe_first_dim()
+        info = [
+            _size_repr(k, self.__dict__[k], indent=2, first_dim=first_dim)
+            for k in self.keys()
+        ]
         info = ",\n".join(info)
+        if len(info):
+            info = f"{info},"
         return f"{cls}(\n{info}\n)"
 
     def select_by_mask(self, mask: ArrayLike):
@@ -119,12 +126,12 @@ class ArrayDict:
             >>> units_subset = units.select_by_mask([True, False])
             >>> units_subset
             ArrayDict(
-              unit_id=[1],
-              brain_region=[1],
-              waveform_mean=[1, 48]
+              unit_id: array, shape=(1,), dtype=<U6,
+              brain_region: array, shape=(1,), dtype=<U2,
+              waveform_mean: array, shape=(1, 48), dtype=float64,
             )
-
         """
+
         mask = np.asarray(mask)
         _validate_select_by_mask_input(mask, len(self))
 
@@ -417,35 +424,35 @@ class LazyArrayDict(ArrayDict):
             return self.__dict__[self.keys()[0]].shape[0]
 
     def __getattribute__(self, name):
-        if name not in ["__dict__", "keys"]:
-            # intercept attribute calls. this is where data that is not loaded is loaded
-            # and when any lazy operations are applied
-            if name in self.keys():
-                out = self.__dict__[name]
+        # intercept attribute calls. this is where data that is not loaded is loaded
+        # and when any lazy operations are applied
+        # O(1) equivalent of `name in self.keys()`
+        if not name.startswith("_") and name in self.__dict__:
+            out = self.__dict__[name]
 
-                if isinstance(out, h5py.Dataset):
-                    # apply any mask, and return the numpy array
-                    if "mask" in self._lazy_ops:
-                        out = out[self._lazy_ops["mask"]]
-                    else:
-                        out = out[:]
+            if isinstance(out, h5py.Dataset):
+                # apply any mask, and return the numpy array
+                if "mask" in self._lazy_ops:
+                    out = out[self._lazy_ops["mask"]]
+                else:
+                    out = out[:]
 
-                    # if the array was originally unicode, convert it back to unicode
-                    if name in self._unicode_keys:
-                        out = out.astype("U")
+                # if the array was originally unicode, convert it back to unicode
+                if name in self._unicode_keys:
+                    out = out.astype("U")
 
-                    # store it, now the array is loaded
-                    self.__dict__[name] = out
+                # store it, now the array is loaded
+                self.__dict__[name] = out
 
-                # if all attributes are loaded, we can remove the lazy flag
-                all_loaded = all(
-                    isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
-                )
-                if all_loaded:
-                    self.__class__ = ArrayDict
-                    # delete special private attributes
-                    del self._lazy_ops, self._unicode_keys
-                return out
+            # if all attributes are loaded, we can remove the lazy flag
+            all_loaded = all(
+                isinstance(self.__dict__[key], np.ndarray) for key in self.keys()
+            )
+            if all_loaded:
+                self.__class__ = ArrayDict
+                # delete special private attributes
+                del self._lazy_ops, self._unicode_keys
+            return out
 
         return super().__getattribute__(name)
 
