@@ -128,6 +128,30 @@ def test_irregular_timeseries_slice():
     assert data.domain.end[0] == 0.45
 
 
+@pytest.mark.parametrize(
+    "second, expected",
+    [
+        ((2.0, 10.0), [5, 6, 7, 8, 9]),  # starts before first slice
+        ((6.0, 15.0), [6, 7, 8, 9, 10, 11]),  # ends after first slice
+        ((2.0, 15.0), [5, 6, 7, 8, 9, 10, 11]),  # contains first slice
+        ((15.0, 20.0), []),  # after first slice
+        ((0.0, 3.0), []),  # before first slice
+    ],
+)
+def test_irregular_timeseries_slice_outside_previous_slice(second, expected):
+    data = IrregularTimeSeries(timestamps=np.arange(20.0), domain="auto")
+    data = data.slice(5.0, 12.0, reset_origin=False)
+    data = data.slice(*second, reset_origin=False)
+    np.testing.assert_array_equal(data.timestamps, expected)
+
+
+def test_irregular_timeseries_slice_outside_previous_slice_reset_origin():
+    data = IrregularTimeSeries(timestamps=np.arange(20.0), domain="auto")
+    data = data.slice(5.0, 12.0)  # timestamps are now 0..6
+    data = data.slice(-3.0, 10.0)  # starts before and ends after first slice
+    np.testing.assert_array_equal(data.timestamps, [3, 4, 5, 6, 7, 8, 9])
+
+
 def test_irregular_timeseries_select_by_interval():
     data = IrregularTimeSeries(
         unit_index=np.array([0, 0, 1, 0, 1, 2]),
