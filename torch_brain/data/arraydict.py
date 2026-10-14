@@ -174,14 +174,14 @@ class ArrayDict:
 
             >>> units[1:]
             ArrayDict(
-              unit_id=[2],
-              waveform_mean=[2, 48]
+              unit_id: array, shape=(2,), dtype=<U6,
+              waveform_mean: array, shape=(2, 48), dtype=float64,
             )
 
             >>> units[np.array([True, False, True])]
             ArrayDict(
-              unit_id=[2],
-              waveform_mean=[2, 48]
+              unit_id: array, shape=(2,), dtype=<U6,
+              waveform_mean: array, shape=(2, 48), dtype=float64,
             )
         """
         if isinstance(index, slice):
