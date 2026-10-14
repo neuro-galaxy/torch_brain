@@ -135,6 +135,31 @@ def test_regulartimeseries(test_filepath):
         _test_regulartimeseries_with_domain_start(data)
 
 
+@pytest.mark.parametrize(
+    "second, expected",
+    [
+        ((2.0, 10.0), [5, 6, 7, 8, 9]),  # starts before first slice
+        ((6.0, 15.0), [6, 7, 8, 9, 10, 11]),  # ends after first slice
+        ((2.0, 15.0), [5, 6, 7, 8, 9, 10, 11]),  # contains first slice
+        ((15.0, 20.0), []),  # after first slice
+        ((0.0, 3.0), []),  # before first slice
+    ],
+)
+def test_consecutive_slice_outside_previous_slice_no_reset_origin(second, expected):
+    data = RegularTimeSeries(values=np.arange(20), sampling_rate=1.0)
+    data = data.slice(5.0, 12.0, reset_origin=False)
+    data = data.slice(*second, reset_origin=False)
+    np.testing.assert_array_equal(data.values, expected)
+
+
+def test_consecutive_slice_outside_previous_slice_with_reset_origin():
+    data = RegularTimeSeries(values=np.arange(20), sampling_rate=1.0)
+    data = data.slice(5.0, 12.0)  # timestamps are now 0..6
+    data = data.slice(-3.0, 10.0)  # starts before and ends after first slice
+    np.testing.assert_array_equal(data.values, [5, 6, 7, 8, 9, 10, 11])
+    np.testing.assert_array_equal(data.timestamps, [3, 4, 5, 6, 7, 8, 9])
+
+
 def test_lazy_regular_timeseries(test_filepath):
     raw = np.random.random((1000, 128))
     gamma = np.random.random((1000, 128))

@@ -138,15 +138,15 @@ def test_irregular_timeseries_slice():
         ((0.0, 3.0), []),  # before first slice
     ],
 )
-def test_irregular_timeseries_slice_outside_previous_slice(second, expected):
-    data = IrregularTimeSeries(timestamps=np.arange(20.0), domain="auto")
+def test_consecutive_slice_outside_previous_slice_no_reset_origin(second, expected):
+    data = IrregularTimeSeries(timestamps=np.arange(20.0))
     data = data.slice(5.0, 12.0, reset_origin=False)
     data = data.slice(*second, reset_origin=False)
     np.testing.assert_array_equal(data.timestamps, expected)
 
 
-def test_irregular_timeseries_slice_outside_previous_slice_reset_origin():
-    data = IrregularTimeSeries(timestamps=np.arange(20.0), domain="auto")
+def test_consecutive_slice_outside_previous_slice_with_reset_origin():
+    data = IrregularTimeSeries(timestamps=np.arange(20.0))
     data = data.slice(5.0, 12.0)  # timestamps are now 0..6
     data = data.slice(-3.0, 10.0)  # starts before and ends after first slice
     np.testing.assert_array_equal(data.timestamps, [3, 4, 5, 6, 7, 8, 9])

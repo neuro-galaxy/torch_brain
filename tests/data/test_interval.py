@@ -119,6 +119,40 @@ def test_interval_slice():
     assert np.allclose(data.drifting_gratings_dir, np.array([90, 45]))
 
 
+@pytest.mark.parametrize(
+    "second, expected_start, expected_end",
+    [
+        ((2.0, 10.0), [6.0], [7.0]),  # starts before first slice
+        ((6.0, 15.0), [6.0, 11.8], [7.0, 12.3]),  # ends after first slice
+        ((2.0, 15.0), [6.0, 11.8], [7.0, 12.3]),  # contains first slice
+        ((15.0, 20.0), [], []),  # after first slice
+        ((0.0, 3.0), [], []),  # before first slice
+    ],
+)
+def test_consecutive_slice_outside_previous_slice_no_reset_origin(
+    second, expected_start, expected_end
+):
+    data = Interval(
+        start=[3.0, 6.0, 11.8, 13.0],
+        end=[4.0, 7.0, 12.3, 14.0],
+    )
+    data = data.slice(5.0, 12.0, reset_origin=False)
+    data = data.slice(*second, reset_origin=False)
+    np.testing.assert_allclose(data.start, expected_start)
+    np.testing.assert_allclose(data.end, expected_end)
+
+
+def test_consecutive_slice_outside_previous_slice_with_reset_origin():
+    data = Interval(
+        start=[3.0, 6.0, 11.8, 13.0],
+        end=[4.0, 7.0, 12.3, 14.0],
+    )
+    data = data.slice(5.0, 12.0)  # starts are now [1.0, 6.8]
+    data = data.slice(-3.0, 10.0)  # starts before and ends after first slice
+    np.testing.assert_allclose(data.start, [4.0, 9.8])
+    np.testing.assert_allclose(data.end, [5.0, 10.3])
+
+
 def test_lazy_interval(test_filepath):
     data = Interval(
         start=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
