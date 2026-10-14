@@ -272,7 +272,6 @@ def test_lazy_interval_double_slice(
         end=np.arange(20, dtype=np.float64) + 0.3,
         values=np.arange(20),
         unit_index=np.arange(20) % 3,
-        timekeys=["start", "end"],
     )
     if reset_origin:
         # express the second window relative to the first slice's new origin

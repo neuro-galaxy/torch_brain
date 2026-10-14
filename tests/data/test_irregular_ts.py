@@ -349,8 +349,6 @@ def test_lazy_irregular_timeseries_double_slice(
         timestamps=np.arange(20, dtype=np.float64),
         values=np.arange(20),
         unit_index=np.arange(20) % 3,
-        timekeys=["timestamps"],
-        domain="auto",
     )
     if reset_origin:
         # express the second window relative to the first slice's new origin
