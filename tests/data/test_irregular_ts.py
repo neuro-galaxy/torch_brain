@@ -439,3 +439,24 @@ class TestIrregularTimeSeriesCoercion:
         assert len(data) == 6
         assert np.allclose(data.domain.start, np.array([0.1]))
         assert np.allclose(data.domain.end, np.array([0.6]))
+
+
+def test_lazy_irregular_timeseries_sliced_converts_when_all_loaded(test_filepath):
+    data = IrregularTimeSeries(
+        timestamps=np.arange(10, dtype=np.float64),
+        a=np.arange(10),
+        b=np.arange(10),
+        domain="auto",
+    )
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyIrregularTimeSeries.from_hdf5(f).slice(2.0, 6.0)
+        # the first read also loads timestamps, written directly to __dict__
+        assert np.array_equal(data.a, [2, 3, 4, 5])
+        assert type(data) is LazyIrregularTimeSeries
+
+        assert np.array_equal(data.b, [2, 3, 4, 5])
+        assert type(data) is IrregularTimeSeries
+        assert np.array_equal(data.timestamps, [0.0, 1.0, 2.0, 3.0])
