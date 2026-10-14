@@ -250,6 +250,7 @@ def test_lazy_interval(test_filepath):
         assert np.allclose(data.start, np.array([0, 3]))
 
 
+@pytest.mark.parametrize("load_between", [False, True])
 @pytest.mark.parametrize("reset_origin", [False, True])
 @pytest.mark.parametrize(
     "first, second",
@@ -260,7 +261,9 @@ def test_lazy_interval(test_filepath):
         ((5.0, 12.0), (2.0, 15.0)),  # second slice contains first
     ],
 )
-def test_lazy_interval_double_slice(test_filepath, reset_origin, first, second):
+def test_lazy_interval_double_slice(
+    test_filepath, reset_origin, first, second, load_between
+):
     # Slicing a lazy interval twice must match the same operation on eager intervals.
     # Checks: Second slice does not bring back intervals that were excluded in the
     # first slice.
@@ -268,6 +271,7 @@ def test_lazy_interval_double_slice(test_filepath, reset_origin, first, second):
         start=np.arange(20, dtype=np.float64),
         end=np.arange(20, dtype=np.float64) + 0.5,
         values=np.arange(20),
+        unit_index=np.arange(20) % 3,
         timekeys=["start", "end"],
     )
     if reset_origin:
@@ -283,13 +287,17 @@ def test_lazy_interval_double_slice(test_filepath, reset_origin, first, second):
 
     with h5py.File(test_filepath, "r") as f:
         lazy = LazyInterval.from_hdf5(f)
-        lazy = lazy.slice(*first, reset_origin=reset_origin).slice(
-            *second, reset_origin=reset_origin
-        )
+        lazy = lazy.slice(*first, reset_origin=reset_origin)
+        if load_between:
+            # resolves start/end; unit_index stays lazy so the object is still lazy
+            _ = lazy.values
+            assert isinstance(lazy, LazyInterval)
+        lazy = lazy.slice(*second, reset_origin=reset_origin)
 
         np.testing.assert_allclose(lazy.start, expected.start)
         np.testing.assert_allclose(lazy.end, expected.end)
         np.testing.assert_array_equal(lazy.values, expected.values)
+        np.testing.assert_array_equal(lazy.unit_index, expected.unit_index)
 
 
 def test_interval_select_by_mask_preserves_private_attrs():
