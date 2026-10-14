@@ -327,6 +327,51 @@ def test_lazy_irregular_timeseries(test_filepath):
         assert np.allclose(data.values, np.array([1, 3]))
 
 
+@pytest.mark.parametrize("reset_origin", [False, True])
+@pytest.mark.parametrize(
+    "first, second",
+    [
+        ((5.0, 12.0), (6.0, 10.0)),  # second slice nested in first
+        ((5.0, 12.0), (2.0, 10.0)),  # second slice starts before first
+        ((5.0, 12.0), (6.0, 15.0)),  # second slice ends after first
+        ((5.0, 12.0), (2.0, 15.0)),  # second slice contains first
+    ],
+)
+def test_lazy_irregular_timeseries_double_slice(
+    test_filepath, reset_origin, first, second
+):
+    # Slicing a lazy irregular TS twice must match the same operation on eager
+    # intervals. Checks: Second slice does not bring back points that were excluded in the
+    # first slice.
+    data = IrregularTimeSeries(
+        timestamps=np.arange(20, dtype=np.float64),
+        values=np.arange(20),
+        timekeys=["timestamps"],
+        domain="auto",
+    )
+    if reset_origin:
+        # express the second window relative to the first slice's new origin
+        second = (second[0] - first[0], second[1] - first[0])
+
+    expected = data.slice(*first, reset_origin=reset_origin).slice(
+        *second, reset_origin=reset_origin
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        lazy = LazyIrregularTimeSeries.from_hdf5(f)
+        lazy = lazy.slice(*first, reset_origin=reset_origin).slice(
+            *second, reset_origin=reset_origin
+        )
+
+        np.testing.assert_allclose(lazy.timestamps, expected.timestamps)
+        np.testing.assert_array_equal(lazy.values, expected.values)
+        np.testing.assert_allclose(lazy.domain.start, expected.domain.start)
+        np.testing.assert_allclose(lazy.domain.end, expected.domain.end)
+
+
 def test_irregular_select_by_mask_preserves_private_attrs():
     data = IrregularTimeSeries(
         unit_index=np.array([0, 0, 1, 0, 1, 2]),
