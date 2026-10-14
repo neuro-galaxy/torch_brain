@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import copy
 import logging
 
@@ -144,12 +145,12 @@ class ArrayDict:
 
         return out
 
-    def __getitem__(self, index: slice | ArrayLike):
+    def __getitem__(self, index: builtins.slice | ArrayLike):
         r"""Index all arrays along the first dimension and return a copy.
 
         Two kinds of indices are supported:
 
-        - A :obj:`slice` with a positive step, e.g. ``obj[2:10]`` or ``obj[::2]``.
+        - A :obj:`builtins.slice` with a positive step, e.g. ``obj[2:10]`` or ``obj[::2]``.
           This is index-based (as opposed to :meth:`slice`, which is time-based on
           time series objects).
         - A boolean, 1-dimensional array-like mask of equal length as the object,
@@ -160,7 +161,7 @@ class ArrayDict:
         they do for masking.
 
         Args:
-            index: A :obj:`slice` object, or a boolean array-like mask of shape (N,).
+            index: A :obj:`builtins.slice` object, or a boolean array-like mask of shape (N,).
 
         Example ::
 
@@ -184,7 +185,7 @@ class ArrayDict:
               waveform_mean: array, shape=(2, 48), dtype=float64,
             )
         """
-        if isinstance(index, slice):
+        if isinstance(index, builtins.slice):
             if index.step is not None and index.step <= 0:
                 raise ValueError(
                     f"{self.__class__.__name__} only supports slices with a positive "
