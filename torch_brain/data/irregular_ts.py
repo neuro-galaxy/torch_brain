@@ -635,7 +635,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                     self._lazy_ops["unresolved_slice"]
                 )
                 out._lazy_ops["unresolved_slice"] = (
-                    start + origin_translation,
+                    max(start + origin_translation, curr_start),
                     min(end + origin_translation, curr_end),
                     sequence_start,
                     origin_translation + (start if reset_origin else 0.0),
