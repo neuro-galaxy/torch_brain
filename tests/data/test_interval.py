@@ -259,17 +259,17 @@ def test_lazy_interval(test_filepath):
         ((5.0, 12.0), (2.0, 10.0)),  # second slice starts before first
         ((5.0, 12.0), (6.0, 15.0)),  # second slice ends after first
         ((5.0, 12.0), (2.0, 15.0)),  # second slice contains first
+        ((5.0, 12.0), (15.0, 20.0)),  # second slice after first (disjoint)
+        ((5.0, 12.0), (0.0, 3.0)),  # second slice before first (disjoint)
     ],
 )
 def test_lazy_interval_double_slice(
     test_filepath, reset_origin, first, second, load_between
 ):
     # Slicing a lazy interval twice must match the same operation on eager intervals.
-    # Checks: Second slice does not bring back intervals that were excluded in the
-    # first slice.
     data = Interval(
-        start=np.arange(20, dtype=np.float64),
-        end=np.arange(20, dtype=np.float64) + 0.5,
+        start=np.arange(20, dtype=np.float64) - 0.3,
+        end=np.arange(20, dtype=np.float64) + 0.3,
         values=np.arange(20),
         unit_index=np.arange(20) % 3,
         timekeys=["start", "end"],

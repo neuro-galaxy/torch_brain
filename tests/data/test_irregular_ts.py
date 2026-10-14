@@ -336,14 +336,15 @@ def test_lazy_irregular_timeseries(test_filepath):
         ((5.0, 12.0), (2.0, 10.0)),  # second slice starts before first
         ((5.0, 12.0), (6.0, 15.0)),  # second slice ends after first
         ((5.0, 12.0), (2.0, 15.0)),  # second slice contains first
+        ((5.0, 12.0), (15.0, 20.0)),  # second slice after first (disjoint)
+        ((5.0, 12.0), (0.0, 3.0)),  # second slice before first (disjoint)
     ],
 )
 def test_lazy_irregular_timeseries_double_slice(
     test_filepath, reset_origin, first, second, load_between
 ):
     # Slicing a lazy irregular TS twice must match the same operation on eager
-    # intervals. Checks: Second slice does not bring back points that were excluded in the
-    # first slice.
+    # intervals.
     data = IrregularTimeSeries(
         timestamps=np.arange(20, dtype=np.float64),
         values=np.arange(20),
