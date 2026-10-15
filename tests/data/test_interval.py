@@ -119,6 +119,40 @@ def test_interval_slice():
     assert np.allclose(data.drifting_gratings_dir, np.array([90, 45]))
 
 
+@pytest.mark.parametrize(
+    "second, expected_start, expected_end",
+    [
+        ((2.0, 10.0), [6.0], [7.0]),  # starts before first slice
+        ((6.0, 15.0), [6.0, 11.8], [7.0, 12.3]),  # ends after first slice
+        ((2.0, 15.0), [6.0, 11.8], [7.0, 12.3]),  # contains first slice
+        ((15.0, 20.0), [], []),  # after first slice
+        ((0.0, 3.0), [], []),  # before first slice
+    ],
+)
+def test_consecutive_slice_outside_previous_slice_no_reset_origin(
+    second, expected_start, expected_end
+):
+    data = Interval(
+        start=[3.0, 6.0, 11.8, 13.0],
+        end=[4.0, 7.0, 12.3, 14.0],
+    )
+    data = data.slice(5.0, 12.0, reset_origin=False)
+    data = data.slice(*second, reset_origin=False)
+    np.testing.assert_allclose(data.start, expected_start)
+    np.testing.assert_allclose(data.end, expected_end)
+
+
+def test_consecutive_slice_outside_previous_slice_with_reset_origin():
+    data = Interval(
+        start=[3.0, 6.0, 11.8, 13.0],
+        end=[4.0, 7.0, 12.3, 14.0],
+    )
+    data = data.slice(5.0, 12.0)  # starts are now [1.0, 6.8]
+    data = data.slice(-3.0, 10.0)  # starts before and ends after first slice
+    np.testing.assert_allclose(data.start, [4.0, 9.8])
+    np.testing.assert_allclose(data.end, [5.0, 10.3])
+
+
 def test_lazy_interval(test_filepath):
     data = Interval(
         start=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
@@ -248,6 +282,55 @@ def test_lazy_interval(test_filepath):
         data = data.select_by_mask(mask)
 
         assert np.allclose(data.start, np.array([0, 3]))
+
+
+@pytest.mark.parametrize("load_between", [False, True])
+@pytest.mark.parametrize("reset_origin", [False, True])
+@pytest.mark.parametrize(
+    "first, second",
+    [
+        ((5.0, 12.0), (6.0, 10.0)),  # second slice nested in first
+        ((5.0, 12.0), (2.0, 10.0)),  # second slice starts before first
+        ((5.0, 12.0), (6.0, 15.0)),  # second slice ends after first
+        ((5.0, 12.0), (2.0, 15.0)),  # second slice contains first
+        ((5.0, 12.0), (15.0, 20.0)),  # second slice after first (disjoint)
+        ((5.0, 12.0), (0.0, 3.0)),  # second slice before first (disjoint)
+    ],
+)
+def test_lazy_interval_double_slice(
+    test_filepath, reset_origin, first, second, load_between
+):
+    # Slicing a lazy interval twice must match the same operation on eager intervals.
+    data = Interval(
+        start=np.arange(20, dtype=np.float64) - 0.3,
+        end=np.arange(20, dtype=np.float64) + 0.3,
+        values=np.arange(20),
+        unit_index=np.arange(20) % 3,
+    )
+    if reset_origin:
+        # express the second window relative to the first slice's new origin
+        second = (second[0] - first[0], second[1] - first[0])
+
+    expected = data.slice(*first, reset_origin=reset_origin).slice(
+        *second, reset_origin=reset_origin
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        lazy = LazyInterval.from_hdf5(f)
+        lazy = lazy.slice(*first, reset_origin=reset_origin)
+        if load_between:
+            # resolves start/end; unit_index stays lazy so the object is still lazy
+            _ = lazy.values
+            assert isinstance(lazy, LazyInterval)
+        lazy = lazy.slice(*second, reset_origin=reset_origin)
+
+        np.testing.assert_allclose(lazy.start, expected.start)
+        np.testing.assert_allclose(lazy.end, expected.end)
+        np.testing.assert_array_equal(lazy.values, expected.values)
+        np.testing.assert_array_equal(lazy.unit_index, expected.unit_index)
 
 
 def test_interval_select_by_mask_preserves_private_attrs():

@@ -1028,12 +1028,12 @@ class LazyInterval(Interval):
             if "unresolved_slice" not in self._lazy_ops:
                 out._lazy_ops["unresolved_slice"] = (start, end, origin_translation)
             else:
-                curr_start, _, curr_origin_translation = self._lazy_ops[
+                curr_start, curr_end, curr_origin_translation = self._lazy_ops[
                     "unresolved_slice"
                 ]
                 out._lazy_ops["unresolved_slice"] = (
-                    curr_origin_translation + start,
-                    curr_origin_translation + end,
+                    max(start + curr_origin_translation, curr_start),
+                    min(end + curr_origin_translation, curr_end),
                     curr_origin_translation + origin_translation,
                 )
 

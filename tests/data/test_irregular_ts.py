@@ -128,6 +128,30 @@ def test_irregular_timeseries_slice():
     assert data.domain.end[0] == 0.45
 
 
+@pytest.mark.parametrize(
+    "second, expected",
+    [
+        ((2.0, 10.0), [5, 6, 7, 8, 9]),  # starts before first slice
+        ((6.0, 15.0), [6, 7, 8, 9, 10, 11]),  # ends after first slice
+        ((2.0, 15.0), [5, 6, 7, 8, 9, 10, 11]),  # contains first slice
+        ((15.0, 20.0), []),  # after first slice
+        ((0.0, 3.0), []),  # before first slice
+    ],
+)
+def test_consecutive_slice_outside_previous_slice_no_reset_origin(second, expected):
+    data = IrregularTimeSeries(timestamps=np.arange(20.0))
+    data = data.slice(5.0, 12.0, reset_origin=False)
+    data = data.slice(*second, reset_origin=False)
+    np.testing.assert_array_equal(data.timestamps, expected)
+
+
+def test_consecutive_slice_outside_previous_slice_with_reset_origin():
+    data = IrregularTimeSeries(timestamps=np.arange(20.0))
+    data = data.slice(5.0, 12.0)  # timestamps are now 0..6
+    data = data.slice(-3.0, 10.0)  # starts before and ends after first slice
+    np.testing.assert_array_equal(data.timestamps, [3, 4, 5, 6, 7, 8, 9])
+
+
 def test_irregular_timeseries_select_by_interval():
     data = IrregularTimeSeries(
         unit_index=np.array([0, 0, 1, 0, 1, 2]),
@@ -325,6 +349,56 @@ def test_lazy_irregular_timeseries(test_filepath):
 
         assert np.allclose(data.timestamps, np.array([0.05, 0.25]))
         assert np.allclose(data.values, np.array([1, 3]))
+
+
+@pytest.mark.parametrize("load_between", [False, True])
+@pytest.mark.parametrize("reset_origin", [False, True])
+@pytest.mark.parametrize(
+    "first, second",
+    [
+        ((5.0, 12.0), (6.0, 10.0)),  # second slice nested in first
+        ((5.0, 12.0), (2.0, 10.0)),  # second slice starts before first
+        ((5.0, 12.0), (6.0, 15.0)),  # second slice ends after first
+        ((5.0, 12.0), (2.0, 15.0)),  # second slice contains first
+        ((5.0, 12.0), (15.0, 20.0)),  # second slice after first (disjoint)
+        ((5.0, 12.0), (0.0, 3.0)),  # second slice before first (disjoint)
+    ],
+)
+def test_lazy_irregular_timeseries_double_slice(
+    test_filepath, reset_origin, first, second, load_between
+):
+    # Slicing a lazy irregular TS twice must match the same operation on eager
+    # intervals.
+    data = IrregularTimeSeries(
+        timestamps=np.arange(20, dtype=np.float64),
+        values=np.arange(20),
+        unit_index=np.arange(20) % 3,
+    )
+    if reset_origin:
+        # express the second window relative to the first slice's new origin
+        second = (second[0] - first[0], second[1] - first[0])
+
+    expected = data.slice(*first, reset_origin=reset_origin).slice(
+        *second, reset_origin=reset_origin
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        lazy = LazyIrregularTimeSeries.from_hdf5(f)
+        lazy = lazy.slice(*first, reset_origin=reset_origin)
+        if load_between:
+            # resolves timestamps; unit_index stays lazy so the object is still lazy
+            _ = lazy.values
+            assert isinstance(lazy, LazyIrregularTimeSeries)
+        lazy = lazy.slice(*second, reset_origin=reset_origin)
+
+        np.testing.assert_allclose(lazy.timestamps, expected.timestamps)
+        np.testing.assert_array_equal(lazy.values, expected.values)
+        np.testing.assert_array_equal(lazy.unit_index, expected.unit_index)
+        np.testing.assert_allclose(lazy.domain.start, expected.domain.start)
+        np.testing.assert_allclose(lazy.domain.end, expected.domain.end)
 
 
 def test_irregular_select_by_mask_preserves_private_attrs():
