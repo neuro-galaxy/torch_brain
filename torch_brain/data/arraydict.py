@@ -86,7 +86,14 @@ class ArrayDict:
         super().__setattr__(name, value)
 
     def __getattr__(self, name) -> np.ndarray:
-        raise AttributeError(f"Attribute {name} not found.")
+        if name in self.__dict__ or hasattr(type(self), name):
+            # cannot provide a clearer error message as the name of the attribute that is
+            # actually missing is not available.
+            raise AttributeError(
+                f"An AttributeError occurred while trying to get attribute {name}."
+            )
+        else:
+            raise AttributeError(f"Attribute {name} not found.")
 
     def __contains__(self, key: str) -> bool:
         r"""Returns :obj:`True` if the attribute :obj:`key` is present in the data."""
