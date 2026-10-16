@@ -296,3 +296,19 @@ class TestArrayDictCoercion:
         data = ArrayDict()
         with pytest.raises(ValueError):
             data.x = 5  # scalar → 0-d array → not at least 1-dimensional
+
+
+def test_attribute_error_in_getattribute_reports_inner_name():
+    # regression test for #375: an AttributeError raised while getting an existing
+    # attribute should surface as-is, not as "x not found"
+    class Broken(ArrayDict):
+        def __getattribute__(self, name):
+            if name == "x":
+                self._missing  # noqa: B018
+            return super().__getattribute__(name)
+
+    data = Broken(x=np.array([1, 2]))
+    with pytest.raises(AttributeError, match="_missing") as exc_info:
+        data.x  # noqa: B018
+    # the error should point at the inner missing attribute, not `x`
+    assert exc_info.value.name == "_missing"

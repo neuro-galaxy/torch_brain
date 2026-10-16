@@ -751,3 +751,19 @@ def test_data_save_load_random_extension(tmp_path):
     data_to_save.save(tmp_path / "data_random_extension.data")
     saved_data = Data.load(tmp_path / "data_random_extension.data")
     saved_data.close()
+
+
+def test_attribute_error_in_getattribute_reports_inner_name():
+    # regression test for #375: an AttributeError raised while getting an existing
+    # attribute should surface as-is, not as "x not found"
+    class Broken(Data):
+        def __getattribute__(self, name):
+            if name == "x":
+                self._missing  # noqa: B018
+            return super().__getattribute__(name)
+
+    data = Broken(x=1)
+    with pytest.raises(AttributeError, match="_missing") as exc_info:
+        data.x  # noqa: B018
+    # the error should point at the inner missing attribute, not `x`
+    assert exc_info.value.name == "_missing"
