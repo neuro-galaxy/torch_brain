@@ -87,6 +87,7 @@ class ArrayDict:
         super().__setattr__(name, value)
 
     if TYPE_CHECKING:
+
         def __getattr__(self, name: str) -> np.ndarray: ...
 
     def __contains__(self, key: str) -> bool:
