@@ -87,8 +87,6 @@ class ArrayDict:
         super().__setattr__(name, value)
 
     if TYPE_CHECKING:
-        # Type-checker only: a runtime __getattr__ would mask AttributeErrors raised
-        # inside properties or __getattribute__ with a misleading message.
         def __getattr__(self, name: str) -> np.ndarray: ...
 
     def __contains__(self, key: str) -> bool:
