@@ -174,13 +174,22 @@ class TestPrepareCommand:
             "processed_dir": str(processed_dir),
         }
 
-    def test_prepare_valid_brainset(self, mock_config):
+    @pytest.mark.parametrize(
+        "torch_brain_spec", ["file:///tmp/torch_brain", "torch_brain==0.2.0"]
+    )
+    def test_prepare_valid_brainset(self, mock_config, torch_brain_spec):
         """Test prepare command with valid brainset constructs correct subprocess call.
         Ensuring it passes through the inline metadata correctly.
         """
         runner = CliRunner()
 
+        # Test both dependency routes without depending on this environment's
+        # installed distribution metadata (editable checkout versus wheel).
         with (
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare._determine_torch_brain_spec",
+                return_value=torch_brain_spec,
+            ),
             patch(
                 "torch_brain.pipeline._cli.cli_prepare.load_config",
                 return_value=mock_config,
@@ -208,14 +217,22 @@ class TestPrepareCommand:
             assert command[5] == "--no-project"
             assert command[6] == "--python"
             assert command[7] == "3.11"
-            assert command[8] == "--with-editable"
-            assert ("torch_brain" in command[9]) and ("file://" in command[9])
-            assert command[10] == "--with"
-            assert command[11] == "dandi==0.74.0"
-            assert command[12] == "python"
-            assert command[13] == "-m"
-            assert command[14] == "torch_brain.pipeline.runner"
-            assert "pipeline.py" in command[15]
+            if torch_brain_spec.startswith("file://"):
+                assert command[8:12] == [
+                    "--with-editable",
+                    torch_brain_spec,
+                    "--with",
+                    "dandi==0.74.0",
+                ]
+            else:
+                assert command[8:10] == ["--with", f"dandi==0.74.0,{torch_brain_spec}"]
+            runner_index = command.index("python")
+            assert command[runner_index : runner_index + 3] == [
+                "python",
+                "-m",
+                "torch_brain.pipeline.runner",
+            ]
+            assert "pipeline.py" in command[runner_index + 3]
             assert f"--raw-dir={mock_config['raw_dir']}" in command
             assert f"--processed-dir={mock_config['processed_dir']}" in command
             assert "-c4" in command  # default cores
@@ -435,3 +452,47 @@ class TestPrepareCommand:
 
             assert "--unknown" in command[-2]
             assert "option" in command[-1]
+
+    @pytest.mark.parametrize(
+        "brainset",
+        ["keles_byd_2024", "berezutskaya_pippi_2022"],
+    )
+    def test_movie_pipeline_labels_dir_is_optional_and_overridable(
+        self, brainset, mock_config, tmp_path
+    ):
+        """Movie pipelines may use packaged labels or an explicit override."""
+        runner = CliRunner()
+        labels_dir = tmp_path / "labels"
+        labels_dir.mkdir()
+
+        with (
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
+            ) as mock_subprocess,
+        ):
+            mock_subprocess.return_value = MagicMock(returncode=0)
+
+            default_result = runner.invoke(
+                cli, ["prepare", brainset, "--use-active-env"]
+            )
+            assert default_result.exit_code == 0, default_result.output
+            default_command = mock_subprocess.call_args.args[0]
+            assert not any("labels-dir" in part for part in default_command)
+
+            override_result = runner.invoke(
+                cli,
+                [
+                    "prepare",
+                    brainset,
+                    "--use-active-env",
+                    "--labels-dir",
+                    str(labels_dir),
+                ],
+            )
+            assert override_result.exit_code == 0, override_result.output
+            override_command = mock_subprocess.call_args.args[0]
+            assert override_command[-2:] == ["--labels-dir", str(labels_dir)]
