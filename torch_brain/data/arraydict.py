@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import logging
+from typing import TYPE_CHECKING
 
 import h5py
 import numpy as np
@@ -85,8 +86,9 @@ class ArrayDict:
                 )
         super().__setattr__(name, value)
 
-    def __getattr__(self, name) -> np.ndarray:
-        raise AttributeError(f"Attribute {name} not found.")
+    if TYPE_CHECKING:
+
+        def __getattr__(self, name: str) -> np.ndarray: ...
 
     def __contains__(self, key: str) -> bool:
         r"""Returns :obj:`True` if the attribute :obj:`key` is present in the data."""

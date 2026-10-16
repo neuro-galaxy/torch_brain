@@ -6,7 +6,7 @@ import textwrap
 import warnings
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import h5py
 import numpy as np
@@ -179,8 +179,9 @@ class Data:
             )
         super().__setattr__(name, value)
 
-    def __getattr__(self, name) -> Any:
-        raise AttributeError(f"Attribute {name} not found.")
+    if TYPE_CHECKING:
+
+        def __getattr__(self, name: str) -> Any: ...
 
     @property
     def domain(self):
