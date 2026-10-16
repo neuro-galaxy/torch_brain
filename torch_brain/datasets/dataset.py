@@ -180,7 +180,7 @@ class Dataset(torch.utils.data.Dataset):
     def apply_namespace(self, data: Data, namespace: str) -> Data:
         """Apply a namespace prefix to specified nested attributes in the data.
 
-        This method modifies the data object in-place by prepending the namespace
+        This method modifies the data object in place by prepending the namespace
         to string attributes or string arrays specified in :attr:`namespace_attributes`.
 
         Can be overridden by subclasses to apply the namespace in a custom way.
@@ -190,7 +190,7 @@ class Dataset(torch.utils.data.Dataset):
             namespace: The namespace prefix to prepend (e.g., "experiment1/").
 
         Returns:
-            The modified :class:`torch_brain.data.Data` object (same instance, modified in-place).
+            The modified :class:`torch_brain.data.Data` object (same instance, modified in place).
         """
         if not self.namespace_attributes:
             return data

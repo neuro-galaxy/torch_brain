@@ -655,7 +655,7 @@ class Data:
 
     def set_nested_attribute(self, path: str, value: Any) -> Data:
         r"""Set a nested attribute specified by its dot-separated path, modifying
-        the object in-place.
+        the object in place.
 
         Example
 
@@ -693,7 +693,7 @@ class Data:
             traversal to avoid two side-effects:
 
             - ``getattr`` on a lazy object (e.g. :obj:`LazyIrregularTimeSeries`)
-              would materialise the underlying h5py dataset into a NumPy array as
+              would materialize the underlying h5py dataset into a NumPy array as
               a side-effect of the existence check.
             - ``getattr`` would invoke computed properties such as
               :attr:`RegularTimeSeries.timestamps`, incorrectly reporting them as
@@ -721,7 +721,7 @@ class Data:
 
     def delete_nested_attribute(self, path: str):
         r"""Delete a nested attribute specified by its dot-separated path, modifying
-        the object in-place.
+        the object in place.
 
         Example
 
@@ -776,8 +776,8 @@ class Data:
         return result
 
     def materialize(self) -> Data:
-        r"""Materializes the data object, i.e., loads into memory all of the data that
-        is still referenced in the HDF5 file."""
+        r"""Materializes the data object in place, i.e., loads into memory all of the data
+        that is still referenced in the HDF5 file."""
         for key in self.keys():
             # simply access all attributes to trigger the lazy loading
             if isinstance(getattr(self, key), (Data, ArrayDict)):

@@ -323,8 +323,8 @@ class ArrayDict:
         return result
 
     def materialize(self) -> ArrayDict:
-        r"""Materializes the data object, i.e., loads into memory all of the data that
-        is still referenced in the HDF5 file."""
+        r"""Materializes the data object in place, i.e., loads into memory all of the data
+        that is still referenced in the HDF5 file."""
         for key in self.keys():
             # simply access all attributes to trigger the lazy loading
             getattr(self, key)

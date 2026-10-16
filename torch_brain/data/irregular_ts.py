@@ -226,7 +226,7 @@ class IrregularTimeSeries(ArrayDict):
                 relative to the new start time. Defaults to :obj:`True`.
         """
         if not self.is_sorted():
-            logging.warning("time series is not sorted, sorting before slicing")
+            logging.warning("Time series is not sorted, sorting before slicing.")
             self.sort()
 
         idx_l = np.searchsorted(self.timestamps, start)
@@ -343,7 +343,7 @@ class IrregularTimeSeries(ArrayDict):
                 data.to_hdf5(f)
         """
         if not self.is_sorted():
-            logging.warning("time series is not sorted, sorting before saving to h5")
+            logging.warning("Time series is not sorted, sorting before saving to h5.")
             self.sort()
 
         _unicode_keys = []
@@ -648,7 +648,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             assert "unresolved_slice" not in self._lazy_ops, (
                 "unresolved slice already exists"
             )
-            assert self.is_sorted(), "time series is not sorted, cannot slice"
+            assert self.is_sorted(), "Time series is not sorted, cannot slice."
 
             timestamps = self.timestamps
             idx_l = np.searchsorted(timestamps, start)
