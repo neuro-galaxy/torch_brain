@@ -1106,8 +1106,19 @@ class LazyInterval(Interval):
         assert file.attrs["object"] == Interval.__name__, "object type mismatch"
 
         obj = cls.__new__(cls)
+
+        missing_keys = ["start", "end"]
         for key, value in file.items():
             obj.__dict__[key] = value
+            if key in missing_keys:
+                missing_keys.remove(key)
+
+        if len(missing_keys):
+            raise OSError(
+                "HDF5 file missing keys required for a LazyInterval object: "
+                f"{missing_keys}. Only unmodified HDF5 files exported "
+                "using torch_brain should be used."
+            )
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._timekeys = file.attrs["timekeys"].astype(str).tolist()
