@@ -247,7 +247,7 @@ def test_data_absolute_start(test_filepath):
 
 
 def test_timeless_data(test_filepath):
-    # when defining a Data object that has no time-based attributes, we do no need to
+    # when defining a Data object that has no time-based attributes, we do not need to
     # specify a domain
     subject = Data(
         id="jenkins",
@@ -343,6 +343,50 @@ def test_precision(caplog):
         sampling_rate=250.0,
     )
     assert lfp.timestamps.dtype == np.float64
+
+
+def test_unicode_arrays(test_filepath):
+    unicode_array = np.array(["value%", "a.b-c/d_", "a\tb\nc"])
+
+    a = ArrayDict(x=unicode_array)
+    b = Interval(
+        start=np.array([0.0, 1.0, 2.0]), end=np.array([1.0, 2.0, 3.0]), x=unicode_array
+    )
+    c = RegularTimeSeries(x=unicode_array, sampling_rate=10)
+    d = IrregularTimeSeries(
+        timestamps=np.array([0.0, 1.0, 2.0]), x=unicode_array, domain="auto"
+    )
+
+    e = Data(
+        a_arraydict=a,
+        b_intervals=b,
+        c_timeseries=c,
+        d_timeseries=d,
+        domain=Interval(0.0, 3.0),
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        e.to_hdf5(f)
+
+    del e
+
+    with h5py.File(test_filepath, "r") as f:
+        e = Data.from_hdf5(f, lazy=False)
+
+        assert np.all(e.a_arraydict.x[:] == unicode_array)
+        assert np.all(e.b_intervals.x[:] == unicode_array)
+        assert np.all(e.c_timeseries.x[:] == unicode_array)
+        assert np.all(e.d_timeseries.x[:] == unicode_array)
+
+    del e
+
+    with h5py.File(test_filepath, "r") as f:
+        e = Data.from_hdf5(f, lazy=True)
+
+        assert np.all(e.a_arraydict.x[:] == unicode_array)
+        assert np.all(e.b_intervals.x[:] == unicode_array)
+        assert np.all(e.c_timeseries.x[:] == unicode_array)
+        assert np.all(e.d_timeseries.x[:] == unicode_array)
 
 
 def test_nested_attributes():

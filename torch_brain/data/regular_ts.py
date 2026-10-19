@@ -463,14 +463,30 @@ class RegularTimeSeries(ArrayDict):
                 with h5py.File("data.h5", "w") as f:
                     data.to_hdf5(f)
         """
+        _unicode_keys = []
         for key in self.keys():
             value = getattr(self, key)
+
+            if value.dtype.kind == "U":  # if its a unicode string type
+                try:
+                    # convert string arrays to fixed length ASCII bytes
+                    value = value.astype("S")
+                except UnicodeEncodeError as err:
+                    raise NotImplementedError(
+                        f"Unable to convert column '{key}' from numpy 'U' string type "
+                        "to fixed-length ASCII (np.dtype('S')). HDF5 does not support "
+                        "numpy 'U' strings."
+                    ) from err
+                # keep track of the keys of the arrays that were originally unicode
+                _unicode_keys.append(key)
             file.create_dataset(key, data=value)
 
         # domain is of type Interval
         grp = file.create_group("domain")
         self._domain.to_hdf5(grp)
 
+        # save other private attributes
+        file.attrs["_unicode_keys"] = np.array(_unicode_keys, dtype="S")
         file.attrs["object"] = self.__class__.__name__
         file.attrs["sampling_rate"] = self.sampling_rate
 
@@ -495,10 +511,18 @@ class RegularTimeSeries(ArrayDict):
         """
         assert file.attrs["object"] == cls.__name__, "object type mismatch"
 
+        try:
+            _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+        except KeyError:
+            _unicode_keys = []  # for backwards compatibility
+
         data = {}
         for key, value in file.items():
             if key != "domain":
                 data[key] = value[:]
+                # if the values were originally unicode but stored as fixed length ASCII bytes
+                if key in _unicode_keys:
+                    data[key] = data[key].astype("U")
 
         domain = Interval.from_hdf5(file["domain"])
         obj = cls(
@@ -720,6 +744,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
     """
 
     _lazy_ops: dict
+    _unicode_keys: list[str]
 
     def __init__(self, **kwargs):
         raise NotImplementedError(
@@ -762,6 +787,10 @@ class LazyRegularTimeSeries(RegularTimeSeries):
                 else:
                     out = out[:]
 
+                if name in self._unicode_keys:
+                    # convert back to unicode
+                    out = out.astype("U")
+
                 # store it
                 self.__dict__[name] = out
 
@@ -771,7 +800,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             )
             if all_loaded:
                 self.__class__ = RegularTimeSeries
-                del self._lazy_ops
+                del self._lazy_ops, self._unicode_keys
 
             return out
         return super().__getattribute__(name)
@@ -827,10 +856,15 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             )
             for key in self.keys():
                 out.__dict__[key] = self.__dict__[key][0:0]
+                if key in self._unicode_keys and isinstance(
+                    self.__dict__[key], h5py.Dataset
+                ):
+                    out.__dict__[key] = out.__dict__[key].astype("U")
             return out
 
         out = self.__class__.__new__(self.__class__)
         out._sampling_rate = self.sampling_rate
+        out._unicode_keys = self._unicode_keys
         out._lazy_ops = {}
 
         parent_offset = self._lazy_ops["slice"][0] if "slice" in self._lazy_ops else 0
@@ -900,7 +934,13 @@ class LazyRegularTimeSeries(RegularTimeSeries):
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
             else:
                 obj.__dict__[key] = value
+
         obj._lazy_ops = {}
         obj._sampling_rate = file.attrs["sampling_rate"]
+
+        try:
+            obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+        except KeyError:
+            obj._unicode_keys = []  # for backwards compatibility
 
         return obj
