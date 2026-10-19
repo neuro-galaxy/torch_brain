@@ -10,6 +10,8 @@ from torch_brain.data import (
     Interval,
     IrregularTimeSeries,
     LazyInterval,
+    LazyIrregularTimeSeries,
+    LazyRegularTimeSeries,
     RegularTimeSeries,
 )
 
@@ -153,6 +155,75 @@ def test_load_classmethod(test_filepath):
     assert np.all(d.x[:] == np.array([0, 1, 2]))
     assert np.all(d.y[:] == np.array([1, 2, 3]))
     assert np.all(d.z[:] == np.array([2, 3, 4]))
+
+
+def test_lazy_load_h5_with_missing_keys(test_filepath):
+
+    a = Interval(start=np.array([0.0, 1.0, 2.0]), end=np.array([1.0, 2.0, 3.0]))
+
+    # save
+    with h5py.File(test_filepath, "w") as file:
+        a.to_hdf5(file)
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        del file["start"]
+
+    # load again
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(OSError, match="missing keys required"):
+            LazyInterval.from_hdf5(file)
+
+    b = RegularTimeSeries(x=np.random.random((100, 48)), sampling_rate=10)
+
+    # save
+    with h5py.File(test_filepath, "w") as file:
+        b.to_hdf5(file)
+
+    del b
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        del file["domain"]
+
+    # load again
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(OSError, match="missing 'domain'"):
+            LazyRegularTimeSeries.from_hdf5(file)
+
+    c = IrregularTimeSeries(
+        np.array([0.0, 1.0, 2.0]), x=np.array([1.0, 2.0, 3.0]), domain="auto"
+    )
+
+    # save
+    with h5py.File(test_filepath, "w") as file:
+        c.to_hdf5(file)
+
+    del c
+
+    # load and break
+    with h5py.File(test_filepath, "r+") as file:
+        del file["timestamp_indices_1s"]
+
+    # load again
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(OSError, match="missing keys required"):
+            LazyIrregularTimeSeries.from_hdf5(file)
+
+
+def test_lazy_load_h5_with_invalid_values(test_filepath):
+
+    a = RegularTimeSeries(x=np.random.random((100, 48)), sampling_rate=10)
+    a._sampling_rate = 0  # invalid value
+
+    # save
+    with h5py.File(test_filepath, "w") as file:
+        a.to_hdf5(file)
+
+    # load
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(ValueError, match="strictly positive"):
+            LazyRegularTimeSeries.from_hdf5(file)
 
 
 class TestNestedDataLazyPropagation:
