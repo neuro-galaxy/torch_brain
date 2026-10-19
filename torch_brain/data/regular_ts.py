@@ -161,7 +161,11 @@ class RegularTimeSeries(ArrayDict):
 
         super().__init__(**kwargs)
 
-        self._sampling_rate = sampling_rate
+        self._sampling_rate = float(sampling_rate)
+        if not self._sampling_rate > 0:
+            raise ValueError(
+                f"sampling_rate must be strictly positive, but got {self._sampling_rate}."
+            )
 
         if not isinstance(domain_start, (int, float)):
             raise ValueError(
@@ -929,14 +933,29 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         )
 
         obj = cls.__new__(cls)
+
+        missing_domain = True
         for key, value in file.items():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
+                missing_domain = False
             else:
                 obj.__dict__[key] = value
 
+        if missing_domain:
+            raise OSError(
+                "HDF5 file missing 'domain', which is required for a "
+                "LazyRegularTimeSeries object. Only unmodified HDF5 files exported "
+                "using torch_brain should be used."
+            )
+
         obj._lazy_ops = {}
-        obj._sampling_rate = file.attrs["sampling_rate"]
+        obj._sampling_rate = float(file.attrs["sampling_rate"])
+
+        if not obj._sampling_rate > 0:
+            raise ValueError(
+                f"sampling_rate must be strictly positive, but got {obj._sampling_rate}."
+            )
 
         try:
             obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
