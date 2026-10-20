@@ -1,11 +1,14 @@
 import copy
 import os
 import tempfile
+from dataclasses import dataclass
 
 import numpy as np
 import pytest
 
 from torch_brain.data import Data, IrregularTimeSeries, LazyIrregularTimeSeries
+
+N_TIMESTAMPS = 1000
 
 SERIES = {
     "mask_first": [
@@ -29,6 +32,8 @@ SERIES = {
         "mask",
     ],
 }
+N_STEPS = len(SERIES["mask_first"])
+assert all(len(s) == N_STEPS for s in SERIES.values())
 
 
 @pytest.fixture
@@ -46,149 +51,172 @@ def test_filepath(request):
     return filepath
 
 
-def build_slice_mask_ops(timestamps, series):
+@dataclass
+class Op:
+    kind: str
+    arg: object
 
-    idxs = np.arange(len(timestamps))
-
-    ops, states = [], [(idxs, timestamps)]
-    for i, op_kind in enumerate(series):
-        n = len(timestamps)
-        if op_kind == "mask":
-            mask = (np.arange(n) + i) % 4 != 0
-            idxs = idxs[mask]
-            timestamps = timestamps[mask]
-            ops.append(("mask", mask))
+    def apply(self, irr_ts):
+        if self.kind == "mask":
+            return irr_ts.select_by_mask(self.arg)
         else:
-            pre, post = -0.005, -0.005
-            if op_kind == "slice_wide":
-                pre, post = -5, 5
-            k = max(n // 10, 1)
-            idx_slice = (
-                timestamps[k] + pre,
-                timestamps[n - k] + post,
-            )  # trim off the ends
-            mask = (timestamps >= idx_slice[0]) & (timestamps < idx_slice[1])
-            idxs = idxs[mask]
-            timestamps = timestamps[mask] - idx_slice[0]
-            ops.append((op_kind, idx_slice))
+            return irr_ts.slice(*self.arg)
 
-        states.append((idxs, timestamps))
 
-    return ops, states
+def _mask_op(step_idx: int, idxs: np.ndarray, timestamps: np.ndarray):
+    """Returns mask operation, and resulting idxs and timestamps."""
+    mask = (np.arange(len(timestamps)) + step_idx) % 4 != 0
+    op = Op("mask", mask)
+    new_idxs = idxs[mask]
+    new_timestamps = timestamps[mask]
+    return op, new_idxs, new_timestamps
+
+
+def _slice_op(kind: str, idxs: np.ndarray, timestamps: np.ndarray):
+    """Returns slice operation, and resulting idxs and timestamps."""
+    n = len(timestamps)
+    if kind == "slice_wide":
+        pre = -5
+        post = 5
+    else:
+        pre = -0.005
+        post = -0.005
+
+    k = max(n // 10, 1)
+    start = timestamps[k] + pre
+    end = timestamps[n - k] + post
+    mask = (timestamps >= start) & (timestamps < end)
+    op = Op(kind, (start, end))
+    new_idxs = idxs[mask]
+    new_timestamps = timestamps[mask] - start
+    return op, new_idxs, new_timestamps
+
+
+def build_slice_mask_ops(timestamps: np.ndarray, series: list[str]):
+    """Returns ops to apply and expected idxs and timestamps at each step."""
+    idxs = np.arange(len(timestamps))
+    ops = []
+    all_idxs = [idxs]
+    all_timestamps = [timestamps]
+    for i, kind in enumerate(series):
+        if kind == "mask":
+            op, idxs, timestamps = _mask_op(i, idxs, timestamps)
+        else:
+            op, idxs, timestamps = _slice_op(kind, idxs, timestamps)
+        ops.append(op)
+        all_idxs.append(idxs)
+        all_timestamps.append(timestamps)
+    return ops, all_idxs, all_timestamps
+
+
+def save_data(path, timestamps, unit_id, incl_unloaded_data: bool):
+    data = Data(
+        spikes=IrregularTimeSeries(timestamps=timestamps, unit_id=unit_id),
+        domain="auto",
+    )
+    if incl_unloaded_data:
+        data.spikes.unloaded_data = np.arange(len(timestamps)) * 0.5
+    data.save(path)
+
+
+@dataclass
+class SequenceChecker:
+    series: list[str]
+    all_idxs: list[np.ndarray]
+    all_timestamps: list[np.ndarray]
+    unit_id: np.ndarray
+    materialize_step: int
+    incl_unloaded_data: bool
+
+    def _context(self, step: int, end: bool = False) -> str:
+        end_str = ", and timestamps materialized" if end else ""
+        return (
+            f"after steps {self.series[:step]} "
+            f"(unit_id materialized at step {self.materialize_step}{end_str})"
+        )
+
+    def check_mat_unit_id(self, irr_ts, step: int):
+        np.testing.assert_array_equal(
+            irr_ts.unit_id,
+            self.unit_id[self.all_idxs[step]],
+            f"Unit ID array incorrect {self._context(step)}",
+        )
+
+    def check_length(self, irr_ts, step: int):
+        expected = len(self.all_idxs[step])
+        assert len(irr_ts) == expected, (
+            f"Data length {len(irr_ts)} != expected {expected} {self._context(step)}"
+        )
+
+    def check_load_from_deepcopy(self, irr_ts, name: str, expected, step: int):
+        loaded = getattr(copy.deepcopy(irr_ts), name)
+        np.testing.assert_allclose(
+            loaded,
+            expected,
+            err_msg=f"{name} loaded incorrectly {self._context(step)}",
+        )
+
+    def expected_lazy(self, step: int, end: bool = False) -> bool:
+        if self.incl_unloaded_data:
+            return True  # `unloaded_data` is never accessed
+        if step < self.materialize_step:
+            return True  # unit_id not materialized yet
+        sliced = any(op in {"slice", "slice_wide"} for op in self.series[:step])
+        return not (sliced or end)
+
+    def check_laziness(self, irr_ts, step: int, end: bool = False):
+        expected = self.expected_lazy(step, end)
+        lazy_str = "be lazy" if expected else "not be lazy"
+        assert isinstance(irr_ts, LazyIrregularTimeSeries) == expected, (
+            f"irr_ts should {lazy_str} {self._context(step, end)}"
+        )
+
+    def check_step(self, irr_ts, step: int):
+        self.check_length(irr_ts, step)
+        self.check_load_from_deepcopy(
+            irr_ts, "timestamps", self.all_timestamps[step], step
+        )
+        if step < self.materialize_step:
+            self.check_load_from_deepcopy(
+                irr_ts, "unit_id", self.unit_id[self.all_idxs[step]], step
+            )
+        else:
+            self.check_mat_unit_id(irr_ts, step)
+            self.check_laziness(irr_ts, step)
 
 
 @pytest.mark.parametrize("series_name", SERIES)
-@pytest.mark.parametrize("materialize_step", range(len(SERIES["mask_first"]) + 1))
-@pytest.mark.parametrize("incl_unloaded_data", [True, False])
+@pytest.mark.parametrize("materialize_step", range(N_STEPS + 1))
+@pytest.mark.parametrize(
+    "incl_unloaded_data", [True, False], ids=["unloaded_data", "no_unloaded_data"]
+)
 def test_lazy_mask_slice_sequence(
     test_filepath, series_name, materialize_step, incl_unloaded_data
 ):
-
-    timestamps = np.arange(1000) / 100 * 0.234
-    unit_id = np.arange(len(timestamps))
     series = SERIES[series_name]
+    timestamps = np.arange(N_TIMESTAMPS) / 100 * 0.234
+    unit_id = np.arange(len(timestamps))
+    ops, all_idxs, all_timestamps = build_slice_mask_ops(timestamps, series)
+    save_data(test_filepath, timestamps, unit_id, incl_unloaded_data)
 
-    ops, states = build_slice_mask_ops(timestamps, series)
-
-    data = Data(
-        spikes=IrregularTimeSeries(
-            timestamps=timestamps,
-            unit_id=unit_id,
-        ),
-        domain="auto",
+    checker = SequenceChecker(
+        series, all_idxs, all_timestamps, unit_id, materialize_step, incl_unloaded_data
     )
-
-    if incl_unloaded_data:
-        unloaded_data = np.arange(len(timestamps)) * 0.5
-        data.spikes.unloaded_data = unloaded_data
-
-    data.save(test_filepath)
-
-    del data
 
     with Data.load(test_filepath) as session:
         irr_ts = session.spikes
 
-        def check_unit_id(step):
-            err_msg = "Unit ID array incorrect"
-            if step > materialize_step:
-                err_msg = f"{err_msg} after steps: {series[:step]} (materialized after {materialize_step} steps)."
-            else:
-                err_msg = f"{err_msg} when materialized after steps: {series[:step]}."
-            np.testing.assert_array_equal(
-                irr_ts.unit_id, unit_id[states[step][0]], err_msg
-            )
-
-        def check_irr_ts_length(step):
-            if len(irr_ts) != len(states[step][0]):
-                if materialize_step <= step:
-                    mat_str = "unit ID not yet materialized"
-                else:
-                    mat_str = f"unit ID materialized after {materialize_step} steps"
-                raise RuntimeError(
-                    f"Data length ({len(irr_ts)}) not as expected {len(states[step][0])} "
-                    f"(steps to date: {series[:step]}, {mat_str})."
-                )
-
-        def copy_load_and_check(name, step):
-            copied_and_loaded = getattr(copy.deepcopy(irr_ts), name)
-            if name == "timestamps":
-                gt = states[step][1]
-            elif name == "unit_id":
-                gt = unit_id[states[step][0]]
-            err_msg = f"Timestamp loading is incorrect after steps: {series[:step]}."
-            np.testing.assert_allclose(copied_and_loaded, gt, err_msg=err_msg)
-
-        def check_lazy_or_not(step, end=False):
-            if incl_unloaded_data:
-                if not isinstance(irr_ts, LazyIrregularTimeSeries):
-                    raise RuntimeError(
-                        "irr_ts should still be lazy as 'unloaded_data' was not accessed."
-                    )
-            else:
-                if step < materialize_step:
-                    if not isinstance(irr_ts, LazyIrregularTimeSeries):
-                        raise RuntimeError(
-                            "irr_ts should still be lazy as unit ID has not been materialized "
-                            f"yet (steps to date: {series[:step]})."
-                        )
-                else:
-                    sliced = "slice" in series[:step] or "slice_wide" in series[:step]
-                    if (sliced or end) and isinstance(irr_ts, LazyIrregularTimeSeries):
-                        if sliced:
-                            msg = "irr_ts was sliced"
-                        else:
-                            msg = "timestamps were accessed"
-                        raise RuntimeError(
-                            f"irr_ts should no longer be lazy as unit ID was materialized and {msg} "
-                            f"(steps to date: {series[:step]})."
-                        )
-                    elif not sliced and not isinstance(irr_ts, LazyIrregularTimeSeries):
-                        raise RuntimeError(
-                            "irr_ts should still be lazy as unit ID was materialized, but irr_ts "
-                            f"was not sliced (steps to date: {series[:step]})."
-                        )
-
-        # Run through the masking and slicing sequence
         if materialize_step == 0:
-            check_unit_id(0)
-            check_lazy_or_not(0)
+            checker.check_mat_unit_id(irr_ts, 0)
+            checker.check_laziness(irr_ts, 0)
 
-        for step, (op_kind, arg) in enumerate(ops, start=1):
-            if op_kind == "mask":
-                irr_ts = irr_ts.select_by_mask(arg)
-            else:
-                irr_ts = irr_ts.slice(*arg)
+        for step, op in enumerate(ops, start=1):
+            irr_ts = op.apply(irr_ts)
+            checker.check_step(irr_ts, step)
 
-            check_irr_ts_length(step)
-            copy_load_and_check("timestamps", step)
-            if step < materialize_step:
-                copy_load_and_check("unit_id", step)
-            else:
-                check_unit_id(step)  # materializes unit_id
-                check_lazy_or_not(step)
-
-        err_msg = f"Final timestamps are incorrect (steps: {series})."
-        np.testing.assert_allclose(irr_ts.timestamps, states[-1][1], err_msg=err_msg)
-
-        check_lazy_or_not(step, end=True)
+        np.testing.assert_allclose(
+            irr_ts.timestamps,
+            checker.all_timestamps[-1],
+            err_msg=f"Final timestamps are incorrect (steps: {series}).",
+        )
+        checker.check_laziness(irr_ts, len(ops), end=True)
