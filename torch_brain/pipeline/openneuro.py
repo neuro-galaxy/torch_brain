@@ -18,7 +18,6 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Literal
 
-import h5py
 import pandas as pd
 
 try:
@@ -553,8 +552,7 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
         data, store_path = result
 
         self.update_status("Storing")
-        with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file)
+        data.save(store_path)
 
     def get_channel_name_remapping(
         self,
