@@ -420,6 +420,29 @@ def test_slice_outside_domain(test_filepath):
         _assert_slice_outside_domain(lazy_ts)
 
 
+def test_no_unicode_keys(test_filepath):
+    # Confirm backwards compatibility for files that don't have the _unicode_keys attribute
+    # for RegularTimeSeries.
+    rts = RegularTimeSeries(
+        lfp=np.random.random((100, 48)),
+        sampling_rate=10,
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        rts.to_hdf5(f)
+
+    del rts
+
+    with h5py.File(test_filepath, "r+") as f:
+        del f.attrs["_unicode_keys"]
+
+    with h5py.File(test_filepath, "r") as f:
+        RegularTimeSeries.from_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        LazyRegularTimeSeries.from_hdf5(f)
+
+
 class TestFromGappyTimeseries:
     def test_basic(self):
         # 5 grid points at 100Hz, the 0.02s sample is missing.
