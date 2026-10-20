@@ -171,6 +171,10 @@ def extract_trials(nwbfile):
     "to discard" or where the monkey failed are marked as invalid."""
     trial_table = nwbfile.trials.to_dataframe()
 
+    # target_pos and barrier_pos columns contain np arrays with different shapes
+    drop_columns = ["target_pos", "barrier_pos"]
+    trial_table.drop(columns=drop_columns, errors="ignore", inplace=True)
+
     # rename start and end time columns
     trial_table = trial_table.rename(
         columns={
