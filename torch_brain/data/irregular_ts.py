@@ -416,7 +416,7 @@ class IrregularTimeSeries(ArrayDict):
 
         data = {}
         for key, value in file.items():
-            # skip timestamp_indidces_1s since we're not lazy loading here
+            # skip timestamp_indices_1s since we're not lazy loading here
             if key not in ["timestamp_indices_1s", "domain"]:
                 data[key] = value[:]
                 # if the values were originally unicode but stored as fixed length ASCII bytes
@@ -716,13 +716,26 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         )
 
         obj = cls.__new__(cls)
+
+        missing_keys = ["timestamps", "domain", "timestamp_indices_1s"]
         for key, value in file.items():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
+                missing_keys.remove(key)
             elif key == "timestamp_indices_1s":
                 obj.__dict__["_timestamp_indices_1s"] = value[:]
+                missing_keys.remove(key)
             else:
                 obj.__dict__[key] = value
+                if key == "timestamps":
+                    missing_keys.remove(key)
+
+        if len(missing_keys):
+            raise OSError(
+                "HDF5 file missing keys required for a LazyIrregularTimeSeries "
+                f"object: {missing_keys}. Only unmodified HDF5 files exported "
+                "using torch_brain should be used."
+            )
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._timekeys = file.attrs["timekeys"].astype(str).tolist()
