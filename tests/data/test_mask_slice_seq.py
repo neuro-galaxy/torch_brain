@@ -6,18 +6,25 @@ from dataclasses import dataclass
 import numpy as np
 import pytest
 
-from torch_brain.data import Data, IrregularTimeSeries, LazyIrregularTimeSeries
+from torch_brain.data import (
+    Data,
+    Interval,
+    IrregularTimeSeries,
+    LazyIrregularTimeSeries,
+)
 
 N_TIMESTAMPS = 1000
 
-SERIES = {
+SEQUENCES = {
     "mask_first": [
         "mask",
         "slice",
         "slice_wide",
         "mask",
+        "interval",
         "mask",
         "slice",
+        "interval",
         "mask",
         "slice",
     ],
@@ -25,15 +32,29 @@ SERIES = {
         "slice",
         "mask",
         "mask",
+        "interval",
         "slice_wide",
         "slice",
         "mask",
+        "interval",
+        "slice",
+        "mask",
+    ],
+    "interval_first": [
+        "interval",
+        "slice",
+        "mask",
+        "mask",
+        "slice_wide",
+        "slice",
+        "mask",
+        "interval",
         "slice",
         "mask",
     ],
 }
-N_STEPS = len(SERIES["mask_first"])
-assert all(len(s) == N_STEPS for s in SERIES.values())
+N_STEPS = len(SEQUENCES["mask_first"])
+assert all(len(s) == N_STEPS for s in SEQUENCES.values())
 
 
 @pytest.fixture
@@ -59,6 +80,8 @@ class Op:
     def apply(self, irr_ts):
         if self.kind == "mask":
             return irr_ts.select_by_mask(self.arg)
+        elif self.kind == "interval":
+            return irr_ts.select_by_interval(self.arg)
         else:
             return irr_ts.slice(*self.arg)
 
@@ -69,6 +92,34 @@ def _mask_op(step_idx: int, idxs: np.ndarray, timestamps: np.ndarray):
     op = Op("mask", mask)
     new_idxs = idxs[mask]
     new_timestamps = timestamps[mask]
+    return op, new_idxs, new_timestamps
+
+
+def _interval_op(idxs: np.ndarray, timestamps: np.ndarray):
+    """Returns interval operation, and resulting idxs and timestamps."""
+    n = len(timestamps)
+    pre = -0.005
+    post = -0.005
+
+    k = max(n // 10, 1)
+    start = timestamps[k] + pre
+    end = timestamps[n - k] + post
+    diff = (end - start) / 2.2
+    starts = [start, end - diff]
+    ends = [start + diff, end]
+    interval = Interval(starts, ends)
+    op = Op("interval", interval)
+
+    idx_l = np.searchsorted(timestamps, interval.start)
+    idx_r = np.searchsorted(timestamps, interval.end)
+
+    mask = np.zeros(len(idxs), dtype=bool)
+    for i in range(len(interval)):
+        mask[idx_l[i] : idx_r[i]] = True
+
+    new_idxs = idxs[mask]
+    new_timestamps = timestamps[mask]
+
     return op, new_idxs, new_timestamps
 
 
@@ -92,15 +143,17 @@ def _slice_op(kind: str, idxs: np.ndarray, timestamps: np.ndarray):
     return op, new_idxs, new_timestamps
 
 
-def build_slice_mask_ops(timestamps: np.ndarray, series: list[str]):
+def build_slice_mask_ops(timestamps: np.ndarray, sequence: list[str]):
     """Returns ops to apply and expected idxs and timestamps at each step."""
     idxs = np.arange(len(timestamps))
     ops = []
     all_idxs = [idxs]
     all_timestamps = [timestamps]
-    for i, kind in enumerate(series):
+    for i, kind in enumerate(sequence):
         if kind == "mask":
             op, idxs, timestamps = _mask_op(i, idxs, timestamps)
+        elif kind == "interval":
+            op, idxs, timestamps = _interval_op(idxs, timestamps)
         else:
             op, idxs, timestamps = _slice_op(kind, idxs, timestamps)
         ops.append(op)
@@ -121,17 +174,18 @@ def save_data(path, timestamps, unit_id, incl_unloaded_data: bool):
 
 @dataclass
 class SequenceChecker:
-    series: list[str]
+    sequence: list[str]
     all_idxs: list[np.ndarray]
     all_timestamps: list[np.ndarray]
     unit_id: np.ndarray
     materialize_step: int
     incl_unloaded_data: bool
+    load_timestamps_first: bool
 
     def _context(self, step: int, end: bool = False) -> str:
         end_str = ", and timestamps materialized" if end else ""
         return (
-            f"after steps {self.series[:step]} "
+            f"after steps {self.sequence[:step]} "
             f"(unit_id materialized at step {self.materialize_step}{end_str})"
         )
 
@@ -161,7 +215,10 @@ class SequenceChecker:
             return True  # `unloaded_data` is never accessed
         if step < self.materialize_step:
             return True  # unit_id not materialized yet
-        sliced = any(op in {"slice", "slice_wide"} for op in self.series[:step])
+        interval = any(op == "interval" for op in self.sequence[:step])
+        if self.load_timestamps_first or interval:
+            return False  # timestamps already materialized
+        sliced = any(op in {"slice", "slice_wide"} for op in self.sequence[:step])
         return not (sliced or end)
 
     def check_laziness(self, irr_ts, step: int, end: bool = False):
@@ -185,26 +242,42 @@ class SequenceChecker:
             self.check_laziness(irr_ts, step)
 
 
-@pytest.mark.parametrize("series_name", SERIES)
+@pytest.mark.parametrize("sequence_name", SEQUENCES)
 @pytest.mark.parametrize("materialize_step", range(N_STEPS + 1))
+@pytest.mark.parametrize(
+    "load_timestamps_first", [True, False], ids=["timestamps_first", "timestamps_last"]
+)
 @pytest.mark.parametrize(
     "incl_unloaded_data", [True, False], ids=["unloaded_data", "no_unloaded_data"]
 )
 def test_lazy_mask_slice_sequence(
-    test_filepath, series_name, materialize_step, incl_unloaded_data
+    test_filepath,
+    sequence_name,
+    materialize_step,
+    incl_unloaded_data,
+    load_timestamps_first,
 ):
-    series = SERIES[series_name]
+    sequence = SEQUENCES[sequence_name]
     timestamps = np.arange(N_TIMESTAMPS) / 100 * 0.234
     unit_id = np.arange(len(timestamps))
-    ops, all_idxs, all_timestamps = build_slice_mask_ops(timestamps, series)
+    ops, all_idxs, all_timestamps = build_slice_mask_ops(timestamps, sequence)
     save_data(test_filepath, timestamps, unit_id, incl_unloaded_data)
 
     checker = SequenceChecker(
-        series, all_idxs, all_timestamps, unit_id, materialize_step, incl_unloaded_data
+        sequence,
+        all_idxs,
+        all_timestamps,
+        unit_id,
+        materialize_step,
+        incl_unloaded_data,
+        load_timestamps_first,
     )
 
     with Data.load(test_filepath) as session:
         irr_ts = session.spikes
+
+        if load_timestamps_first:
+            irr_ts.timestamps  # noqa: B018
 
         if materialize_step == 0:
             checker.check_mat_unit_id(irr_ts, 0)
@@ -217,6 +290,6 @@ def test_lazy_mask_slice_sequence(
         np.testing.assert_allclose(
             irr_ts.timestamps,
             checker.all_timestamps[-1],
-            err_msg=f"Final timestamps are incorrect (steps: {series}).",
+            err_msg=f"Final timestamps are incorrect (steps: {sequence}).",
         )
         checker.check_laziness(irr_ts, len(ops), end=True)
