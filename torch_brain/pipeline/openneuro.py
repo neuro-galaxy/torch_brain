@@ -240,8 +240,11 @@ class OpenNeuroPipeline(BrainsetPipeline, ABC):
                 )
             elif on_mismatch == "prompt":
                 prompt_message = (
-                    f"⚠️ Dataset '{cls.dataset_id}' pipeline version is '{cls.origin_version}', "
-                    f"but latest on OpenNeuro is '{latest_snapshot_tag}'. "
+                    f"⚠️ Dataset version '{cls.origin_version}' was used to create the brainset pipeline for dataset '{cls.dataset_id}', "
+                    f"but the latest available version on OpenNeuro is '{latest_snapshot_tag}'. "
+                    "Downloading data or running the pipeline now will use the latest version, "
+                    "which may differ from the original version used, potentially causing errors or inconsistencies. "
+                    "Check the CHANGES file of the dataset for details about the differences between versions. "
                     "👉 Continue with latest version? [y/N]: "
                 )
                 if not user_confirms(prompt_message):
