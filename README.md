@@ -48,6 +48,14 @@ pip install torch torch_brain
 > If you only need `torch_brain.data` and the data-preparation pipelines, you
 > can skip installing `torch`.
 
+
+> [!TIP]
+> Once `torch_brain` is installed, enable shell tab completion for the `brainsets` CLI with:
+> ```bash
+> brainsets --install-completion
+> ```
+> Then restart your shell. 
+
 <details>
     <summary>Latest development version:</summary>
 
