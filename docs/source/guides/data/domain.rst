@@ -12,6 +12,8 @@ spikes scattered randomly over a 10-second window, and inspect its domain:
     >>> import numpy as np
     >>> from torch_brain.data import IrregularTimeSeries, Interval
 
+    >>> np.random.seed(123) # seeded for reproducibility
+
     >>> spikes = IrregularTimeSeries(
     ...     timestamps=np.sort(np.random.uniform(0.0, 10.0, size=1000)),
     ...     unit_id=np.random.randint(0, 30, size=1000),
@@ -24,10 +26,10 @@ spikes scattered randomly over a 10-second window, and inspect its domain:
     )
     
     >>> spikes.domain.start, spikes.domain.end
-    (array([0.01541473]), array([9.99930563]))
+    (array([0.00081888]), array([9.98918406]))
 
     >>> min(spikes.timestamps), max(spikes.timestamps)
-    (np.float64(0.015414725327748124), np.float64(9.999305627648218))
+    (np.float64(0.0008188761366767494), np.float64(9.989184059727975))
 
 The domain is itself an :obj:`Interval`, and here it was filled in automatically:
 by default, an :obj:`IrregularTimeSeries` sets its domain to the span between its
@@ -42,8 +44,8 @@ object:
 .. code-block:: pycon
 
     >>> spikes = IrregularTimeSeries(
-    ...     timestamps=...,
-    ...     unit_id=...,
+    ...     timestamps=[0.09, 2.87, 4.14, 6.89, 8.45],
+    ...     unit_id=[0, 1, 1, 2, 0],
     ...     domain=Interval(start=[0., 4.], end=[3., 10.]),
     ... )
 

@@ -42,6 +42,8 @@ Command line interface for downloading and processing neural data with brainsets
     Install shell tab-completion for the ``brainsets`` command.
 
 
+.. _cli_ref-brainsets-config:
+
 brainsets config
 ----------------
 

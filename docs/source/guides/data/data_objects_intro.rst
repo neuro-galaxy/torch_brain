@@ -18,6 +18,8 @@ sampled. This could be anything from behavior measurements to EEG signals.
     >>> import numpy as np
     >>> from torch_brain.data import RegularTimeSeries
 
+    >>> np.random.seed(123) # seeded for reproducibility
+
     >>> behavior = RegularTimeSeries(
     ...     sampling_rate=100.0,  # in Hz
     ...     hand_vel=np.random.randn(1000, 2),
@@ -62,7 +64,7 @@ Since our signals are sampled at 100Hz, we should get 200 samples.
     200
 
     >>> sliced.pupil_size
-    array([-0.07094018,  1.1442879 ,  1.26022563,  1.57259098, ..., ])
+    array([-0.13047152,  0.42184868, -0.93323158,  1.44600134, ...])
 
 
 .. admonition:: Other constructors
