@@ -302,7 +302,7 @@ class Data:
         for key, value in self.__dict__.items():
             if key in ("_domain", "_file"):
                 pass
-            elif isinstance(value, ArrayDict):
+            elif isinstance(value, (ArrayDict, Data)):
                 add = key + "=" + repr(value) + ",\n"
                 info = info + textwrap.indent(add, "  ")
             elif value is not None:

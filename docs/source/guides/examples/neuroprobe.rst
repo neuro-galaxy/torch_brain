@@ -22,9 +22,9 @@ Download and process the Neuroprobe data using the brainsets CLI.
 
 .. note::
 
-    Processing includes downloading raw BrainTreebank data and computing all
-    benchmark splits. This may take several hours depending on your hardware and
-    network connection. Use ``--cores <N>`` to parallelize.
+    Processing includes downloading raw BrainTreebank data for 26 recording sessions (~140 GB) and 
+    computing all benchmark splits to generate the processed data files (~260 GB). This may take 
+    several hours depending on your hardware and network connection. Use ``--cores <N>`` to parallelize.
 
 
 Key concepts
@@ -264,6 +264,7 @@ channel inclusion masks:
     intervals = train_ds.get_sampling_intervals()
     for recording_id, interval in intervals.items():
         rec = train_ds.get_recording(recording_id)
+        print(recording_id)
         print(rec.seeg_data.data.shape)
         print(interval.start[:5], interval.end[:5])
         print(interval.label[:5])

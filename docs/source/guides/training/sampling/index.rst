@@ -81,12 +81,26 @@ Many **brainsets** provide default train/validation/test sampling
 intervals. For example, let’s load a single recording in the
 :obj:`~torch_brain.datasets.PerichMillerPopulation2018` dataset.
 
+If the dataset has not been downloaded and processed yet, we can first download 
+(~40 MB) and process the specific recording by running, from the command line:
+
+.. code-block:: console
+
+    $ brainsets prepare perich_miller_population_2018 -s c_20131003_center_out_reaching
+
+We can then load the recording and get its sampling intervals for the train split. 
+
+.. note:: 
+    We can specify which directory to load the data from, but if we set :obj:`~root=None`, 
+    the data is loaded by default from the directory configured for storing processed 
+    brainsets (see :ref:`brainsets config <cli_ref-brainsets-config>`).
+
 .. code-block:: pycon
 
     >>> from torch_brain.datasets import PerichMillerPopulation2018
 
     >>> dataset = PerichMillerPopulation2018(
-    ...     root="./data/processed",
+    ...     root=None, 
     ...     recording_ids=["c_20131003_center_out_reaching"],
     ... )
     >>> sampling_intervals = dataset.get_sampling_intervals("train")
@@ -155,11 +169,16 @@ which randomly samples windows of a fixed length from the data.
 
 .. code-block:: pycon
 
+    >>> import torch
     >>> from torch_brain.samplers import RandomFixedWindowSampler
+
+    >>> torch_rng = torch.Generator()
+    >>> torch_rng.manual_seed(123)  # seeded for reproducibility
 
     >>> sampler = RandomFixedWindowSampler(
     ...     sampling_intervals=dataset.get_sampling_intervals("train"),
     ...     window_length=1.0,
+    ...     generator=torch_rng,
     ... )
 
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
@@ -177,11 +196,11 @@ We can visualize what the sampler is doing as we are iterating over it.
 
     >>> for i, sample_index in enumerate(sampler):
     ...     print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
-    Sample between 251.01 and 252.01
-    Sample between 257.01 and 258.01
-    Sample between 453.49 and 454.49
-    Sample between 121.92 and 122.92
-    Sample between 422.79 and 423.79
+    Sample between 94.44 and 95.44
+    Sample between 362.45 and 363.45
+    Sample between 46.54 and 47.54
+    Sample between 31.30 and 32.30
+    Sample between 146.32 and 147.32
     ...
 
 .. figure:: static/sampler_1s.gif
@@ -200,9 +219,12 @@ reprocess the underlying data.
 
 .. code-block:: pycon
 
+    >>> torch_rng.manual_seed(123)  # seeded for reproducibility
+
     >>> sampler = RandomFixedWindowSampler(
     ...     sampling_intervals=dataset.get_sampling_intervals("train"),
     ...     window_length=10.0,
+    ...     generator=torch_rng,
     ... )
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
     WARNING:root:Skipping 113.86756666666673 seconds of data due to short intervals. Remaining: 270.0 seconds.
@@ -210,11 +232,11 @@ reprocess the underlying data.
 
     >>> for i, sample_index in enumerate(sampler):
     ...     print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
-    Sample between 28.51 and 38.51
-    Sample between 158.61 and 168.61
-    Sample between 244.77 and 254.77
-    Sample between 114.41 and 124.41
-    Sample between 535.77 and 545.77
+    Sample between 298.95 and 308.95
+    Sample between 485.97 and 495.97
+    Sample between 114.44 and 124.44
+    Sample between 141.66 and 151.66
+    Sample between 171.66 and 181.66
     ...
 
 .. figure:: static/sampler_10s.gif
@@ -266,20 +288,23 @@ a *"trial"*, and samples them as whole.
 
     >>> from torch_brain.samplers import TrialSampler
 
+    >>> torch_rng.manual_seed(123)  # seeded for reproducibility
+
     >>> sampler = TrialSampler(
     ...     sampling_intervals=dataset.get_sampling_intervals("train"),
     ...     shuffle=True,
+    ...     generator=torch_rng
     ... )
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
     Number of sampled windows in one epoch:  38
 
     >>> for i, sample_index in enumerate(sampler):
     ...     print(f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f}")
-    Sample between 227.69 and 232.62
-    Sample between 637.58 and 644.05
-    Sample between 415.17 and 415.69
-    Sample between 319.86 and 328.74
-    Sample between 421.70 and 432.91
+    Sample between 617.42 and 633.21
+    Sample between 237.87 and 239.33
+    Sample between 597.53 and 598.73
+    Sample between 129.91 and 130.70
+    Sample between 44.02 and 49.32
     ...
 
 .. figure:: static/sampler_trial_10s.gif
@@ -297,7 +322,9 @@ All three samplers above emit the same kind of object: a
 :obj:`~torch_brain.datasets.DatasetIndex`. It is a small dataclass that records *where* a
 sample comes from — which recording, and which time window:
 
-.. code:: python
+.. code-block:: python
+
+    from dataclasses import dataclass
 
     @dataclass
     class DatasetIndex:
@@ -312,20 +339,26 @@ the underlying recording:
 
 .. code-block:: pycon
 
+    >>> sampler.generator.manual_seed(123)  # seeded for reproducibility
+
     >>> sample_index = next(iter(sampler))
     >>> sample_index
-    DatasetIndex(recording_id='c_20131003_center_out_reaching', start=660.13, end=661.13)
+    DatasetIndex(recording_id='c_20131003_center_out_reaching', start=402.986, end=406.388)
 
     >>> data = dataset[sample_index]
     >>> data
     Data(
-      spikes=IrregularTimeSeries(timestamps: ..., unit_index: ...),
-      cursor=IrregularTimeSeries(timestamps: ..., pos: ..., vel: ...),
-      trials=Interval(...),
+      brainset=Data(derived_version: ..., description: ...),
+      cursor=LazyIrregularTimeSeries(timestamps: ..., acc: ..., pos: ..., vel: ...),
       ...
+      spikes=LazyIrregularTimeSeries(timestamps: ..., unit_index: ...),
+      trials=LazyInterval(...),
+      ...
+      absolute_start=617.4229,
     )
+
     >>> data.start, data.end, data.absolute_start
-    0.0, 1.0, 660.13
+    0.0, 15.7882, 617.4229
 
 This is the bridge between sampling and data loading: the sampler
 emits a stream of :obj:`~torch_brain.datasets.DatasetIndex` objects, and the
@@ -337,13 +370,19 @@ Sampling from multiple recordings
 ---------------------------------
 
 The sampler seamlessly works with datasets containing multiple
-recordings. For example, we can create a dataset with multiple
-recordings:
+recordings.
+
+.. code-block:: console
+
+    $ brainsets prepare perich_miller_population_2018 -s c_20131022_center_out_reaching
+    $ brainsets prepare perich_miller_population_2018 -s c_20131023_center_out_reaching
+
+For example, we can create a dataset with multiple recordings:
 
 .. code-block:: pycon
 
     >>> dataset = PerichMillerPopulation2018(
-    ...     root="./data/processed",
+    ...     root=None,
     ...     recording_ids=[
     ...         "c_20131003_center_out_reaching",
     ...         "c_20131022_center_out_reaching",
@@ -373,9 +412,12 @@ The sampler can be initialized in the same way as before.
 
 .. code-block:: pycon
 
+    >>> torch_rng.manual_seed(123) # seeded for reproducibility
+
     >>> sampler = RandomFixedWindowSampler(
     ...     sampling_intervals=dataset.get_sampling_intervals("train"),
     ...     window_length=1.0,
+    ...     generator=torch_rng,
     ... )
     >>> print("Number of sampled windows in one epoch: ", len(sampler))
     WARNING:root:Skipping 8.784433333333283 seconds of data due to short intervals. Remaining: 1233.0 seconds.
@@ -386,11 +428,11 @@ The sampler can be initialized in the same way as before.
     ...         f"Sample between {sample_index.start:.2f} and {sample_index.end:.2f} "
     ...         f"from recording {sample_index.recording_id}"
     ...     )
-    Sample between 349.16 and 350.16 from recording c_20131023_center_out_reaching
-    Sample between 180.99 and 181.99 from recording c_20131022_center_out_reaching
-    Sample between 33.14 and 34.14 from recording c_20131023_center_out_reaching
-    Sample between 167.72 and 168.72 from recording c_20131003_center_out_reaching
-    Sample between 141.72 and 142.72 from recording c_20131003_center_out_reaching
+    Sample between 414.22 and 415.22 from recording c_20131022_center_out_reaching
+    Sample between 677.32 and 678.32 from recording c_20131023_center_out_reaching
+    Sample between 557.35 and 558.35 from recording c_20131022_center_out_reaching
+    Sample between 565.35 and 566.35 from recording c_20131022_center_out_reaching
+    Sample between 522.82 and 523.82 from recording c_20131023_center_out_reaching
     ...
 
 We visualize this below:
