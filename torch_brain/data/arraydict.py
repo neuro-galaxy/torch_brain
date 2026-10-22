@@ -201,7 +201,7 @@ class ArrayDict:
                     data[column] = np_arr
                 else:
                     logging.warning(
-                        f"The ndarrays in column '{column}' do not all have the same shape."
+                        f"The ndarrays in column '{column}' do not all have the same shape. Skipping."
                     )
             elif isinstance(df[column].iloc[0], str):
                 try:  # try to see if unicode strings can be converted to fixed length ASCII bytes
