@@ -271,7 +271,7 @@ class IrregularTimeSeries(ArrayDict):
     def select_by_interval(self, interval: Interval):
         r"""Return a new :obj:`IrregularTimeSeries` object where all timestamps are
         within the interval. For each interval, the end time is exclusive, the selection
-        will only include data in :math:`[\textrm{start}, \textrm{end})`..
+        will only include data in :math:`[\textrm{start}, \textrm{end})`.
 
         Args:
             interval: Interval object.
@@ -279,10 +279,10 @@ class IrregularTimeSeries(ArrayDict):
 
         timestamps = self.timestamps
 
-        sorter = None
+        sorted_indices = None
         if not self.is_sorted():
-            sorter = np.argsort(timestamps)
-            timestamps = timestamps[sorter]
+            sorted_indices = np.argsort(timestamps)
+            timestamps = timestamps[sorted_indices]
 
         idx_l = np.searchsorted(timestamps, interval.start)
         idx_r = np.searchsorted(timestamps, interval.end)
@@ -291,8 +291,9 @@ class IrregularTimeSeries(ArrayDict):
         for i in range(len(interval)):
             mask[idx_l[i] : idx_r[i]] = True
 
-        if sorter is not None:
-            mask = mask[np.argsort(sorter)]
+        if sorted_indices is not None:
+            inverse_sorted_indices = np.argsort(sorted_indices)
+            mask = mask[inverse_sorted_indices]
 
         out = self.select_by_mask(mask)
         out._domain = out._domain & interval

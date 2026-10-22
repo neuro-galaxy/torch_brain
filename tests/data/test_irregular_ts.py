@@ -155,7 +155,7 @@ def test_consecutive_slice_outside_previous_slice_with_reset_origin():
 def test_irregular_timeseries_unsorted_slice():
     sorter = np.array([0, 3, 1, 4, 2, 5])
     data = IrregularTimeSeries(
-        unit_index=np.array([0, 0, 1, 0, 1, 2])[sorter],
+        unit_index=np.array([0, 1, 2, 3, 4, 5])[sorter],
         timestamps=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6])[sorter],
         waveforms=np.zeros((6, 48)),
         timekeys=["timestamps"],
@@ -166,7 +166,7 @@ def test_irregular_timeseries_unsorted_slice():
 
     assert len(data) == 4
     assert np.allclose(data.timestamps, np.array([0.2, 0.3, 0.4, 0.5]))
-    assert np.allclose(data.unit_index, np.array([0, 1, 0, 1]))
+    assert np.allclose(data.unit_index, np.array([1, 2, 3, 4]))
 
     assert len(data.domain) == 1
     assert data.domain.start[0] == 0.2
@@ -199,7 +199,7 @@ def test_irregular_timeseries_select_by_interval():
 
 def test_irregular_timeseries_unsorted_select_by_interval():
     data = IrregularTimeSeries(
-        unit_index=np.array([0, 0, 1, 0, 1, 2]),
+        unit_index=np.array([0, 1, 2, 3, 4, 5]),
         timestamps=np.array([0.1, 0.3, 0.2, 0.6, 0.5, 0.4]),
         waveforms=np.zeros((6, 48)),
         timekeys=["timestamps"],
@@ -214,7 +214,7 @@ def test_irregular_timeseries_unsorted_select_by_interval():
 
     assert len(data) == 3
     assert np.allclose(data.timestamps, np.array([0.3, 0.2, 0.5]))
-    assert np.allclose(data.unit_index, np.array([0, 1, 1]))
+    assert np.allclose(data.unit_index, np.array([1, 2, 4]))
 
     assert len(data.domain) == 2
     assert np.allclose(data.domain.start, selection_interval.start)
