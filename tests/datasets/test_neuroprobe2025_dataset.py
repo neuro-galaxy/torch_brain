@@ -599,9 +599,12 @@ def test_get_channel_metadata_returns_full_arrays_with_included_mask(
         id = np.array(["c0", "c1"])
         name = np.array(["A", "B"])
         included = np.array([True, False])
-        localization_L = np.array([1.0, 2.0], dtype=float)
-        localization_I = np.array([3.0, 4.0], dtype=float)
-        localization_P = np.array([5.0, 6.0], dtype=float)
+        coord_btb_lip_l = np.array([1.0, 2.0], dtype=float)
+        coord_btb_lip_i = np.array([3.0, 4.0], dtype=float)
+        coord_btb_lip_p = np.array([5.0, 6.0], dtype=float)
+        coord_btb_x = np.array([7.0, 8.0], dtype=float)
+        coord_btb_y = np.array([9.0, 10.0], dtype=float)
+        coord_btb_z = np.array([11.0, 12.0], dtype=float)
 
     class _FakeRecording:
         channels = _FakeChannels()
@@ -611,10 +614,33 @@ def test_get_channel_metadata_returns_full_arrays_with_included_mask(
     assert channel_metadata["ids"].tolist() == ["c0", "c1"]
     assert channel_metadata["names"].tolist() == ["A", "B"]
     assert channel_metadata["included_mask"].tolist() == [True, False]
-    assert channel_metadata["coords_type"] == "lip"
     assert channel_metadata["indices"].tolist() == [0, 1]
-    assert channel_metadata["coords"] is not None
-    assert channel_metadata["coords"].shape == (2, 3)
+    assert "coords" not in channel_metadata
+    assert "coords_type" not in channel_metadata
+    assert set(channel_metadata["coordinate_frames"]) == {"btb_lip", "btb_xyz"}
+    np.testing.assert_allclose(
+        channel_metadata["coordinate_frames"]["btb_lip"],
+        np.array([[1.0, 3.0, 5.0], [2.0, 4.0, 6.0]], dtype=float),
+    )
+    np.testing.assert_allclose(
+        channel_metadata["coordinate_frames"]["btb_xyz"],
+        np.array([[7.0, 9.0, 11.0], [8.0, 10.0, 12.0]], dtype=float),
+    )
+
+
+def test_get_neural_signal_metadata_reads_saved_seeg_attrs(tmp_path):
+    _write_default_recordings(tmp_path, ("sub_1_trial001",))
+    path = _mock_dataset_dir(tmp_path) / "sub_1_trial001.h5"
+    with h5py.File(path, "a") as h5:
+        seeg_data = h5.create_group("seeg_data")
+        seeg_data.attrs["unit"] = "uV"
+        seeg_data.attrs["scale_to_uV"] = 1.0
+    ds = _make_dataset(tmp_path)
+
+    assert ds.get_neural_signal_metadata("sub_1_trial001") == {
+        "unit": "uV",
+        "scale_to_uV": 1.0,
+    }
 
 
 def test_get_channel_ids_use_recording_view_ids_without_suffix(tmp_path, monkeypatch):
