@@ -28,7 +28,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from torch_brain.utils.bids import _parse_participants_tsv
+from torch_brain.utils.bids import parse_participants_tsv
 from torch_brain.utils.s3 import (
     download_object,
     download_prefix_from_url,
@@ -115,7 +115,7 @@ def fetch_participants_tsv(dataset_id: str) -> pd.DataFrame | None:
     if content is None:
         return None
 
-    return _parse_participants_tsv(
+    return parse_participants_tsv(
         content,
         missing_column_context=f"file in OpenNeuro dataset {dataset_id}",
     )

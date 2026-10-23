@@ -1,6 +1,7 @@
 __all__ = [
     "generate_stratified_folds",
     "generate_string_kfold_assignment",
+    "get_integer_hash_from_string",
 ]
 
 # Drives the generated API reference; see docs/source/api_reference.py.
@@ -172,7 +173,7 @@ def generate_string_kfold_assignment(
         raise ValueError(f"val_ratio must be between 0 and 1, got {val_ratio}")
 
     base_str = f"{string_id}_{seed}"
-    hash_int = _get_integer_hash_from_string(base_str)
+    hash_int = get_integer_hash_from_string(base_str)
     bucket = hash_int % n_folds
 
     assignments: list[str] = []
@@ -181,7 +182,7 @@ def generate_string_kfold_assignment(
             assignments.append("test")
         else:
             fold_str = f"{base_str}_{k}"
-            fold_hash_int = _get_integer_hash_from_string(fold_str)
+            fold_hash_int = get_integer_hash_from_string(fold_str)
             normalized_hash = (fold_hash_int % 10000) / 10000.0
             if normalized_hash < val_ratio:
                 assignments.append("valid")
@@ -190,9 +191,9 @@ def generate_string_kfold_assignment(
     return assignments
 
 
-def _get_integer_hash_from_string(string: str) -> int:
+def get_integer_hash_from_string(string: str) -> int:
     """
-    Compute a deterministicinteger hash from a string using MD5.
+    Compute a deterministic integer hash from a string using MD5.
 
     Parameters
     ----------
@@ -208,3 +209,7 @@ def _get_integer_hash_from_string(string: str) -> int:
     hash_obj = hashlib.md5(base_bytes)
     hash_int = int(hash_obj.hexdigest(), 16)
     return hash_int
+
+
+# Private alias kept for backwards compatibility.
+_get_integer_hash_from_string = get_integer_hash_from_string
