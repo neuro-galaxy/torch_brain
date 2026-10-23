@@ -14,6 +14,7 @@ __all__ = [
     "build_bids_path",
     "load_json_sidecar",
     "load_participants_tsv",
+    "parse_participants_tsv",
     "get_subject_info",
 ]
 
@@ -387,7 +388,7 @@ def load_json_sidecar(bids_path: BIDSPath) -> dict:
         raise FileNotFoundError(f"No JSON sidecar file found for {bids_path}.") from err
 
 
-def _parse_participants_tsv(
+def parse_participants_tsv(
     source: Path | str | bytes | BinaryIO,
     *,
     missing_column_context: str = "",
@@ -425,6 +426,10 @@ def _parse_participants_tsv(
     return df.set_index("participant_id")
 
 
+# Private alias kept for backwards compatibility.
+_parse_participants_tsv = parse_participants_tsv
+
+
 def load_participants_tsv(bids_root: Path | str) -> pd.DataFrame | None:
     """Load participants.tsv data from a BIDS root directory.
 
@@ -448,7 +453,7 @@ def load_participants_tsv(bids_root: Path | str) -> pd.DataFrame | None:
     if not (Path(bids_root) / "participants.tsv").exists():
         raise FileNotFoundError(f"participants.tsv file not found in {bids_root}.")
 
-    return _parse_participants_tsv(
+    return parse_participants_tsv(
         Path(bids_root) / "participants.tsv",
         missing_column_context=f"file in BIDS root directory {bids_root}",
     )
