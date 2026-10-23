@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
+- Added brainsets plugins: installed packages that declare a `brainsets.pipelines` entry point add their pipelines to the `brainsets` CLI, prepared as `brainsets prepare <namespace>:<brainset_id>` and listed by source in `brainsets list`. When a plugin pipeline runs in an isolated environment (it has a `# /// brainset-pipeline` block), the plugin is installed there at the version and from the source the user installed it from, and `prepare` marks output folders with a `.brainsets_source` file and refuses to mix two packages in one folder. See the "Writing a brainsets plugin" guide
+- Made `torch_brain.utils.bids.parse_participants_tsv` and `torch_brain.utils.split.get_integer_hash_from_string` public (the `_`-prefixed names remain as aliases)
 - Added `Data.delete_nested_attribute` to delete a nested attribute by dot-separated path ([#299](https://github.com/neuro-galaxy/torch_brain/pull/299))
 - Added `MultiChannelDatasetMixin` to provide `get_channel_ids` and prefixing interface for EEG-like datasets ([#173](https://github.com/neuro-galaxy/torch_brain/pull/173))
 - Added `BinSpikes` transform ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
