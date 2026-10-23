@@ -215,8 +215,7 @@ it into processed :obj:`torch_brain.data.Data` object(s), and stores these insid
 
         # save data to disk
         self.update_status("Storing")
-        with h5py.File(output_file_path, "w") as file:
-            data.to_hdf5(file)
+        data.save(output_file_path)
 
 
 Most of the logic for implementing the |process| method will follow the tutorial

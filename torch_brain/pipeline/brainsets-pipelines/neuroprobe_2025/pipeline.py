@@ -243,8 +243,7 @@ class Pipeline(BrainsetPipeline):
         # save data to disk
         self.update_status("Storing")
         path = self.processed_dir / download_output.path.name
-        with h5py.File(path, "w") as file:
-            data.to_hdf5(file)
+        data.save(path)
         logging.info(f"Saved data to {path}")
 
     def iterate_extract_splits(
