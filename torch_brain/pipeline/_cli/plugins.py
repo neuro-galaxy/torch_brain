@@ -6,6 +6,7 @@ value is an importable package holding one ``<brainset_id>/pipeline.py`` folder 
 brainset. Plugin brainsets are always addressed as ``<namespace>:<brainset_id>``.
 """
 
+import ast
 import re
 import warnings
 from dataclasses import dataclass, field
@@ -91,6 +92,34 @@ def list_pipeline_dirs(path: Traversable) -> dict[str, Traversable]:
         if (d / "pipeline.py").is_file():
             ret[d.name] = d
     return ret
+
+
+def read_pipeline_brainset_id(pipeline_file: Traversable) -> str | None:
+    """Read ``Pipeline.brainset_id`` from ``pipeline.py`` without importing it.
+
+    Returns ``None`` if there is no ``Pipeline`` class or its ``brainset_id`` is not
+    a string literal.
+    """
+    tree = ast.parse(pipeline_file.read_text(encoding="utf-8"))
+    for node in tree.body:
+        if not (isinstance(node, ast.ClassDef) and node.name == "Pipeline"):
+            continue
+        for stmt in node.body:
+            if isinstance(stmt, ast.Assign):
+                targets, value = stmt.targets, stmt.value
+            elif isinstance(stmt, ast.AnnAssign) and stmt.value is not None:
+                targets, value = [stmt.target], stmt.value
+            else:
+                continue
+            for target in targets:
+                if (
+                    isinstance(target, ast.Name)
+                    and target.id == "brainset_id"
+                    and isinstance(value, ast.Constant)
+                    and isinstance(value.value, str)
+                ):
+                    return value.value
+    return None
 
 
 def get_builtin_source() -> PipelineSource:

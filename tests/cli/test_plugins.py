@@ -301,6 +301,19 @@ class TestPreparePlugin:
         assert "was prepared by 'someone_else'" in result.output
         assert command is None
 
+    def test_prepare_refuses_brainset_id_mismatch(self, fake_plugin, dirs):
+        pipeline_file = (
+            Path(str(get_plugin_sources()["fake"].pipelines_path))
+            / "fake_ds"
+            / "pipeline.py"
+        )
+        pipeline_file.write_text(PIPELINE_TEMPLATE.format(brainset_id="other_name"))
+        result, command = self._invoke(["fake:fake_ds"], dirs)
+        assert result.exit_code != 0
+        assert "must equal the folder name 'fake_ds'" in result.output
+        assert command is None
+        assert read_owner_marker(dirs[1] / "fake_ds") is None
+
     def test_prepare_list_does_not_write_marker(self, fake_plugin, dirs):
         result, _ = self._invoke(["fake:fake_ds", "--list"], dirs)
         assert result.exit_code == 0, result.output

@@ -18,6 +18,7 @@ from torch_brain.pipeline.config import CONFIG_FILE, load_config
 from .plugins import (
     BrainsetNotFoundError,
     check_owner_marker,
+    read_pipeline_brainset_id,
     resolve_brainset,
     write_owner_marker,
 )
@@ -158,6 +159,16 @@ def prepare(
             click.echo(
                 f"Preparing {resolved.qualified_name} "
                 f"(community plugin {source.dist_name}{version})..."
+            )
+
+        # The runner writes to <processed_dir>/<Pipeline.brainset_id>, so the owner
+        # marker is only meaningful if that is the folder name.
+        pipeline_brainset_id = read_pipeline_brainset_id(pipeline_dir / "pipeline.py")
+        if pipeline_brainset_id not in (None, resolved.brainset_id):
+            raise click.ClickException(
+                f"{resolved.qualified_name}: Pipeline.brainset_id is "
+                f"'{pipeline_brainset_id}', but must equal the folder name "
+                f"'{resolved.brainset_id}'."
             )
 
         # Refuse to mix the output of two different sources in one folder
