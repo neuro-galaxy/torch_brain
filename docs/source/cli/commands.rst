@@ -88,7 +88,8 @@ If no options are provided, you will be prompted to enter the paths interactivel
 brainsets list
 --------------
 
-List all pipelines provided by the installed package.
+List the built-in brainsets and the brainsets of installed plugins, grouped by source.
+Plugin brainsets are listed with their namespace (``<namespace>:<brainset_id>``).
 
 **Usage**
 
@@ -113,8 +114,13 @@ Download and process a single brainset.
 
 ``BRAINSET``
 
-    Name of the brainset to prepare (see ``brainsets list``). When used with ``--local``,
-    this should be the path to a local pipeline directory.
+    Name of the brainset to prepare (see ``brainsets list``). Built-in brainsets use
+    their bare name, plugin brainsets use ``<namespace>:<brainset_id>``. When used
+    with ``--local``, this should be the path to a local pipeline directory.
+
+    ``prepare`` refuses to write into a ``<processed_dir>/<brainset_id>`` folder made
+    by a different package, and marks the folders it writes with a
+    ``.brainsets_source`` file.
 
 **Options**
 
