@@ -359,14 +359,16 @@ def _detect_installation_url(dist_name: str) -> str | None:
 
         url_info = direct_url.get("url", "")
         if len(url_info) > 0:
-            # Check if installed from git
-            if url_info.startswith("https://github.com") or "vcs_info" in direct_url:
-                # Use requested_revision (branch/tag) if available, otherwise commit_id
-                vcs_info = direct_url.get("vcs_info", {})
+            # Check if installed from a VCS (e.g. git)
+            if "vcs_info" in direct_url:
+                # Pin the commit that was installed, so the isolated env gets the
+                # same code even if the requested branch has moved since
+                vcs_info = direct_url["vcs_info"]
+                vcs = vcs_info.get("vcs", "git")
                 commit_id = vcs_info.get("commit_id")
-                requested_revision = vcs_info.get("requested_revision")  # brain/tag
-                ref = requested_revision or commit_id or "main"
-                return f"git+{url_info}@{ref}"
+                requested_revision = vcs_info.get("requested_revision")  # branch/tag
+                ref = commit_id or requested_revision
+                return f"{vcs}+{url_info}" + (f"@{ref}" if ref else "")
             elif "archive_info" in direct_url:
                 # A wheel or sdist: uv cannot install it in editable mode, so give
                 # it as a named requirement rather than a bare file:// URL

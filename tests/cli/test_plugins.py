@@ -348,6 +348,24 @@ def _write_dist_info(root: Path, name: str, direct_url: dict) -> None:
             {"url": "file:///wheels/fakedist-1.0-py3-none-any.whl", "archive_info": {}},
             "fakedist @ file:///wheels/fakedist-1.0-py3-none-any.whl",
         ),
+        (
+            {
+                "url": "https://gitlab.com/me/fakedist",
+                "vcs_info": {
+                    "vcs": "git",
+                    "requested_revision": "main",
+                    "commit_id": "abc123",
+                },
+            },
+            "git+https://gitlab.com/me/fakedist@abc123",
+        ),
+        (
+            {
+                "url": "https://github.com/me/fakedist/archive/v1.zip",
+                "archive_info": {},
+            },
+            "fakedist @ https://github.com/me/fakedist/archive/v1.zip",
+        ),
     ],
 )
 def test_determine_install_spec(tmp_path, monkeypatch, direct_url, expected):
