@@ -13,6 +13,7 @@ from click.testing import CliRunner
 
 from torch_brain.pipeline._cli import plugins as plugins_mod
 from torch_brain.pipeline._cli.cli import cli
+from torch_brain.pipeline._cli.cli_prepare import _dist_in_dependencies
 from torch_brain.pipeline._cli.plugins import (
     BrainsetNotFoundError,
     get_builtin_source,
@@ -225,3 +226,26 @@ class TestPreparePlugin:
         assert result.exit_code != 0
         assert "No installed plugin provides the namespace 'nope'" in result.output
         assert command is None
+
+    def test_prepare_plugin_injects_plugin(self, fake_plugin, dirs):
+        result, command = self._invoke(["fake:fake_ds"], dirs)
+        assert result.exit_code == 0, result.output
+        with_deps = command[command.index("--with") + 1]
+        assert "numpy" in with_deps
+        # The fake plugin has no distribution metadata, so a bare name is injected
+        assert "fakeplug" in with_deps.split(",")
+
+
+@pytest.mark.parametrize(
+    "deps, name, expected",
+    [
+        (["torch_brain==0.2.1"], "torch_brain", True),
+        (["torch-brain>=0.2"], "torch_brain", True),
+        (["git+https://github.com/x/torch_brain@main"], "torch_brain", True),
+        (["torch_brain_extra"], "torch_brain", False),
+        (["openneuro-brainsets @ git+https://x"], "openneuro_brainsets", True),
+        (["mne==1.11"], "openneuro_brainsets", False),
+    ],
+)
+def test_dist_in_dependencies(deps, name, expected):
+    assert _dist_in_dependencies(deps, name) is expected
