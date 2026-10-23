@@ -11,16 +11,23 @@ import warnings
 from dataclasses import dataclass, field
 from importlib.metadata import EntryPoint, entry_points
 from importlib.resources import files
+from pathlib import Path
 
 try:  # Python 3.11+
     from importlib.resources.abc import Traversable
+
+    import tomllib  # type: ignore[import-not-found]
 except ModuleNotFoundError:  # Python <3.11
     from importlib.abc import Traversable
+
+    import tomli as tomllib  # type: ignore[import-not-found]
 
 ENTRY_POINT_GROUP = "brainsets.pipelines"
 BUILTIN_NAMESPACE = "torch_brain"
 BUILTIN_PIPELINES_PATH = files("torch_brain.pipeline") / "brainsets-pipelines"
 NAMESPACE_PATTERN = re.compile(r"^[a-z0-9_]+$")
+
+OWNER_MARKER_FILENAME = ".brainsets_source"
 
 
 @dataclass
@@ -234,3 +241,51 @@ def resolve_brainset(name: str) -> ResolvedBrainset:
             f"Run 'brainsets list' to get the available list of brainsets."
         )
     return ResolvedBrainset(source, brainset_id, brainsets[brainset_id])
+
+
+def read_owner_marker(dataset_dir: Path) -> dict | None:
+    """Read ``<dataset_dir>/.brainsets_source``, or return ``None`` if there is none."""
+    marker = Path(dataset_dir) / OWNER_MARKER_FILENAME
+    if not marker.is_file():
+        return None
+    try:
+        with open(marker, "rb") as f:
+            data = tomllib.load(f)
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def check_owner_marker(dataset_dir: Path, source: PipelineSource) -> str | None:
+    """Return why ``source`` may not write into ``dataset_dir``, or ``None`` if it may.
+
+    A folder is compatible when it has no marker (made before markers existed), is
+    owned by torch_brain, or is owned by the same distribution as ``source``.
+    """
+    marker = read_owner_marker(dataset_dir)
+    if marker is None:
+        return None
+    owner = marker.get("source")
+    if owner in (None, BUILTIN_NAMESPACE, source.dist_name):
+        return None
+    owner_version = marker.get("version")
+    owner_str = f"'{owner}'" + (f" {owner_version}" if owner_version else "")
+    return (
+        f"{dataset_dir} was prepared by {owner_str}, not by '{source.dist_name}'. "
+        "Two sources must not write into the same brainset folder: use another "
+        "--processed-dir, or remove the folder first."
+    )
+
+
+def write_owner_marker(dataset_dir: Path, source: PipelineSource) -> None:
+    """Write the owner marker, unless the folder already has one."""
+    dataset_dir = Path(dataset_dir)
+    marker = dataset_dir / OWNER_MARKER_FILENAME
+    if read_owner_marker(dataset_dir) is not None:
+        return
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+    lines = [f'source = "{source.dist_name}"']
+    if source.dist_version:
+        lines.append(f'version = "{source.dist_version}"')
+    lines.append(f'namespace = "{source.namespace}"')
+    marker.write_text("\n".join(lines) + "\n")

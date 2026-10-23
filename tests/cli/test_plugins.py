@@ -15,11 +15,15 @@ from torch_brain.pipeline._cli import plugins as plugins_mod
 from torch_brain.pipeline._cli.cli import cli
 from torch_brain.pipeline._cli.cli_prepare import _dist_in_dependencies
 from torch_brain.pipeline._cli.plugins import (
+    OWNER_MARKER_FILENAME,
     BrainsetNotFoundError,
+    check_owner_marker,
     get_builtin_source,
     get_plugin_sources,
+    read_owner_marker,
     resolve_brainset,
     split_name,
+    write_owner_marker,
 )
 
 GROUP = "brainsets.pipelines"
@@ -172,6 +176,40 @@ class TestResolve:
             resolve_brainset("nope:x")
 
 
+class TestOwnerMarker:
+    def test_unmarked_folder_is_compatible(self, tmp_path, fake_plugin):
+        source = get_plugin_sources()["fake"]
+        assert check_owner_marker(tmp_path / "ds", source) is None
+
+    def test_write_then_read(self, tmp_path, fake_plugin):
+        source = get_plugin_sources()["fake"]
+        write_owner_marker(tmp_path / "ds", source)
+        marker = read_owner_marker(tmp_path / "ds")
+        assert marker["source"] == "fakeplug"
+        assert marker["namespace"] == "fake"
+        assert check_owner_marker(tmp_path / "ds", source) is None
+
+    def test_existing_marker_not_overwritten(self, tmp_path, fake_plugin):
+        write_owner_marker(tmp_path / "ds", get_builtin_source())
+        write_owner_marker(tmp_path / "ds", get_plugin_sources()["fake"])
+        assert read_owner_marker(tmp_path / "ds")["source"] == "torch_brain"
+
+    def test_torch_brain_folder_is_compatible_with_plugin(self, tmp_path, fake_plugin):
+        write_owner_marker(tmp_path / "ds", get_builtin_source())
+        source = get_plugin_sources()["fake"]
+        assert check_owner_marker(tmp_path / "ds", source) is None
+
+    def test_other_plugin_folder_is_refused(self, tmp_path, fake_plugin):
+        (tmp_path / "ds").mkdir()
+        (tmp_path / "ds" / OWNER_MARKER_FILENAME).write_text(
+            'source = "someone_else"\nversion = "2.0"\n'
+        )
+        source = get_plugin_sources()["fake"]
+        msg = check_owner_marker(tmp_path / "ds", source)
+        assert "'someone_else' 2.0" in msg
+        assert check_owner_marker(tmp_path / "ds", get_builtin_source()) is not None
+
+
 class TestListCommand:
     def test_list_groups_by_source(self, fake_plugin):
         result = CliRunner().invoke(cli, ["list"])
@@ -234,6 +272,31 @@ class TestPreparePlugin:
         assert "numpy" in with_deps
         # The fake plugin has no distribution metadata, so a bare name is injected
         assert "fakeplug" in with_deps.split(",")
+
+    def test_prepare_plugin_writes_marker(self, fake_plugin, dirs):
+        result, _ = self._invoke(["fake:fake_ds"], dirs)
+        assert result.exit_code == 0, result.output
+        assert read_owner_marker(dirs[1] / "fake_ds")["source"] == "fakeplug"
+
+    def test_prepare_builtin_writes_marker(self, no_plugins, dirs):
+        result, _ = self._invoke(["pei_pandarinath_nlb_2021"], dirs)
+        assert result.exit_code == 0, result.output
+        marker = read_owner_marker(dirs[1] / "pei_pandarinath_nlb_2021")
+        assert marker["source"] == "torch_brain"
+
+    def test_prepare_plugin_refuses_foreign_folder(self, fake_plugin, dirs):
+        dataset_dir = dirs[1] / "fake_ds"
+        dataset_dir.mkdir(parents=True)
+        (dataset_dir / OWNER_MARKER_FILENAME).write_text('source = "someone_else"\n')
+        result, command = self._invoke(["fake:fake_ds"], dirs)
+        assert result.exit_code != 0
+        assert "was prepared by 'someone_else'" in result.output
+        assert command is None
+
+    def test_prepare_list_does_not_write_marker(self, fake_plugin, dirs):
+        result, _ = self._invoke(["fake:fake_ds", "--list"], dirs)
+        assert result.exit_code == 0, result.output
+        assert read_owner_marker(dirs[1] / "fake_ds") is None
 
 
 @pytest.mark.parametrize(

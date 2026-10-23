@@ -15,7 +15,12 @@ from click.shell_completion import CompletionItem
 
 from torch_brain.pipeline.config import CONFIG_FILE, load_config
 
-from .plugins import BrainsetNotFoundError, resolve_brainset
+from .plugins import (
+    BrainsetNotFoundError,
+    check_owner_marker,
+    resolve_brainset,
+    write_owner_marker,
+)
 from .utils import (
     expand_path,
     get_available_brainsets,
@@ -154,6 +159,14 @@ def prepare(
                 f"Preparing {resolved.qualified_name} "
                 f"(community plugin {source.dist_name}{version})..."
             )
+
+        # Refuse to mix the output of two different sources in one folder
+        dataset_dir = processed_dir / resolved.brainset_id
+        conflict = check_owner_marker(dataset_dir, source)
+        if conflict is not None:
+            raise click.ClickException(conflict)
+        if not list_flag_:
+            write_owner_marker(dataset_dir, source)
     else:
         # Preparing using a local pipeline
         pipeline_dir = expand_path(brainset)
