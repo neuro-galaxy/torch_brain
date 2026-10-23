@@ -15,8 +15,8 @@ from click.shell_completion import CompletionItem
 
 from torch_brain.pipeline.config import CONFIG_FILE, load_config
 
+from .plugins import BrainsetNotFoundError, resolve_brainset
 from .utils import (
-    PIPELINES_PATH,
     expand_path,
     get_available_brainsets,
 )
@@ -109,7 +109,8 @@ def prepare(
 ):
     """Download and process a single brainset.
 
-    Run 'brainsets list' to get a list of available brainsets.
+    Run 'brainsets list' to get a list of available brainsets. Brainsets from
+    plugins are named '<namespace>:<brainset_id>'.
 
     \b
     Examples:
@@ -118,6 +119,7 @@ def prepare(
     $ brainsets prepare pei_pandarinath_nlb_2021 --cores 8 --raw-dir ~/data/raw --processed-dir ~/data/processed
     $ brainsets prepare pei_pandarinath_nlb_2021 --list
     $ brainsets prepare pei_pandarinath_nlb_2021 --single jenkins_maze_train
+    $ brainsets prepare openneuro:klinzing_sleep_ds005555
     $ brainsets prepare ./my_local_brainsets_pipeline --local
     """
 
@@ -135,16 +137,23 @@ def prepare(
         raw_dir = expand_path(raw_dir)
         processed_dir = expand_path(processed_dir)
 
+    source = None
     if not local:
-        # Preparing using an OG pipeline
-        available_brainsets = get_available_brainsets()
-        if brainset not in available_brainsets:
-            raise click.ClickException(
-                f"Brainset '{brainset}' not found. "
-                f"Run 'brainsets list' to get the available list of brainsets."
+        # Preparing using a built-in or plugin pipeline
+        try:
+            resolved = resolve_brainset(brainset)
+        except BrainsetNotFoundError as e:
+            raise click.ClickException(str(e)) from e
+        source = resolved.source
+        pipeline_dir = resolved.pipeline_dir
+        if source.is_builtin:
+            click.echo(f"Preparing {resolved.brainset_id}...")
+        else:
+            version = f" {source.dist_version}" if source.dist_version else ""
+            click.echo(
+                f"Preparing {resolved.qualified_name} "
+                f"(community plugin {source.dist_name}{version})..."
             )
-        pipeline_dir = PIPELINES_PATH / brainset
-        click.echo(f"Preparing {brainset}...")
     else:
         # Preparing using a local pipeline
         pipeline_dir = expand_path(brainset)
