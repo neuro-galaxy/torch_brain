@@ -15,8 +15,13 @@ from click.shell_completion import CompletionItem
 
 from torch_brain.pipeline.config import CONFIG_FILE, load_config
 
+from .plugins import (
+    BrainsetNotFoundError,
+    check_owner_marker,
+    resolve_brainset,
+    write_owner_marker,
+)
 from .utils import (
-    PIPELINES_PATH,
     expand_path,
     get_available_brainsets,
 )
@@ -109,7 +114,8 @@ def prepare(
 ):
     """Download and process a single brainset.
 
-    Run 'brainsets list' to get a list of available brainsets.
+    Run 'brainsets list' to get a list of available brainsets. Brainsets from
+    plugins are named '<namespace>:<brainset_id>'.
 
     \b
     Examples:
@@ -118,6 +124,7 @@ def prepare(
     $ brainsets prepare pei_pandarinath_nlb_2021 --cores 8 --raw-dir ~/data/raw --processed-dir ~/data/processed
     $ brainsets prepare pei_pandarinath_nlb_2021 --list
     $ brainsets prepare pei_pandarinath_nlb_2021 --single jenkins_maze_train
+    $ brainsets prepare openneuro:klinzing_sleep_ds005555
     $ brainsets prepare ./my_local_brainsets_pipeline --local
     """
 
@@ -135,16 +142,31 @@ def prepare(
         raw_dir = expand_path(raw_dir)
         processed_dir = expand_path(processed_dir)
 
+    source = None
     if not local:
-        # Preparing using an OG pipeline
-        available_brainsets = get_available_brainsets()
-        if brainset not in available_brainsets:
-            raise click.ClickException(
-                f"Brainset '{brainset}' not found. "
-                f"Run 'brainsets list' to get the available list of brainsets."
+        # Preparing using a built-in or plugin pipeline
+        try:
+            resolved = resolve_brainset(brainset)
+        except BrainsetNotFoundError as e:
+            raise click.ClickException(str(e)) from e
+        source = resolved.source
+        pipeline_dir = resolved.pipeline_dir
+        if source.is_builtin:
+            click.echo(f"Preparing {resolved.brainset_id}...")
+        else:
+            version = f" {source.dist_version}" if source.dist_version else ""
+            click.echo(
+                f"Preparing {resolved.qualified_name} "
+                f"(community plugin {source.dist_name}{version})..."
             )
-        pipeline_dir = PIPELINES_PATH / brainset
-        click.echo(f"Preparing {brainset}...")
+
+        # Refuse to mix the output of two different sources in one folder
+        dataset_dir = processed_dir / resolved.brainset_id
+        conflict = check_owner_marker(dataset_dir, source)
+        if conflict is not None:
+            raise click.ClickException(conflict)
+        if not list_flag_:
+            write_owner_marker(dataset_dir, source)
     else:
         # Preparing using a local pipeline
         pipeline_dir = expand_path(brainset)
@@ -195,17 +217,10 @@ def prepare(
 
         if "python-version" in inline_md:
             python_version = inline_md["python-version"]
-            # Check that python_version is a string representing a single version
-            # number (e.g., "3.10"), not a version range or other format
-            # Reason: uv run sometimes fails (stalls) when version range is given
-            if (
-                not isinstance(python_version, str)
-                or not python_version.strip().replace(".", "", 1).isdigit()
-            ):
-                raise click.ClickException(
-                    f"Invalid python version in inline metadata: '{python_version}'. "
-                    "Only a single version (e.g., '3.10') is allowed, not a range."
-                )
+            try:
+                _validate_python_version(python_version)
+            except ValueError as e:
+                raise click.ClickException(str(e)) from e
             uv_prefix_command.extend(["--python", python_version])
 
         deps = inline_md.get("dependencies", [])
@@ -214,17 +229,25 @@ def prepare(
         # If not already present in the inline dependencies list, make a best guess
         # at the install spec to use.
         # The typical case is for brainsets to not be in the inline dependencies list.
-        if not _torch_brain_in_dependencies(deps):
-            torch_brain_spec = _determine_torch_brain_spec()
-            click.echo(f"Detected torch_brain installation from {torch_brain_spec}")
-            if torch_brain_spec.startswith("file://"):
+        # Plugin pipelines also need the plugin itself, at the version the user
+        # installed, since they import from it.
+        dist_names = ["torch_brain"]
+        if source is not None and not source.is_builtin:
+            dist_names.append(source.dist_name)
+
+        for dist_name in dist_names:
+            if _dist_in_dependencies(deps, dist_name):
+                continue
+            spec = _determine_install_spec(dist_name)
+            click.echo(f"Detected {dist_name} installation from {spec}")
+            if spec.startswith("file://"):
                 # UV can be weird about caching local packages
                 # So, if we want to recreate a local version of the package,
                 # it is safer to do so in editable mode, which does not go
                 # through UV's caching.
-                uv_prefix_command.extend(["--with-editable", torch_brain_spec])
+                uv_prefix_command.extend(["--with-editable", spec])
             else:
-                deps.append(torch_brain_spec)
+                deps.append(spec)
 
         if len(deps) > 0:
             uv_prefix_command.extend(["--with", ",".join(deps)])
@@ -254,49 +277,70 @@ def prepare(
         sys.exit(1)
 
 
-def _torch_brain_in_dependencies(dependencies: list[str]) -> bool:
-    """Check if any dependency refers to torch_brain."""
+def _validate_python_version(python_version) -> None:
+    """Check that python_version is a single version number (e.g., "3.10").
+
+    Version ranges are rejected because uv run sometimes fails (stalls) with them.
+    """
+    if (
+        not isinstance(python_version, str)
+        or not python_version.strip().replace(".", "", 1).isdigit()
+    ):
+        raise ValueError(
+            f"Invalid python version in inline metadata: '{python_version}'. "
+            "Only a single version (e.g., '3.10') is allowed, not a range."
+        )
+
+
+def _dist_in_dependencies(dependencies: list[str], dist_name: str) -> bool:
+    """Check if any dependency refers to the given distribution.
+
+    Distribution names are compared as in PEP 503 ('-', '_' and '.' are equivalent).
+    """
+    parts = re.split(r"[-_.]+", dist_name)
+    pattern = r"(?<![\w.-])" + r"[-_.]+".join(map(re.escape, parts)) + r"(?![\w.-])"
     for line in dependencies:
         stripped = line.strip()
-        if stripped and re.search(r"\btorch_brain\b", stripped, re.IGNORECASE):
+        if stripped and re.search(pattern, stripped, re.IGNORECASE):
             return True
 
     return False
 
 
-def _determine_torch_brain_spec() -> str:
+def _determine_install_spec(dist_name: str) -> str:
     """
-    Determine how to install torch_brain when not specified in requirements.txt.
+    Determine how to install a distribution when not specified in the pipeline's
+    inline metadata.
 
     Priority:
     1. Detect current installation source (git, local) from package metadata
-    2. Default (assume downloaded from PyPI)
+    2. Default (assume downloaded from PyPI, at the installed version)
     """
 
-    # Try to detect if brainsets was installed via a URL or local file
-    url_source = _detect_torch_brain_installation_url()
+    # Try to detect if the distribution was installed via a URL or local file
+    url_source = _detect_installation_url(dist_name)
     if url_source:
         return url_source
 
     # Default: install from PyPI (latest or read version from installed package)
+    from importlib.metadata import PackageNotFoundError, version
+
     try:
-        import torch_brain
-
-        return f"torch_brain=={torch_brain.__version__}"
-    except (ImportError, AttributeError):
-        return "torch_brain"
+        return f"{dist_name}=={version(dist_name)}"
+    except PackageNotFoundError:
+        return dist_name
 
 
-def _detect_torch_brain_installation_url() -> str | None:
+def _detect_installation_url(dist_name: str) -> str | None:
     """
-    Detect if the current torch_brain package was installed via something like
+    Detect if the given distribution was installed via something like
     pip install <url>.
     """
 
     from importlib.metadata import PackageNotFoundError, distribution
 
     try:
-        dist = distribution("torch_brain")
+        dist = distribution(dist_name)
     except PackageNotFoundError:
         return None
 
@@ -313,7 +357,7 @@ def _detect_torch_brain_installation_url() -> str | None:
         url_info = direct_url.get("url", "")
         if len(url_info) > 0:
             # Check if installed from git
-            if url_info.startswith("https://github.com"):
+            if url_info.startswith("https://github.com") or "vcs_info" in direct_url:
                 # Use requested_revision (branch/tag) if available, otherwise commit_id
                 vcs_info = direct_url.get("vcs_info", {})
                 commit_id = vcs_info.get("commit_id")

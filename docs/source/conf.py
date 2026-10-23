@@ -128,8 +128,10 @@ Path("generated/css/").mkdir(exist_ok=True, parents=True)
 
 import notebooks.nlb_maze_minimal_example.modify  # noqa: E402
 from api_reference import build_api_rst  # noqa: E402
+from community_brainsets import build_community_brainsets_rst  # noqa: E402
 
 build_api_rst()
+build_community_brainsets_rst()
 notebooks.nlb_maze_minimal_example.modify.main()
 
 

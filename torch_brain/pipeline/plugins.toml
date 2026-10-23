@@ -1,0 +1,25 @@
+# Registry of community brainsets plugins.
+#
+# Listing a plugin here lets users find it with `brainsets list --all` and
+# `brainsets info`, and on the "Community brainsets" docs page, before installing it.
+# The CLI never installs or runs a plugin from this file: it only prints the install
+# command. Plugins are maintained by their authors, not by torch_brain.
+#
+# To get listed, open a PR that adds one table per plugin, following the schema below
+# (see the "Writing a brainsets plugin" guide). The table name is the plugin's
+# namespace, which must equal its `brainsets.pipelines` entry point name.
+#
+# [my_namespace]
+# package = "my_brainsets"                       # distribution name
+# description = "One line describing the plugin."
+# install = "git+https://github.com/me/my_brainsets@v0.1.0"  # pinned tag/commit, or "my_brainsets==0.1.0"
+# repository = "https://github.com/me/my_brainsets"
+# license = "Apache-2.0"                         # an OSI-approved licence
+# maintainers = ["@me"]
+# docs = "https://github.com/me/my_brainsets#readme"  # optional
+# modalities = ["eeg"]                           # optional
+#
+# [[my_namespace.brainsets]]                     # one per brainset, matching the plugin
+# id = "my_dataset_2026"
+# description = "One line describing the dataset."
+# source = "https://example.org/my-dataset"      # optional, link to the original data

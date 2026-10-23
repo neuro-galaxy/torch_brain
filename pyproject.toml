@@ -70,7 +70,7 @@ Documentation = "https://torch-brain.readthedocs.io/en/latest/"
 include = ["torch_brain*"]
 
 [tool.setuptools.package-data]
-"torch_brain.pipeline" = ["brainsets-pipelines/**/*"]
+"torch_brain.pipeline" = ["brainsets-pipelines/**/*", "plugins.toml"]
 
 [project.scripts]
 brainsets = "torch_brain.pipeline._cli:cli"

@@ -1,0 +1,78 @@
+name: Plugin registry
+
+# Validates torch_brain/pipeline/plugins.toml, then installs every listed plugin at its
+# pinned spec in a clean environment and runs `brainsets check` on it.
+# Runs on PRs that touch the registry or the plugin machinery, and weekly; a plugin
+# that keeps failing the weekly run for 4 weeks is delisted.
+
+on:
+  pull_request:
+    branches: [ "**" ]
+    paths:
+      - "torch_brain/pipeline/plugins.toml"
+      - "torch_brain/pipeline/_cli/**"
+      - ".github/workflows/plugin_registry.yml"
+  push:
+    branches: [ "main" ]
+    paths:
+      - "torch_brain/pipeline/plugins.toml"
+  schedule:
+    - cron: "0 6 * * 1"  # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      namespaces: ${{ steps.list.outputs.namespaces }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - name: Install torch_brain
+      run: |
+        pip install uv
+        uv pip install --system -e .
+    - name: Validate registry schema
+      run: brainsets check --registry
+    - name: List registered plugins
+      id: list
+      run: |
+        python - >> "$GITHUB_OUTPUT" <<'EOF'
+        import json
+        from torch_brain.pipeline._cli.registry import load_registry
+        print("namespaces=" + json.dumps(sorted(load_registry())))
+        EOF
+
+  check-plugin:
+    needs: validate
+    if: needs.validate.outputs.namespaces != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        namespace: ${{ fromJson(needs.validate.outputs.namespaces) }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - name: Install torch_brain and the plugin at its pinned spec
+      env:
+        NAMESPACE: ${{ matrix.namespace }}
+      run: |
+        python -m venv venv
+        source venv/bin/activate
+        pip install uv
+        uv pip install -e .
+        SPEC=$(python -c "import os; from torch_brain.pipeline._cli.registry import load_registry; print(load_registry()[os.environ['NAMESPACE']].install)")
+        echo "Installing $SPEC"
+        uv pip install "$SPEC" -e .
+    - name: brainsets check
+      run: |
+        source venv/bin/activate
+        brainsets check "${{ matrix.namespace }}"

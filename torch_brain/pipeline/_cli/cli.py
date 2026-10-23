@@ -1,7 +1,9 @@
 import click
 
+from .cli_check import check
 from .cli_completion import install_completion
 from .cli_config import config
+from .cli_info import info
 from .cli_list import cli_list
 from .cli_prepare import prepare
 
@@ -30,6 +32,8 @@ def cli():
 cli.add_command(prepare)
 cli.add_command(cli_list, name="list")
 cli.add_command(config)
+cli.add_command(info)
+cli.add_command(check)
 
 
 if __name__ == "__main__":

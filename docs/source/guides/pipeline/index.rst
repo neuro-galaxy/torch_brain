@@ -9,5 +9,7 @@ Brainsets: Dataset Pre-Processing Tools
     using_existing_data
     prepare_data
     create_pipeline
+    plugins
+    /generated/community_brainsets
     openneuro_pipeline
 
