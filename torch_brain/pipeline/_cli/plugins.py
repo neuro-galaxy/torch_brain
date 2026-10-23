@@ -256,6 +256,11 @@ def read_owner_marker(dataset_dir: Path) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+def _normalize_dist_name(name: str) -> str:
+    """Normalize a distribution name as in PEP 503 (``My_Pkg`` == ``my-pkg``)."""
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
 def check_owner_marker(dataset_dir: Path, source: PipelineSource) -> str | None:
     """Return why ``source`` may not write into ``dataset_dir``, or ``None`` if it may.
 
@@ -266,7 +271,10 @@ def check_owner_marker(dataset_dir: Path, source: PipelineSource) -> str | None:
     if marker is None:
         return None
     owner = marker.get("source")
-    if owner in (None, BUILTIN_NAMESPACE, source.dist_name):
+    if owner is None or _normalize_dist_name(owner) in (
+        _normalize_dist_name(BUILTIN_NAMESPACE),
+        _normalize_dist_name(source.dist_name),
+    ):
         return None
     owner_version = marker.get("version")
     owner_str = f"'{owner}'" + (f" {owner_version}" if owner_version else "")

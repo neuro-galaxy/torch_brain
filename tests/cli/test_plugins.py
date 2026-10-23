@@ -199,6 +199,14 @@ class TestOwnerMarker:
         source = get_plugin_sources()["fake"]
         assert check_owner_marker(tmp_path / "ds", source) is None
 
+    def test_same_distribution_with_other_spelling_is_compatible(
+        self, tmp_path, fake_plugin
+    ):
+        (tmp_path / "ds").mkdir()
+        (tmp_path / "ds" / OWNER_MARKER_FILENAME).write_text('source = "FakePlug"\n')
+        source = get_plugin_sources()["fake"]
+        assert check_owner_marker(tmp_path / "ds", source) is None
+
     def test_other_plugin_folder_is_refused(self, tmp_path, fake_plugin):
         (tmp_path / "ds").mkdir()
         (tmp_path / "ds" / OWNER_MARKER_FILENAME).write_text(
