@@ -367,6 +367,10 @@ def _detect_installation_url(dist_name: str) -> str | None:
                 requested_revision = vcs_info.get("requested_revision")  # brain/tag
                 ref = requested_revision or commit_id or "main"
                 return f"git+{url_info}@{ref}"
+            elif "archive_info" in direct_url:
+                # A wheel or sdist: uv cannot install it in editable mode, so give
+                # it as a named requirement rather than a bare file:// URL
+                return f"{dist_name} @ {url_info}"
             else:
                 return url_info
 

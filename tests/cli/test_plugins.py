@@ -3,6 +3,7 @@ commands. A fake plugin package is written to a temporary directory and exposed
 through a patched entry point list.
 """
 
+import json
 import sys
 from importlib.metadata import EntryPoint
 from pathlib import Path
@@ -13,7 +14,10 @@ from click.testing import CliRunner
 
 from torch_brain.pipeline._cli import plugins as plugins_mod
 from torch_brain.pipeline._cli.cli import cli
-from torch_brain.pipeline._cli.cli_prepare import _dist_in_dependencies
+from torch_brain.pipeline._cli.cli_prepare import (
+    _determine_install_spec,
+    _dist_in_dependencies,
+)
 from torch_brain.pipeline._cli.plugins import (
     OWNER_MARKER_FILENAME,
     BrainsetNotFoundError,
@@ -318,6 +322,38 @@ class TestPreparePlugin:
         result, _ = self._invoke(["fake:fake_ds", "--list"], dirs)
         assert result.exit_code == 0, result.output
         assert read_owner_marker(dirs[1] / "fake_ds") is None
+
+
+def _write_dist_info(root: Path, name: str, direct_url: dict) -> None:
+    """Write a minimal ``<name>-1.0.dist-info`` with a PEP 610 direct_url.json."""
+    dist_info = root / f"{name}-1.0.dist-info"
+    dist_info.mkdir(parents=True)
+    (dist_info / "METADATA").write_text(
+        f"Metadata-Version: 2.1\nName: {name}\nVersion: 1.0\n"
+    )
+    (dist_info / "direct_url.json").write_text(json.dumps(direct_url))
+    (dist_info / "RECORD").write_text(
+        f"{dist_info.name}/METADATA,,\n{dist_info.name}/direct_url.json,,\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "direct_url, expected",
+    [
+        (
+            {"url": "file:///src/fakedist", "dir_info": {"editable": True}},
+            "file:///src/fakedist",
+        ),
+        (
+            {"url": "file:///wheels/fakedist-1.0-py3-none-any.whl", "archive_info": {}},
+            "fakedist @ file:///wheels/fakedist-1.0-py3-none-any.whl",
+        ),
+    ],
+)
+def test_determine_install_spec(tmp_path, monkeypatch, direct_url, expected):
+    _write_dist_info(tmp_path, "fakedist", direct_url)
+    monkeypatch.syspath_prepend(str(tmp_path))
+    assert _determine_install_spec("fakedist") == expected
 
 
 @pytest.mark.parametrize(
