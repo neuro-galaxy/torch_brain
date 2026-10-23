@@ -54,7 +54,8 @@ Requirements
    only set ``python-version`` (a single version, e.g. ``"3.11"``) and
    ``dependencies`` (see :ref:`declaring-dependencies`). Do not list torch_brain or
    your plugin there: the CLI adds the versions the user has installed, from the same
-   source (PyPI, git commit or local path).
+   source (PyPI, git commit or local path). A pipeline with this block runs in an
+   isolated environment; one without it runs in the user's current environment.
 
 6. **Output.** ``process`` writes one ``<recording_id>.h5`` per recording into
    ``self.processed_dir``, which is ``<processed_dir>/<brainset_id>``, using
