@@ -1,0 +1,53 @@
+.. _community_brainsets:
+
+Community brainsets
+===================
+
+Community brainsets come from :ref:`brainsets plugins <brainsets_plugins>`: packages
+that add brainsets to the ``brainsets`` CLI and are maintained by their authors, not by
+torch_brain. Listing a plugin here is a metadata review (licence, public data, cited
+sources), not an endorsement of its code.
+
+Install a plugin, then prepare its brainsets with their namespace:
+
+.. code-block:: console
+
+    $ uv add "<install spec below>"
+    $ brainsets prepare <namespace>:<brainset_id>
+
+``brainsets list --all`` and ``brainsets info <namespace>`` show the same information
+from the command line. To add your plugin, see :ref:`brainsets_plugins_listing`.
+
+{% if not plugins %}
+No plugins are listed yet.
+{% endif %}
+{% for plugin in plugins %}
+{{ plugin.namespace }}
+{{ "-" * plugin.namespace|length }}
+
+{{ plugin.description }}
+
+:Install: ``uv add "{{ plugin.install }}"``
+:Package: ``{{ plugin.package }}``
+:Repository: {{ plugin.repository }}
+{%- if plugin.docs %}
+:Docs: {{ plugin.docs }}
+{%- endif %}
+:Licence: {{ plugin.license }}
+:Maintainers: {{ plugin.maintainers | join(", ") }}
+{%- if plugin.modalities %}
+:Modalities: {{ plugin.modalities | join(", ") }}
+{%- endif %}
+
+.. list-table::
+    :header-rows: 1
+
+    * - Brainset
+      - Description
+      - Source
+{%- for brainset in plugin.brainsets %}
+    * - ``{{ plugin.namespace }}:{{ brainset.id }}``
+      - {{ brainset.description }}
+      - {% if brainset.source %}`link <{{ brainset.source }}>`__{% endif %}
+{%- endfor %}
+{% endfor %}
