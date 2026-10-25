@@ -33,11 +33,11 @@ from torch_brain.data import (
     SessionDescription,
     SubjectDescription,
 )
-from torch_brain.data.pippi import (
+from torch_brain.pipeline import BrainsetPipeline
+from torch_brain.pipeline.pippi_subset_tiers import (
     PIPPI_SUBSET_TIERS,
     pippi_subset_tiers_for_subject,
 )
-from torch_brain.pipeline import BrainsetPipeline
 
 # MNE tries to create ~/.mne config state on import. In this sandbox that home
 # location may be read-only, so force MNE to use a temporary writable home.

@@ -10,7 +10,7 @@ import h5py
 import numpy as np
 
 from torch_brain.data import Data, Interval
-from torch_brain.data.pippi import (
+from torch_brain.pipeline.pippi_subset_tiers import (
     PIPPI_SUBSET_TIERS,
     pippi_subject_numbers_for_subset_tier,
 )

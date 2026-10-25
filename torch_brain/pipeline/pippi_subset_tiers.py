@@ -1,4 +1,4 @@
-"""PIPPI subset-tier definitions shared by loading and preparation."""
+"""PIPPI subset-tier definitions shared by preparation and dataset loading."""
 
 from typing import Final
 
