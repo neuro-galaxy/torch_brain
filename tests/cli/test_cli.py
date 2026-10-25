@@ -435,3 +435,47 @@ class TestPrepareCommand:
 
             assert "--unknown" in command[-2]
             assert "option" in command[-1]
+
+    @pytest.mark.parametrize(
+        "brainset",
+        ["keles_byd_2024", "berezutskaya_pippi_2022"],
+    )
+    def test_movie_pipeline_labels_dir_is_optional_and_overridable(
+        self, brainset, mock_config, tmp_path
+    ):
+        """Movie pipelines may use packaged labels or an explicit override."""
+        runner = CliRunner()
+        labels_dir = tmp_path / "labels"
+        labels_dir.mkdir()
+
+        with (
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.load_config",
+                return_value=mock_config,
+            ),
+            patch(
+                "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
+            ) as mock_subprocess,
+        ):
+            mock_subprocess.return_value = MagicMock(returncode=0)
+
+            default_result = runner.invoke(
+                cli, ["prepare", brainset, "--use-active-env"]
+            )
+            assert default_result.exit_code == 0, default_result.output
+            default_command = mock_subprocess.call_args.args[0]
+            assert not any("labels-dir" in part for part in default_command)
+
+            override_result = runner.invoke(
+                cli,
+                [
+                    "prepare",
+                    brainset,
+                    "--use-active-env",
+                    "--labels-dir",
+                    str(labels_dir),
+                ],
+            )
+            assert override_result.exit_code == 0, override_result.output
+            override_command = mock_subprocess.call_args.args[0]
+            assert override_command[-2:] == ["--labels-dir", str(labels_dir)]
