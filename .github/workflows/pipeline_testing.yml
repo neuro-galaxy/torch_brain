@@ -92,6 +92,21 @@ jobs:
       continue-on-error: true
       run: brainsets prepare shirazi_hbnr1_ds005505 -s sub-NDARAC904DMU_task-DespicableMe --on-version-mismatch continue
 
+    - name: Download karpowicz_pandarinath_falcon_h1_2024
+      id: karpowicz_pandarinath_falcon_h1_2024
+      continue-on-error: true
+      run: brainsets prepare karpowicz_pandarinath_falcon_h1_2024 -s held_in_minival_19250113T121303
+
+    - name: Download karpowicz_pandarinath_falcon_m1_2024
+      id: karpowicz_pandarinath_falcon_m1_2024
+      continue-on-error: true
+      run: brainsets prepare karpowicz_pandarinath_falcon_m1_2024 -s held_in_minival_20120926
+
+    - name: Download karpowicz_pandarinath_falcon_m2_2024
+      id: karpowicz_pandarinath_falcon_m2_2024
+      continue-on-error: true
+      run: brainsets prepare karpowicz_pandarinath_falcon_m2_2024 -s held_in_minival_20201020_run2
+
     - name: Check all pipelines passed
       if: always()
       env:
