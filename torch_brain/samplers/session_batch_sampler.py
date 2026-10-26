@@ -5,7 +5,7 @@ import torch
 from torch_brain.datasets import DatasetIndex
 
 
-class SessionWiseBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
+class SessionWiseBatchSamplerWrapper(torch.utils.data.Sampler[list[DatasetIndex]]):
     r"""Wraps any sampler yielding :class:`~torch_brain.datasets.DatasetIndex` and
     groups its output into per-session batches.
 
@@ -19,21 +19,25 @@ class SessionWiseBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         batch_size: Number of samples per batch.
         shuffle: If ``True``, the final batch order is shuffled.
             If ``False`` (default), batches are yielded in the order they were built.
-        cache_batches: If ``True`` (default), batches are built once and reused
-            across epochs instead of being rebuilt on every :meth:`__iter__`
-            call. Set to ``False`` if the inner sampler is random (e.g.
-            :class:`RandomFixedWindowSampler`), since with caching on it would
-            otherwise freeze the same batches for the lifetime of the sampler
-            instead of re-drawing new windows each epoch.
         generator: Optional RNG used when :obj:`shuffle` is ``True``.
             If ``None`` (default), uses the default global PyTorch generator.
         drop_last: If ``True`` (default), the last incomplete batch for each
             session is dropped.
+        cache_batches: If ``False`` (default), batches are rebuilt from the
+            inner sampler on every :meth:`__iter__` call, so a random inner
+            sampler (e.g. :class:`RandomFixedWindowSampler`) draws new windows
+            each epoch. Calling :meth:`__len__` builds the batches for the next
+            epoch ahead of time, so the reported length always matches the
+            following iteration. If ``True``, batches are built once and reused
+            across epochs, which skips the full pass over the inner sampler
+            each epoch. Only enable it when the inner sampler is deterministic
+            (e.g. :class:`SequentialFixedWindowSampler`), otherwise the same
+            batches are frozen for the lifetime of the sampler.
 
     Example::
 
         >>> from torch_brain.data import Interval
-        >>> from torch_brain.samplers import RandomFixedWindowSampler, SessionWiseBatchSampler
+        >>> from torch_brain.samplers import RandomFixedWindowSampler, SessionWiseBatchSamplerWrapper
 
         >>> class ToyDataset(torch.utils.data.Dataset):
         ...     def __getitem__(self, index: DatasetIndex):
@@ -47,7 +51,7 @@ class SessionWiseBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         ...     sampling_intervals=sampling_intervals,
         ...     window_length=1.0,
         ... )
-        >>> batch_sampler = SessionWiseBatchSampler(inner_sampler, batch_size=16)
+        >>> batch_sampler = SessionWiseBatchSamplerWrapper(inner_sampler, batch_size=16)
         >>> loader = torch.utils.data.DataLoader(
         ...     dataset=your_dataset,
         ...     batch_sampler=batch_sampler,
@@ -60,9 +64,9 @@ class SessionWiseBatchSampler(torch.utils.data.Sampler[list[DatasetIndex]]):
         batch_size: int,
         *,
         shuffle: bool = False,
-        cache_batches: bool = True,
         generator: torch.Generator | None = None,
         drop_last: bool = True,
+        cache_batches: bool = False,
     ):
         if isinstance(batch_size, bool) or not isinstance(batch_size, int):
             raise TypeError("batch_size must be an integer.")

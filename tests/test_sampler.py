@@ -7,7 +7,7 @@ from torch_brain.datasets import DatasetIndex
 from torch_brain.samplers import (
     RandomFixedWindowSampler,
     SequentialFixedWindowSampler,
-    SessionWiseBatchSampler,
+    SessionWiseBatchSamplerWrapper,
     TrialSampler,
 )
 
@@ -252,11 +252,11 @@ def test_session_batch_sampler():
 
     # batch_size must be positive
     with pytest.raises(ValueError):
-        SessionWiseBatchSampler(_FakeSampler(indices), batch_size=0)
+        SessionWiseBatchSamplerWrapper(_FakeSampler(indices), batch_size=0)
 
     # drop_last=True: session1 (4 items) -> 2 batches of 2; session2 (3 items)
     # -> 1 batch of 2, remainder of 1 dropped.
-    sampler = SessionWiseBatchSampler(
+    sampler = SessionWiseBatchSamplerWrapper(
         _FakeSampler(indices), batch_size=2, drop_last=True
     )
     assert len(sampler) == 3
@@ -275,7 +275,7 @@ def test_session_batch_sampler():
 
     # drop_last=False: session1 -> 2 batches of 2; session2 -> 1 batch of 2
     # and 1 batch of 1 (the remainder is kept).
-    sampler = SessionWiseBatchSampler(
+    sampler = SessionWiseBatchSamplerWrapper(
         _FakeSampler(indices), batch_size=2, drop_last=False
     )
     assert len(sampler) == 4
@@ -292,7 +292,8 @@ def test_session_batch_sampler():
     assert sorted(batch_sizes_by_session["session2"]) == [1, 2]
 
     # len() should stay consistent with a second pass over the sampler
-    # (cache_batches defaults to True, so both calls see the same batches).
+    # (with cache_batches=False by default, len() builds the batches that the
+    # next __iter__ then consumes).
     assert len(sampler) == len(list(sampler))
 
 
@@ -311,7 +312,7 @@ def test_session_batch_sampler_shuffle():
         ]
 
     # shuffle=False (default): batches are always yielded in build order.
-    batch_sampler = SessionWiseBatchSampler(
+    batch_sampler = SessionWiseBatchSamplerWrapper(
         _FakeSampler(indices), batch_size=2, shuffle=False
     )
     order1 = batch_signature(list(batch_sampler))
@@ -319,7 +320,7 @@ def test_session_batch_sampler_shuffle():
     assert order1 == order2
 
     # shuffle=True: the batch order changes across successive epochs.
-    batch_sampler = SessionWiseBatchSampler(
+    batch_sampler = SessionWiseBatchSamplerWrapper(
         _FakeSampler(indices), batch_size=2, shuffle=True
     )
     shuffled1 = batch_signature(list(batch_sampler))
@@ -343,20 +344,24 @@ def test_session_batch_sampler_cache_batches():
     # rebuild when cache_batches=False. Iterating an explicit iterator avoids
     # that.
 
-    # cache_batches=True (default): batches are built once from the inner
+    # cache_batches=True: batches are built once from the inner
     # sampler and reused verbatim across epochs, even if the inner sampler
     # is stateful and would otherwise yield different indices each time.
     inner = _CountingSampler(indices)
-    batch_sampler = SessionWiseBatchSampler(inner, batch_size=2, cache_batches=True)
+    batch_sampler = SessionWiseBatchSamplerWrapper(
+        inner, batch_size=2, cache_batches=True
+    )
     batches1 = list(iter(batch_sampler))
     batches2 = list(iter(batch_sampler))
     assert batches1 == batches2
     assert inner.call_count == 1
 
-    # cache_batches=False: batches are rebuilt on every __iter__ call, so a
+    # cache_batches=False (default): batches are rebuilt on every __iter__ call, so a
     # stateful inner sampler produces different batches each epoch.
     inner = _CountingSampler(indices)
-    batch_sampler = SessionWiseBatchSampler(inner, batch_size=2, cache_batches=False)
+    batch_sampler = SessionWiseBatchSamplerWrapper(
+        inner, batch_size=2, cache_batches=False
+    )
     batches1 = list(iter(batch_sampler))
     batches2 = list(iter(batch_sampler))
     assert batches1 != batches2
