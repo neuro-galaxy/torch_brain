@@ -3,9 +3,17 @@ Using the brainsets CLI
 
 The brainsets CLI provides access to existing datasets, supported by the brainsets package.
 
+Enabling tab completion
+-----------------------
+First, install shell tab-completion to autocomplete brainsets commands, options and dataset names.
+
+.. code:: shell
+
+    brainsets --install-completion
+
 Configuring data directories
 ----------------------------
-First, configure the directories where brainsets will store raw and processed data.
+Next, configure the directories where brainsets will store raw and processed data.
 
 .. code:: shell
 

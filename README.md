@@ -58,13 +58,6 @@ pip install git+https://github.com/neuro-galaxy/torch_brain
 ```
 </details>
 
-
-**Optional:** Enable tab completion for the `brainsets` CLI, then restart your shell:
-
-```bash
-brainsets --install-completion
-```
-
 ## The data format
 
 A recording is a `Data` object holding heterogeneous, time-aware modalities:
