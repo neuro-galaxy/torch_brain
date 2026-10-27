@@ -171,7 +171,7 @@ def test_lazy_load_h5_with_missing_keys(test_filepath):
 
     # load again
     with h5py.File(test_filepath, "r") as file:
-        with pytest.raises(OSError, match="missing keys required"):
+        with pytest.raises(KeyError, match="missing keys required"):
             LazyInterval.from_hdf5(file)
 
     b = RegularTimeSeries(x=np.random.random((100, 48)), sampling_rate=10)
@@ -188,7 +188,7 @@ def test_lazy_load_h5_with_missing_keys(test_filepath):
 
     # load again
     with h5py.File(test_filepath, "r") as file:
-        with pytest.raises(OSError, match="missing keys required"):
+        with pytest.raises(KeyError, match="missing keys required"):
             LazyRegularTimeSeries.from_hdf5(file)
 
     c = IrregularTimeSeries(
@@ -207,7 +207,7 @@ def test_lazy_load_h5_with_missing_keys(test_filepath):
 
     # load again
     with h5py.File(test_filepath, "r") as file:
-        with pytest.raises(OSError, match="missing keys required"):
+        with pytest.raises(KeyError, match="missing keys required"):
             LazyIrregularTimeSeries.from_hdf5(file)
 
 

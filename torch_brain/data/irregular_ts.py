@@ -729,10 +729,10 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                 missing_keys.remove(key)
 
         if len(missing_keys):
-            raise OSError(
+            raise KeyError(
                 "HDF5 file missing keys required for a LazyIrregularTimeSeries "
-                f"object: {missing_keys}. Only unmodified HDF5 files exported "
-                "using torch_brain should be used."
+                f"object: {missing_keys}. Modifications to exported HDF5 files should "
+                "be made with care to avoid breaking compatibility with torch_brain."
             )
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
