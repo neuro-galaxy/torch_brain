@@ -188,7 +188,7 @@ def test_lazy_load_h5_with_missing_keys(test_filepath):
 
     # load again
     with h5py.File(test_filepath, "r") as file:
-        with pytest.raises(OSError, match="missing 'domain'"):
+        with pytest.raises(OSError, match="missing keys required"):
             LazyRegularTimeSeries.from_hdf5(file)
 
     c = IrregularTimeSeries(

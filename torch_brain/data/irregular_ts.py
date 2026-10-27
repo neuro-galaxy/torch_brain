@@ -721,14 +721,12 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         for key, value in file.items():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
-                missing_keys.remove(key)
             elif key == "timestamp_indices_1s":
                 obj.__dict__["_timestamp_indices_1s"] = value[:]
-                missing_keys.remove(key)
             else:
                 obj.__dict__[key] = value
-                if key == "timestamps":
-                    missing_keys.remove(key)
+            if key in missing_keys:
+                missing_keys.remove(key)
 
         if len(missing_keys):
             raise OSError(

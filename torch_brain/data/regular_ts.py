@@ -934,18 +934,19 @@ class LazyRegularTimeSeries(RegularTimeSeries):
 
         obj = cls.__new__(cls)
 
-        missing_domain = True
+        missing_keys = ["domain"]
         for key, value in file.items():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
-                missing_domain = False
             else:
                 obj.__dict__[key] = value
+            if key in missing_keys:
+                missing_keys.remove(key)
 
-        if missing_domain:
+        if len(missing_keys):
             raise OSError(
-                "HDF5 file missing 'domain', which is required for a "
-                "LazyRegularTimeSeries object. Only unmodified HDF5 files exported "
+                "HDF5 file missing keys required for a LazyRegularTimeSeries "
+                f"object: {missing_keys}. Only unmodified HDF5 files exported "
                 "using torch_brain should be used."
             )
 
