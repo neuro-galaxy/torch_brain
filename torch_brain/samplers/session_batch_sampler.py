@@ -36,7 +36,9 @@ class SessionWiseBatchSamplerWrapper(torch.utils.data.Sampler[list[DatasetIndex]
 
     Example::
 
+        >>> import torch
         >>> from torch_brain.data import Interval
+        >>> from torch_brain.datasets import DatasetIndex
         >>> from torch_brain.samplers import RandomFixedWindowSampler, SessionWiseBatchSamplerWrapper
 
         >>> class ToyDataset(torch.utils.data.Dataset):
@@ -116,11 +118,6 @@ class SessionWiseBatchSamplerWrapper(torch.utils.data.Sampler[list[DatasetIndex]
         batches = self._batches_cache
         if not self.cache_batches:
             self._batches_cache = None  # reset so next epoch rebuilds
-        return self._yield_batches(batches)
-
-    def _yield_batches(
-        self, batches: list[list[DatasetIndex]]
-    ) -> Iterator[list[DatasetIndex]]:
         if self.shuffle and batches:
             for idx in torch.randperm(len(batches), generator=self.generator).tolist():
                 yield batches[idx]
