@@ -175,7 +175,6 @@ def extract_finger(nwbfile) -> tuple[RegularTimeSeries, np.ndarray, ArrayDict]:
             np.float32
         ),
         domain_start=timestamps[0],
-        domain="auto",
     )
     return finger, timestamps, ArrayDict(name=np.array(names, dtype="S"))
 

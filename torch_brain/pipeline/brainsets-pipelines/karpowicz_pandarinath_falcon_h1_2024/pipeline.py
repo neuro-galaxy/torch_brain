@@ -119,7 +119,6 @@ class Pipeline(BrainsetPipeline):
                 pos=pos.data[:].astype(np.float32),
                 vel=vel.data[:].astype(np.float32),
                 domain_start=timestamps[0],
-                domain="auto",
             )
             eval_mask = nwbfile.acquisition["eval_mask"].data[:].astype(bool)
             eval_intervals = mask_to_interval(eval_mask, timestamps)

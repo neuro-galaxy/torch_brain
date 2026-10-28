@@ -161,7 +161,6 @@ def extract_emg(nwbfile) -> tuple[RegularTimeSeries, np.ndarray, ArrayDict]:
         sampling_rate=1.0 / dt[0],
         data=data.astype(np.float32),
         domain_start=timestamps[0],
-        domain="auto",
     )
     return emg, timestamps, ArrayDict(name=np.array(names, dtype="S"))
 
