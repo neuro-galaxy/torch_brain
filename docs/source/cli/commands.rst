@@ -162,6 +162,12 @@ Download and process a single brainset.
 
 .. rst-class:: cli-option
 
+``--keep-raw``
+
+    Keep each item's raw data after processing (default: delete it).
+
+.. rst-class:: cli-option
+
 ``--use-active-env``
 
     Developer flag. Do not create an isolated environment for the pipeline.
