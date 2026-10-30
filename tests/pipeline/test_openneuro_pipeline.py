@@ -1324,7 +1324,6 @@ class TestProcess:
             "process_common",
             return_value=(mock_data, store_path),
         ):
-            with patch("torch_brain.pipeline.openneuro.h5py.File"):
-                eeg_pipeline_instance.process(download_output)
+            eeg_pipeline_instance.process(download_output)
 
-        mock_data.to_hdf5.assert_called_once()
+        mock_data.save.assert_called_once_with(store_path)

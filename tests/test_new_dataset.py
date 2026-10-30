@@ -1,7 +1,6 @@
 import os
 from datetime import datetime
 
-import h5py
 import numpy as np
 import pytest
 
@@ -88,20 +87,16 @@ def dummy_spiking_brainset(tmp_path):
     os.makedirs(store_path, exist_ok=True)
 
     data = create_spiking_data(BRAINSET_ID, "alice", "session1", 1.0)
-    with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f)
+    data.save(store_path / f"{data.session.id}.h5")
 
     data = create_spiking_data(BRAINSET_ID, "bob", "session2", 1.5)
-    with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f)
+    data.save(store_path / f"{data.session.id}.h5")
 
     data = create_spiking_data(BRAINSET_ID, "bob", "session3", 0.9)
-    with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f)
+    data.save(store_path / f"{data.session.id}.h5")
 
     data = create_spiking_data(BRAINSET_ID, "charlie", "session4", 2.0)
-    with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f)
+    data.save(store_path / f"{data.session.id}.h5")
 
     return store_path
 
@@ -113,12 +108,10 @@ def dummy_multichannel_brainset(tmp_path):
     os.makedirs(store_path, exist_ok=True)
 
     data = create_multichannel_data(BRAINSET_ID, "alice", "session1", 1.0)
-    with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f)
+    data.save(store_path / f"{data.session.id}.h5")
 
     data = create_multichannel_data(BRAINSET_ID, "bob", "session2", 1.2)
-    with h5py.File(store_path / f"{data.session.id}.h5", "w") as f:
-        data.to_hdf5(f)
+    data.save(store_path / f"{data.session.id}.h5")
 
     return store_path
 
