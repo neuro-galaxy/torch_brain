@@ -11,7 +11,6 @@ import logging
 from argparse import ArgumentParser
 from pathlib import Path
 
-import h5py
 import mne
 import numpy as np
 import pandas as pd
@@ -254,8 +253,7 @@ class Pipeline(BrainsetPipeline):
         )
 
         self.update_status("Storing")
-        with h5py.File(output_path, "w") as file:
-            data.to_hdf5(file)
+        data.save(output_path)
 
         logging.info(f"Saved processed data to: {output_path}")
 

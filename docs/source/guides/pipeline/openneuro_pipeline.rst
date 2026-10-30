@@ -377,9 +377,7 @@ Add custom processing beyond the default:
         ...
 
         # Save the result
-        import h5py
-        with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file)
+        data.save(store_path)
 
 
 What's Next?

@@ -58,8 +58,7 @@ def test_materialize(test_filepath):
         drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
     )
 
-    with h5py.File(test_filepath, "w") as f:
-        data.to_hdf5(f)
+    data.save(test_filepath)
 
     del data
 

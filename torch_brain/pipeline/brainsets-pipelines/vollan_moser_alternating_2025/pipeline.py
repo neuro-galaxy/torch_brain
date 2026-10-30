@@ -7,7 +7,6 @@ import logging
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-import h5py
 import numpy as np
 import pandas as pd
 import requests
@@ -312,8 +311,7 @@ class Pipeline(BrainsetPipeline):
         data.test_domain = test_domain
 
         self.update_status("Storing")
-        with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file)
+        data.save(store_path)
 
     def _process_sleep(self, fpath, session_id):
         """Process a sleep session from ``Dsleep``.
@@ -384,8 +382,7 @@ class Pipeline(BrainsetPipeline):
         data.test_domain = test_domain
 
         self.update_status("Storing")
-        with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file)
+        data.save(store_path)
 
 
 # ---------------------------------------------------------------------------

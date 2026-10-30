@@ -207,8 +207,7 @@ class Pipeline(BrainsetPipeline):
 
         # save data to disk
         self.update_status("Storing")
-        with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file)
+        data.save(store_path)
 
 
 def extract_behavior(h5file):
