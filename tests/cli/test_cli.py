@@ -1,5 +1,7 @@
 """Tests for CLI commands in torch_brain.pipeline._cli module."""
 
+import importlib
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,6 +13,20 @@ from torch_brain.pipeline._cli.cli_completion import (
     _detect_shell,
 )
 from torch_brain.pipeline.config import CONFIG_FILE
+
+
+@pytest.fixture(autouse=True)
+def isolated_cli_state(tmp_path, monkeypatch):
+    """Isolates tests in this file from the real brainsets state dir."""
+    mod = importlib.import_module("torch_brain.pipeline._cli.cli")
+
+    monkeypatch.setattr(mod, "STATE", tmp_path)
+    monkeypatch.setattr(mod, "COMPLETION_ATTEMPTED", tmp_path / ".completion_attempted")
+    monkeypatch.setattr(mod, "HINT_SHOWN", tmp_path / ".completion_hint_shown")
+    monkeypatch.setattr(mod, "attempted", False)
+    monkeypatch.setattr(mod.cli, "epilog", mod.TIP)
+
+    return mod
 
 
 class TestDetectShell:
@@ -97,6 +113,56 @@ class TestInstallCompletion:
         assert result.exit_code == 0
         assert comp_dir.exists()
         assert (comp_dir / SHELL_COMPLETION_FILENAMES["bash"]).is_file()
+
+
+class TestInstallCompletionTip:
+    """Tests for the tab completion tip and first-use hint."""
+
+    @pytest.fixture
+    def stubbed_tty_cli_module(self, isolated_cli_state, monkeypatch):
+        """Interactive-like session with a stubbed completion installer."""
+        mod = isolated_cli_state
+
+        def fake_install(ctx, param, value):
+            if value and not ctx.resilient_parsing:
+                ctx.exit()
+
+        monkeypatch.setattr(mod, "install_completion", fake_install)
+        monkeypatch.setattr(
+            mod, "sys", SimpleNamespace(stderr=SimpleNamespace(isatty=lambda: True))
+        )
+        return mod
+
+    def test_hint_shown_only_once(self, stubbed_tty_cli_module):
+        runner = CliRunner()
+        config = {"raw_dir": "raw", "processed_dir": "processed"}
+
+        with patch(
+            "torch_brain.pipeline._cli.cli_config.load_config", return_value=config
+        ):
+            first = runner.invoke(cli, ["config", "show"])
+            second = runner.invoke(cli, ["config", "show"])
+
+        assert "Tip:" in first.output
+        assert stubbed_tty_cli_module.HINT_SHOWN.exists()
+        assert "Tip:" not in second.output
+
+    def test_help_tip_disappears_after_completion_attempt(self, stubbed_tty_cli_module):
+        runner = CliRunner()
+
+        assert "Tip:" in runner.invoke(cli, ["--help"]).output
+
+        runner.invoke(cli, ["--install-completion"])
+
+        assert stubbed_tty_cli_module.COMPLETION_ATTEMPTED.exists()
+        assert "Tip:" not in runner.invoke(cli, ["--help"]).output
+
+    def test_resilient_parsing_does_not_record_attempt(self, stubbed_tty_cli_module):
+        cli.make_context("brainsets", ["--install-completion"], resilient_parsing=True)
+
+        assert not stubbed_tty_cli_module.COMPLETION_ATTEMPTED.exists()
+        assert stubbed_tty_cli_module.attempted is False
+        assert cli.epilog == stubbed_tty_cli_module.TIP
 
 
 class TestConfigCommand:
