@@ -491,7 +491,7 @@ class RegularTimeSeries(ArrayDict):
         file.attrs["sampling_rate"] = self.sampling_rate
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _object_checked: bool = False):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -509,7 +509,9 @@ class RegularTimeSeries(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = RegularTimeSeries.from_hdf5(f)
         """
-        assert file.attrs["object"] == cls.__name__, "object type mismatch"
+        # Data.from_hdf5 already read attrs["object"] to pick this class
+        if not _object_checked:
+            assert file.attrs["object"] == cls.__name__, "object type mismatch"
 
         try:
             _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
@@ -910,7 +912,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         )
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _object_checked: bool = False):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -924,9 +926,11 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == RegularTimeSeries.__name__, (
-            "object type mismatch"
-        )
+        # Data.from_hdf5 already read attrs["object"] to pick this class
+        if not _object_checked:
+            assert file.attrs["object"] == RegularTimeSeries.__name__, (
+                "object type mismatch"
+            )
 
         obj = cls.__new__(cls)
         for key, value in file.items():
