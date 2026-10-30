@@ -26,7 +26,6 @@ The following is an example ``prepare_data.py`` script that can serve as a templ
 
     import argparse
     import os
-    import h5py
 
     from torch_brain.data  import Data
 
@@ -45,8 +44,7 @@ The following is an example ``prepare_data.py`` script that can serve as a templ
 
         # save data to disk
         path = os.path.join(args.output_dir, f"{session_id}.h5")
-        with h5py.File(path, "w") as file:
-            data.to_hdf5(file)
+        data.save(path)
 
 
     if __name__ == "__main__":
