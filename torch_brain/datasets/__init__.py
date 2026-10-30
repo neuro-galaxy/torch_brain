@@ -21,6 +21,7 @@ __all__ = [
     "Neuroprobe2025",
     "KochiVisualNamingDS006914",
     "KempSleepEDF2013",
+    "KarpowiczPandarinathFalcon2024",
     "OpenNeuroDataset",
     "OpenNeuroSplitType",
 ]
@@ -28,6 +29,7 @@ __all__ = [
 from .AllenVisualCodingOphys2016 import AllenVisualCodingOphys2016
 from .ChurchlandShenoyNeural2012 import ChurchlandShenoyNeural2012
 from .dataset import Dataset, DatasetIndex
+from .KarpowiczPandarinathFalcon2024 import KarpowiczPandarinathFalcon2024
 from .KempSleepEDF2013 import KempSleepEDF2013
 from .KlinzingSleepDS005555 import KlinzingSleepDS005555
 from .KochiVisualNamingDS006914 import KochiVisualNamingDS006914
