@@ -648,12 +648,18 @@ class TestGetManifest:
             assert result.loc[recording_id, "s3_url"] == expected_s3_url
 
     @patch("sys.stdin.isatty", return_value=True)
+    @patch("torch_brain.pipeline.openneuro.fetch_latest_snapshot_tag")
+    @patch("torch_brain.pipeline.openneuro.fetch_species")
+    @patch("torch_brain.pipeline.openneuro.fetch_participants_tsv")
     @patch("torch_brain.pipeline.openneuro.fetch_all_filenames")
     @patch("torch_brain.pipeline.openneuro.fetch_eeg_recordings")
     def test_get_manifest_with_custom_openneuro_context(
         self,
         mock_fetch_eeg,
         mock_fetch_files,
+        mock_participants_tsv,
+        mock_species,
+        mock_latest_tag,
         mock_isatty,
         temp_dir,
     ):
@@ -682,6 +688,12 @@ class TestGetManifest:
                 "fpath": "sub-02/eeg/rec-001_eeg.edf",
             },
         ]
+        mock_latest_tag.return_value = "1.0.0"
+        mock_species.return_value = "homo sapiens"
+        mock_participants_tsv.return_value = pd.DataFrame(
+            {"age": [25, 30], "sex": ["M", "F"]},
+            index=pd.Index(["sub-01", "sub-02"], name="participant_id"),
+        )
 
         args = Namespace(
             on_version_mismatch="continue", redownload=False, reprocess=False
