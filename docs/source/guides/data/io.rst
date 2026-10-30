@@ -19,6 +19,8 @@ To save a data object to disk, use the :obj:`~Data.save()` method:
     import numpy as np
     from torch_brain.data import RegularTimeSeries, IrregularTimeSeries, ArrayDict, Data
 
+    np.random.seed(123) # seeded for reproducibility
+
     # Create a complex data object
     session = Data(
         spikes=IrregularTimeSeries(
@@ -133,8 +135,8 @@ access ``eye_pos``:
 .. code-block:: pycon
 
     >>> session.behavior.eye_pos
-    array([[ 1.14566523,  0.22616446],
-           [-0.03963849,  0.11477352],
+    array([[-0.1211668 , -2.00858547],
+           [-0.92064654,  0.16823434],
            ...
 
     >>> session
@@ -162,12 +164,12 @@ will then turn into a :obj:`RegularTimeSeries` object:
 .. code-block:: pycon
 
     >>> session.behavior.hand_vel
-    array([[ 1.86527056e-01,  1.54714182e-01],
-           [ 2.75861600e-01, -5.30891532e-01],
+    array([[-1.0856306,  0.99734545],
+           [ 0.2829785, -1.50629471],
            ...
 
     >>> session.behavior.pupil_size
-    array([ 1.66121169e-01,  2.06565774e-01, -7.85847571e-01, ...])
+    array([-0.54841834,  1.06538295, -0.52392241, ...])
 
     >>> session
     Data(
