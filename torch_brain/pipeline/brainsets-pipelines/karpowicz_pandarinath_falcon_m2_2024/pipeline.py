@@ -16,7 +16,6 @@ import datetime
 import re
 from argparse import ArgumentParser
 
-import h5py
 import numpy as np
 import pandas as pd
 from pynwb import NWBHDF5IO
@@ -134,8 +133,7 @@ class Pipeline(BrainsetPipeline):
         data.falcon_split = split
         assign_domains(data, split)
 
-        with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file)
+        data.save(store_path)
 
 
 def parse_filename(path: str) -> tuple[str, str, str]:

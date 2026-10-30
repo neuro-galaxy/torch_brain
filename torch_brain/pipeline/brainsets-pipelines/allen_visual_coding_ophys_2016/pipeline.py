@@ -14,7 +14,6 @@ import warnings
 from argparse import ArgumentParser
 from pathlib import Path
 
-import h5py
 import numpy as np
 import pandas as pd
 
@@ -208,8 +207,7 @@ class Pipeline(BrainsetPipeline):
 
         # save data to disk
         self.update_status("Storing")
-        with h5py.File(store_path, "w") as file:
-            data.to_hdf5(file)
+        data.save(store_path)
 
 
 def extract_behavior(nwb_dataset: BrainObservatoryNwbDataSet):
