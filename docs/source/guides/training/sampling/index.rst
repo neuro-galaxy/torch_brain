@@ -67,7 +67,7 @@ so we define sampling intervals as *dictionaries* keyed by the recording
 IDs. Each entry is a :obj:`~torch_brain.data.Interval` object that specifies
 the valid start and end sampling times for that recording:
 
-.. code:: python
+.. code-block:: python
 
     sampling_intervals = {
         "recording_id1": Interval(...),

@@ -24,7 +24,7 @@ def get_default_serialize_fn_map() -> dict[type, Callable]:
     affects the global default. You can extend the returned map to support
     additional types:
 
-    .. code:: python
+    .. code-block:: python
 
         serialize_fn_map = get_default_serialize_fn_map()
         serialize_fn_map[MyType] = my_serialize_fn
