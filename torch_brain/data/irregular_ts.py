@@ -486,6 +486,9 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             out = self.__dict__[name]
 
             if isinstance(out, h5py.Dataset):
+                if not out.id.valid:
+                    raise ValueError(f"Cannot load {name} as the dataset is closed.")
+
                 # convert into numpy array
 
                 # first we check if timestamps was resolved

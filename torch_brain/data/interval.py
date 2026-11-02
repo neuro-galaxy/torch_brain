@@ -920,6 +920,8 @@ class LazyInterval(Interval):
             out = self.__dict__[name]
 
             if isinstance(out, h5py.Dataset):
+                if not out.id.valid:
+                    raise ValueError(f"Cannot load {name} as the dataset is closed.")
                 # convert into numpy array
                 if "unresolved_slice" in self._lazy_ops:
                     self._resolve_start_end_after_slice()

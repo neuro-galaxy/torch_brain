@@ -376,6 +376,9 @@ class LazyArrayDict(ArrayDict):
             out = self.__dict__[name]
 
             if isinstance(out, h5py.Dataset):
+                if not out.id.valid:
+                    raise ValueError(f"Cannot load {name} as the dataset is closed.")
+
                 # apply any mask, and return the numpy array
                 if "mask" in self._lazy_ops:
                     out = out[self._lazy_ops["mask"]]
