@@ -247,3 +247,13 @@ Here, ``spikes`` stayed lazy after slicing. When we finally access
 :math:`[2, 4)` window are read from disk and not the full timestamps array.
 This is what makes lazy loading efficient: you only pay for the slice you ask for.
 
+Once we are done with a lazy-loaded data object, we can close it using the 
+:obj:`~Data.close()` method. This releases the underlying HDF5 file and is good 
+practice, but is generally only necessary when we want to overwrite or modify 
+the file. Once a lazy-loaded data object is closed, lazy attributes that have 
+not been materialized will no longer be loadable.  
+
+.. code-block:: python
+
+    >>> session.close()
+

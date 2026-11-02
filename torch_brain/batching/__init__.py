@@ -14,7 +14,7 @@ When used with PyTorch's default :obj:`~torch.utils.data.DataLoader`,
 :func:`collate` applies the wrapped recipes when batching. Below is
 an example of how these are used in practice.
 
-.. code:: python
+.. code-block:: python
 
     import torch
     from torch_brain.datasets import Dataset
