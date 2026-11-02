@@ -780,6 +780,9 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             out = self.__dict__[name]
 
             if isinstance(out, h5py.Dataset):
+                if not out.id.valid:
+                    raise ValueError(f"Cannot load {name} as the dataset is closed.")
+
                 # convert into numpy array
                 if "slice" in self._lazy_ops:
                     idx_l, idx_r = self._lazy_ops["slice"]

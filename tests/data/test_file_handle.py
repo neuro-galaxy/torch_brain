@@ -146,6 +146,16 @@ class TestClose:
         assert np.all(data.spikes.timestamps == np.array([0.0, 1.0, 2.0]))
         assert np.all(data.spikes.x == np.array([1.0, 2.0, 3.0]))
 
+    def test_error_if_access_lazy_after_close(self, saved_data):
+        data = Data.load(saved_data)
+        data.close()
+        with pytest.raises(ValueError, match="dataset is closed"):
+            data.spikes.timestamps  # noqa: B018
+        with pytest.raises(ValueError, match="dataset is closed"):
+            data.lfp.raw  # noqa: B018
+        with pytest.raises(ValueError, match="dataset is closed"):
+            data.trials.start  # noqa: B018
+
 
 class TestContextManager:
     def test_context_manager_closes_file(self, saved_data):
