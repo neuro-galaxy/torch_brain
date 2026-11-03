@@ -99,10 +99,6 @@ to handle the data side. You define a `Dataset` (built on the time-slicing
 above) and a `Sampler` that decides which slices become samples. The
 `DataLoader`, model, and loop are ordinary PyTorch.
 
-```bash
-# Download one of the smaller datasets to get started (~50 MB raw + processed).
-brainsets prepare pei_pandarinath_nlb_2021 --raw-dir data/raw --processed-dir data/processed
-```
 
 ```python
 import torch
@@ -156,6 +152,12 @@ The key idea: unlike a standard PyTorch `Dataset` indexed by integers, a
 only the slice you ask for is read from disk. A `Sampler` decides _what_ to
 load, the `Dataset` decides _how_, and everything downstream stays vanilla
 PyTorch.
+
+> [!TIP]
+> The example above is based on one of the smaller datasets. Download and preprocess with:
+> ```bash
+> brainsets prepare pei_pandarinath_nlb_2021 --raw-dir data/raw --processed-dir data/processed
+> ```
 
 See [`examples/`](examples/) for simple and readable training implementations.
 
