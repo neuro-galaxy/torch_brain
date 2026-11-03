@@ -281,8 +281,10 @@ class Interval(ArrayDict):
         return out
 
     def select_by_interval(self, interval: Interval):
-        r"""Return a new :obj:`IrregularTimeSeries` object where all timestamps are
-        within the interval.
+        r"""Returns a new :obj:`Interval` object that contains the data between the
+        start and end times. An interval is included if it has any overlap with the
+        slicing window defined by the selection interval. The selection interval
+        end times are exclusive.
 
         Args:
             interval: Interval object.
@@ -1017,7 +1019,17 @@ class LazyInterval(Interval):
     def slice(self, start: float, end: float, reset_origin: bool = True):
         r"""Returns a new :obj:`Interval` object that contains the data between the
         start and end times. An interval is included if it has any overlap with the
-        slicing window.
+        slicing window. The end time is exclusive.
+
+        If :obj:`reset_origin` is set to :obj:`True`, all time attributes will be
+        updated to be relative to the new start time when the slice is applied.
+
+        Args:
+            start: Start time.
+            end: End time.
+            reset_origin: If :obj:`True`, all time attributes will be updated to be
+                relative to the new start time when the slice is applied.
+                Defaults to :obj:`True`.
         """
         out = self.__class__.__new__(self.__class__)
         out._unicode_keys = self._unicode_keys
