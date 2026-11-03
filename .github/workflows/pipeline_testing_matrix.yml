@@ -45,15 +45,16 @@ jobs:
         python-version: ${{ matrix.python-version }}
 
     - name: Install the project from git ref
-      # For PRs, we use the head repo URL and SHA to support fork PRs where the
-      # commit doesn't exist in the base repo. For pushes, we use the base repo
-      # URL and the pushed SHA directly.
+      # We install the package from a git ref to catch packaging problems.
+      # For PRs, we use the PR merged into the base branch using its merge ref
+      # (refs/pull/N/merge).
+      # For everything else (push, schedule, dispatch), we use the triggering
+      # commit's SHA directly.
       run: |
+        REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
         if [ "${{ github.event_name }}" = "pull_request" ]; then
-          REPO_URL="${{ github.event.pull_request.head.repo.clone_url }}"
-          REF="${{ github.event.pull_request.head.sha }}"
+          REF="refs/pull/${{ github.event.pull_request.number }}/merge"
         else
-          REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
           REF="${{ github.sha }}"
         fi
         uv pip install --system "torch_brain @ git+${REPO_URL}@${REF}"
