@@ -3,11 +3,11 @@ import os
 import tempfile
 from dataclasses import dataclass
 
+import h5py
 import numpy as np
 import pytest
 
 from torch_brain.data import (
-    Data,
     Interval,
     IrregularTimeSeries,
     LazyIrregularTimeSeries,
@@ -31,7 +31,7 @@ SEQUENCES = {
     "slice_first": [
         "slice",
         "mask",
-        "mask",
+        "slice",
         "interval",
         "slice_wide",
         "slice",
@@ -86,17 +86,16 @@ class Op:
             return irr_ts.slice(*self.arg)
 
 
-def _mask_op(step_idx: int, idxs: np.ndarray, timestamps: np.ndarray):
-    """Returns mask operation, and resulting idxs and timestamps."""
+def get_mask_op(step_idx: int, timestamps: np.ndarray):
+    """Returns mask operation."""
     mask = (np.arange(len(timestamps)) + step_idx) % 4 != 0
+
     op = Op("mask", mask)
-    new_idxs = idxs[mask]
-    new_timestamps = timestamps[mask]
-    return op, new_idxs, new_timestamps
+    return op
 
 
-def _interval_op(idxs: np.ndarray, timestamps: np.ndarray):
-    """Returns interval operation, and resulting idxs and timestamps."""
+def get_interval_op(timestamps: np.ndarray):
+    """Returns interval operation."""
     n = len(timestamps)
     k = max(n // 10, 1)
     start = timestamps[k]
@@ -105,23 +104,13 @@ def _interval_op(idxs: np.ndarray, timestamps: np.ndarray):
     starts = [start, end - diff]
     ends = [start + diff, end]
     interval = Interval(starts, ends)
+
     op = Op("interval", interval)
-
-    idx_l = np.searchsorted(timestamps, interval.start)
-    idx_r = np.searchsorted(timestamps, interval.end)
-
-    mask = np.zeros(len(idxs), dtype=bool)
-    for i in range(len(interval)):
-        mask[idx_l[i] : idx_r[i]] = True
-
-    new_idxs = idxs[mask]
-    new_timestamps = timestamps[mask]
-
-    return op, new_idxs, new_timestamps
+    return op
 
 
-def _slice_op(kind: str, idxs: np.ndarray, timestamps: np.ndarray):
-    """Returns slice operation, and resulting idxs and timestamps."""
+def get_slice_op(kind: str, timestamps: np.ndarray):
+    """Returns slice operation."""
     n = len(timestamps)
     k = max(n // 10, 1)
     start = timestamps[k]
@@ -130,48 +119,56 @@ def _slice_op(kind: str, idxs: np.ndarray, timestamps: np.ndarray):
         start = start - 5
         end = end + 5
 
-    mask = (timestamps >= start) & (timestamps < end)
     op = Op(kind, (start, end))
-    new_idxs = idxs[mask]
-    new_timestamps = timestamps[mask] - start
-    return op, new_idxs, new_timestamps
+    return op
 
 
-def build_slice_mask_ops(timestamps: np.ndarray, sequence: list[str]):
-    """Returns ops to apply and expected idxs and timestamps at each step."""
-    idxs = np.arange(len(timestamps))
+def build_slice_mask_ops(irr_ts: IrregularTimeSeries, sequence: list[str]):
+    """Returns ops to apply and expected timestamps and unit_ids at each step."""
     ops = []
-    all_idxs = [idxs]
-    all_timestamps = [timestamps]
+    all_timestamps = [irr_ts.timestamps.copy()]
+    all_unit_ids = [irr_ts.unit_id.copy()]
+    all_other_timekeys = [irr_ts.other_timekey.copy()]
     for i, kind in enumerate(sequence):
         if kind == "mask":
-            op, idxs, timestamps = _mask_op(i, idxs, timestamps)
+            op = get_mask_op(i, irr_ts.timestamps)
         elif kind == "interval":
-            op, idxs, timestamps = _interval_op(idxs, timestamps)
+            op = get_interval_op(irr_ts.timestamps)
         else:
-            op, idxs, timestamps = _slice_op(kind, idxs, timestamps)
+            op = get_slice_op(kind, irr_ts.timestamps)
         ops.append(op)
-        all_idxs.append(idxs)
-        all_timestamps.append(timestamps)
-    return ops, all_idxs, all_timestamps
+        irr_ts = op.apply(irr_ts)
+
+        all_timestamps.append(irr_ts.timestamps)
+        all_unit_ids.append(irr_ts.unit_id)
+        all_other_timekeys.append(irr_ts.other_timekey)
+
+    return ops, all_timestamps, all_unit_ids, all_other_timekeys
 
 
-def save_data(path, timestamps, unit_id, incl_unloaded_data: bool):
-    data = Data(
-        spikes=IrregularTimeSeries(timestamps=timestamps, unit_id=unit_id),
-        domain="auto",
+def get_irr_ts(incl_unloaded_data: bool):
+    """Returns an IrregularTimeSeries with timestamps, unit_id, and other_timekey."""
+    timestamps = np.arange(N_TIMESTAMPS) / 100 * 0.234
+    unit_id = np.arange(len(timestamps))
+    other_timekey = np.linspace(-100, 100, len(timestamps)) * 5.678
+
+    irr_ts = IrregularTimeSeries(
+        timestamps=timestamps,
+        unit_id=unit_id,
+        other_timekey=other_timekey,
+        timekeys=["timestamps", "other_timekey"],
     )
     if incl_unloaded_data:
-        data.spikes.unloaded_data = np.arange(len(timestamps)) * 0.5
-    data.save(path)
+        irr_ts.unloaded_data = np.arange(len(timestamps)) * 0.5
+    return irr_ts
 
 
 @dataclass
 class SequenceChecker:
     sequence: list[str]
-    all_idxs: list[np.ndarray]
     all_timestamps: list[np.ndarray]
-    unit_id: np.ndarray
+    all_unit_ids: list[np.ndarray]
+    all_other_timekeys: list[np.ndarray]
     materialize_step: int
     incl_unloaded_data: bool
     load_timestamps_first: bool
@@ -183,15 +180,20 @@ class SequenceChecker:
             f"(unit_id materialized at step {self.materialize_step}{end_str})"
         )
 
-    def check_mat_unit_id(self, irr_ts, step: int):
+    def check_mat_unit_id_and_other_timekey(self, irr_ts, step: int):
         np.testing.assert_array_equal(
             irr_ts.unit_id,
-            self.unit_id[self.all_idxs[step]],
+            self.all_unit_ids[step],
             f"Unit ID array incorrect {self._context(step)}",
+        )
+        np.testing.assert_allclose(
+            irr_ts.other_timekey,
+            self.all_other_timekeys[step],
+            err_msg=f"Other timekey array incorrect {self._context(step)}",
         )
 
     def check_length(self, irr_ts, step: int):
-        expected = len(self.all_idxs[step])
+        expected = len(self.all_timestamps[step])
         assert len(irr_ts) == expected, (
             f"Data length {len(irr_ts)} != expected {expected} {self._context(step)}"
         )
@@ -229,10 +231,14 @@ class SequenceChecker:
         )
         if step < self.materialize_step:
             self.check_load_from_deepcopy(
-                irr_ts, "unit_id", self.unit_id[self.all_idxs[step]], step
+                irr_ts, "unit_id", self.all_unit_ids[step], step
             )
+            self.check_load_from_deepcopy(
+                irr_ts, "other_timekey", self.all_other_timekeys[step], step
+            )
+
         else:
-            self.check_mat_unit_id(irr_ts, step)
+            self.check_mat_unit_id_and_other_timekey(irr_ts, step)
             self.check_laziness(irr_ts, step)
 
 
@@ -251,30 +257,37 @@ def test_lazy_mask_slice_sequence(
     incl_unloaded_data,
     load_timestamps_first,
 ):
+
+    irr_ts = get_irr_ts(incl_unloaded_data)
+    with h5py.File(test_filepath, "w") as f:
+        irr_ts.to_hdf5(f)
+
     sequence = SEQUENCES[sequence_name]
-    timestamps = np.arange(N_TIMESTAMPS) / 100 * 0.234
-    unit_id = np.arange(len(timestamps))
-    ops, all_idxs, all_timestamps = build_slice_mask_ops(timestamps, sequence)
-    save_data(test_filepath, timestamps, unit_id, incl_unloaded_data)
+
+    ops, all_timestamps, all_unit_ids, all_other_timekeys = build_slice_mask_ops(
+        irr_ts, sequence
+    )
+
+    del irr_ts
 
     checker = SequenceChecker(
         sequence,
-        all_idxs,
         all_timestamps,
-        unit_id,
+        all_unit_ids,
+        all_other_timekeys,
         materialize_step,
         incl_unloaded_data,
         load_timestamps_first,
     )
 
-    with Data.load(test_filepath) as session:
-        irr_ts = session.spikes
+    with h5py.File(test_filepath, "r") as f:
+        irr_ts = LazyIrregularTimeSeries.from_hdf5(f)
 
         if load_timestamps_first:
             irr_ts.timestamps  # noqa: B018
 
         if materialize_step == 0:
-            checker.check_mat_unit_id(irr_ts, 0)
+            checker.check_mat_unit_id_and_other_timekey(irr_ts, 0)
             checker.check_laziness(irr_ts, 0)
 
         for step, op in enumerate(ops, start=1):

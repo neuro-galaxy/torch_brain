@@ -663,7 +663,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                 out._resolve_timestamps_after_slice()  # resolve
                 check_all_loaded = True
 
-                idx_l, idx_r, start, origin_translation = out._lazy_ops["slice"]
+                idx_l, idx_r, _, origin_translation = out._lazy_ops["slice"]
                 out._lazy_ops["mask"] = self._lazy_ops["mask"][idx_l:idx_r].copy()
                 out.__dict__["timestamps"] = out.__dict__["timestamps"][
                     out._lazy_ops["mask"]
@@ -719,7 +719,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                     if idx_l is None:
                         out._resolve_timestamps_after_slice()  # resolve now
                         check_all_loaded = True
-                        idx_l, idx_r, start, _ = out._lazy_ops["slice"]
+                        idx_l, idx_r, _, _ = out._lazy_ops["slice"]
 
                     out.__dict__[key] = value[idx_l:idx_r].copy()
                     if reset_origin and key in self._timekeys:
