@@ -3,8 +3,24 @@ name: Pipeline Testing
 on:
   push:
     branches: [ "main" ]
+    paths:
+      - "torch_brain/data/**"
+      - "torch_brain/pipeline/**"
+      - "torch_brain/utils/**"
+      - "pyproject.toml"
+      - ".github/workflows/pipeline_testing*.yml"
   pull_request:
     branches: [ "**" ]
+    paths:
+      - "torch_brain/data/**"
+      - "torch_brain/pipeline/**"
+      - "torch_brain/utils/**"
+      - "pyproject.toml"
+      - ".github/workflows/pipeline_testing*.yml"
+  schedule:
+    # Weekly run to catch upstream breakage (data servers, external deps)
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
