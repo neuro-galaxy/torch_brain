@@ -154,7 +154,8 @@ load, the `Dataset` decides _how_, and everything downstream stays vanilla
 PyTorch.
 
 > [!TIP]
-> The example above is based on one of the smaller datasets. Download and preprocess with:
+> The example above is based on one of the smaller datasets.
+> Download and preprocess with the following shell command:
 > ```bash
 > brainsets prepare pei_pandarinath_nlb_2021 --raw-dir data/raw --processed-dir data/processed
 > ```
