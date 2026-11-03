@@ -101,7 +101,7 @@ above) and a `Sampler` that decides which slices become samples. The
 
 > [!TIP]
 > The example below is based on the `PeiPandarinathNLB2021` dataset (~50MB).
-> Download and preprocess it with `brainsets` (a preprocessing tool of torch_brain):
+> Download and preprocess it with `brainsets` (the preprocessing tool of torch_brain):
 > ```bash
 > brainsets prepare pei_pandarinath_nlb_2021 --raw-dir data/raw --processed-dir data/processed
 > ```
