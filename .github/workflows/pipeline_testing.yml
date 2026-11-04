@@ -38,6 +38,12 @@ jobs:
         fi
         uv pip install --system "torch_brain @ git+${REPO_URL}@${REF}"
 
+    - name: Debug installed ref
+      run: |
+        echo "merge sha: ${{ github.sha }}"
+        echo "head sha:  ${{ github.event.pull_request.head.sha }}"
+        uv pip freeze | grep -i torch
+
     - name: Configure brainsets
       run: brainsets config set --raw-dir data/raw --processed-dir data/processed
 
