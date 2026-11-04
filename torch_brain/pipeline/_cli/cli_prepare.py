@@ -3,6 +3,8 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 import click
 
@@ -217,11 +219,16 @@ def prepare(
         if not _torch_brain_in_dependencies(deps):
             torch_brain_spec = _determine_torch_brain_spec()
             click.echo(f"Detected torch_brain installation from {torch_brain_spec}")
-            if torch_brain_spec.startswith("file://"):
+            is_local_dir = (
+                torch_brain_spec.startswith("file://")
+                and Path(url2pathname(urlparse(torch_brain_spec).path)).is_dir()
+            )
+            if is_local_dir:
                 # UV can be weird about caching local packages
                 # So, if we want to recreate a local version of the package,
                 # it is safer to do so in editable mode, which does not go
-                # through UV's caching.
+                # through UV's caching. This only works for directories
+                # (not wheels or tarballs).
                 uv_prefix_command.extend(["--with-editable", torch_brain_spec])
             else:
                 deps.append(torch_brain_spec)
