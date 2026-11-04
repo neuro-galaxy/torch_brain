@@ -37,7 +37,8 @@ jobs:
       run: |
         REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
         if [ "${{ github.event_name }}" = "pull_request" ]; then
-          REF="refs/pull/${{ github.event.pull_request.number }}/merge"
+          # REF="refs/pull/${{ github.event.pull_request.number }}/merge"
+          REF="${{ github.sha }}"
         else
           REF="${{ github.sha }}"
         fi
