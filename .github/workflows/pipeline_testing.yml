@@ -14,37 +14,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
+    - name: Checkout code
+      uses: actions/checkout@v6
       with:
-        version: "0.6.11"
+        path: src
+        persist-credentials: false
 
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: "3.10"
 
-    - name: Install the project from git ref
-      # We install the package from a git ref to catch packaging problems.
-      # For PRs, we use the PR merged into the base branch using its merge ref
-      # (refs/pull/N/merge).
-      # For everything else (push, schedule, dispatch), we use the triggering
-      # commit's SHA directly.
-      run: |
-        REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          # REF="refs/pull/${{ github.event.pull_request.number }}/merge"
-          REF="${{ github.sha }}"
-        else
-          REF="${{ github.sha }}"
-        fi
-        uv pip install --system "torch_brain @ git+${REPO_URL}@${REF}"
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "0.6.11"
+        
+    - name: Build wheel
+      run: uv build --wheel --out-dir dist src
 
-    - name: Debug installed ref
+    - name: Install from the built wheel, resolved by name
       run: |
-        echo "merge sha: ${{ github.sha }}"
-        echo "head sha:  ${{ github.event.pull_request.head.sha }}"
-        uv pip freeze | grep -i torch
+        VERSION=$(basename dist/*.whl | cut -d- -f2)
+        uv pip install --system --find-links dist "torch_brain==${VERSION}"
+
+        # Make later uv invocations (e.g. brainsets' temp venvs) resolve
+        # torch_brain from the same wheel instead of PyPI
+        echo "UV_FIND_LINKS=${GITHUB_WORKSPACE}/dist" >> "$GITHUB_ENV"
+        echo "torch_brain==${VERSION}" > "${GITHUB_WORKSPACE}/constraints.txt"
+        echo "UV_CONSTRAINT=${GITHUB_WORKSPACE}/constraints.txt" >> "$GITHUB_ENV"
 
     - name: Configure brainsets
       run: brainsets config set --raw-dir data/raw --processed-dir data/processed
