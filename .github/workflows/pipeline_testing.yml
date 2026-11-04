@@ -30,19 +30,10 @@ jobs:
       with:
         version: "0.6.11"
         
-    - name: Build wheel
-      run: uv build --wheel --out-dir dist src
-
-    - name: Install from the built wheel, resolved by name
+    - name: Build and install the project
       run: |
-        VERSION=$(basename dist/*.whl | cut -d- -f2)
-        uv pip install --system --find-links dist "torch_brain==${VERSION}"
-
-        # Make later uv invocations (e.g. brainsets' temp venvs) resolve
-        # torch_brain from the same wheel instead of PyPI
-        echo "UV_FIND_LINKS=${GITHUB_WORKSPACE}/dist" >> "$GITHUB_ENV"
-        echo "torch_brain==${VERSION}" > "${GITHUB_WORKSPACE}/constraints.txt"
-        echo "UV_CONSTRAINT=${GITHUB_WORKSPACE}/constraints.txt" >> "$GITHUB_ENV"
+        uv build --out-dir dist src
+        uv pip install --system dist/*.whl
 
     - name: Configure brainsets
       run: brainsets config set --raw-dir data/raw --processed-dir data/processed
