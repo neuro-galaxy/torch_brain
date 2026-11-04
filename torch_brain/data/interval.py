@@ -230,9 +230,11 @@ class Interval(ArrayDict):
         return self
 
     def slice(self, start: float, end: float, reset_origin: bool = True):
-        r"""Returns a new :obj:`Interval` object that contains the data between the
-        start and end times. An interval is included if it has any overlap with the
-        slicing window. The end time is exclusive.
+        r"""Returns a new :obj:`Interval` object that contains intervals overlapping
+        with the window defined by the start and end times.
+
+        An interval is included if it has any overlap with the slicing window. The end
+        time is exclusive, so overlaps with only the end timepoint will not be included.
 
         If :obj:`reset_origin` is set to :obj:`True`, all time attributes will be
         updated to be relative to the new start time.
@@ -281,10 +283,14 @@ class Interval(ArrayDict):
         return out
 
     def select_by_interval(self, interval: Interval):
-        r"""Returns a new :obj:`Interval` object that contains the data between the
-        start and end times. An interval is included if it has any overlap with the
-        slicing window defined by the selection interval. The selection interval
-        end times are exclusive.
+        r"""Returns a new :obj:`Interval` object that contains intervals overlapping
+        with the selection interval.
+
+        An interval is included if it has any overlap with the slicing window(s)
+        defined by the selection interval. If the selection interval has multiple
+        windows, an interval is included if it has any overlap with any of the
+        slicing windows. Interval end times are exclusive, so overlaps with only an
+        end timepoint will not be included.
 
         Args:
             interval: Interval object.
@@ -1017,9 +1023,11 @@ class LazyInterval(Interval):
         self.__dict__["end"] = self.__dict__["end"][idx_l:idx_r] - origin_translation
 
     def slice(self, start: float, end: float, reset_origin: bool = True):
-        r"""Returns a new :obj:`Interval` object that contains the data between the
-        start and end times. An interval is included if it has any overlap with the
-        slicing window. The end time is exclusive.
+        r"""Returns a new :obj:`Interval` object that contains intervals overlapping
+        with the window defined by the start and end times.
+
+        An interval is included if it has any overlap with the slicing window. The end
+        time is exclusive, so overlaps with only the end timepoint will not be included.
 
         If :obj:`reset_origin` is set to :obj:`True`, all time attributes will be
         updated to be relative to the new start time when the slice is applied.
