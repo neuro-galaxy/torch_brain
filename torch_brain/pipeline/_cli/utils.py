@@ -1,10 +1,11 @@
 import os
-from importlib.resources import files
 from pathlib import Path
 
 import click
 
-PIPELINES_PATH = files("torch_brain.pipeline") / "brainsets-pipelines"
+from .plugins import BUILTIN_PIPELINES_PATH, get_all_sources
+
+PIPELINES_PATH = BUILTIN_PIPELINES_PATH
 
 
 def expand_path(path: str | Path) -> Path:
@@ -14,9 +15,14 @@ def expand_path(path: str | Path) -> Path:
     return Path(os.path.abspath(os.path.expandvars(os.path.expanduser(path))))
 
 
-def get_available_brainsets():
-    ret = [d.name for d in PIPELINES_PATH.iterdir() if d.is_dir()]
-    ret = [name for name in ret if not name.startswith((".", "_"))]
+def get_available_brainsets() -> list[str]:
+    """Names of every installed brainset, as typed on the command line.
+
+    Built-in brainsets have bare names, plugin brainsets are ``<namespace>:<id>``.
+    """
+    ret = []
+    for source in get_all_sources(warn=False):
+        ret += [source.qualified_name(b) for b in source.brainsets()]
     return ret
 
 

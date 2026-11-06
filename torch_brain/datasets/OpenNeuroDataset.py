@@ -5,7 +5,7 @@ from typing import Literal, get_args
 import numpy as np
 
 from torch_brain.data import Data, Interval
-from torch_brain.utils.split import _get_integer_hash_from_string
+from torch_brain.utils.split import get_integer_hash_from_string
 
 from .dataset import Dataset
 from .mixins import MultiChannelDatasetMixin
@@ -193,7 +193,7 @@ class OpenNeuroDataset(MultiChannelDatasetMixin, Dataset):
                 string_id = f"{recording.subject.id}_{recording.session.id}"
 
             base_str = f"{string_id}_{self.seed}"
-            hash_int = _get_integer_hash_from_string(base_str)
+            hash_int = get_integer_hash_from_string(base_str)
             normalized_hash = (hash_int % 10000) / 10000.0
 
             if normalized_hash < self.split_ratios[0]:
