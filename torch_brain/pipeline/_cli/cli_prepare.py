@@ -3,6 +3,8 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 import click
 
@@ -217,11 +219,13 @@ def prepare(
         if not _torch_brain_in_dependencies(deps):
             torch_brain_spec = _determine_torch_brain_spec()
             click.echo(f"Detected torch_brain installation from {torch_brain_spec}")
-            if torch_brain_spec.startswith("file://"):
+
+            if _check_if_torch_brain_is_local_dir(torch_brain_spec):
                 # UV can be weird about caching local packages
                 # So, if we want to recreate a local version of the package,
                 # it is safer to do so in editable mode, which does not go
-                # through UV's caching.
+                # through UV's caching. This only works for directories
+                # (not wheels or tarballs).
                 uv_prefix_command.extend(["--with-editable", torch_brain_spec])
             else:
                 deps.append(torch_brain_spec)
@@ -264,6 +268,31 @@ def _torch_brain_in_dependencies(dependencies: list[str]) -> bool:
     return False
 
 
+def _check_if_torch_brain_is_local_dir(spec: str) -> bool:
+    """Check if the given torch_brain spec is a local directory.
+
+    Check if the given spec is a local directory path, either as a direct path or
+    as a file URL. Robust to different OS path formats (Windows, Unix) and URL formats.
+
+    Args:
+        spec (str): The torch_brain spec to check.
+
+    Returns:
+        bool: True if the spec is a local directory, False otherwise.
+    """
+
+    if spec.startswith("file://"):
+        parsed = urlparse(spec)
+        if parsed.netloc not in ("", "localhost"):  # Reattach the netloc, if applicable
+            path = url2pathname(f"//{parsed.netloc}{parsed.path}")
+        else:
+            path = url2pathname(parsed.path)
+        is_local_dir = Path(path).is_dir()
+    else:
+        is_local_dir = False
+    return is_local_dir
+
+
 def _determine_torch_brain_spec() -> str:
     """
     Determine how to install torch_brain when not specified in requirements.txt.
@@ -273,7 +302,7 @@ def _determine_torch_brain_spec() -> str:
     2. Default (assume downloaded from PyPI)
     """
 
-    # Try to detect if brainsets was installed via a URL or local file
+    # Try to detect if brainsets was installed via a URL or local file/directory
     url_source = _detect_torch_brain_installation_url()
     if url_source:
         return url_source
