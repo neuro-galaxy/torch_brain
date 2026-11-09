@@ -255,6 +255,16 @@ class TestPrepareCommand:
                 src = tmp_path / "torch_brain"
                 src.mkdir()
                 url = src.as_uri()
+            elif install_type == "directory_with_spaces":
+                # as_uri() percent-encodes the space (%20), url2pathname decodes it
+                src = tmp_path / "my folder" / "torch_brain"
+                src.mkdir(parents=True)
+                url = src.as_uri()
+            elif install_type == "directory_two_slashes":
+                # Hand-written Windows form: file://C:/...
+                src = tmp_path / "torch_brain"
+                src.mkdir()
+                url = "file://" + src.as_posix()
             elif install_type == "wheel":
                 archive = tmp_path / "torch_brain-0.1.0-py3-none-any.whl"
                 archive.touch()
@@ -273,7 +283,17 @@ class TestPrepareCommand:
 
         return _make
 
-    @pytest.mark.parametrize("install_type", ["pypi", "directory", "wheel", "tarball"])
+    @pytest.mark.parametrize(
+        "install_type",
+        [
+            "pypi",
+            "directory",
+            "directory_with_spaces",
+            "directory_two_slashes",
+            "wheel",
+            "tarball",
+        ],
+    )
     def test_prepare_valid_brainset(self, mock_config, make_mock_dist, install_type):
         """Test prepare command with valid brainset constructs correct subprocess call.
         Ensuring it passes through the inline metadata correctly.
@@ -303,7 +323,7 @@ class TestPrepareCommand:
             command = call_args[1].get("command") or call_args[0][0]
 
             # Expected command: strings must match exactly, tuple components must be present
-            if install_type == "directory":
+            if "directory" in install_type:
                 dependency_args = [
                     "--with-editable",
                     ("torch_brain",),
