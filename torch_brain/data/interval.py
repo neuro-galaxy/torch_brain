@@ -245,8 +245,8 @@ class Interval(ArrayDict):
         attributes accordingly. This method is done in place.
 
         .. note:: This method works for non disjoint intervals, but only if no
-        interval is strictly nested inside another, since their order is ambiguous.
-        In that case, this method will raise an error.
+        interval is strictly nested inside another. In that case, interval order is
+        ambiguous and this method will raise an error.
         """
         if not self.is_sorted():
             sorted_indices = np.lexsort((self.end, self.start))

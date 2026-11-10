@@ -64,13 +64,12 @@ def test_interval_select_by_mask():
 
     mask = data.drifting_gratings_dir == 90
 
-    data.is_sorted()  # noqa: B018
     data = data.select_by_mask(mask)
 
     assert len(data) == 3
     assert np.array_equal(data.start, np.array([2, 5, 7]))
     assert np.array_equal(data.end, np.array([3, 6, 8]))
-    assert data._sorted is True
+    assert data._sorted is None
 
 
 def test_interval_slice():
@@ -551,7 +550,7 @@ def test_interval_select_by_mask_preserves_private_attrs():
         go_cue_time=np.array([0.5, 1.5, 2.5]),
         timekeys=["start", "end", "go_cue_time"],
     )
-    assert data.is_sorted()
+    assert data.is_sorted()  # to test propagation of _sorted attribute
 
     result = data.select_by_mask(np.array([True, False, True]))
 
