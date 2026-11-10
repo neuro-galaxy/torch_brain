@@ -182,6 +182,12 @@ def extract_trials(nwbfile, session_id):
     r"""Extract trial information from the NWB file. Trials that are flagged as
     "to discard" or where the monkey failed are marked as invalid."""
     trial_table = nwbfile.trials.to_dataframe()
+
+    # target_positions and barrier_info columns contain np arrays with different shapes
+    # timeseries contains trials indices and pointers for the behavioral data
+    drop_columns = ["target_positions", "barrier_info", "timeseries"]
+    trial_table.drop(columns=drop_columns, errors="ignore", inplace=True)
+
     # rename a few columns
     trial_table = trial_table.rename(
         columns={
@@ -285,10 +291,11 @@ def extract_trials(nwbfile, session_id):
     )
     valid_trials = trials.select_by_mask(trials.is_valid)
 
+    # numerical precision errors sometimes place go_cue_time right before target_on_time
+    hold_period_end = np.maximum(valid_trials.go_cue_time, valid_trials.target_on_time)
+
     movement_phases = Data(
-        hold_period=Interval(
-            start=valid_trials.target_on_time, end=valid_trials.go_cue_time
-        ),
+        hold_period=Interval(start=valid_trials.target_on_time, end=hold_period_end),
         reach_period=Interval(
             start=valid_trials.move_begins_time, end=valid_trials.move_ends_time
         ),
