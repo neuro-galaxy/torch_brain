@@ -44,7 +44,7 @@ dev = [
     "boto3~=1.41.0",
     "mne-bids",
     "dandi",
-    "ty",
+    "ty>=0.0.100",
     "ruff",
 ]
 docs = [
@@ -93,10 +93,10 @@ include = ["torch_brain/data", "tests/data"]
 [tool.ty.rules]
 # Change these to "error" over time
 invalid-argument-type = "error"
-unresolved-attribute = "error"
+missing-attribute = "error"
 unsupported-operator = "ignore"
 invalid-return-type = "ignore"
-invalid-method-override = "ignore"
+incompatible-method-override = "ignore"
 invalid-assignment = "ignore"
 not-iterable = "ignore"
 invalid-parameter-default = "ignore"
