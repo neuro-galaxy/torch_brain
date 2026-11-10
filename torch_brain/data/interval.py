@@ -135,10 +135,8 @@ class Interval(ArrayDict):
             self._timekeys.remove(name)
 
     def __setattr__(self, name, value):
-        super().__setattr__(name, value)
-
         if name == "start" or name == "end":
-            value = self.__dict__[name]
+            value = np.asarray(value)
             assert value.ndim == 1, f"{name} must be 1D."
             assert ~np.isnan(value).any(), f"{name} cannot contain NaNs."
             if value.dtype != np.float64:
@@ -155,12 +153,14 @@ class Interval(ArrayDict):
                 and (value < self.start).any()
             ):
                 raise ValueError(
-                    "end values cannot be less than corresponding start values."
+                    "end values cannot be smaller than corresponding start values."
                 )
 
             # start or end have been updated, we no longer know whether it is sorted
             # or not
             self._sorted = None
+
+        super().__setattr__(name, value)
 
     def _shift(self, offset: float):
         r"""Subtracts ``offset`` from ``start`` and ``end`` in place.
@@ -251,12 +251,15 @@ class Interval(ArrayDict):
         if not self.is_sorted():
             sorted_indices = np.lexsort((self.end, self.start))
             self._sorted = None
-            for key in self.keys():
-                self.__dict__[key] = self.__dict__[key][sorted_indices]
-            if not self.is_sorted():
+            tmp_interval = Interval(
+                start=self.start[sorted_indices], end=self.end[sorted_indices]
+            )
+            if not tmp_interval.is_sorted():
                 raise ValueError(
                     "Intervals cannot be sorted by both start and end times."
                 )
+            for key in self.keys():
+                self.__dict__[key] = self.__dict__[key][sorted_indices]
 
         return self
 
@@ -679,7 +682,7 @@ class Interval(ArrayDict):
               end: array, shape=(100,), dtype=float64,
             )
         """
-        if not (start < end):
+        if not (start <= end):
             raise ValueError(
                 f"start must be less than end, got start={start}, end={end}"
             )
@@ -705,7 +708,7 @@ class Interval(ArrayDict):
             step: Step size.
             include_end: Whether to include a partial interval at the end.
         """
-        if not (start < end):
+        if not (start <= end):
             raise ValueError(
                 f"start must be less than end, got start={start}, end={end}"
             )
@@ -1115,8 +1118,11 @@ class LazyInterval(Interval):
         start and end times. An interval is included if it has any overlap with the
         slicing window.
         """
-        if not self.is_sorted():
-            raise ValueError("Interval object must be sorted.")
+        if self._sorted is not True:
+            if self.is_sorted() is False:
+                raise ValueError("Interval object must be sorted.")
+            # in case the LazyInterval is now a fully-loaded Interval
+            return self.slice(start, end, reset_origin=reset_origin)
 
         out = self.__class__.__new__(self.__class__)
         out._unicode_keys = self._unicode_keys

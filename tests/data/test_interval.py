@@ -171,16 +171,29 @@ def test_unsortable_interval():
     with pytest.raises(ValueError, match="cannot be sorted"):
         data.sort()
 
+    # failed sort attempt should not change the original data
+    np.testing.assert_array_equal(data.start, np.array([0.0, 1.0, 2.0, 3.0]))
+    np.testing.assert_array_equal(data.end, np.array([1.0, 4.0, 3.0, 4.0]))
+
     with pytest.raises(ValueError, match="cannot be sorted"):
         data.coalesce()
 
+    # failed sort attempt should not change the original data
+    np.testing.assert_array_equal(data.start, np.array([0.0, 1.0, 2.0, 3.0]))
+    np.testing.assert_array_equal(data.end, np.array([1.0, 4.0, 3.0, 4.0]))
+
 
 def test_inverted_interval():
-    with pytest.raises(AssertionError, match="must be greater than or equal"):
-        Interval(
-            start=np.array([1.0, 4.0, 3.0, 4.0]),
-            end=np.array([0.0, 1.0, 2.0, 3.0]),
-        )  # noqa: B018
+    interval = Interval(
+        start=np.array([0.0, 1.0, 2.0, 3.0]),
+        end=np.array([1.0, 2.0, 3.0, 4.0]),
+    )
+
+    with pytest.raises(ValueError, match="cannot be greater"):
+        interval.start = np.array([0.0, 2.5, 2.0, 3.0])
+
+    with pytest.raises(ValueError, match="cannot be smaller"):
+        interval.end = np.array([1.0, 0.5, 3.0, 4.0])
 
 
 class TestUnsortedInterval:
@@ -195,6 +208,11 @@ class TestUnsortedInterval:
     def test_unsorted_attributes(self, unsorted_interval):
         assert unsorted_interval.is_sortable() is True
         assert unsorted_interval.is_sorted() is False
+        assert unsorted_interval.is_disjoint() is True
+
+        unsorted_interval.sort()
+        assert unsorted_interval.is_sortable() is True
+        assert unsorted_interval.is_sorted() is True
         assert unsorted_interval.is_disjoint() is True
 
     def test_unsorted_coalesce(self, unsorted_interval):
@@ -561,6 +579,8 @@ def test_lazy_interval_sorted_attr_backward_compatibility(test_filepath):
     data = Interval(
         start=np.array([0.0, 1.0, 2.0]),
         end=np.array([1.0, 2.0, 3.0]),
+        go_cue_time=np.array([0.5, 1.5, 2.5]),
+        timekeys=["start", "end", "go_cue_time"],
     )
 
     with h5py.File(test_filepath, "w") as f:
@@ -570,6 +590,21 @@ def test_lazy_interval_sorted_attr_backward_compatibility(test_filepath):
     with h5py.File(test_filepath, "r") as f:
         data = LazyInterval.from_hdf5(f)
         assert data._sorted is None
+
+        data = data.slice(0.0, 2.0)
+        assert data._sorted is True
+        assert isinstance(data, LazyInterval)
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyInterval.from_hdf5(f)
+        data.go_cue_time  # noqa: B018
+        assert data._sorted is None
+
+        # Test that slicing works (will convert to Interval)
+        data = data.slice(0.0, 2.0)
+        assert isinstance(data, Interval)
+        assert not isinstance(data, LazyInterval)
+        assert data._sorted is True
 
 
 def test_lazy_interval_select_by_mask_preserves_private_attrs(test_filepath):
@@ -1104,7 +1139,7 @@ def test_dilate():
     )
 
 
-def test_is_dijoint_is_sorted():
+def test_is_disjoint_is_sorted():
     # Test sorted and disjoint interval
     sorted_disjoint = Interval(np.array([1.0, 3.0, 5.0]), np.array([2.0, 4.0, 6.0]))
     assert sorted_disjoint.is_disjoint()
