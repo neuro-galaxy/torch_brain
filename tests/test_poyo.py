@@ -67,6 +67,11 @@ def pretrained_checkpoint():
                     Callback=lambda bytes_transferred: pbar.update(bytes_transferred),
                 )
 
+            if _sha256(tmp) != EXPECTED_SHA:
+                pytest.fail(
+                    f"Downloaded POYO checkpoint has incorrect SHA256 checksum: {_sha256(tmp)}"
+                )
+
             tmp.replace(checkpoint_path)
 
         except (BotoCoreError, ClientError) as e:
