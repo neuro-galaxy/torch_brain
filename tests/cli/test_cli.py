@@ -326,9 +326,17 @@ class TestPrepareCommand:
             if "directory" in install_type:
                 dependency_args = [
                     "--with-editable",
-                    ("torch_brain",),
+                    (
+                        "file://",
+                        "torch_brain",
+                    ),
                     "--with",
                     "dandi==0.74.0",
+                ]
+            elif install_type in ["wheel", "tarball"]:
+                dependency_args = [
+                    "--with",
+                    ("file://", "torch_brain", "dandi==0.74.0"),
                 ]
             else:
                 dependency_args = ["--with", ("torch_brain", "dandi==0.74.0")]
