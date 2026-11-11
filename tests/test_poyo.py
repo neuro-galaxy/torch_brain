@@ -45,7 +45,7 @@ def pretrained_checkpoint():
 
     if not checkpoint_path.exists():
         checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = checkpoint_path.with_suffix(".tmp")
+        tmp = checkpoint_path.with_name(f"{checkpoint_path.name}.{os.getpid()}.tmp")
         try:
             s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
 
