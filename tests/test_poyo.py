@@ -1,3 +1,5 @@
+import hashlib
+import os
 from pathlib import Path
 
 import boto3
@@ -5,6 +7,7 @@ import pytest
 import torch
 from botocore import UNSIGNED
 from botocore.config import Config
+from botocore.exceptions import BotoCoreError, ClientError
 from tqdm import tqdm
 
 from torch_brain.models.poyo import POYO
@@ -13,42 +16,66 @@ from torch_brain.models.poyo import POYO
 # (since they were trained for hand-velocity decoding)
 READOUT_DIM = 2
 
+# Updatable SHA256 checksum of the pretrained POYO model checkpoint
+MANIFEST = Path(__file__).parent / "poyo_checkpoint.sha256"
+EXPECTED_SHA, NAME = MANIFEST.read_text().split()
+
+BUCKET = "torch-brain"
+KEY = "model-zoo/poyo_mp.ckpt"
+CACHE_DIR = Path(
+    os.environ.get("TORCH_BRAIN_CACHE", Path.home() / ".cache" / "torch_brain")
+)
+
+
+def _sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
 
 @pytest.fixture(scope="session")
 def pretrained_checkpoint():
     """Download the pretrained POYO model checkpoint from S3."""
-    checkpoint_filename = "poyo_mp.ckpt"
-    checkpoint_path = Path(checkpoint_filename)
+    checkpoint_path = CACHE_DIR / Path(KEY).name
 
-    # Only download if the file doesn't exist
-    if not checkpoint_path.exists():
-        s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
-
-        # Get file size for progress bar
-        file_info = s3.head_object(
-            Bucket="torch-brain", Key=f"model-zoo/{checkpoint_filename}"
-        )
-        file_size = file_info["ContentLength"]
-
-        # Download with progress bar
-        with tqdm(
-            total=file_size,
-            unit="B",
-            unit_scale=True,
-            desc=f"Downloading {checkpoint_filename}",
-        ) as pbar:
-            s3.download_file(
-                "torch-brain",
-                f"model-zoo/{checkpoint_filename}",
-                checkpoint_filename,
-                Callback=lambda bytes_transferred: pbar.update(bytes_transferred),
-            )
-
-    yield str(checkpoint_path)
-
-    # Cleanup: remove the downloaded checkpoint after tests
-    if checkpoint_path.exists():
+    if checkpoint_path.exists() and _sha256(checkpoint_path) != EXPECTED_SHA:
         checkpoint_path.unlink()
+
+    if not checkpoint_path.exists():
+        checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = checkpoint_path.with_suffix(".tmp")
+        try:
+            s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
+
+            # Get file size for progress bar
+            file_info = s3.head_object(Bucket=BUCKET, Key=KEY)
+            file_size = file_info["ContentLength"]
+
+            # Download with progress bar
+            with tqdm(
+                total=file_size,
+                unit="B",
+                unit_scale=True,
+                desc=f"Downloading {checkpoint_path.name}",
+            ) as pbar:
+                s3.download_file(
+                    BUCKET,
+                    KEY,
+                    str(tmp),
+                    Callback=lambda bytes_transferred: pbar.update(bytes_transferred),
+                )
+
+            tmp.replace(checkpoint_path)
+
+        except (BotoCoreError, ClientError) as e:
+            pytest.fail(f"POYO checkpoint not cached and download failed: {e}")
+
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    return checkpoint_path
 
 
 def test_load_pretrained_basic(pretrained_checkpoint):
