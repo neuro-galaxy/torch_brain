@@ -82,7 +82,7 @@ class TestFileProperty:
     def test_load_non_lazy_file_is_none(self, saved_data):
         data = Data.load(saved_data, lazy=False)
         assert data.file is None
-        assert np.all(data.spikes.x == np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(data.spikes.x, np.array([1.0, 2.0, 3.0]))
 
     def test_file_none_by_default(self):
         data = Data(domain=Interval(0.0, 1.0))
@@ -143,8 +143,8 @@ class TestClose:
         data.materialize()
         data.close()
         # data should still be accessible after materializing and closing
-        assert np.all(data.spikes.timestamps == np.array([0.0, 1.0, 2.0]))
-        assert np.all(data.spikes.x == np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(data.spikes.timestamps, np.array([0.0, 1.0, 2.0]))
+        np.testing.assert_array_equal(data.spikes.x, np.array([1.0, 2.0, 3.0]))
 
     def test_error_if_access_lazy_after_close(self, saved_data):
         data = Data.load(saved_data)
@@ -161,7 +161,9 @@ class TestContextManager:
     def test_context_manager_closes_file(self, saved_data):
         with Data.load(saved_data) as data:
             assert data.file is not None
-            assert np.all(data.spikes.timestamps == np.array([0.0, 1.0, 2.0]))
+            np.testing.assert_array_equal(
+                data.spikes.timestamps, np.array([0.0, 1.0, 2.0])
+            )
         assert data.file is None
 
     def test_context_manager_returns_data(self, saved_data):
@@ -179,7 +181,9 @@ class TestContextManager:
     def test_context_manager_non_lazy(self, saved_data):
         with Data.load(saved_data, lazy=False) as data:
             assert data.file is None
-            assert np.all(data.spikes.timestamps == np.array([0.0, 1.0, 2.0]))
+            np.testing.assert_array_equal(
+                data.spikes.timestamps, np.array([0.0, 1.0, 2.0])
+            )
 
     def test_context_manager_without_file(self):
         data = Data(domain=Interval(0.0, 1.0))
@@ -192,13 +196,13 @@ class TestLoadFileLifecycle:
     def test_lazy_access_works_before_close(self, saved_data):
         data = Data.load(saved_data)
         # access lazy attributes
-        assert np.all(data.spikes.timestamps == np.array([0.0, 1.0, 2.0]))
-        assert np.all(data.trials.start == np.array([0.0, 1.0, 2.0]))
+        np.testing.assert_array_equal(data.spikes.timestamps, np.array([0.0, 1.0, 2.0]))
+        np.testing.assert_array_equal(data.trials.start, np.array([0.0, 1.0, 2.0]))
         data.close()
 
     def test_load_non_lazy_file(self, saved_data):
         data = Data.load(saved_data, lazy=False)
-        assert np.all(data.spikes.x == np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(data.spikes.x, np.array([1.0, 2.0, 3.0]))
 
     def test_load_closes_file_on_error(self, test_filepath):
         from unittest.mock import patch
@@ -230,11 +234,11 @@ class TestLoadFileLifecycle:
         with Data.load(saved_data) as data:
             sliced = data.slice(0.5, 2.0)
             # slice [0.5, 2.0): timestamps 1.0 is included, reset to 0.5
-            assert np.all(sliced.spikes.timestamps == np.array([0.5]))
-            assert np.all(sliced.spikes.x == np.array([2.0]))
+            np.testing.assert_array_equal(sliced.spikes.timestamps, np.array([0.5]))
+            np.testing.assert_array_equal(sliced.spikes.x, np.array([2.0]))
             # trials [0,1) and [1,2) overlap with [0.5, 2.0), reset by -0.5
-            assert np.allclose(sliced.trials.start, np.array([-0.5, 0.5]))
-            assert np.allclose(sliced.trials.end, np.array([0.5, 1.5]))
+            np.testing.assert_allclose(sliced.trials.start, np.array([-0.5, 0.5]))
+            np.testing.assert_allclose(sliced.trials.end, np.array([0.5, 1.5]))
             # sliced object should not hold a file handle
             assert sliced.file is None
 
@@ -246,8 +250,10 @@ class TestLoadFileLifecycle:
             )
             selected = data.select_by_interval(interval)
             # timestamps 0.0 is in [0.0, 0.5), 2.0 is in [1.5, 2.5)
-            assert np.all(selected.spikes.timestamps == np.array([0.0, 2.0]))
-            assert np.all(selected.spikes.x == np.array([1.0, 3.0]))
+            np.testing.assert_array_equal(
+                selected.spikes.timestamps, np.array([0.0, 2.0])
+            )
+            np.testing.assert_array_equal(selected.spikes.x, np.array([1.0, 3.0]))
             assert selected.file is None
 
     def test_to_dict_excludes_file(self, saved_data):

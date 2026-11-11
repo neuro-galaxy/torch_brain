@@ -23,7 +23,7 @@ class TestBinSpikes:
             dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
-        assert np.allclose(binned_data, expected)
+        np.testing.assert_allclose(binned_data, expected)
         assert binned_data.dtype == np.int32
 
         # test with np.float32
@@ -48,7 +48,7 @@ class TestBinSpikes:
             dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
-        assert np.allclose(binned_data, expected)
+        np.testing.assert_allclose(binned_data, expected)
 
         # bin size 2.5
         binned_data = bin_spikes(spikes, num_units=2, bin_size=2.5, right=True)
@@ -61,7 +61,7 @@ class TestBinSpikes:
             dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
-        assert np.allclose(binned_data, expected)
+        np.testing.assert_allclose(binned_data, expected)
 
         # align to the left
         binned_data = bin_spikes(spikes, num_units=2, bin_size=3.0, right=False)
@@ -73,7 +73,7 @@ class TestBinSpikes:
             dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
-        assert np.allclose(binned_data, expected)
+        np.testing.assert_allclose(binned_data, expected)
 
         # multiple units
         spikes = IrregularTimeSeries(
@@ -95,7 +95,7 @@ class TestBinSpikes:
             dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
-        assert np.allclose(binned_data, expected)
+        np.testing.assert_allclose(binned_data, expected)
 
         # test max_spikes
         spikes = IrregularTimeSeries(
@@ -117,7 +117,7 @@ class TestBinSpikes:
             dtype=np.int32,
         ).T
         assert binned_data.shape == expected.shape
-        assert np.allclose(binned_data, expected)
+        np.testing.assert_allclose(binned_data, expected)
         assert binned_data.dtype == np.int32
 
         # fix numerical instability
@@ -141,7 +141,7 @@ class TestBinSpikes:
             ).T
 
             assert binned_data.shape == expected.shape
-            assert np.allclose(binned_data, expected)
+            np.testing.assert_allclose(binned_data, expected)
 
 
 @pytest.fixture
@@ -200,7 +200,9 @@ class TestBinSpikesTransform:
             dtype=np.int32,
         ).T
 
-        assert np.array_equal(data_t.spikes_binned.binned_counts, expected_binned)
+        np.testing.assert_array_equal(
+            data_t.spikes_binned.binned_counts, expected_binned
+        )
 
     def test_binning_transform_custom_attr_names(self, simple_spikes_data):
         # Test that it respects different attribute names
@@ -236,4 +238,6 @@ class TestBinSpikesTransform:
             ],
             dtype=np.int32,
         ).T
-        assert np.array_equal(data_t.spikes_binned.binned_counts, expected_binned)
+        np.testing.assert_array_equal(
+            data_t.spikes_binned.binned_counts, expected_binned
+        )
