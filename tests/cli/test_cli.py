@@ -1,6 +1,8 @@
 """Tests for CLI commands in torch_brain.pipeline._cli module."""
 
 import importlib
+import json
+from importlib.metadata import PackagePath
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -240,17 +242,72 @@ class TestPrepareCommand:
             "processed_dir": str(processed_dir),
         }
 
-    def test_prepare_valid_brainset(self, mock_config):
+    @pytest.fixture
+    def make_mock_dist(self, tmp_path):
+        """Mock torch_brain distribution."""
+
+        def _make(install_type: dict | None):
+
+            if install_type == "pypi":
+                return SimpleNamespace(files=[], locate_file=lambda f: f)
+
+            if install_type == "directory":
+                src = tmp_path / "torch_brain"
+                src.mkdir()
+                url = src.as_uri()
+            elif install_type == "directory_with_spaces":
+                # as_uri() percent-encodes the space (%20), url2pathname decodes it
+                src = tmp_path / "my folder" / "torch_brain"
+                src.mkdir(parents=True)
+                url = src.as_uri()
+            elif install_type == "directory_two_slashes":
+                # Hand-written Windows form: file://C:/...
+                src = tmp_path / "torch_brain"
+                src.mkdir()
+                url = "file://" + src.as_posix()
+            elif install_type == "wheel":
+                archive = tmp_path / "torch_brain-0.1.0-py3-none-any.whl"
+                archive.touch()
+                url = archive.as_uri()
+            elif install_type == "tarball":
+                archive = tmp_path / "torch_brain-0.1.0.tar.gz"
+                archive.touch()
+                url = archive.as_uri()
+
+            path = tmp_path / "direct_url.json"
+            path.write_text(json.dumps({"url": url}))
+            return SimpleNamespace(
+                files=[PackagePath("direct_url.json")],
+                locate_file=lambda _f: path,
+            )
+
+        return _make
+
+    @pytest.mark.parametrize(
+        "install_type",
+        [
+            "pypi",
+            "directory",
+            "directory_with_spaces",
+            "directory_two_slashes",
+            "wheel",
+            "tarball",
+        ],
+    )
+    def test_prepare_valid_brainset(self, mock_config, make_mock_dist, install_type):
         """Test prepare command with valid brainset constructs correct subprocess call.
         Ensuring it passes through the inline metadata correctly.
         """
         runner = CliRunner()
+
+        dist = make_mock_dist(install_type)
 
         with (
             patch(
                 "torch_brain.pipeline._cli.cli_prepare.load_config",
                 return_value=mock_config,
             ),
+            patch("importlib.metadata.distribution", return_value=dist),
             patch(
                 "torch_brain.pipeline._cli.cli_prepare.subprocess.run"
             ) as mock_subprocess,
@@ -265,26 +322,51 @@ class TestPrepareCommand:
             call_args = mock_subprocess.call_args
             command = call_args[1].get("command") or call_args[0][0]
 
-            assert command[0] == "uv"
-            assert command[1] == "run"
-            assert command[2] == "--directory"
-            assert "pei_pandarinath_nlb_2021" in command[3]
-            assert "pipelines" in command[3]
-            assert command[4] == "--isolated"
-            assert command[5] == "--no-project"
-            assert command[6] == "--python"
-            assert command[7] == "3.11"
-            assert command[8] == "--with-editable"
-            assert ("torch_brain" in command[9]) and ("file://" in command[9])
-            assert command[10] == "--with"
-            assert command[11] == "dandi==0.74.0"
-            assert command[12] == "python"
-            assert command[13] == "-m"
-            assert command[14] == "torch_brain.pipeline.runner"
-            assert "pipeline.py" in command[15]
-            assert f"--raw-dir={mock_config['raw_dir']}" in command
-            assert f"--processed-dir={mock_config['processed_dir']}" in command
-            assert "-c4" in command  # default cores
+            # Expected command: strings must match exactly, tuple components must be present
+            if "directory" in install_type:
+                dependency_args = [
+                    "--with-editable",
+                    (
+                        "file://",
+                        "torch_brain",
+                    ),
+                    "--with",
+                    "dandi==0.74.0",
+                ]
+            elif install_type in ["wheel", "tarball"]:
+                dependency_args = [
+                    "--with",
+                    ("file://", "torch_brain", "dandi==0.74.0"),
+                ]
+            else:
+                dependency_args = ["--with", ("torch_brain", "dandi==0.74.0")]
+
+            expected_command = [
+                "uv",
+                "run",
+                "--directory",
+                ("pei_pandarinath_nlb_2021", "pipelines"),
+                "--isolated",
+                "--no-project",
+                "--python",
+                "3.11",
+                *dependency_args,
+                "python",
+                "-m",
+                "torch_brain.pipeline.runner",
+                ("pipeline.py",),
+                f"--raw-dir={mock_config['raw_dir']}",
+                f"--processed-dir={mock_config['processed_dir']}",
+                "-c4",  # default cores
+            ]
+
+            assert len(command) == len(expected_command)
+
+            for actual, expected in zip(command, expected_command, strict=True):
+                if isinstance(expected, tuple):
+                    assert all(part in actual for part in expected)
+                else:
+                    assert expected == actual
 
     def test_cli_raw_processed_dirs_override(self, tmp_path):
         """Test prepare command with raw and processed dirs overridden."""
