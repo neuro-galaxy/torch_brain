@@ -33,6 +33,19 @@ jobs:
       run: |
         source venv/bin/activate
         uv pip install pytest-github-actions-annotate-failures
+    - name: Cache POYO model checkpoint for testing
+      id: ckpt-cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/torch_brain
+        key: torch-brain-${{ hashFiles('tests/poyo_checkpoint.sha256') }}
+    - name: Download POYO checkpoint
+      if: steps.ckpt-cache.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p ~/.cache/torch_brain
+        cd ~/.cache/torch_brain
+        aws s3 cp --no-sign-request s3://torch-brain/model-zoo/$(awk '{print $2}' "$GITHUB_WORKSPACE/tests/poyo_checkpoint.sha256") .
+        sha256sum -c "$GITHUB_WORKSPACE/tests/poyo_checkpoint.sha256"
     - name: Test with pytest
       run: |
         source venv/bin/activate
