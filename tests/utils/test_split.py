@@ -84,7 +84,7 @@ class TestGenerateStratifiedFolds:
         all_test_starts_sorted = np.sort(all_test_starts)
         original_starts_sorted = np.sort(intervals.start)
 
-        assert np.allclose(all_test_starts_sorted, original_starts_sorted)
+        np.testing.assert_allclose(all_test_starts_sorted, original_starts_sorted)
 
     def test_generate_stratified_folds_custom_attribute(self):
         n_samples = 50
