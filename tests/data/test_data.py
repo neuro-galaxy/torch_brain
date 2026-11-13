@@ -811,3 +811,96 @@ def test_attribute_error_in_getattribute_reports_inner_name():
         data.x  # noqa: B018
     # the error should point at the inner missing attribute, not `x`
     assert exc_info.value.name == "_missing"
+
+
+def test_lazy_data_attribute_shapes_and_dtypes_retrieval(test_filepath):
+    data = Data(
+        session_id="session_0",
+        domain=Interval.from_list([(0, 3)]),
+        spikes=IrregularTimeSeries(
+            timestamps=[0.1, 0.2, 0.3, 2.1, 2.2, 2.3],
+            unit_index=[0, 0, 1, 0, 1, 2],
+            waveforms=np.zeros((6, 48)),
+            domain="auto",
+        ),
+        lfp=RegularTimeSeries(
+            raw=np.zeros((1000, 3)),
+            sampling_rate=250.0,
+        ),
+        units=ArrayDict(
+            id=["unit01", "unit02", "unit03"],
+            brain_region=["M1", "M1", "PMd"],
+        ),
+        trials=Interval(
+            start=[0.0, 1.0, 2.0],
+            end=[1.0, 2.0, 3.0],
+            go_cue_time=[0.5, 1.5, 2.5],
+            drifting_gratings_dir=[0, 45, 90],
+        ),
+        drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    del data
+
+    data = Data.load(test_filepath, lazy=True)
+
+    # get nested shape and dtype without loading
+    assert data.spikes.get_shape("unit_index") == (6,)
+    assert data.spikes.get_dtype("unit_index") == np.dtype("int64")
+    assert isinstance(data.spikes.__dict__["unit_index"], h5py.Dataset)
+
+    assert data.spikes.get_shape("waveforms") == (6, 48)
+    assert data.spikes.get_dtype("waveforms") == np.dtype("float64")
+    assert isinstance(data.spikes.__dict__["waveforms"], h5py.Dataset)
+
+    assert data.lfp.get_shape("raw") == (1000, 3)
+    assert data.lfp.get_dtype("raw") == np.dtype("float64")
+    assert isinstance(data.lfp.__dict__["raw"], h5py.Dataset)
+
+    assert data.units.get_shape("id") == (3,)
+    assert data.units.get_dtype("id") == "|S6"
+    assert isinstance(data.units.__dict__["id"], h5py.Dataset)
+
+    assert data.trials.get_shape("go_cue_time") == (3,)
+    assert data.trials.get_dtype("go_cue_time") == np.dtype("float64")
+    assert isinstance(data.trials.__dict__["go_cue_time"], h5py.Dataset)
+
+    # slice and check shape again
+    data = data.slice(1.0, 3.0)
+    assert data.spikes.get_shape("unit_index") == (3,)
+    assert data.spikes.get_shape("waveforms") == (3, 48)
+    assert data.lfp.get_shape("raw") == (500, 3)
+    assert data.units.get_shape("id") == (3,)
+    assert data.trials.get_shape("go_cue_time") == (2,)
+
+    # get shape and dtype of a non-existent or non-array attribute
+    with pytest.raises(AttributeError, match="has no attribute"):
+        data.spikes.get_shape("non_existent_attr")
+    with pytest.raises(AttributeError, match="has no attribute"):
+        data.spikes.get_dtype("non_existent_attr")
+
+    with pytest.raises(ValueError, match="array attributes"):
+        data.spikes.get_shape("_lazy_ops")
+    with pytest.raises(ValueError, match="array attributes"):
+        data.spikes.get_dtype("_lazy_ops")
+
+    # load and check shape and dtype again
+    data.materialize()
+
+    assert data.spikes.get_shape("unit_index") == data.spikes.unit_index.shape
+    assert data.spikes.get_dtype("unit_index") == data.spikes.unit_index.dtype
+
+    assert data.spikes.get_shape("waveforms") == data.spikes.waveforms.shape
+    assert data.spikes.get_dtype("waveforms") == data.spikes.waveforms.dtype
+
+    assert data.lfp.get_shape("raw") == data.lfp.raw.shape
+    assert data.lfp.get_dtype("raw") == data.lfp.raw.dtype
+
+    assert data.units.get_shape("id") == data.units.id.shape
+    assert data.units.get_dtype("id") == data.units.id.dtype
+
+    assert data.trials.get_shape("go_cue_time") == data.trials.go_cue_time.shape
+    assert data.trials.get_dtype("go_cue_time") == data.trials.go_cue_time.dtype

@@ -106,6 +106,66 @@ class ArrayDict:
             info = f"{info},"
         return f"{cls}(\n{info}\n)"
 
+    def get_shape(self, name):
+        r"""Returns the shape of the array attribute specified by :obj:`name`.
+
+        Args:
+            name: Name of the attribute to get the shape of. Must be an array attribute.
+
+        Returns:
+            tuple: Shape of the array attribute :obj:`name`.
+        """
+
+        if name not in self.__dict__:
+            raise AttributeError(
+                f"{self.__class__.__name__} object has no attribute '{name}'."
+            )
+
+        value = self.__dict__[name]
+        if isinstance(value, np.ndarray):
+            shape = value.shape
+        elif isinstance(value, h5py.Dataset):
+            original_shape = value.shape
+            first_dim = self._maybe_first_dim()
+            assert first_dim is not None, (
+                "first_dim is None, but the class has h5py.Dataset attributes. This should not happen."
+            )
+            assert first_dim <= original_shape[0], (
+                f"first_dim ({first_dim}) is greater than the dataset's first dimension ({original_shape[0]})."
+            )
+            shape = (first_dim, *original_shape[1:])
+        else:
+            raise ValueError(
+                f"Can only get the shape of array attributes. {name} is not an array."
+            )
+
+        return shape
+
+    def get_dtype(self, name):
+        r"""Returns the dtype of the elements in an array attribute specified by :obj:`name`.
+
+        Args:
+            name: Name of the attribute to get the dtype of. Must be an array attribute.
+
+        Returns:
+            tuple: Dtype of the array attribute :obj:`name`.
+        """
+
+        if name not in self.__dict__:
+            raise AttributeError(
+                f"{self.__class__.__name__} object has no attribute '{name}'."
+            )
+
+        value = self.__dict__[name]
+        if isinstance(value, (np.ndarray, h5py.Dataset)):
+            dtype = value.dtype
+        else:
+            raise ValueError(
+                f"Can only get the dtype of array attributes. {name} is not an array."
+            )
+
+        return dtype
+
     def select_by_mask(self, mask: ArrayLike):
         r"""Index all arrays with a boolean mask and return a copy.
 

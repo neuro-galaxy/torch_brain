@@ -196,6 +196,81 @@ def test_lazy_array_dict_select_by_mask_preserves_unicode_keys(test_filepath):
         assert np.array_equal(result.unit_id, np.array(["unit01", "unit03"]))
 
 
+def test_lazy_array_dict_shape_and_dtype_retrieval(test_filepath):
+    data = ArrayDict(
+        unit_id=np.array(["unit01", "unit02", "unit03", "unit04"]),
+        brain_region=np.array([b"PMd", b"M1", b"PMd", b"M1"]),
+        waveform_mean=np.tile(np.arange(4)[:, np.newaxis], (1, 48)),
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    del data
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyArrayDict.from_hdf5(f)
+
+        assert data.get_shape("waveform_mean") == (4, 48)
+        assert data.get_dtype("waveform_mean") == np.dtype("int64")
+        assert isinstance(data.__dict__["waveform_mean"], h5py.Dataset)
+
+        # check shape and dtype for the string arrays
+        assert data.get_shape("unit_id") == (4,)
+        assert data.get_shape("brain_region") == (4,)
+        assert data.get_dtype("unit_id") == "|S6"
+        assert data.get_dtype("brain_region") == "|S3"
+        assert isinstance(data.__dict__["unit_id"], h5py.Dataset)
+        assert isinstance(data.__dict__["brain_region"], h5py.Dataset)
+
+        # get shape and dtype of a non-existent or non-array attribute
+        with pytest.raises(AttributeError, match="has no attribute"):
+            data.get_shape("non_existent_attr")
+        with pytest.raises(AttributeError, match="has no attribute"):
+            data.get_dtype("non_existent_attr")
+
+        with pytest.raises(ValueError, match="array attributes"):
+            data.get_shape("_lazy_ops")
+        with pytest.raises(ValueError, match="array attributes"):
+            data.get_dtype("_lazy_ops")
+
+        mask = data.brain_region == b"PMd"
+        data = data.select_by_mask(mask)
+        assert data.get_shape("waveform_mean") == (2, 48)
+        assert data.get_dtype("waveform_mean") == np.dtype("int64")
+
+        # check dtype for brain_region after loading
+        assert data.get_dtype("brain_region") == data.brain_region.dtype
+
+        # mask again
+        mask = data.unit_id == "unit01"
+        data = data.select_by_mask(mask)
+
+        # check shape and dtype for unit_id after loading and masking
+        assert data.get_dtype("unit_id") == data.unit_id.dtype
+        assert data.get_shape("unit_id") == data.unit_id.shape
+
+        # check shape for waveform_mean after masking, but without loading
+        assert data.get_shape("waveform_mean") == (1, 48)
+        assert isinstance(data.__dict__["waveform_mean"], h5py.Dataset)
+
+        data.materialize()
+
+        # check shape and dtype after materialization
+        assert data.get_shape("waveform_mean") == data.waveform_mean.shape
+        assert data.get_dtype("waveform_mean") == data.waveform_mean.dtype
+        assert data.get_shape("unit_id") == data.unit_id.shape
+        assert data.get_dtype("unit_id") == data.unit_id.dtype
+        assert data.get_shape("brain_region") == data.brain_region.shape
+        assert data.get_dtype("brain_region") == data.brain_region.dtype
+
+        # get shape and dtype of a non-existent or non-array attribute
+        with pytest.raises(AttributeError, match="has no attribute"):
+            data.get_shape("non_existent_attr")
+        with pytest.raises(AttributeError, match="has no attribute"):
+            data.get_dtype("non_existent_attr")
+
+
 def test_array_dict_from_dataframe():
     # Create a sample DataFrame
     df = pd.DataFrame(
