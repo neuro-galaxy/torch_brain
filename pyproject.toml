@@ -44,7 +44,7 @@ dev = [
     "boto3~=1.41.0",
     "mne-bids",
     "dandi",
-    "ty>=0.0.100",
+    "ty>=0.0.102",
     "ruff",
 ]
 docs = [
@@ -95,7 +95,9 @@ include = ["torch_brain/data", "tests/data"]
 invalid-argument-type = "error"
 missing-attribute = "error"
 unsupported-operator = "ignore"
-invalid-return-type = "ignore"
+invalid-explicit-return = "ignore"
+invalid-implicit-return = "ignore"
+invalid-generator-return-type = "ignore"
 incompatible-method-override = "ignore"
 invalid-assignment = "ignore"
 not-iterable = "ignore"
