@@ -135,19 +135,32 @@ class Interval(ArrayDict):
             self._timekeys.remove(name)
 
     def __setattr__(self, name, value):
-        super().__setattr__(name, value)
-
         if name == "start" or name == "end":
-            value = self.__dict__[name]
+            value = np.asarray(value)
             assert value.ndim == 1, f"{name} must be 1D."
             assert ~np.isnan(value).any(), f"{name} cannot contain NaNs."
             if value.dtype != np.float64:
                 logging.warning(
                     f"Interval {name} is of type {value.dtype} not of type float64."
                 )
+            if name == "start" and "end" in self.__dict__ and (value > self.end).any():
+                raise ValueError(
+                    "start values cannot be greater than corresponding end values."
+                )
+            elif (
+                name == "end"
+                and "start" in self.__dict__
+                and (value < self.start).any()
+            ):
+                raise ValueError(
+                    "end values cannot be smaller than corresponding start values."
+                )
+
             # start or end have been updated, we no longer know whether it is sorted
             # or not
             self._sorted = None
+
+        super().__setattr__(name, value)
 
     def _shift(self, offset: float):
         r"""Subtracts ``offset`` from ``start`` and ``end`` in place.
@@ -186,19 +199,35 @@ class Interval(ArrayDict):
     def is_disjoint(self):
         r"""Returns :obj:`True` if the intervals are disjoint, i.e. if no two intervals
         overlap."""
-        # check if we already know that the sequence is sorted
-        # if lazy loading, we'll have to skip this check
+        # check if the interval is disjoint.
         if not self.is_sorted():
-            # make a copy and sorted it
-            tmp_copy = copy.deepcopy(self)
+            # make a copy with only start and end, and sort it
+            tmp_interval = Interval(start=self.start, end=self.end)
+            # attempt to sort it, if this fails, interval is not disjoint
+            try:
+                tmp_interval.sort()
+            except ValueError:
+                # ValueError is returned if intervals cannot be sorted
+                return False
+            return tmp_interval.is_disjoint()
+        return bool((self.end[:-1] <= self.start[1:]).all())
+
+    def is_sortable(self):
+        r"""Returns :obj:`True` if the intervals are sortable, i.e. if both start and end
+        times can be sorted."""
+        if not self.is_sorted():
+            # make a copy with only start and end, and sort it
+            tmp_interval = Interval(start=self.start, end=self.end)
             # attempt to sort it, this will fail if interval is not disjoint
             try:
-                tmp_copy.sort()
+                tmp_interval.sort()
             except ValueError:
-                # ValueError is returned if intervals are not disjoint
+                # ValueError is returned if intervals cannot be sorted
                 return False
-            return tmp_copy.is_disjoint()
-        return bool((self.end[:-1] <= self.start[1:]).all())
+
+            return tmp_interval.is_sorted()
+
+        return True
 
     def is_sorted(self):
         r"""Returns :obj:`True` if the intervals are sorted."""
@@ -212,21 +241,26 @@ class Interval(ArrayDict):
         return self._sorted
 
     def sort(self):
-        r"""Sorts the intervals, and reorders the other attributes accordingly.
-        This method is done in place.
+        r"""Sorts the intervals, by both start and end times, and reorders the other
+        attributes accordingly. This method is done in place.
 
-        .. note:: This method only works if the intervals are disjoint. If the intervals
-            overlap, it is not possible to resolve the order of the intervals, and this
-            method will raise an error.
+        .. note:: This method works for non disjoint intervals, but only if no
+        interval is strictly nested inside another, since their order is ambiguous.
+        In that case, this method will raise an error.
         """
         if not self.is_sorted():
-            sorted_indices = np.argsort(self.start)
+            sorted_indices = np.lexsort((self.end, self.start))
+            self._sorted = None
+            tmp_interval = Interval(
+                start=self.start[sorted_indices], end=self.end[sorted_indices]
+            )
+            if not tmp_interval.is_sorted():
+                raise ValueError(
+                    "Intervals cannot be sorted by both start and end times."
+                )
             for key in self.keys():
                 self.__dict__[key] = self.__dict__[key][sorted_indices]
-        self._sorted = True
 
-        if not self.is_disjoint():
-            raise ValueError("Intervals must be disjoint.")
         return self
 
     def slice(self, start: float, end: float, reset_origin: bool = True):
@@ -250,6 +284,7 @@ class Interval(ArrayDict):
         """
 
         if not self.is_sorted():
+            logging.warning("Interval is not sorted, sorting before slicing.")
             self.sort()
 
         # anything that starts before the end of the slicing window
@@ -260,6 +295,7 @@ class Interval(ArrayDict):
 
         out = self.__class__.__new__(self.__class__)
         out._timekeys = self._timekeys
+        out._sorted = True  # we know the sequence is sorted
 
         for key in self.keys():
             out.__dict__[key] = self.__dict__[key][idx_l:idx_r].copy()
@@ -296,6 +332,9 @@ class Interval(ArrayDict):
             interval: Interval object.
         """
 
+        if not self.is_sorted():
+            raise ValueError("Interval object must be sorted.")
+
         idx_l = np.searchsorted(self.end, interval.start, side="right")
         idx_r = np.searchsorted(self.start, interval.end)
 
@@ -321,6 +360,12 @@ class Interval(ArrayDict):
                 are already longer than :obj:`max_len`, there will be no dilation. By
                 default, there is no maximum length.
         """
+        if not self.is_sorted():
+            raise ValueError("Interval object must be sorted.")
+
+        if not self.is_disjoint():
+            raise ValueError("Interval object must be disjoint.")
+
         out = copy.deepcopy(self)
 
         if len(out) == 0:
@@ -353,7 +398,7 @@ class Interval(ArrayDict):
     def coalesce(self, eps: float = 1e-6):
         r"""Coalesces the intervals that are closer than :obj:`eps`. This operation
         returns a new :obj:`Interval` object, and does not resolve the existing
-        attributes.
+        attributes. The coalesced intervals will be sorted.
 
         Args:
             eps: The distance threshold for coalescing the intervals. Defaults to 1e-6.
@@ -370,20 +415,27 @@ class Interval(ArrayDict):
             array([ 3.,  7., 12.])
         """
         if len(self) == 0:
-            return Interval(start=np.array([]), end=np.array([]))
+            out = Interval(start=np.array([]), end=np.array([]))
+            out._sorted = True
+            return out
 
         if eps < 0:
             raise ValueError(f"eps must be non-negative, got eps={eps}")
 
-        if not self.is_sorted():
-            self.sort()
+        sorted_interval = self
+        if self.is_sorted():
+            sorted_interval = self
+        else:
+            sorted_interval = Interval(start=self.start, end=self.end).sort()
 
-        s, e = self.start, self.end
+        s, e = sorted_interval.start, sorted_interval.end
 
         mask = s[1:] >= e[:-1] + eps
         out_start = np.insert(s[1:][mask], 0, s[0], axis=0)
         out_end = np.append(e[:-1][mask], [e[-1]], axis=0)
-        return Interval(out_start, out_end)
+        out = Interval(out_start, out_end)
+        out._sorted = True  # we know the sequence is sorted
+        return out
 
     def difference(self, other):
         r"""Returns the difference between two sets of intervals. The intervals are
@@ -401,9 +453,14 @@ class Interval(ArrayDict):
         _empty = np.array([], dtype=np.float64)
 
         if len(self) == 0:
-            return Interval(start=_empty, end=_empty)
+            out = Interval(start=_empty, end=_empty)
+            out._sorted = True
+            return out
+
         if len(other) == 0:
-            return Interval(start=self.start.copy(), end=self.end.copy())
+            out = Interval(start=self.start.copy(), end=self.end.copy())
+            out._sorted = True  # we know the sequence is sorted
+            return out
 
         out_starts = []
         out_ends = []
@@ -432,9 +489,15 @@ class Interval(ArrayDict):
                 out_starts.append(gap_starts[keep])
                 out_ends.append(gap_ends[keep])
 
-        if not out_starts:
-            return Interval(start=_empty, end=_empty)
-        return Interval(start=np.concatenate(out_starts), end=np.concatenate(out_ends))
+        if out_starts:
+            out = Interval(
+                start=np.concatenate(out_starts), end=np.concatenate(out_ends)
+            )
+        else:
+            out = Interval(start=_empty, end=_empty)
+
+        out._sorted = True  # we know the sequence is sorted
+        return out
 
     def split(
         self,
@@ -599,9 +662,10 @@ class Interval(ArrayDict):
             val = getattr(self, key)
             kwargs[key] = val[original_indices]
 
-        return Interval(
+        out = Interval(
             start=all_starts, end=all_ends, timekeys=self.timekeys(), **kwargs
         )
+        return out
 
     @classmethod
     def linspace(cls, start: float, end: float, steps: int):
@@ -626,11 +690,18 @@ class Interval(ArrayDict):
               end: array, shape=(100,), dtype=float64,
             )
         """
+        if not (start <= end):
+            raise ValueError(
+                f"start must be less than end, got start={start}, end={end}"
+            )
+
         timestamps = np.linspace(start, end, steps + 1, dtype=np.float64)
-        return cls(
+        out = cls(
             start=timestamps[:-1],
             end=timestamps[1:],
         )
+        out._sorted = True  # we know the sequence is sorted
+        return out
 
     @classmethod
     def arange(cls, start: float, end: float, step: float, include_end: bool = True):
@@ -645,6 +716,14 @@ class Interval(ArrayDict):
             step: Step size.
             include_end: Whether to include a partial interval at the end.
         """
+        if not (start <= end):
+            raise ValueError(
+                f"start must be less than end, got start={start}, end={end}"
+            )
+
+        if step <= 0:
+            raise ValueError(f"step must be positive, got step={step}")
+
         whole_steps = np.floor((end - start) / step).astype(int)
         timestamps = np.linspace(
             start, start + whole_steps * step, whole_steps + 1, dtype=np.float64
@@ -653,10 +732,13 @@ class Interval(ArrayDict):
         if include_end and timestamps[-1] < end:
             timestamps = np.append(timestamps, end)
 
-        return cls(
+        out = cls(
             start=timestamps[:-1],
             end=timestamps[1:],
         )
+        out._sorted = True  # we know the sequence is sorted
+
+        return out
 
     @classmethod
     def from_dataframe(cls, df: pd.DataFrame, unsigned_to_long: bool = True, **kwargs):
@@ -749,6 +831,7 @@ class Interval(ArrayDict):
         file.attrs["_unicode_keys"] = np.array(_unicode_keys, dtype="S")
         file.attrs["timekeys"] = np.array(self._timekeys, dtype="S")
         file.attrs["object"] = self.__class__.__name__
+        file.attrs["_sorted"] = self.is_sorted()
 
     @classmethod
     def from_hdf5(cls, file):
@@ -799,7 +882,9 @@ class Interval(ArrayDict):
         _empty = np.array([], dtype=np.float64)
 
         if len(self) == 0 or len(other) == 0:
-            return Interval(start=_empty, end=_empty)
+            out = Interval(start=_empty, end=_empty)
+            out._sorted = True  # we know the sequence is sorted
+            return out
 
         if len(self) == 1 and len(other) == 1:
             start = max(self.start[0], other.start[0])
@@ -808,11 +893,15 @@ class Interval(ArrayDict):
                 self.start[0] == self.end[0] or other.start[0] == other.end[0]
             )
             if start < end or (start == end and either_is_point):
-                return Interval(
+                out = Interval(
                     start=np.array([start], dtype=np.float64),
                     end=np.array([end], dtype=np.float64),
                 )
-            return Interval(start=_empty, end=_empty)
+            else:
+                out = Interval(start=_empty, end=_empty)
+
+            out._sorted = True  # we know the sequence is sorted
+            return out
 
         def _intersect_one(a, b):
             left = np.searchsorted(self.end, a, side="left")
@@ -826,17 +915,21 @@ class Interval(ArrayDict):
             e[-1] = min(e[-1], b)
             is_point_in_self = self.start[left:right] == self.end[left:right]
             keep = (s < e) | ((s == e) & (is_point_in_self | (a == b)))
-            if not np.any(keep):
+            if np.any(keep):
+                return s[keep], e[keep]
+            else:
                 return None
-            return s[keep], e[keep]
 
         # This path is common during slicing where `other` is a single window.
         if len(other) == 1:
             overlap = _intersect_one(other.start[0], other.end[0])
             if overlap is None:
-                return Interval(start=_empty, end=_empty)
-            s, e = overlap
-            return Interval(start=s, end=e)
+                out = Interval(start=_empty, end=_empty)
+            else:
+                s, e = overlap
+                out = Interval(start=s, end=e)
+            out._sorted = True  # we know the sequence is sorted
+            return out
 
         out_starts = []
         out_ends = []
@@ -848,9 +941,15 @@ class Interval(ArrayDict):
                 out_starts.append(s)
                 out_ends.append(e)
 
-        if not out_starts:
-            return Interval(start=_empty, end=_empty)
-        return Interval(start=np.concatenate(out_starts), end=np.concatenate(out_ends))
+        if out_starts:
+            out = Interval(
+                start=np.concatenate(out_starts), end=np.concatenate(out_ends)
+            )
+        else:
+            out = Interval(start=_empty, end=_empty)
+        out._sorted = True  # we know the sequence is sorted
+
+        return out
 
     def __or__(self, other):
         """Union of two intervals.
@@ -867,7 +966,9 @@ class Interval(ArrayDict):
             raise ValueError("right Interval object must be sorted.")
 
         if len(self) == 0 and len(other) == 0:
-            return Interval(start=np.array([]), end=np.array([]))
+            out = Interval(start=np.array([]), end=np.array([]))
+            out._sorted = True  # we know the sequence is sorted
+            return out
 
         all_starts = np.concatenate([self.start, other.start])
         all_ends = np.concatenate([self.end, other.end])
@@ -890,7 +991,10 @@ class Interval(ArrayDict):
         out_ends = running_end[group_last]
 
         keep = out_starts <= out_ends
-        return Interval(start=out_starts[keep], end=out_ends[keep])
+        out = Interval(start=out_starts[keep], end=out_ends[keep])
+        out._sorted = True  # we know the sequence is sorted
+
+        return out
 
 
 class LazyInterval(Interval):
@@ -1004,9 +1108,6 @@ class LazyInterval(Interval):
     def _resolve_start_end_after_slice(self):
         start, end, origin_translation = self._lazy_ops["unresolved_slice"]
 
-        # todo confirm sorted
-        # assert self.is_sorted()
-
         # anything that starts before the end of the slicing window
         start_vec = self.__dict__["start"][:]
         end_vec = self.__dict__["end"][:]
@@ -1039,10 +1140,17 @@ class LazyInterval(Interval):
                 relative to the new start time when the slice is applied.
                 Defaults to :obj:`True`.
         """
+        if self._sorted is not True:
+            if self.is_sorted() is False:
+                raise ValueError("Interval object must be sorted.")
+            # in case the LazyInterval is now a fully-loaded Interval
+            return self.slice(start, end, reset_origin=reset_origin)
+
         out = self.__class__.__new__(self.__class__)
         out._unicode_keys = self._unicode_keys
         out._lazy_ops = {}
         out._timekeys = self._timekeys
+        out._sorted = True  # we know the sequence is sorted
 
         if isinstance(self.__dict__["start"], h5py.Dataset):
             assert "slice" not in self._lazy_ops, "slice already exists"
@@ -1064,9 +1172,6 @@ class LazyInterval(Interval):
             # out.__dict__["end"] = self.__dict__["end"]
 
         else:
-            if not self.is_sorted():
-                self.sort()
-
             # anything that starts before the end of the slicing window
             idx_l = np.searchsorted(self.end, start, side="right")
 
@@ -1144,7 +1249,12 @@ class LazyInterval(Interval):
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._timekeys = file.attrs["timekeys"].astype(str).tolist()
-        obj._sorted = True
+
+        try:
+            obj._sorted = bool(file.attrs["_sorted"])
+        except KeyError:
+            obj._sorted = None  # for backwards compatibility
+
         obj._lazy_ops = {}
 
         return obj
