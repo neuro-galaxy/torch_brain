@@ -99,6 +99,11 @@ to handle the data side. You define a `Dataset` (built on the time-slicing
 above) and a `Sampler` that decides which slices become samples. The
 `DataLoader`, model, and loop are ordinary PyTorch.
 
+```bash
+# Download one of the smaller datasets to get started (~50 MB raw + processed).
+brainsets prepare pei_pandarinath_nlb_2021 --raw-dir data/raw --processed-dir data/processed
+```
+
 ```python
 import torch
 from torch.utils.data import DataLoader
@@ -107,8 +112,8 @@ from torch_brain.samplers import TrialSampler
 from torch_brain.utils import bin_spikes
 
 
-# torch_brain ships loaders for many public datasets.
-# Subclass one to define the two things specific to your task:
+# torch_brain ships loaders for several public datasets.
+# Subclass your dataset of interest to define the two things specific to your task:
 class MyDataset(PeiPandarinathNLB2021):
     # 1. WHICH windows count as samples (here, one per behavioral trial).
     def get_sampling_intervals(self):
