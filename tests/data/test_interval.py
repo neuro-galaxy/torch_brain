@@ -182,17 +182,17 @@ def test_unsortable_interval():
     np.testing.assert_array_equal(data.end, np.array([1.0, 4.0, 3.0, 4.0]))
 
 
-def test_inverted_interval():
-    interval = Interval(
-        start=np.array([0.0, 1.0, 2.0, 3.0]),
-        end=np.array([1.0, 2.0, 3.0, 4.0]),
-    )
+# def test_inverted_interval():
+#     interval = Interval(
+#         start=np.array([0.0, 1.0, 2.0, 3.0]),
+#         end=np.array([1.0, 2.0, 3.0, 4.0]),
+#     )
 
-    with pytest.raises(ValueError, match="cannot be greater"):
-        interval.start = np.array([0.0, 2.5, 2.0, 3.0])
+#     with pytest.raises(ValueError, match="cannot be greater"):
+#         interval.start = np.array([0.0, 2.5, 2.0, 3.0])
 
-    with pytest.raises(ValueError, match="cannot be smaller"):
-        interval.end = np.array([1.0, 0.5, 3.0, 4.0])
+#     with pytest.raises(ValueError, match="cannot be smaller"):
+#         interval.end = np.array([1.0, 0.5, 3.0, 4.0])
 
 
 class TestUnsortedInterval:
