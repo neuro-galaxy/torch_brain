@@ -42,49 +42,49 @@ def test_regulartimeseries(test_filepath):
         assert data.domain.end[0] == 10.0
 
         data_slice = data.slice(2.0, 8.0, reset_origin=False)
-        assert np.allclose(data_slice.lfp, data.lfp[20:80])
+        np.testing.assert_allclose(data_slice.lfp, data.lfp[20:80])
         assert data_slice.domain.start[0] == 2.0
         assert data_slice.domain.end[0] == 8.0
-        assert np.allclose(data_slice.timestamps, np.arange(2.0, 8.0, 0.1))
+        np.testing.assert_allclose(data_slice.timestamps, np.arange(2.0, 8.0, 0.1))
 
         data_slice = data.slice(2.0, 8.0, reset_origin=True)
-        assert np.allclose(data_slice.lfp, data.lfp[20:80])
+        np.testing.assert_allclose(data_slice.lfp, data.lfp[20:80])
         assert data_slice.domain.start[0] == 0.0
         assert data_slice.domain.end[0] == 6.0
-        assert np.allclose(data_slice.timestamps, np.arange(0.0, 6.0, 0.1))
+        np.testing.assert_allclose(data_slice.timestamps, np.arange(0.0, 6.0, 0.1))
 
         # try slicing with skewed start and end
         # the sampling frequency is 10
         data_slice = data.slice(2.03, 8.09, reset_origin=True)
-        assert np.allclose(data_slice.lfp, data.lfp[21:81])
-        assert np.allclose(data_slice.domain.start, np.array([0.07]))
-        assert np.allclose(data_slice.domain.end, np.array([6.07]))
-        assert np.allclose(data_slice.timestamps, np.arange(0.07, 5.98, 0.1))
+        np.testing.assert_allclose(data_slice.lfp, data.lfp[21:81])
+        np.testing.assert_allclose(data_slice.domain.start, np.array([0.07]))
+        np.testing.assert_allclose(data_slice.domain.end, np.array([6.07]))
+        np.testing.assert_allclose(data_slice.timestamps, np.arange(0.07, 5.98, 0.1))
 
         data_slice = data.slice(4.051, 12.0, reset_origin=True)
-        assert np.allclose(data_slice.lfp, data.lfp[41:])
-        assert np.allclose(data_slice.domain.start, np.array([0.049]))
-        assert np.allclose(data_slice.domain.end, np.array([5.949]))
-        assert np.allclose(data_slice.timestamps, np.arange(0.049, 5.88, 0.1))
+        np.testing.assert_allclose(data_slice.lfp, data.lfp[41:])
+        np.testing.assert_allclose(data_slice.domain.start, np.array([0.049]))
+        np.testing.assert_allclose(data_slice.domain.end, np.array([5.949]))
+        np.testing.assert_allclose(data_slice.timestamps, np.arange(0.049, 5.88, 0.1))
 
         data_slice = data.slice(4.051, 12.0, reset_origin=False)
-        assert np.allclose(data_slice.lfp, data.lfp[41:])
-        assert np.allclose(data_slice.domain.start, np.array([4.1]))
-        assert np.allclose(data_slice.domain.end, np.array([10.0]))
-        assert np.allclose(data_slice.timestamps, np.arange(4.1, 10.0, 0.1))
+        np.testing.assert_allclose(data_slice.lfp, data.lfp[41:])
+        np.testing.assert_allclose(data_slice.domain.start, np.array([4.1]))
+        np.testing.assert_allclose(data_slice.domain.end, np.array([10.0]))
+        np.testing.assert_allclose(data_slice.timestamps, np.arange(4.1, 10.0, 0.1))
 
         data_slice = data.slice(-10, 20, reset_origin=False)
-        assert np.allclose(data_slice.lfp, data.lfp)
-        assert np.allclose(data_slice.domain.start, data.domain.start)
-        assert np.allclose(data_slice.domain.end, data.domain.end)
-        assert np.allclose(data_slice.timestamps, data.timestamps)
+        np.testing.assert_allclose(data_slice.lfp, data.lfp)
+        np.testing.assert_allclose(data_slice.domain.start, data.domain.start)
+        np.testing.assert_allclose(data_slice.domain.end, data.domain.end)
+        np.testing.assert_allclose(data_slice.timestamps, data.timestamps)
 
         domain_start, domain_end = data.domain.start[0], data.domain.end[-1]
         data_slice = data.slice(domain_start, domain_end, reset_origin=False)
-        assert np.allclose(data_slice.lfp, data.lfp)
-        assert np.allclose(data_slice.domain.start, data.domain.start)
-        assert np.allclose(data_slice.domain.end, data.domain.end)
-        assert np.allclose(data_slice.timestamps, data.timestamps)
+        np.testing.assert_allclose(data_slice.lfp, data.lfp)
+        np.testing.assert_allclose(data_slice.domain.start, data.domain.start)
+        np.testing.assert_allclose(data_slice.domain.end, data.domain.end)
+        np.testing.assert_allclose(data_slice.timestamps, data.timestamps)
 
     data = RegularTimeSeries(lfp=np.random.random((100, 48)), sampling_rate=10)
 
@@ -113,15 +113,15 @@ def test_regulartimeseries(test_filepath):
         assert data.domain.end[0] == 11.0
 
         data_slice = data.slice(3.0, 9.0)
-        assert np.allclose(data_slice.lfp, data.lfp[20:80])
+        np.testing.assert_allclose(data_slice.lfp, data.lfp[20:80])
 
         # try slicing with skewed start and end
         # the sampling frequency is 10
         data_slice = data.slice(3.03, 9.09)
-        assert np.allclose(data_slice.lfp, data.lfp[21:81])
+        np.testing.assert_allclose(data_slice.lfp, data.lfp[21:81])
 
         data_slice = data.slice(5.051, 13.0)
-        assert np.allclose(data_slice.lfp, data.lfp[41:])
+        np.testing.assert_allclose(data_slice.lfp, data.lfp[41:])
 
     _test_regulartimeseries_with_domain_start(data)
 
@@ -224,7 +224,7 @@ def test_lazy_regular_timeseries(test_filepath):
         # make sure that the attribute is loaded
         assert isinstance(data.gamma, np.ndarray)
         # make sure that the attribute is loaded correctly
-        assert np.allclose(data.gamma, gamma)
+        np.testing.assert_allclose(data.gamma, gamma)
         # make sure that the loaded attribute replaced the h5py.Dataset reference
         assert isinstance(data.__dict__["gamma"], np.ndarray)
         assert all(
@@ -247,7 +247,7 @@ def test_lazy_regular_timeseries(test_filepath):
         data = data.slice(1.0, 3.0)
         assert len(data.gamma) == 500
         assert len(data.timestamps) == 500
-        assert np.allclose(data.gamma, gamma[250:750])
+        np.testing.assert_allclose(data.gamma, gamma[250:750])
 
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
@@ -257,8 +257,8 @@ def test_lazy_regular_timeseries(test_filepath):
 
         data = data.slice(0.5, 1.5)
 
-        assert np.allclose(data.gamma, gamma[375:625])
-        assert np.allclose(data.raw, raw[375:625])
+        np.testing.assert_allclose(data.gamma, gamma[375:625])
+        np.testing.assert_allclose(data.raw, raw[375:625])
 
     with h5py.File(test_filepath, "r") as f:
         data = LazyRegularTimeSeries.from_hdf5(f)
@@ -268,7 +268,7 @@ def test_lazy_regular_timeseries(test_filepath):
         # even if no other attribute is loaded
         assert len(data.timestamps) == 500
 
-        assert np.allclose(data.timestamps, np.arange(0.0, 2.0, 1 / 250.0))
+        np.testing.assert_allclose(data.timestamps, np.arange(0.0, 2.0, 1 / 250.0))
 
     with h5py.File(test_filepath, "r") as f:
         data = LazyRegularTimeSeries.from_hdf5(f)
@@ -279,23 +279,23 @@ def test_lazy_regular_timeseries(test_filepath):
         assert len(data.timestamps) == 500
         assert data.domain.start[0] == 1.0
         assert data.domain.end[0] == 3.0
-        assert np.allclose(data.timestamps, np.arange(1.0, 3.0, 1 / 250.0))
+        np.testing.assert_allclose(data.timestamps, np.arange(1.0, 3.0, 1 / 250.0))
 
         data = data.slice(1.0, 2.0, reset_origin=True)
         assert data.domain.start[0] == 0.0
         assert data.domain.end[0] == 1.0
         assert len(data.timestamps) == 250
-        assert np.allclose(data.timestamps, np.arange(0.0, 1.0, 1 / 250.0))
+        np.testing.assert_allclose(data.timestamps, np.arange(0.0, 1.0, 1 / 250.0))
 
-        assert np.allclose(data.gamma, gamma[250:500])
+        np.testing.assert_allclose(data.gamma, gamma[250:500])
 
         data = LazyRegularTimeSeries.from_hdf5(f)
         data = data.slice(1.0, 3.0, reset_origin=False)
         data = data.slice(1.0, 2.0, reset_origin=True)
 
         assert len(data.timestamps) == 250
-        assert np.allclose(data.timestamps, np.arange(0.0, 1.0, 1 / 250.0))
-        assert np.allclose(data.gamma, gamma[250:500])
+        np.testing.assert_allclose(data.timestamps, np.arange(0.0, 1.0, 1 / 250.0))
+        np.testing.assert_allclose(data.gamma, gamma[250:500])
 
         data = LazyRegularTimeSeries.from_hdf5(f)
         timestamps = data.timestamps
@@ -303,7 +303,7 @@ def test_lazy_regular_timeseries(test_filepath):
         data = data.slice(1.0, 3.0, reset_origin=False)
 
         assert len(data.timestamps) == 500
-        assert np.allclose(data.timestamps, np.arange(1.0, 3.0, 1 / 250.0))
+        np.testing.assert_allclose(data.timestamps, np.arange(1.0, 3.0, 1 / 250.0))
 
 
 @pytest.mark.parametrize("load_between", [False, True])
@@ -362,7 +362,7 @@ def test_slice_numerical_instability():
     start = 0.0
     end = 1.0 - eps
     sliced_ts = ts.slice(start, end, reset_origin=False)
-    assert np.allclose(sliced_ts.timestamps, np.array([0.0, 0.25, 0.5, 0.75]))
+    np.testing.assert_allclose(sliced_ts.timestamps, np.array([0.0, 0.25, 0.5, 0.75]))
     assert sliced_ts.domain.start[0] == 0.0
     assert sliced_ts.domain.end[-1] == 1.0
 
@@ -371,7 +371,7 @@ def test_slice_numerical_instability():
     start = 0.25
     end = 1.0 + eps
     sliced_ts = ts.slice(start, end, reset_origin=False)
-    assert np.allclose(sliced_ts.timestamps, np.array([0.25, 0.5, 0.75]))
+    np.testing.assert_allclose(sliced_ts.timestamps, np.array([0.25, 0.5, 0.75]))
     assert sliced_ts.domain.start[0] == 0.25
     assert sliced_ts.domain.end[-1] == 1.0
 
@@ -380,7 +380,7 @@ def test_slice_numerical_instability():
     start = 0.25 + eps
     end = 1.0
     sliced_ts = ts.slice(start, end, reset_origin=False)
-    assert np.allclose(sliced_ts.timestamps, np.array([0.25, 0.5, 0.75]))
+    np.testing.assert_allclose(sliced_ts.timestamps, np.array([0.25, 0.5, 0.75]))
     assert sliced_ts.domain.start[0] == 0.25
     assert sliced_ts.domain.end[-1] == 1.0
 
@@ -389,7 +389,7 @@ def test_slice_numerical_instability():
     start = 0.5
     end = np.nextafter(1.0, 0.0)  # The largest possible float strictly less than 1.0
     sliced_ts = ts.slice(start, end, reset_origin=False)
-    assert np.allclose(sliced_ts.timestamps, np.array([0.5, 0.75]))
+    np.testing.assert_allclose(sliced_ts.timestamps, np.array([0.5, 0.75]))
     assert sliced_ts.domain.start[0] == 0.5
     assert sliced_ts.domain.end[-1] == 1.0
 
@@ -397,7 +397,7 @@ def test_slice_numerical_instability():
     start = 0.5
     end = np.nextafter(1.0, 2.0)  # The largest possible float strictly more than 1.0
     sliced_ts = ts.slice(start, end, reset_origin=False)
-    assert np.allclose(sliced_ts.timestamps, np.array([0.5, 0.75]))
+    np.testing.assert_allclose(sliced_ts.timestamps, np.array([0.5, 0.75]))
 
     # `start` is the smallest possible float strictly greater than 0.25
     # Should still treat `start` as 0.25 and INCLUDED it
@@ -406,7 +406,7 @@ def test_slice_numerical_instability():
     )  # The largest possible float strictly more than 0.25
     end = 1.0
     sliced_ts = ts.slice(start, end, reset_origin=False)
-    assert np.allclose(sliced_ts.timestamps, np.array([0.25, 0.5, 0.75]))
+    np.testing.assert_allclose(sliced_ts.timestamps, np.array([0.25, 0.5, 0.75]))
     assert sliced_ts.domain.start[0] == 0.25
     assert sliced_ts.domain.end[-1] == 1.0
 
@@ -418,7 +418,9 @@ def test_slice_numerical_instability():
     start = 0.1 + 0.2  # 0.30000000000000004
     end = start * 3  # 0.9000000000000001
     sliced_ts = ts.slice(start, end, reset_origin=False)
-    assert np.allclose(sliced_ts.timestamps, np.array([0.3, 0.4, 0.5, 0.6, 0.7, 0.8]))
+    np.testing.assert_allclose(
+        sliced_ts.timestamps, np.array([0.3, 0.4, 0.5, 0.6, 0.7, 0.8])
+    )
     assert sliced_ts.domain.start[0] == 0.3
     assert sliced_ts.domain.end[-1] == 0.9
 

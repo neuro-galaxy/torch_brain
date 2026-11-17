@@ -23,7 +23,9 @@ def test_irregular_timeseries_concat():
     data = concat([data1, data2])
 
     assert len(data) == len(data1) + len(data2)
-    assert np.all(data.unit_index == np.array([0, 0, 1, 0, 1, 2, 0, 1, 2]))
-    assert np.all(
-        data.timestamps == np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
+    np.testing.assert_array_equal(
+        data.unit_index, np.array([0, 0, 1, 0, 1, 2, 0, 1, 2])
+    )
+    np.testing.assert_array_equal(
+        data.timestamps, np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
     )

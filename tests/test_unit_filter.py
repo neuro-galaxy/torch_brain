@@ -46,15 +46,15 @@ def test_unit_filter_w_keyword(mock_data):
     data_t = transform(mock_data)
 
     expected_unit_ids = ["unsorted_a", "unsorted_b", "unsorted_c"]
-    assert np.array_equal(data_t.units.id, expected_unit_ids)
+    np.testing.assert_array_equal(data_t.units.id, expected_unit_ids)
 
     expected_unit_index = [0] * 20 + [1] * 10 + [2] * 70
-    assert np.array_equal(data_t.spikes.unit_index, expected_unit_index)
+    np.testing.assert_array_equal(data_t.spikes.unit_index, expected_unit_index)
 
     expected_timestamps = np.concatenate(
         [np.arange(10, 30), np.arange(100, 110), np.arange(130, 200)]
     )
-    assert np.array_equal(data_t.spikes.timestamps, expected_timestamps)
+    np.testing.assert_array_equal(data_t.spikes.timestamps, expected_timestamps)
 
 
 def test_unit_filter_w_regex(mock_data):
@@ -64,12 +64,12 @@ def test_unit_filter_w_regex(mock_data):
     data_t = transform(mock_data)
 
     expected_unit_ids = ["sorted_a", "sorted_b", "sorted_c"]
-    assert np.array_equal(data_t.units.id, expected_unit_ids)
+    np.testing.assert_array_equal(data_t.units.id, expected_unit_ids)
 
     expected_unit_index = [0] * 10 + [1] * 70 + [2] * 20
-    assert np.array_equal(data_t.spikes.unit_index, expected_unit_index)
+    np.testing.assert_array_equal(data_t.spikes.unit_index, expected_unit_index)
 
     expected_timestamps = np.concatenate(
         [np.arange(10), np.arange(30, 100), np.arange(110, 130)]
     )
-    assert np.array_equal(data_t.spikes.timestamps, expected_timestamps)
+    np.testing.assert_array_equal(data_t.spikes.timestamps, expected_timestamps)
