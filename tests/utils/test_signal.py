@@ -27,5 +27,5 @@ def test_cube_to_long():
     assert len(units.id) == 2
     assert len(trials) == 1
     assert len(trials[0].timestamps) == 5
-    assert np.allclose(np.array([1, 1, 1, 0, 0]), trials[0].unit_index)
-    assert np.allclose(np.array([5, 5, 5, 6, 6]), trials[0].timestamps)
+    np.testing.assert_allclose(np.array([1, 1, 1, 0, 0]), trials[0].unit_index)
+    np.testing.assert_allclose(np.array([5, 5, 5, 6, 6]), trials[0].timestamps)

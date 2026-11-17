@@ -36,8 +36,8 @@ def test_irregular_timeseries():
     assert data.keys() == ["timestamps", "unit_index", "waveforms"]
     assert len(data) == 6
 
-    assert np.allclose(data.domain.start, np.array([0.1]))
-    assert np.allclose(data.domain.end, np.array([0.6]))
+    np.testing.assert_allclose(data.domain.start, np.array([0.1]))
+    np.testing.assert_allclose(data.domain.end, np.array([0.6]))
 
     assert data.is_sorted()
 
@@ -67,7 +67,7 @@ def test_irregular_timeseries_select_by_mask():
     data = data.select_by_mask(mask)
 
     assert len(data) == 3
-    assert np.array_equal(data.timestamps, np.array([0.1, 0.2, 0.4]))
+    np.testing.assert_array_equal(data.timestamps, np.array([0.1, 0.2, 0.4]))
 
 
 def test_irregular_timeseries_slice():
@@ -82,8 +82,8 @@ def test_irregular_timeseries_slice():
     data = data.slice(0.2, 0.5)
 
     assert len(data) == 3
-    assert np.allclose(data.timestamps, np.array([0.0, 0.1, 0.2]))
-    assert np.allclose(data.unit_index, np.array([0, 1, 0]))
+    np.testing.assert_allclose(data.timestamps, np.array([0.0, 0.1, 0.2]))
+    np.testing.assert_allclose(data.unit_index, np.array([0, 1, 0]))
 
     assert len(data.domain) == 1
     assert data.domain.start[0] == 0.0
@@ -92,8 +92,8 @@ def test_irregular_timeseries_slice():
     data = data.slice(0.05, 0.25)
 
     assert len(data) == 2
-    assert np.allclose(data.timestamps, np.array([0.05, 0.15]))
-    assert np.allclose(data.unit_index, np.array([1, 0]))
+    np.testing.assert_allclose(data.timestamps, np.array([0.05, 0.15]))
+    np.testing.assert_allclose(data.unit_index, np.array([1, 0]))
 
     assert len(data.domain) == 1
     assert data.domain.start[0] == 0.0
@@ -110,8 +110,8 @@ def test_irregular_timeseries_slice():
     data = data.slice(0.2, 0.5, reset_origin=False)
 
     assert len(data) == 3
-    assert np.allclose(data.timestamps, np.array([0.2, 0.3, 0.4]))
-    assert np.allclose(data.unit_index, np.array([0, 1, 0]))
+    np.testing.assert_allclose(data.timestamps, np.array([0.2, 0.3, 0.4]))
+    np.testing.assert_allclose(data.unit_index, np.array([0, 1, 0]))
 
     assert len(data.domain) == 1
     assert data.domain.start[0] == 0.2
@@ -120,8 +120,8 @@ def test_irregular_timeseries_slice():
     data = data.slice(0.25, 0.45, reset_origin=False)
 
     assert len(data) == 2
-    assert np.allclose(data.timestamps, np.array([0.3, 0.4]))
-    assert np.allclose(data.unit_index, np.array([1, 0]))
+    np.testing.assert_allclose(data.timestamps, np.array([0.3, 0.4]))
+    np.testing.assert_allclose(data.unit_index, np.array([1, 0]))
 
     assert len(data.domain) == 1
     assert data.domain.start[0] == 0.25
@@ -165,8 +165,8 @@ def test_irregular_timeseries_unsorted_slice():
     data = data.slice(0.2, 0.6, reset_origin=False)
 
     assert len(data) == 4
-    assert np.allclose(data.timestamps, np.array([0.2, 0.3, 0.4, 0.5]))
-    assert np.allclose(data.unit_index, np.array([1, 2, 3, 4]))
+    np.testing.assert_allclose(data.timestamps, np.array([0.2, 0.3, 0.4, 0.5]))
+    np.testing.assert_allclose(data.unit_index, np.array([1, 2, 3, 4]))
 
     assert len(data.domain) == 1
     assert data.domain.start[0] == 0.2
@@ -189,12 +189,12 @@ def test_irregular_timeseries_select_by_interval():
     data = data.select_by_interval(selection_interval)
 
     assert len(data) == 3
-    assert np.allclose(data.timestamps, np.array([0.2, 0.3, 0.5]))
-    assert np.allclose(data.unit_index, np.array([0, 1, 1]))
+    np.testing.assert_allclose(data.timestamps, np.array([0.2, 0.3, 0.5]))
+    np.testing.assert_allclose(data.unit_index, np.array([0, 1, 1]))
 
     assert len(data.domain) == 2
-    assert np.allclose(data.domain.start, selection_interval.start)
-    assert np.allclose(data.domain.end, selection_interval.end)
+    np.testing.assert_allclose(data.domain.start, selection_interval.start)
+    np.testing.assert_allclose(data.domain.end, selection_interval.end)
 
 
 def test_irregular_timeseries_unsorted_select_by_interval():
@@ -213,12 +213,12 @@ def test_irregular_timeseries_unsorted_select_by_interval():
     data = data.select_by_interval(selection_interval)
 
     assert len(data) == 3
-    assert np.allclose(data.timestamps, np.array([0.3, 0.2, 0.5]))
-    assert np.allclose(data.unit_index, np.array([1, 2, 4]))
+    np.testing.assert_allclose(data.timestamps, np.array([0.3, 0.2, 0.5]))
+    np.testing.assert_allclose(data.unit_index, np.array([1, 2, 4]))
 
     assert len(data.domain) == 2
-    assert np.allclose(data.domain.start, selection_interval.start)
-    assert np.allclose(data.domain.end, selection_interval.end)
+    np.testing.assert_allclose(data.domain.start, selection_interval.start)
+    np.testing.assert_allclose(data.domain.end, selection_interval.end)
 
 
 def test_irregular_timeseries_lazy_select_by_interval(test_filepath):
@@ -246,12 +246,12 @@ def test_irregular_timeseries_lazy_select_by_interval(test_filepath):
         data = data.select_by_interval(selection_interval)
 
         assert len(data) == 3
-        assert np.allclose(data.timestamps, np.array([0.2, 0.3, 0.5]))
-        assert np.allclose(data.unit_index, np.array([0, 1, 1]))
+        np.testing.assert_allclose(data.timestamps, np.array([0.2, 0.3, 0.5]))
+        np.testing.assert_allclose(data.unit_index, np.array([0, 1, 1]))
 
         assert len(data.domain) == 2
-        assert np.allclose(data.domain.start, selection_interval.start)
-        assert np.allclose(data.domain.end, selection_interval.end)
+        np.testing.assert_allclose(data.domain.start, selection_interval.start)
+        np.testing.assert_allclose(data.domain.end, selection_interval.end)
 
 
 def test_irregular_timeseries_sortedness():
@@ -262,7 +262,7 @@ def test_irregular_timeseries_sortedness():
     assert not a.is_sorted()
 
     a = a.slice(0, 1.5)
-    assert np.allclose(a.timestamps, np.array([0, 1]))
+    np.testing.assert_allclose(a.timestamps, np.array([0, 1]))
 
 
 def test_lazy_irregular_timeseries(test_filepath):
@@ -293,7 +293,7 @@ def test_lazy_irregular_timeseries(test_filepath):
         # make sure that the attribute is loaded
         assert isinstance(unit_index, np.ndarray)
         # make sure that the attribute is loaded correctly
-        assert np.array_equal(unit_index, np.array([0, 0, 1, 0, 1, 2]))
+        np.testing.assert_array_equal(unit_index, np.array([0, 0, 1, 0, 1, 2]))
         # make sure that the loaded attribute replaced the h5py.Dataset reference
         assert isinstance(data.__dict__["unit_index"], np.ndarray)
         assert all(
@@ -329,15 +329,15 @@ def test_lazy_irregular_timeseries(test_filepath):
             if key != "unit_index"
         )
 
-        assert np.array_equal(data.timestamps, np.array([0.1, 0.2, 0.4, 0.6]))
+        np.testing.assert_array_equal(data.timestamps, np.array([0.1, 0.2, 0.4, 0.6]))
         assert len(data) == 4
 
-        assert np.array_equal(data._lazy_ops["mask"], mask)
+        np.testing.assert_array_equal(data._lazy_ops["mask"], mask)
 
         # load another attribute
         values = data.values
         assert isinstance(values, np.ndarray)
-        assert np.array_equal(values, np.array([0, 1, 3, 5]))
+        np.testing.assert_array_equal(values, np.array([0, 1, 3, 5]))
 
         # mask again!
         mask = data.unit_index == 2
@@ -350,11 +350,11 @@ def test_lazy_irregular_timeseries(test_filepath):
         assert isinstance(data2.__dict__["waveforms"], h5py.Dataset)
 
         # check if the mask was applied twice correctly!
-        assert np.allclose(data2.waveforms, np.zeros((1, 48)))
+        np.testing.assert_allclose(data2.waveforms, np.zeros((1, 48)))
 
         # make sure that data is still intact
         assert len(data) == 4
-        assert np.array_equal(data.unit_index, np.array([0, 0, 0, 2]))
+        np.testing.assert_array_equal(data.unit_index, np.array([0, 0, 0, 2]))
 
         # try rewriting an attribute
         data.unit_index = np.array([0, -1, 2])[data.unit_index]
@@ -365,7 +365,7 @@ def test_lazy_irregular_timeseries(test_filepath):
         data = LazyIrregularTimeSeries.from_hdf5(f)
 
         data = data.slice(0.15, 0.6)
-        assert np.allclose(data.timestamps, np.array([0.05, 0.15, 0.25, 0.35]))
+        np.testing.assert_allclose(data.timestamps, np.array([0.05, 0.15, 0.25, 0.35]))
 
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
@@ -373,13 +373,13 @@ def test_lazy_irregular_timeseries(test_filepath):
             if key != "timestamps"
         )
 
-        assert np.allclose(data.values, np.array([1, 2, 3, 4]))
+        np.testing.assert_allclose(data.values, np.array([1, 2, 3, 4]))
 
         data = data.slice(0.15, 0.3)
 
-        assert np.allclose(data.timestamps, np.array([0.0, 0.1]))
-        assert np.allclose(data.values, np.array([2, 3]))
-        assert np.allclose(data.unit_index, np.array([1, 0]))
+        np.testing.assert_allclose(data.timestamps, np.array([0.0, 0.1]))
+        np.testing.assert_allclose(data.values, np.array([2, 3]))
+        np.testing.assert_allclose(data.unit_index, np.array([1, 0]))
 
     del data
 
@@ -392,8 +392,8 @@ def test_lazy_irregular_timeseries(test_filepath):
         mask = data.unit_index == 0
         data = data.select_by_mask(mask)
 
-        assert np.allclose(data.timestamps, np.array([0.05, 0.25]))
-        assert np.allclose(data.values, np.array([1, 3]))
+        np.testing.assert_allclose(data.timestamps, np.array([0.05, 0.25]))
+        np.testing.assert_allclose(data.values, np.array([1, 3]))
 
 
 @pytest.mark.parametrize("load_between", [False, True])
@@ -460,8 +460,8 @@ def test_irregular_select_by_mask_preserves_private_attrs():
 
     assert result.timekeys() == ["timestamps", "go_cue_time"]
     assert result._sorted is True
-    assert np.array_equal(result.domain.start, data.domain.start)
-    assert np.array_equal(result.domain.end, data.domain.end)
+    np.testing.assert_array_equal(result.domain.start, data.domain.start)
+    np.testing.assert_array_equal(result.domain.end, data.domain.end)
 
 
 def test_lazy_irregular_select_by_mask_preserves_private_attrs(test_filepath):
@@ -487,8 +487,8 @@ def test_lazy_irregular_select_by_mask_preserves_private_attrs(test_filepath):
 
         assert result._sorted is True
         assert result.timekeys() == ["timestamps", "go_cue_time"]
-        assert np.array_equal(result.domain.start, data.domain.start)
-        assert np.array_equal(result.domain.end, data.domain.end)
+        np.testing.assert_array_equal(result.domain.start, data.domain.start)
+        np.testing.assert_array_equal(result.domain.end, data.domain.end)
 
 
 def test_irregular_set_domain():
@@ -502,8 +502,8 @@ def test_irregular_set_domain():
     )
 
     # auto domain should span the full timestamp range
-    assert np.allclose(data.domain.start, np.array([0.1]))
-    assert np.allclose(data.domain.end, np.array([0.6]))
+    np.testing.assert_allclose(data.domain.start, np.array([0.1]))
+    np.testing.assert_allclose(data.domain.end, np.array([0.6]))
 
     # setting with a non-Interval should raise
     with pytest.raises(ValueError):
@@ -515,13 +515,13 @@ def test_irregular_set_domain():
 
     # setting with an unsorted domain should auto-sort
     data.domain = Interval(start=np.array([0.5, 0.1]), end=np.array([0.6, 0.2]))
-    assert np.allclose(data.domain.start, np.array([0.1, 0.5]))
-    assert np.allclose(data.domain.end, np.array([0.2, 0.6]))
+    np.testing.assert_allclose(data.domain.start, np.array([0.1, 0.5]))
+    np.testing.assert_allclose(data.domain.end, np.array([0.2, 0.6]))
 
     # setting with a valid Interval should work
     data.domain = Interval(start=0.2, end=0.4)
-    assert np.allclose(data.domain.start, np.array([0.2]))
-    assert np.allclose(data.domain.end, np.array([0.4]))
+    np.testing.assert_allclose(data.domain.start, np.array([0.2]))
+    np.testing.assert_allclose(data.domain.end, np.array([0.4]))
 
 
 class TestIrregularTimeSeriesCoercion:
@@ -534,8 +534,8 @@ class TestIrregularTimeSeriesCoercion:
         assert isinstance(data.timestamps, np.ndarray)
         assert isinstance(data.unit_index, np.ndarray)
         assert len(data) == 6
-        assert np.allclose(data.domain.start, np.array([0.1]))
-        assert np.allclose(data.domain.end, np.array([0.6]))
+        np.testing.assert_allclose(data.domain.start, np.array([0.1]))
+        np.testing.assert_allclose(data.domain.end, np.array([0.6]))
 
     def test_tuple(self):
         data = IrregularTimeSeries(
@@ -556,5 +556,5 @@ class TestIrregularTimeSeriesCoercion:
         assert isinstance(data.timestamps, np.ndarray)
         assert isinstance(data.unit_index, np.ndarray)
         assert len(data) == 6
-        assert np.allclose(data.domain.start, np.array([0.1]))
-        assert np.allclose(data.domain.end, np.array([0.6]))
+        np.testing.assert_allclose(data.domain.start, np.array([0.1]))
+        np.testing.assert_allclose(data.domain.end, np.array([0.6]))

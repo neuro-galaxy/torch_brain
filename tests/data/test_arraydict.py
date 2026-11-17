@@ -70,8 +70,8 @@ def test_array_dict_select_by_mask():
     data = data.select_by_mask(mask)
 
     assert len(data) == 2
-    assert np.array_equal(data.unit_id, np.array(["unit01", "unit03"]))
-    assert np.array_equal(data.brain_region, np.array(["PMd", "PMd"]))
+    np.testing.assert_array_equal(data.unit_id, np.array(["unit01", "unit03"]))
+    np.testing.assert_array_equal(data.brain_region, np.array(["PMd", "PMd"]))
 
     mask = np.array([False, False])
     data = data.select_by_mask(mask)
@@ -106,7 +106,7 @@ def test_lazy_array_dict(test_filepath):
         # make sure that the attribute is loaded
         assert isinstance(unit_id, np.ndarray)
         # make sure that the attribute is loaded correctly
-        assert np.array_equal(
+        np.testing.assert_array_equal(
             unit_id, np.array(["unit01", "unit02", "unit03", "unit04"])
         )
         # make sure that the loaded attribute replaced the h5py.Dataset reference
@@ -144,15 +144,15 @@ def test_lazy_array_dict(test_filepath):
             if key != "brain_region"
         )
 
-        assert np.array_equal(data.brain_region, np.array([b"PMd", b"PMd"]))
+        np.testing.assert_array_equal(data.brain_region, np.array([b"PMd", b"PMd"]))
         assert len(data) == 2
 
-        assert np.array_equal(data._lazy_ops["mask"], mask)
+        np.testing.assert_array_equal(data._lazy_ops["mask"], mask)
 
         # load another attribute
         unit_id = data.unit_id
         assert isinstance(unit_id, np.ndarray)
-        assert np.array_equal(unit_id, np.array(["unit01", "unit03"]))
+        np.testing.assert_array_equal(unit_id, np.array(["unit01", "unit03"]))
 
         # mask again!
         mask = data.unit_id == "unit01"
@@ -165,11 +165,11 @@ def test_lazy_array_dict(test_filepath):
         assert isinstance(data2.__dict__["waveform_mean"], h5py.Dataset)
 
         # check if the mask was applied twice correctly!
-        assert np.allclose(data2.waveform_mean, np.zeros((1, 48)))
+        np.testing.assert_allclose(data2.waveform_mean, np.zeros((1, 48)))
 
         # make sure that data is still intact
         assert len(data) == 2
-        assert np.array_equal(data.unit_id, np.array(["unit01", "unit03"]))
+        np.testing.assert_array_equal(data.unit_id, np.array(["unit01", "unit03"]))
 
 
 def test_lazy_array_dict_select_by_mask_preserves_unicode_keys(test_filepath):
@@ -193,7 +193,7 @@ def test_lazy_array_dict_select_by_mask_preserves_unicode_keys(test_filepath):
         assert result._unicode_keys == ["unit_id"]
         # materialize and confirm dtype is restored to unicode
         assert result.unit_id.dtype.kind == "U"
-        assert np.array_equal(result.unit_id, np.array(["unit01", "unit03"]))
+        np.testing.assert_array_equal(result.unit_id, np.array(["unit01", "unit03"]))
 
 
 def test_array_dict_from_dataframe():
@@ -210,17 +210,17 @@ def test_array_dict_from_dataframe():
     a = ArrayDict.from_dataframe(df)
 
     # Assert the correctness of the conversion
-    assert np.array_equal(a.col1, np.array([1, 2, 3]))
-    assert np.array_equal(a.col2, np.array([4, 5, 6]))
-    assert np.array_equal(a.col3, np.array(["a", "b", "c"]))
+    np.testing.assert_array_equal(a.col1, np.array([1, 2, 3]))
+    np.testing.assert_array_equal(a.col2, np.array([4, 5, 6]))
+    np.testing.assert_array_equal(a.col3, np.array(["a", "b", "c"]))
 
     # Test unsigned_to_long parameter
     df_unsigned = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]}, dtype=np.uint32)
 
     a_unsigned = ArrayDict.from_dataframe(df_unsigned, unsigned_to_long=False)
 
-    assert np.array_equal(a_unsigned.col1, np.array([1, 2, 3], dtype=np.int32))
-    assert np.array_equal(a_unsigned.col2, np.array([4, 5, 6], dtype=np.int32))
+    np.testing.assert_array_equal(a_unsigned.col1, np.array([1, 2, 3], dtype=np.int32))
+    np.testing.assert_array_equal(a_unsigned.col2, np.array([4, 5, 6], dtype=np.int32))
 
     df_non_ascii = pd.DataFrame(
         {
@@ -253,7 +253,7 @@ class TestArrayDictCoercion:
         assert isinstance(data.values, np.ndarray)
         assert isinstance(data.labels, np.ndarray)
         assert isinstance(data.matrix, np.ndarray)
-        assert np.array_equal(data.values, np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(data.values, np.array([1.0, 2.0, 3.0]))
         assert data.matrix.shape == (3, 2)
 
     def test_tuple(self):
@@ -263,13 +263,13 @@ class TestArrayDictCoercion:
         )
         assert isinstance(data.values, np.ndarray)
         assert isinstance(data.labels, np.ndarray)
-        assert np.array_equal(data.values, np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(data.values, np.array([1.0, 2.0, 3.0]))
 
     def test_setattr(self):
         data = ArrayDict()
         data.values = [1.0, 2.0, 3.0]
         assert isinstance(data.values, np.ndarray)
-        assert np.array_equal(data.values, np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(data.values, np.array([1.0, 2.0, 3.0]))
 
     def test_supports_array(self):
         class MyArray:
@@ -281,7 +281,7 @@ class TestArrayDictCoercion:
 
         data = ArrayDict(values=MyArray([1.0, 2.0, 3.0]))
         assert isinstance(data.values, np.ndarray)
-        assert np.array_equal(data.values, np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(data.values, np.array([1.0, 2.0, 3.0]))
 
     def test_pandas_series(self):
         data = ArrayDict(
@@ -290,7 +290,7 @@ class TestArrayDictCoercion:
         )
         assert isinstance(data.values, np.ndarray)
         assert isinstance(data.labels, np.ndarray)
-        assert np.array_equal(data.values, np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(data.values, np.array([1.0, 2.0, 3.0]))
 
     def test_invalid(self):
         data = ArrayDict()

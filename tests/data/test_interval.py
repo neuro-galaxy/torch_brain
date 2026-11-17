@@ -65,8 +65,8 @@ def test_interval_select_by_mask():
     data = data.select_by_mask(mask)
 
     assert len(data) == 3
-    assert np.array_equal(data.start, np.array([2, 5, 7]))
-    assert np.array_equal(data.end, np.array([3, 6, 8]))
+    np.testing.assert_array_equal(data.start, np.array([2, 5, 7]))
+    np.testing.assert_array_equal(data.end, np.array([3, 6, 8]))
 
 
 def test_interval_slice():
@@ -81,18 +81,18 @@ def test_interval_slice():
     data = data.slice(2.0, 6.0)
 
     assert len(data) == 4
-    assert np.allclose(data.start, np.array([0, 1, 2, 3]))
-    assert np.allclose(data.end, np.array([1, 2, 3, 4]))
-    assert np.allclose(data.go_cue_time, np.array([0.5, 1.5, 2.5, 3.5]))
-    assert np.allclose(data.drifting_gratings_dir, np.array([90, 45, 180, 90]))
+    np.testing.assert_allclose(data.start, np.array([0, 1, 2, 3]))
+    np.testing.assert_allclose(data.end, np.array([1, 2, 3, 4]))
+    np.testing.assert_allclose(data.go_cue_time, np.array([0.5, 1.5, 2.5, 3.5]))
+    np.testing.assert_allclose(data.drifting_gratings_dir, np.array([90, 45, 180, 90]))
 
     data = data.slice(0.0, 2.0)
 
     assert len(data) == 2
-    assert np.allclose(data.start, np.array([0, 1]))
-    assert np.allclose(data.end, np.array([1, 2]))
-    assert np.allclose(data.go_cue_time, np.array([0.5, 1.5]))
-    assert np.allclose(data.drifting_gratings_dir, np.array([90, 45]))
+    np.testing.assert_allclose(data.start, np.array([0, 1]))
+    np.testing.assert_allclose(data.end, np.array([1, 2]))
+    np.testing.assert_allclose(data.go_cue_time, np.array([0.5, 1.5]))
+    np.testing.assert_allclose(data.drifting_gratings_dir, np.array([90, 45]))
 
     data = Interval(
         start=np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
@@ -105,18 +105,18 @@ def test_interval_slice():
     data = data.slice(2.0, 6.0, reset_origin=False)
 
     assert len(data) == 4
-    assert np.allclose(data.start, np.array([2, 3, 4, 5]))
-    assert np.allclose(data.end, np.array([3, 4, 5, 6]))
-    assert np.allclose(data.go_cue_time, np.array([2.5, 3.5, 4.5, 5.5]))
-    assert np.allclose(data.drifting_gratings_dir, np.array([90, 45, 180, 90]))
+    np.testing.assert_allclose(data.start, np.array([2, 3, 4, 5]))
+    np.testing.assert_allclose(data.end, np.array([3, 4, 5, 6]))
+    np.testing.assert_allclose(data.go_cue_time, np.array([2.5, 3.5, 4.5, 5.5]))
+    np.testing.assert_allclose(data.drifting_gratings_dir, np.array([90, 45, 180, 90]))
 
     data = data.slice(2.0, 4.0, reset_origin=True)
 
     assert len(data) == 2
-    assert np.allclose(data.start, np.array([0, 1]))
-    assert np.allclose(data.end, np.array([1, 2]))
-    assert np.allclose(data.go_cue_time, np.array([0.5, 1.5]))
-    assert np.allclose(data.drifting_gratings_dir, np.array([90, 45]))
+    np.testing.assert_allclose(data.start, np.array([0, 1]))
+    np.testing.assert_allclose(data.end, np.array([1, 2]))
+    np.testing.assert_allclose(data.go_cue_time, np.array([0.5, 1.5]))
+    np.testing.assert_allclose(data.drifting_gratings_dir, np.array([90, 45]))
 
 
 @pytest.mark.parametrize(
@@ -180,7 +180,7 @@ def test_lazy_interval(test_filepath):
         # make sure that the attribute is loaded
         assert isinstance(start, np.ndarray)
         # make sure that the attribute is loaded correctly
-        assert np.array_equal(start, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]))
+        np.testing.assert_array_equal(start, np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]))
         # make sure that the loaded attribute replaced the h5py.Dataset reference
         assert isinstance(data.__dict__["start"], np.ndarray)
         assert all(
@@ -217,14 +217,14 @@ def test_lazy_interval(test_filepath):
         )
 
         assert len(data) == 3
-        assert np.array_equal(data.start, np.array([2, 5, 7]))
+        np.testing.assert_array_equal(data.start, np.array([2, 5, 7]))
 
-        assert np.array_equal(data._lazy_ops["mask"], mask)
+        np.testing.assert_array_equal(data._lazy_ops["mask"], mask)
 
         # load another attribute
         go_cue_time = data.go_cue_time
         assert isinstance(go_cue_time, np.ndarray)
-        assert np.array_equal(go_cue_time, np.array([2.5, 5.5, 7.5]))
+        np.testing.assert_array_equal(go_cue_time, np.array([2.5, 5.5, 7.5]))
 
         # mask again!
         mask = data.start >= 6
@@ -237,11 +237,11 @@ def test_lazy_interval(test_filepath):
         assert isinstance(data2.__dict__["end"], h5py.Dataset)
 
         # check if the mask was applied twice correctly!
-        assert np.allclose(data2.end, np.array([8]))
+        np.testing.assert_allclose(data2.end, np.array([8]))
 
         # make sure that data is still intact
         assert len(data) == 3
-        assert np.array_equal(data.end, np.array([3, 6, 8]))
+        np.testing.assert_array_equal(data.end, np.array([3, 6, 8]))
 
     del data, data2
 
@@ -251,8 +251,8 @@ def test_lazy_interval(test_filepath):
         data = data.slice(2.0, 6.0)
 
         assert len(data) == 4
-        assert np.allclose(data.start, np.array([0, 1, 2, 3]))
-        assert np.allclose(data.end, np.array([1, 2, 3, 4]))
+        np.testing.assert_allclose(data.start, np.array([0, 1, 2, 3]))
+        np.testing.assert_allclose(data.end, np.array([1, 2, 3, 4]))
 
         assert all(
             isinstance(data.__dict__[key], h5py.Dataset)
@@ -260,15 +260,15 @@ def test_lazy_interval(test_filepath):
             if key not in ["start", "end"]
         )
 
-        assert np.allclose(data.go_cue_time, np.array([0.5, 1.5, 2.5, 3.5]))
+        np.testing.assert_allclose(data.go_cue_time, np.array([0.5, 1.5, 2.5, 3.5]))
 
         data = data.slice(0.0, 2.0)
 
         assert len(data) == 2
-        assert np.allclose(data.start, np.array([0, 1]))
-        assert np.allclose(data.end, np.array([1, 2]))
-        assert np.allclose(data.go_cue_time, np.array([0.5, 1.5]))
-        assert np.allclose(data.drifting_gratings_dir, np.array([90, 45]))
+        np.testing.assert_allclose(data.start, np.array([0, 1]))
+        np.testing.assert_allclose(data.end, np.array([1, 2]))
+        np.testing.assert_allclose(data.go_cue_time, np.array([0.5, 1.5]))
+        np.testing.assert_allclose(data.drifting_gratings_dir, np.array([90, 45]))
 
     del data
 
@@ -281,7 +281,7 @@ def test_lazy_interval(test_filepath):
         mask = data.drifting_gratings_dir == 90
         data = data.select_by_mask(mask)
 
-        assert np.allclose(data.start, np.array([0, 3]))
+        np.testing.assert_allclose(data.start, np.array([0, 3]))
 
 
 @pytest.mark.parametrize("load_between", [False, True])
@@ -388,10 +388,10 @@ def test_interval_select_by_interval():
     data = data.select_by_interval(selection_interval)
 
     assert len(data) == 2
-    assert np.allclose(data.start, np.array([0.0, 2.0]))
-    assert np.allclose(data.end, np.array([1.0, 3.0]))
-    assert np.allclose(data.go_cue_time, np.array([0.5, 2.5]))
-    assert np.allclose(data.drifting_gratings_dir, np.array([0, 90]))
+    np.testing.assert_allclose(data.start, np.array([0.0, 2.0]))
+    np.testing.assert_allclose(data.end, np.array([1.0, 3.0]))
+    np.testing.assert_allclose(data.go_cue_time, np.array([0.5, 2.5]))
+    np.testing.assert_allclose(data.drifting_gratings_dir, np.array([0, 90]))
 
 
 def test_interval_iter():
@@ -415,29 +415,25 @@ def test_interval_iter():
 def test_linspace():
     result = Interval.linspace(0, 1, 10)
     expected = Interval(np.arange(0, 1.0, 0.1), np.arange(0.1, 1.1, 0.1))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
 
 def test_arange():
     result = Interval.arange(0.0, 1.0, 0.1)
     expected = Interval(np.arange(0, 1.0, 0.1), np.arange(0.1, 1.1, 0.1))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     result = Interval.arange(0.0, 1.0, 0.3)
     expected = Interval(np.array([0.0, 0.3, 0.6, 0.9]), np.array([0.3, 0.6, 0.9, 1.0]))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     result = Interval.arange(0.0, 1.0, 0.3, include_end=False)
     expected = Interval(np.array([0.0, 0.3, 0.6]), np.array([0.3, 0.6, 0.9]))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
 
 def test_split():
@@ -452,18 +448,16 @@ def test_split():
     ]
     assert len(result) == len(expected)
     for i in range(len(result)):
-        assert np.allclose(result[i].start, expected[i].start) and np.allclose(
-            result[i].end, expected[i].end
-        )
+        np.testing.assert_allclose(result[i].start, expected[i].start)
+        np.testing.assert_allclose(result[i].end, expected[i].end)
 
     # split into 2 sets using a float list
     result = interval.split([0.8, 0.2])
     expected = [Interval.linspace(0, 0.8, 8), Interval.linspace(0.8, 1, 2)]
     assert len(result) == len(expected)
     for i in range(len(result)):
-        assert np.allclose(result[i].start, expected[i].start) and np.allclose(
-            result[i].end, expected[i].end
-        )
+        np.testing.assert_allclose(result[i].start, expected[i].start)
+        np.testing.assert_allclose(result[i].end, expected[i].end)
 
     # shuffle
     result = interval.split([0.5, 0.5], shuffle=True, random_seed=42)
@@ -481,12 +475,8 @@ def test_split():
     ]
     assert len(result) == len(expected)
     for i in range(len(result)):
-        assert np.allclose(result[i].start, expected[i].start) and np.allclose(
-            result[i].end, expected[i].end
-        ), (
-            f"result: {result[i].start} {result[i].end} "
-            f"expected: {expected[i].start} {expected[i].end}"
-        )
+        np.testing.assert_allclose(result[i].start, expected[i].start)
+        np.testing.assert_allclose(result[i].end, expected[i].end)
 
 
 def test_and():
@@ -855,29 +845,25 @@ def test_dilate():
 
     result = data.dilate(0.5)
     expected = Interval(np.array([0.5, 4.5, 10.5]), np.array([2.5, 7.5, 12.5]))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     result = data.dilate(4.0)
     expected = Interval(np.array([-3.0, 3.5, 9.0]), np.array([3.5, 9.0, 16.0]))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     result = data.dilate(4.0, max_len=2.0)
     expected = Interval(np.array([0.5, 5.0, 10.5]), np.array([2.5, 7.0, 12.5]))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     data = Interval(np.array([]), np.array([]))
 
     result = data.dilate(0.5)
     expected = Interval(np.array([]), np.array([]))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
 
 def test_is_dijoint_is_sorted():
@@ -945,8 +931,8 @@ class TestIntervalCoalesce:
         assert len(coalesced_data) == 1
         # only keep start and end
         assert len(coalesced_data.keys()) == 2
-        assert np.allclose(coalesced_data.start, np.array([0.0]))
-        assert np.allclose(coalesced_data.end, np.array([3.0]))
+        np.testing.assert_allclose(coalesced_data.start, np.array([0.0]))
+        np.testing.assert_allclose(coalesced_data.end, np.array([3.0]))
 
     def test_mixed_overlapping_and_separated(self):
         data = Interval(
@@ -956,8 +942,10 @@ class TestIntervalCoalesce:
 
         coalesced_data = data.coalesce()
         assert len(coalesced_data) == 4
-        assert np.allclose(coalesced_data.start, np.array([0.0, 1.0, 4.0, 10.0]))
-        assert np.allclose(coalesced_data.end, np.array([0.5, 2.5, 6.0, 11.0]))
+        np.testing.assert_allclose(
+            coalesced_data.start, np.array([0.0, 1.0, 4.0, 10.0])
+        )
+        np.testing.assert_allclose(coalesced_data.end, np.array([0.5, 2.5, 6.0, 11.0]))
 
     def test_already_disjoint(self):
         data = Interval(
@@ -967,15 +955,15 @@ class TestIntervalCoalesce:
 
         coalesced_data = data.coalesce()
         assert len(coalesced_data) == 3
-        assert np.allclose(coalesced_data.start, np.array([0.0, 5.0, 10.0]))
-        assert np.allclose(coalesced_data.end, np.array([1.0, 6.0, 11.0]))
+        np.testing.assert_allclose(coalesced_data.start, np.array([0.0, 5.0, 10.0]))
+        np.testing.assert_allclose(coalesced_data.end, np.array([1.0, 6.0, 11.0]))
 
     def test_empty_interval(self):
         data = Interval(start=np.array([]), end=np.array([]))
         coalesced_data = data.coalesce()
         assert len(coalesced_data) == 0
-        assert np.array_equal(coalesced_data.start, np.array([]))
-        assert np.array_equal(coalesced_data.end, np.array([]))
+        np.testing.assert_array_equal(coalesced_data.start, np.array([]))
+        np.testing.assert_array_equal(coalesced_data.end, np.array([]))
 
     def test_custom_eps(self):
         data = Interval(
@@ -990,8 +978,8 @@ class TestIntervalCoalesce:
         # eps=0.01: gap of 0.001 is within threshold, first two coalesce
         coalesced_custom = data.coalesce(eps=0.01)
         assert len(coalesced_custom) == 2
-        assert np.allclose(coalesced_custom.start, np.array([0.0, 5.0]))
-        assert np.allclose(coalesced_custom.end, np.array([2.0, 6.0]))
+        np.testing.assert_allclose(coalesced_custom.start, np.array([0.0, 5.0]))
+        np.testing.assert_allclose(coalesced_custom.end, np.array([2.0, 6.0]))
 
     def test_gap_exactly_at_eps(self):
         eps = 0.01
@@ -1003,8 +991,8 @@ class TestIntervalCoalesce:
         # gap == eps is NOT less than eps, so intervals stay separate
         coalesced_data = data.coalesce(eps=eps)
         assert len(coalesced_data) == 2
-        assert np.allclose(coalesced_data.start, np.array([0.0, 1.0 + eps]))
-        assert np.allclose(coalesced_data.end, np.array([1.0, 2.0]))
+        np.testing.assert_allclose(coalesced_data.start, np.array([0.0, 1.0 + eps]))
+        np.testing.assert_allclose(coalesced_data.end, np.array([1.0, 2.0]))
 
     def test_gap_just_under_eps(self):
         eps = 0.01
@@ -1017,8 +1005,8 @@ class TestIntervalCoalesce:
         # gap < eps, so intervals coalesce
         coalesced_data = data.coalesce(eps=eps)
         assert len(coalesced_data) == 1
-        assert np.allclose(coalesced_data.start, np.array([0.0]))
-        assert np.allclose(coalesced_data.end, np.array([2.0]))
+        np.testing.assert_allclose(coalesced_data.start, np.array([0.0]))
+        np.testing.assert_allclose(coalesced_data.end, np.array([2.0]))
 
     def test_negative_eps_raises(self):
         data = Interval(
@@ -1036,9 +1024,8 @@ def test_subdivide():
         start=np.array([0.0, 2.0, 4.0, 6.0, 8.0]),
         end=np.array([2.0, 4.0, 6.0, 8.0, 10.0]),
     )
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     interval = Interval(
         start=np.array([0.0, 20.0]),
@@ -1049,9 +1036,8 @@ def test_subdivide():
         start=np.array([0.0, 2.5, 5.0, 7.5, 20.0, 22.5, 25.0, 27.5]),
         end=np.array([2.5, 5.0, 7.5, 10.0, 22.5, 25.0, 27.5, 30.0]),
     )
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     interval = Interval(start=np.array([0.0]), end=np.array([10.5]))
     result = interval.subdivide(3.0)
@@ -1059,30 +1045,26 @@ def test_subdivide():
         start=np.array([0.0, 3.0, 6.0, 9.0]),
         end=np.array([3.0, 6.0, 9.0, 10.5]),
     )
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     interval = Interval(start=np.array([0.0]), end=np.array([0.5]))
     result = interval.subdivide(2.0)
     expected = Interval(start=np.array([0.0]), end=np.array([0.5]))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     interval = Interval(start=np.array([]), end=np.array([]))
     result = interval.subdivide(2.0)
     expected = Interval(start=np.array([]), end=np.array([]))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     interval = Interval(start=np.array([0.0]), end=np.array([2.0]))
     result = interval.subdivide(2.0)
     expected = Interval(start=np.array([0.0]), end=np.array([2.0]))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
 
 def test_subdivide_drop_short():
@@ -1092,9 +1074,8 @@ def test_subdivide_drop_short():
         start=np.array([0.0, 3.0, 6.0, 9.0]),
         end=np.array([3.0, 6.0, 9.0, 10.5]),
     )
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     interval = Interval(start=np.array([0.0]), end=np.array([10.5]))
     result = interval.subdivide(3.0, drop_short=True)
@@ -1102,9 +1083,8 @@ def test_subdivide_drop_short():
         start=np.array([0.0, 3.0, 6.0]),
         end=np.array([3.0, 6.0, 9.0]),
     )
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     interval = Interval(start=np.array([0.0, 20.0]), end=np.array([10.5, 25.0]))
     result = interval.subdivide(3.0, drop_short=True)
@@ -1112,16 +1092,14 @@ def test_subdivide_drop_short():
         start=np.array([0.0, 3.0, 6.0, 20.0]),
         end=np.array([3.0, 6.0, 9.0, 23.0]),
     )
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
     interval = Interval(start=np.array([0.0]), end=np.array([0.5]))
     result = interval.subdivide(2.0, drop_short=True)
     expected = Interval(start=np.array([]), end=np.array([]))
-    assert np.allclose(result.start, expected.start) and np.allclose(
-        result.end, expected.end
-    )
+    np.testing.assert_allclose(result.start, expected.start)
+    np.testing.assert_allclose(result.end, expected.end)
 
 
 def test_subdivide_attributes_preservation():
@@ -1139,10 +1117,10 @@ def test_subdivide_attributes_preservation():
     expected_trial_id = np.array([1, 1, 1, 2, 2, 2])
     expected_condition = np.array(["A", "A", "A", "B", "B", "B"])
 
-    assert np.allclose(result.start, expected_start)
-    assert np.allclose(result.end, expected_end)
-    assert np.array_equal(result.trial_id, expected_trial_id)
-    assert np.array_equal(result.condition, expected_condition)
+    np.testing.assert_allclose(result.start, expected_start)
+    np.testing.assert_allclose(result.end, expected_end)
+    np.testing.assert_array_equal(result.trial_id, expected_trial_id)
+    np.testing.assert_array_equal(result.condition, expected_condition)
 
     interval = Interval(
         start=np.array([0.0]),
@@ -1156,9 +1134,9 @@ def test_subdivide_attributes_preservation():
     expected_end = np.array([2.0, 4.0, 5.5])
     expected_session_id = np.array([42, 42, 42])
 
-    assert np.allclose(result.start, expected_start)
-    assert np.allclose(result.end, expected_end)
-    assert np.array_equal(result.session_id, expected_session_id)
+    np.testing.assert_allclose(result.start, expected_start)
+    np.testing.assert_allclose(result.end, expected_end)
+    np.testing.assert_array_equal(result.session_id, expected_session_id)
 
     interval = Interval(
         start=np.array([0.0]),
@@ -1172,9 +1150,9 @@ def test_subdivide_attributes_preservation():
     expected_end = np.array([2.0, 4.0])
     expected_session_id = np.array([42, 42])
 
-    assert np.allclose(result.start, expected_start)
-    assert np.allclose(result.end, expected_end)
-    assert np.array_equal(result.session_id, expected_session_id)
+    np.testing.assert_allclose(result.start, expected_start)
+    np.testing.assert_allclose(result.end, expected_end)
+    np.testing.assert_array_equal(result.session_id, expected_session_id)
 
 
 def test_subdivide_empty_interval_preserves_attributes():
@@ -1188,8 +1166,8 @@ def test_subdivide_empty_interval_preserves_attributes():
     result = interval.subdivide(2.0)
 
     assert len(result) == 0
-    assert np.allclose(result.start, np.array([]))
-    assert np.allclose(result.end, np.array([]))
+    np.testing.assert_allclose(result.start, np.array([]))
+    np.testing.assert_allclose(result.end, np.array([]))
     assert "trial_id" in result.keys()
     assert "condition" in result.keys()
     assert len(result.trial_id) == 0
@@ -1210,9 +1188,9 @@ def test_subdivide_timekeys_preservation():
     expected_end = np.array([2.0, 4.0, 12.0, 14.0])
     expected_go_cue_time = np.array([1.0, 1.0, 11.0, 11.0])
 
-    assert np.allclose(result.start, expected_start)
-    assert np.allclose(result.end, expected_end)
-    assert np.array_equal(result.go_cue_time, expected_go_cue_time)
+    np.testing.assert_allclose(result.start, expected_start)
+    np.testing.assert_allclose(result.end, expected_end)
+    np.testing.assert_array_equal(result.go_cue_time, expected_go_cue_time)
     assert "go_cue_time" in result.timekeys()
 
 
@@ -1231,8 +1209,8 @@ class TestPointIntervals:
         p2 = Interval(np.array([3.0]), np.array([3.0]))
         result = p1 | p2
         assert len(result) == 2
-        assert np.allclose(result.start, [1.0, 3.0])
-        assert np.allclose(result.end, [1.0, 3.0])
+        np.testing.assert_allclose(result.start, [1.0, 3.0])
+        np.testing.assert_allclose(result.end, [1.0, 3.0])
 
     def test_union_point_absorbed_by_range(self):
         point = Interval(np.array([2.0]), np.array([2.0]))
@@ -1410,8 +1388,8 @@ class TestPointIntervals:
         other = Interval(np.array([3.0]), np.array([3.0]))
         result = points.difference(other)
         assert len(result) == 2
-        assert np.allclose(result.start, [1.0, 5.0])
-        assert np.allclose(result.end, [1.0, 5.0])
+        np.testing.assert_allclose(result.start, [1.0, 5.0])
+        np.testing.assert_allclose(result.end, [1.0, 5.0])
 
 
 class TestIntervalCoercion:
@@ -1424,7 +1402,7 @@ class TestIntervalCoercion:
         assert isinstance(data.start, np.ndarray)
         assert isinstance(data.end, np.ndarray)
         assert isinstance(data.go_cue_time, np.ndarray)
-        assert np.array_equal(data.start, np.array([0.0, 1.0, 2.0]))
+        np.testing.assert_array_equal(data.start, np.array([0.0, 1.0, 2.0]))
         assert len(data) == 3
 
     def test_tuple(self):
@@ -1434,7 +1412,7 @@ class TestIntervalCoercion:
         )
         assert isinstance(data.start, np.ndarray)
         assert isinstance(data.end, np.ndarray)
-        assert np.array_equal(data.end, np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(data.end, np.array([1.0, 2.0, 3.0]))
 
     def test_scalar(self):
         data = Interval(0.0, 1.0)
@@ -1452,4 +1430,4 @@ class TestIntervalCoercion:
         assert isinstance(data.start, np.ndarray)
         assert isinstance(data.end, np.ndarray)
         assert isinstance(data.go_cue_time, np.ndarray)
-        assert np.array_equal(data.start, np.array([0.0, 1.0, 2.0]))
+        np.testing.assert_array_equal(data.start, np.array([0.0, 1.0, 2.0]))

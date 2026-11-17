@@ -170,7 +170,9 @@ class TestMaskCoercion:
         from_list = obj.select_by_mask([True, False, True])
         from_array = obj.select_by_mask(np.array([True, False, True]))
         for key in from_array.keys():
-            assert np.array_equal(getattr(from_list, key), getattr(from_array, key))
+            np.testing.assert_array_equal(
+                getattr(from_list, key), getattr(from_array, key)
+            )
 
 
 class TestLazyMaskIsCopied:
@@ -252,21 +254,21 @@ class TestPrivateAttribsAreDeepCopied:
         data._private = np.array([0, 1])
         masked = data.select_by_mask(np.array([True, False, True]))
         assert id(masked._private) != id(data._private)
-        assert np.array_equal(masked._private, data._private)
+        np.testing.assert_array_equal(masked._private, data._private)
 
     def test_irregular_ts(self):
         data = _make_irregular()
         data._private = np.array([0, 1])
         masked = data.select_by_mask(np.array([True, False, True]))
         assert id(masked._private) != id(data._private)
-        assert np.array_equal(masked._private, data._private)
+        np.testing.assert_array_equal(masked._private, data._private)
 
     def test_interval(self):
         data = _make_interval()
         data._private = np.array([0, 1])
         masked = data.select_by_mask(np.array([True, False, True]))
         assert id(masked._private) != id(data._private)
-        assert np.array_equal(masked._private, data._private)
+        np.testing.assert_array_equal(masked._private, data._private)
 
 
 class TestRegularTimeSeriesNotImplemented:

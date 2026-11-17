@@ -48,7 +48,7 @@ def test_spikes():
 
         for unit_id in data.units.id:
             if unit_id in transformed_unit_ids:
-                assert np.allclose(
+                np.testing.assert_allclose(
                     original_timestamps[original_unit_ids == unit_id],
                     transformed_timestamps[transformed_unit_ids == unit_id],
                 )
