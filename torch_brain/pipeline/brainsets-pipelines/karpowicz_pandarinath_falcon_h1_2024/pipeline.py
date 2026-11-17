@@ -1,6 +1,6 @@
 # /// brainset-pipeline
 # python-version = "3.11"
-# dependencies = ["dandi==0.74.0"]
+# dependencies = ["dandi==0.82.0"]
 # ///
 """FALCON H1 (Karpowicz et al., NeurIPS 2024 Datasets & Benchmarks): a human participant
 with tetraplegia (Pitt BCI) attempting 7-DoF reach and grasp in open loop; 176

@@ -1,6 +1,6 @@
 # /// brainset-pipeline
 # python-version = "3.11"
-# dependencies = ["dandi==0.74.0"]
+# dependencies = ["dandi==0.82.0"]
 # ///
 """FALCON M1 (Karpowicz et al., NeurIPS 2024 Datasets & Benchmarks): a monkey performing
 reach-to-grasp, 64-channel Utah array in motor cortex, 16 EMG channels as decoding target.
