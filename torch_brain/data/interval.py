@@ -143,18 +143,18 @@ class Interval(ArrayDict):
                 logging.warning(
                     f"Interval {name} is of type {value.dtype} not of type float64."
                 )
-            # if name == "start" and "end" in self.__dict__ and (value > self.end).any():
-            #     raise ValueError(
-            #         "start values cannot be greater than corresponding end values."
-            #     )
-            # elif (
-            #     name == "end"
-            #     and "start" in self.__dict__
-            #     and (value < self.start).any()
-            # ):
-            #     raise ValueError(
-            #         "end values cannot be smaller than corresponding start values."
-            #     )
+            if name == "start" and "end" in self.__dict__ and (value > self.end).any():
+                raise ValueError(
+                    "start values cannot be greater than corresponding end values."
+                )
+            elif (
+                name == "end"
+                and "start" in self.__dict__
+                and (value < self.start).any()
+            ):
+                raise ValueError(
+                    "end values cannot be smaller than corresponding start values."
+                )
 
             # start or end have been updated, we no longer know whether it is sorted
             # or not
