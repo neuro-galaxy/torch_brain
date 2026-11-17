@@ -264,9 +264,11 @@ class Interval(ArrayDict):
         return self
 
     def slice(self, start: float, end: float, reset_origin: bool = True):
-        r"""Returns a new :obj:`Interval` object that contains the data between the
-        start and end times. An interval is included if it has any overlap with the
-        slicing window. The end time is exclusive.
+        r"""Returns a new :obj:`Interval` object that contains intervals overlapping
+        with the window defined by the start and end times.
+
+        An interval is included if it has any overlap with the slicing window. The end
+        time is exclusive, so overlaps with only the end timepoint will not be included.
 
         If :obj:`reset_origin` is set to :obj:`True`, all time attributes will be
         updated to be relative to the new start time.
@@ -317,8 +319,14 @@ class Interval(ArrayDict):
         return out
 
     def select_by_interval(self, interval: Interval):
-        r"""Return a new :obj:`IrregularTimeSeries` object where all timestamps are
-        within the interval.
+        r"""Returns a new :obj:`Interval` object that contains intervals overlapping
+        with the selection interval.
+
+        An interval is included if it has any overlap with the slicing window(s)
+        defined by the selection interval. If the selection interval has multiple
+        windows, an interval is included if it has any overlap with any of the
+        slicing windows. Interval end times are exclusive, so overlaps with only an
+        end timepoint will not be included.
 
         Args:
             interval: Interval object.
@@ -1024,6 +1032,8 @@ class LazyInterval(Interval):
             out = self.__dict__[name]
 
             if isinstance(out, h5py.Dataset):
+                if not out.id.valid:
+                    raise ValueError(f"Cannot load {name} as the dataset is closed.")
                 # convert into numpy array
                 if "unresolved_slice" in self._lazy_ops:
                     self._resolve_start_end_after_slice()
@@ -1114,9 +1124,21 @@ class LazyInterval(Interval):
         self.__dict__["end"] = self.__dict__["end"][idx_l:idx_r] - origin_translation
 
     def slice(self, start: float, end: float, reset_origin: bool = True):
-        r"""Returns a new :obj:`Interval` object that contains the data between the
-        start and end times. An interval is included if it has any overlap with the
-        slicing window.
+        r"""Returns a new :obj:`Interval` object that contains intervals overlapping
+        with the window defined by the start and end times.
+
+        An interval is included if it has any overlap with the slicing window. The end
+        time is exclusive, so overlaps with only the end timepoint will not be included.
+
+        If :obj:`reset_origin` is set to :obj:`True`, all time attributes will be
+        updated to be relative to the new start time when the slice is applied.
+
+        Args:
+            start: Start time.
+            end: End time.
+            reset_origin: If :obj:`True`, all time attributes will be updated to be
+                relative to the new start time when the slice is applied.
+                Defaults to :obj:`True`.
         """
         if self._sorted is not True:
             if self.is_sorted() is False:
@@ -1211,8 +1233,19 @@ class LazyInterval(Interval):
         assert file.attrs["object"] == Interval.__name__, "object type mismatch"
 
         obj = cls.__new__(cls)
+
+        missing_keys = ["start", "end"]
         for key, value in file.items():
             obj.__dict__[key] = value
+            if key in missing_keys:
+                missing_keys.remove(key)
+
+        if len(missing_keys):
+            raise KeyError(
+                "HDF5 file missing keys required for a LazyInterval object: "
+                f"{missing_keys}. Modifications to exported HDF5 files should "
+                "be made with care to avoid breaking compatibility with torch_brain."
+            )
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._timekeys = file.attrs["timekeys"].astype(str).tolist()

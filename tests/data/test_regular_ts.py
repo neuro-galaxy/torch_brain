@@ -135,6 +135,43 @@ def test_regulartimeseries(test_filepath):
         _test_regulartimeseries_with_domain_start(data)
 
 
+def test_sampling_rate_and_domain_calculation():
+    N = 20
+    domain_start = -5.23
+
+    # float sampling rate
+    sampling_rate = 0.789
+    data = RegularTimeSeries(
+        values=np.arange(N),
+        sampling_rate=sampling_rate,
+        domain_start=domain_start,
+    )
+    domain_end = domain_start + N / sampling_rate
+    timestamps = np.arange(domain_start, domain_end, 1 / sampling_rate)
+    np.testing.assert_allclose(data.timestamps, timestamps)
+
+    # int sampling rate
+    sampling_rate = 2
+    data = RegularTimeSeries(
+        values=np.arange(N),
+        sampling_rate=sampling_rate,
+        domain_start=domain_start,
+    )
+    domain_end = domain_start + N / sampling_rate
+    timestamps = np.arange(domain_start, domain_end, 1 / sampling_rate)
+    np.testing.assert_allclose(data.timestamps, timestamps)
+
+    # null, negative or nan sampling rates
+    with pytest.raises(ValueError, match="sampling_rate must be strictly positive"):
+        RegularTimeSeries(values=np.arange(N), sampling_rate=0.0)
+
+    with pytest.raises(ValueError, match="sampling_rate must be strictly positive"):
+        RegularTimeSeries(values=np.arange(N), sampling_rate=-1.4)
+
+    with pytest.raises(ValueError, match="sampling_rate must be strictly positive"):
+        RegularTimeSeries(values=np.arange(N), sampling_rate=np.nan)
+
+
 @pytest.mark.parametrize(
     "second, expected",
     [
