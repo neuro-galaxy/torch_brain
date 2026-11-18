@@ -189,14 +189,47 @@ will then turn into a :obj:`RegularTimeSeries` object:
       absolute_start=0.0,
     )
 
+To query the shape or datatype of a specific array without loading it into memory, we can use 
+the :obj:`~ArrayDict.get_shape()` and :obj:`~ArrayDict.get_dtype()` methods. 
+
+.. code-block:: pycon
+
+    >>> session.spikes.get_shape("unit_index")
+    (3,)
+
+    >>> session.spikes.get_dtype("unit_index")
+    int64
+
+    >>> session
+    Data(
+      behavior=RegularTimeSeries(
+        eye_pos: array, shape=(400, 2), dtype=float64,
+        hand_vel: array, shape=(400, 2), dtype=float64,
+        pupil_size: array, shape=(400,), dtype=float64,
+      ),
+      spikes=LazyIrregularTimeSeries(
+        timestamps: lazy array, shape=(3,), dtype=float64,
+        unit_index: lazy array, shape=(3,), dtype=int64,
+      ),
+      units=LazyArrayDict(
+        brain_region: lazy array, shape=(3,), dtype=|S3,
+        id: lazy array, shape=(3,), dtype=|S6,
+      ),
+      absolute_start=0.0,
+    )
+
+
 In some cases, loading an attribute leads to a change in datatype. Strings, for 
 example, are stored as bytes in HDF5, so when we access ``units.id``, it will be 
 converted into a unicode array, and the dtype will change from ``|S6`` to ``<U6``:
 
 .. code-block:: pycon
 
-    >>> session.units.id
-    array(['unit01', 'unit02', 'unit03'], dtype='<U6')
+    >>> session.units.get_dtype("id")
+    |S6
+
+    >>> session.units.id.dtype
+    <U6
 
     >>> session
     Data(
@@ -241,6 +274,9 @@ We can also slice a lazy object:
 
     >>> sliced.spikes.timestamps
     array([0.3, 1.1])
+
+    >>> sliced.spikes.get_shape("unit_index")
+    (2,)
 
 Here, ``spikes`` stayed lazy after slicing. When we finally access
 ``sliced.spikes.timestamps``, only the two timestamps that fall within the
