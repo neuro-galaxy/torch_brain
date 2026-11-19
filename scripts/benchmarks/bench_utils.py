@@ -49,7 +49,7 @@ def bench_bin_spikes_realistic():
         n_bins=20,
         n_spikes=3_538,
         duration=1.0,
-        number=2_000,
+        number=1_000,
     )
 
 
@@ -61,7 +61,7 @@ def bench_bin_spikes_many_units():
         n_bins=20,
         n_spikes=10_000,
         duration=1.0,
-        number=2_000,
+        number=1_000,
     )
 
 
@@ -73,7 +73,7 @@ def bench_bin_spikes_fine_bins():
         n_bins=200,
         n_spikes=3_538,
         duration=1.0,
-        number=2_000,
+        number=1_000,
     )
 
 
@@ -85,7 +85,7 @@ def bench_bin_spikes_large():
         n_bins=500,
         n_spikes=50_000,
         duration=10.0,
-        number=500,
+        number=250,
     )
 
 

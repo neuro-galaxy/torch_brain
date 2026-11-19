@@ -1,8 +1,7 @@
 """Compare torch_brain benchmarks across git commits.
 
-Extracts torch_brain source from arbitrary commits via `git archive` and
-runs the current benchmark.py against each, then displays a side-by-side
-comparison table.
+Extracts torch_brain source from arbitrary commits via `git archive` and runs
+the current benchmark.py against each, then displays a side-by-side comparison.
 
 Usage:
     uv run python scripts/benchmarks/compare.py                      # benchmark working tree
@@ -10,19 +9,26 @@ Usage:
     uv run python scripts/benchmarks/compare.py <commitA> <commitB>   # commitA vs commitB
 
 Options:
-    --save PATH       Append comparison results as JSONL to PATH.
+    --save PATH       Append comparison results (every batch time) as JSONL to PATH.
     --suite NAME      Which benchmark suite to run: data, utils, or all (default: all).
+    --num-batches N   Timed batches per benchmark and side (default: 10).
     --markdown PATH   Also write a Markdown report to PATH (used for the PR comment):
-                      summary, the outliers past either threshold (marked 🔴/🟢),
-                      and every other benchmark collapsed.
+                      summary, the flagged benchmarks, and full statistics
+                      for every benchmark, collapsed.
     --regression-threshold X
-                      Speedup below which a benchmark is a regression, shown in
-                      red (default: 0.95, i.e. more than 5% slower).
+                      Speedup below which a benchmark counts as a regression
+                      (default: 0.95, i.e. more than 5% slower).
     --improvement-threshold X
-                      Speedup above which a benchmark is an improvement, shown in
-                      green (default: 1.05, i.e. more than 5% faster).
+                      Speedup above which a benchmark counts as an improvement
+                      (default: 1.05, i.e. more than 5% faster).
+    --alpha X         Significance level for the Holm-corrected p-values
+                      (default: 0.05).
 
-Speedup is baseline time / target time, so > 1 means the target is faster.
+Speedup is baseline median / target median, so > 1 means the target is faster.
+Significance computed with a two-sided Mann-Whitney U test on the per-batch times,
+Holm-corrected across all compared benchmarks. A benchmark is flagged if it is
+significant or past either threshold. The target only counts as a regression or an
+improvement if it is both. A target-side error always counts as a regression.
 """
 
 from __future__ import annotations
@@ -37,13 +43,19 @@ import tempfile
 import time
 from dataclasses import dataclass
 
+import numpy as np
+from harness import DEFAULT_NUM_BATCHES
+from scipy.stats import mannwhitneyu
+
 
 @dataclass(frozen=True)
 class Thresholds:
-    """Speedup bounds; anything in between is reported as unchanged."""
+    """Speedup bounds (anything in between is considered within noise) and the
+    significance level for the Holm-corrected p-values."""
 
     regression: float = 0.95
     improvement: float = 1.05
+    alpha: float = 0.05
 
 
 DEFAULT_THRESHOLDS = Thresholds()
@@ -138,7 +150,10 @@ def extract_source(commit: str) -> str:
 
 
 def run_benchmark(
-    source_dir: str | None, label: str, suite: str = "all"
+    source_dir: str | None,
+    label: str,
+    suite: str = "all",
+    num_batches: int = DEFAULT_NUM_BATCHES,
 ) -> list[dict] | None:
     """Run benchmark.py, optionally overriding the import source.
 
@@ -151,7 +166,15 @@ def run_benchmark(
 
     print(f"Running benchmarks for {label}...", file=sys.stderr)
     result = subprocess.run(
-        [sys.executable, BENCH_SCRIPT, "--json", "--suite", suite],
+        [
+            sys.executable,
+            BENCH_SCRIPT,
+            "--json",
+            "--suite",
+            suite,
+            "--num-batches",
+            str(num_batches),
+        ],
         capture_output=True,
         text=True,
         env=env,
@@ -171,16 +194,49 @@ def run_benchmark(
     return data["results"]
 
 
-def _fmt_us(r: dict | None) -> str:
+# ---------------------------------------------------------------------------
+# Statistics
+# ---------------------------------------------------------------------------
+
+
+def summarize(times_us: list[float]) -> dict:
+    """Median, mean, min and sample standard deviation of per-call times."""
+    times = np.asarray(times_us, dtype=np.float64)
+    return {
+        "n": len(times),
+        "median": float(np.median(times)),
+        "mean": float(np.mean(times)),
+        "min": float(np.min(times)),
+        "std": float(np.std(times, ddof=1)) if len(times) > 1 else 0.0,
+    }
+
+
+def holm(p_values: list[float]) -> list[float]:
+    """Holm-Bonferroni adjusted p-values (same order as the input)."""
+    p = np.asarray(p_values, dtype=np.float64)
+    m = len(p)
+    order = np.argsort(p)
+    scaled = p[order] * (m - np.arange(m))
+    adjusted_sorted = np.minimum(np.maximum.accumulate(scaled), 1.0)
+    adjusted = np.empty(m)
+    adjusted[order] = adjusted_sorted
+    return adjusted.tolist()
+
+
+def _stats_or_status(r: dict | None) -> dict | str:
     if r is None:
-        return "n/a"
+        return "missing"
     if "error" in r:
-        return "ERROR"
-    return f"{r['time_us']:.2e}"
+        return "error"
+    return summarize(r["times_us"])
 
 
 def comparison_rows(results_a: list[dict], results_b: list[dict]) -> list[dict]:
-    """Pair baseline/target results by label (baseline order, then target-only)."""
+    """Pair baseline/target results by label (baseline order, then target-only),
+
+    Summary statistics, the speedup of the medians and Holm-corrected
+    Mann-Whitney U p-values are included.
+    """
     index_a = {r["label"]: r for r in results_a}
     index_b = {r["label"]: r for r in results_b}
     labels = list(index_a) + [lbl for lbl in index_b if lbl not in index_a]
@@ -188,44 +244,119 @@ def comparison_rows(results_a: list[dict], results_b: list[dict]) -> list[dict]:
     rows = []
     for label in labels:
         ra, rb = index_a.get(label), index_b.get(label)
-        speedup = None
-        if ra and rb and "error" not in ra and "error" not in rb and rb["time_us"] > 0:
-            speedup = ra["time_us"] / rb["time_us"]
+        a, b = _stats_or_status(ra), _stats_or_status(rb)
+        speedup = p_value = None
+        if isinstance(a, dict) and isinstance(b, dict) and b["median"] > 0:
+            speedup = a["median"] / b["median"]
+            if a["n"] > 1 and b["n"] > 1:
+                p_value = float(
+                    mannwhitneyu(
+                        ra["times_us"], rb["times_us"], alternative="two-sided"
+                    ).pvalue
+                )
         rows.append(
             {
                 "label": label,
-                "a": _fmt_us(ra),
-                "b": _fmt_us(rb),
+                "a": a,
+                "b": b,
                 "speedup": speedup,
-                "target_error": rb is not None and "error" in rb,
+                "p": p_value,
+                "p_adj": None,
+                "target_error": b == "error",
             }
         )
+
+    tested = [row for row in rows if row["p"] is not None]
+    for row, p_adj in zip(tested, holm([row["p"] for row in tested]), strict=True):
+        row["p_adj"] = p_adj
     return rows
 
 
 def classify(row: dict, thresholds: Thresholds) -> str | None:
-    """Return "regression", "improvement", or None (unchanged / not comparable)."""
+    """Return "regression" or "improvement" (significant and past a threshold),
+    "unconfirmed" (past a threshold but not significant), "minor_slower" or
+    "minor_faster" (significant but within the thresholds), or None
+    (unchanged / not comparable)."""
     # a target-side error is a regression too: the PR broke it
     if row["target_error"]:
         return "regression"
     if row["speedup"] is None:
         return None
-    if row["speedup"] < thresholds.regression:
+    significant = row["p_adj"] is not None and row["p_adj"] < thresholds.alpha
+    slower = row["speedup"] < thresholds.regression
+    faster = row["speedup"] > thresholds.improvement
+    if significant and slower:
         return "regression"
-    if row["speedup"] > thresholds.improvement:
+    if significant and faster:
         return "improvement"
+    if slower or faster:
+        return "unconfirmed"
+    if significant:
+        return "minor_slower" if row["speedup"] < 1.0 else "minor_faster"
     return None
 
 
+# ---------------------------------------------------------------------------
+# Formatting
+# ---------------------------------------------------------------------------
+
+
+def _time_decimals(us: float) -> int:
+    """Decimal places that show ``us`` to 3 significant figures (none at or
+    above 100 µs, so large times are never written with an exponent)."""
+    us = float(f"{us:.3g}")
+    if us <= 0:
+        return 0
+    return max(0, 2 - int(np.floor(np.log10(us))))
+
+
+def _fmt_time(us: float, decimals: int | None = None) -> str:
+    """Per-call time in µs, to 3 significant figures unless ``decimals`` is given."""
+    if decimals is None:
+        decimals = _time_decimals(us)
+    return f"{us:,.{decimals}f}"
+
+
+def _fmt_stat(side: dict | str, key: str) -> str:
+    if side == "missing":
+        return "n/a"
+    if side == "error":
+        return "ERROR"
+    if key == "mean_std":
+        # round the std to the mean's precision, e.g. "26.0 ± 0.9", not "26 ± 0.883"
+        decimals = _time_decimals(side["mean"])
+        mean = _fmt_time(side["mean"], decimals)
+        std = _fmt_time(side["std"], decimals)
+        return f"{mean} ± {std}"
+    return _fmt_time(side[key])
+
+
+def _fmt_speedup(row: dict) -> str:
+    if row["target_error"]:
+        return "ERROR"
+    if row["speedup"] is None:
+        return ""
+    return f"{row['speedup']:.2f}x"
+
+
+def _fmt_p(p: float | None) -> str:
+    if p is None:
+        return ""
+    if p < 0.001:
+        return "<0.001"
+    return f"{p:.3f}"
+
+
 def print_single(results: list[dict], label: str):
-    print(f"\n  Results for {label}\n")
-    print(f"  {'Benchmark':<42} {'Iters':>8} {'Time (µs)':>12}")
-    print(f"  {'-' * 65}")
+    print(f"\n  Results for {label} (per-call times in µs)\n")
+    print(f"  {'Benchmark':<42} {'Median':>10} {'Mean ± std':>22} {'Min':>10}")
+    print(f"  {'-' * 87}")
     for r in results:
-        if "error" in r:
-            print(f"  {r['label']:<42} {'ERROR':>8} {'---':>12}")
-        else:
-            print(f"  {r['label']:<42} {r['number']:>8} {r['time_us']:>12.2e}")
+        side = _stats_or_status(r)
+        print(
+            f"  {r['label']:<42} {_fmt_stat(side, 'median'):>10} "
+            f"{_fmt_stat(side, 'mean_std'):>22} {_fmt_stat(side, 'min'):>10}"
+        )
 
 
 def print_comparison(
@@ -240,19 +371,33 @@ def print_comparison(
     colors = {"regression": "\033[31m", "improvement": "\033[32m"} if tty else {}
     reset = "\033[0m" if tty else ""
 
-    col_a = f"{label_a} (µs)"
-    col_b = f"{label_b} (µs)"
-    print(f"\n  {'Benchmark':<42} {col_a:>18} {col_b:>18} {'Speedup':>10}")
-    print(f"  {'-' * 92}")
+    col_a = f"{label_a} median"
+    col_b = f"{label_b} median"
+    print("\n  Per-call times in µs; speedup = baseline median / target median")
+    print(
+        f"\n  {'Benchmark':<42} {col_a:>24} {col_b:>24} {'Speedup':>9} "
+        f"{'p (Holm)':>9}  Flag"
+    )
+    print(f"  {'-' * 124}")
 
     for row in comparison_rows(results_a, results_b):
-        speedup = f"{row['speedup']:.2f}x" if row["speedup"] is not None else ""
-        line = f"  {row['label']:<42} {row['a']:>18} {row['b']:>18} {speedup:>10}"
-        color = colors.get(classify(row, thresholds))
+        kind = classify(row, thresholds)
+        line = (
+            f"  {row['label']:<42} {_fmt_stat(row['a'], 'median'):>24} "
+            f"{_fmt_stat(row['b'], 'median'):>24} {_fmt_speedup(row):>9} "
+            f"{_fmt_p(row['p_adj']):>9}  {kind or ''}"
+        )
+        color = colors.get(kind)
         print(f"{color}{line}{reset}" if color else line)
 
 
-_MD_MARKERS = {"regression": "🔴", "improvement": "🟢"}
+_MD_MARKERS = {
+    "regression": "🔴",
+    "improvement": "🟢",
+    "unconfirmed": "⚠️",
+    "minor_slower": "🔸",
+    "minor_faster": "🔹",
+}
 
 
 def _md_label(label: str) -> str:
@@ -261,26 +406,45 @@ def _md_label(label: str) -> str:
     return "`" + label.replace("|", "\\|") + "`"
 
 
-def _md_table(
-    rows: list[dict], label_a: str, label_b: str, thresholds: Thresholds
-) -> str:
+def _md_flagged_table(rows: list[dict], kinds: list[str]) -> str:
     lines = [
-        f"| Benchmark | `{label_a}` (µs) | `{label_b}` (µs) | Speedup |",
-        "|---|--:|--:|--:|",
+        "| | Benchmark | Baseline median | Target median | Speedup | p (Holm) |",
+        "|---|---|--:|--:|--:|--:|",
     ]
-    for row in rows:
-        kind = classify(row, thresholds)
-        label = _md_label(row["label"])
-        if kind:
-            label = f"{_MD_MARKERS[kind]} {label}"
-        if row["target_error"]:
-            speedup = "ERROR"
-        elif row["speedup"] is not None:
-            speedup = f"{row['speedup']:.2f}x"
-        else:
-            speedup = ""
-        lines.append(f"| {label} | {row['a']} | {row['b']} | {speedup} |")
+    for row, kind in zip(rows, kinds, strict=True):
+        lines.append(
+            f"| {_MD_MARKERS[kind]} | {_md_label(row['label'])} "
+            f"| {_fmt_stat(row['a'], 'median')} | {_fmt_stat(row['b'], 'median')} "
+            f"| {_fmt_speedup(row)} | {_fmt_p(row['p_adj'])} |"
+        )
     return "\n".join(lines)
+
+
+def _md_full_table(rows: list[dict], kinds: list[str | None]) -> str:
+    lines = [
+        "| | Benchmark | Baseline median | Baseline mean ± std | Baseline min "
+        "| Target median | Target mean ± std | Target min | Speedup | p (Holm) |",
+        "|---|---|--:|--:|--:|--:|--:|--:|--:|--:|",
+    ]
+    for row, kind in zip(rows, kinds, strict=True):
+        a, b = row["a"], row["b"]
+        marker = _MD_MARKERS[kind] if kind else ""
+        lines.append(
+            f"| {marker} | {_md_label(row['label'])} "
+            f"| {_fmt_stat(a, 'median')} | {_fmt_stat(a, 'mean_std')} "
+            f"| {_fmt_stat(a, 'min')} | {_fmt_stat(b, 'median')} "
+            f"| {_fmt_stat(b, 'mean_std')} | {_fmt_stat(b, 'min')} "
+            f"| {_fmt_speedup(row)} | {_fmt_p(row['p_adj'])} |"
+        )
+    return "\n".join(lines)
+
+
+def _md_sort_key(item: tuple[dict, str]) -> tuple[int, float]:
+    """Flag order, errors, then worst to best speedup first."""
+    row, kind = item
+    speedup = row["speedup"] if row["speedup"] is not None else 0.0
+    marker_index = list(_MD_MARKERS).index(kind)
+    return marker_index, speedup
 
 
 def markdown_comparison(
@@ -290,46 +454,87 @@ def markdown_comparison(
     label_b: str,
     thresholds: Thresholds = DEFAULT_THRESHOLDS,
 ) -> str:
-    """Outliers (past either threshold, or erroring) are listed up front; every
-    other benchmark is collapsed, so each one appears exactly once."""
+    """Flagged benchmarks (significant or past either threshold, or erroring)
+    are listed up front; full statistics for every benchmark are collapsed."""
     rows = comparison_rows(results_a, results_b)
     kinds = [classify(r, thresholds) for r in rows]
     n_regressed = kinds.count("regression")
     n_improved = kinds.count("improvement")
+    n_other = sum(
+        kinds.count(kind) for kind in ("unconfirmed", "minor_slower", "minor_faster")
+    )
+    n_tested = sum(row["p_adj"] is not None for row in rows)
+    batch_counts = sorted(
+        {
+            side["n"]
+            for row in rows
+            for side in (row["a"], row["b"])
+            if isinstance(side, dict)
+        }
+    )
     lo, hi = thresholds.regression, thresholds.improvement
 
-    outliers = [r for r, k in zip(rows, kinds, strict=True) if k]
-    unchanged = [r for r, k in zip(rows, kinds, strict=True) if not k]
-
     if n_regressed:
-        summary = f"🔴 **{n_regressed} regressed** (< {lo:.2f}x or error)"
+        summary = f"🔴 **{n_regressed} regressed**"
     else:
         summary = "✅ **No regressions**"
     if n_improved:
-        summary += f" · 🟢 **{n_improved} improved** (> {hi:.2f}x)"
+        summary += f" · 🟢 **{n_improved} improved**"
+    if n_other:
+        noun = "change" if n_other == 1 else "changes"
+        summary += f" · {n_other} other {noun} flagged"
     summary += f" · {len(rows)} benchmarks"
 
-    def table(subset):
-        return _md_table(subset, label_a, label_b, thresholds)
+    flagged = sorted(
+        ((row, kind) for row, kind in zip(rows, kinds, strict=True) if kind),
+        key=_md_sort_key,
+    )
 
     parts = [summary, ""]
-    if outliers:
-        parts += ["### Outliers", "", table(outliers), ""]
-    if unchanged:
-        parts += [
-            "<details>",
-            f"<summary>{len(unchanged)} unchanged benchmarks "
-            f"({lo:.2f}x – {hi:.2f}x)</summary>",
+    if flagged:
+        legend = [
+            f"🔴 regressed / 🟢 improved: significant and past {lo:.2f}x / "
+            f"{hi:.2f}x (a target-side error also counts as a regression)",
+            f"⚠️ past {lo:.2f}x / {hi:.2f}x but not significant: likely noise",
+            f"🔸 slower / 🔹 faster: significant but within {lo:.2f}x - {hi:.2f}x",
+        ]
+        flagged_table = [
+            "### Flagged",
             "",
-            table(unchanged),
+            _md_flagged_table(
+                [row for row, _ in flagged], [kind for _, kind in flagged]
+            ),
             "",
-            "</details>",
+            " \\\n".join(legend),  # hard line breaks
             "",
         ]
-    parts += [
+        parts += flagged_table
+
+    details = [
+        "<details>",
+        f"<summary>Full statistics ({len(rows)} benchmarks)</summary>",
+        "",
+        _md_full_table(rows, kinds),
+        "",
+        "</details>",
+        "",
+    ]
+
+    batches = "/".join(str(n) for n in batch_counts)
+    notes = [
+        f"Per-call times in µs (baseline `{label_a}`, target `{label_b}`). "
+        "Speedup = baseline median / target median (> 1 means the target is "
+        f"faster). p: two-sided Mann-Whitney U test on the {batches} timed "
+        f"batches per side, Holm-corrected across {n_tested} benchmarks; "
+        "significant if "
+        f"p < {thresholds.alpha:g}.",
+        "",
         f"Shared CI runners are noisy, so treat isolated changes close to "
         f"{lo:.2f}x or {hi:.2f}x with caution.",
     ]
+
+    parts += details + notes
+
     return "\n".join(parts) + "\n"
 
 
@@ -339,10 +544,15 @@ def markdown_single(results: list[dict], label: str, warning: str = "") -> str:
         "<details>",
         f"<summary>Results for `{label}` ({len(results)} benchmarks)</summary>",
         "",
-        f"| Benchmark | `{label}` (µs) |",
-        "|---|--:|",
+        "| Benchmark | Median (µs) | Mean ± std (µs) | Min (µs) |",
+        "|---|--:|--:|--:|",
     ]
-    lines += [f"| {_md_label(r['label'])} | {_fmt_us(r)} |" for r in results]
+    for r in results:
+        side = _stats_or_status(r)
+        lines.append(
+            f"| {_md_label(r['label'])} | {_fmt_stat(side, 'median')} "
+            f"| {_fmt_stat(side, 'mean_std')} | {_fmt_stat(side, 'min')} |"
+        )
     lines += ["", "</details>"]
     return "\n".join(lines) + "\n"
 
@@ -393,6 +603,13 @@ def main():
         help="Which benchmark suite to run (default: all)",
     )
     parser.add_argument(
+        "--num-batches",
+        type=int,
+        default=DEFAULT_NUM_BATCHES,
+        help="Timed number of batches per benchmark and side, after one warm-up batch "
+        f"(default: {DEFAULT_NUM_BATCHES})",
+    )
+    parser.add_argument(
         "--markdown",
         type=str,
         default=None,
@@ -402,20 +619,31 @@ def main():
         "--regression-threshold",
         type=float,
         default=Thresholds.regression,
-        help="Speedup below which a benchmark is flagged as a regression "
+        help="Speedup below which a significant change counts as a regression "
         f"(default: {Thresholds.regression})",
     )
     parser.add_argument(
         "--improvement-threshold",
         type=float,
         default=Thresholds.improvement,
-        help="Speedup above which a benchmark is flagged as an improvement "
+        help="Speedup above which a significant change counts as an improvement "
         f"(default: {Thresholds.improvement})",
+    )
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=Thresholds.alpha,
+        help="Significance level for the Holm-corrected p-values "
+        f"(default: {Thresholds.alpha})",
     )
     args = parser.parse_args()
     if args.regression_threshold > args.improvement_threshold:
         parser.error("--regression-threshold must be <= --improvement-threshold")
-    thresholds = Thresholds(args.regression_threshold, args.improvement_threshold)
+    if args.num_batches < 2:
+        parser.error("--num-batches must be at least 2 to compute statistics")
+    thresholds = Thresholds(
+        args.regression_threshold, args.improvement_threshold, args.alpha
+    )
     markdown = None
 
     if len(args.commits) > 2:
@@ -425,7 +653,7 @@ def main():
     had_failures = False
     try:
         if len(args.commits) == 0:
-            results = run_benchmark(None, "working tree", args.suite)
+            results = run_benchmark(None, "working tree", args.suite, args.num_batches)
             if results is None:
                 had_failures = True
             else:
@@ -445,8 +673,10 @@ def main():
             tmpdir = extract_source(commit)
             tmpdirs.append(tmpdir)
 
-            results_a = run_benchmark(tmpdir, label_a, args.suite)
-            results_b = run_benchmark(None, "working tree", args.suite)
+            results_a = run_benchmark(tmpdir, label_a, args.suite, args.num_batches)
+            results_b = run_benchmark(
+                None, "working tree", args.suite, args.num_batches
+            )
 
             if results_a is None or results_b is None:
                 had_failures = True
@@ -472,8 +702,8 @@ def main():
             tmpdir_b = extract_source(commit_b)
             tmpdirs.append(tmpdir_b)
 
-            results_a = run_benchmark(tmpdir_a, label_a, args.suite)
-            results_b = run_benchmark(tmpdir_b, label_b, args.suite)
+            results_a = run_benchmark(tmpdir_a, label_a, args.suite, args.num_batches)
+            results_b = run_benchmark(tmpdir_b, label_b, args.suite, args.num_batches)
 
             if results_a is None or results_b is None:
                 had_failures = True
