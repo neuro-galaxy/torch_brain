@@ -284,13 +284,15 @@ class ArrayDict:
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        if file.attrs["object"] != cls.__name__:
+        attrs = file.attrs
+
+        if attrs["object"] != cls.__name__:
             raise ValueError(
-                f"File contains data for a {file.attrs['object']} object, expected "
+                f"File contains data for a {attrs['object']} object, expected "
                 f"{cls.__name__} object."
             )
 
-        _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+        _unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
 
         data = {}
         for key, value in file.items():
@@ -465,8 +467,10 @@ class LazyArrayDict(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == ArrayDict.__name__, (
-            f"File contains data for a {file.attrs['object']} object, expected "
+        attrs = file.attrs
+
+        assert attrs["object"] == ArrayDict.__name__, (
+            f"File contains data for a {attrs['object']} object, expected "
             f"{ArrayDict.__name__} object."
         )
 
@@ -474,7 +478,7 @@ class LazyArrayDict(ArrayDict):
         for key, value in file.items():
             obj.__dict__[key] = value
 
-        obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+        obj._unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
         obj._lazy_ops = {}
 
         return obj

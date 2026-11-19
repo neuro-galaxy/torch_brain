@@ -397,6 +397,8 @@ class Data:
         if isinstance(file, h5py.File):
             assert file.mode == "r", "File must be opened in read-only mode."
 
+        attrs = file.attrs
+
         data = {}
         for key, value in file.items():
             if isinstance(value, h5py.Group):
@@ -413,7 +415,7 @@ class Data:
                 # if array, it will be loaded no matter what, always prefer ArrayDict
                 data[key] = value[:]
 
-        for key, value in file.attrs.items():
+        for key, value in attrs.items():
             if key == "object" or key == "absolute_start":
                 continue
             data[key] = value
@@ -421,7 +423,7 @@ class Data:
         obj = cls(**data)
 
         # restore the absolute start time
-        obj._absolute_start = file.attrs["absolute_start"]
+        obj._absolute_start = attrs["absolute_start"]
 
         if lazy and isinstance(file, h5py.File):
             obj._file = file

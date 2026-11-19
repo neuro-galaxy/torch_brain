@@ -513,10 +513,12 @@ class RegularTimeSeries(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = RegularTimeSeries.from_hdf5(f)
         """
-        assert file.attrs["object"] == cls.__name__, "object type mismatch"
+        attrs = file.attrs
+
+        assert attrs["object"] == cls.__name__, "object type mismatch"
 
         try:
-            _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+            _unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
         except KeyError:
             _unicode_keys = []  # for backwards compatibility
 
@@ -531,7 +533,7 @@ class RegularTimeSeries(ArrayDict):
         domain = Interval.from_hdf5(file["domain"])
         obj = cls(
             **data,
-            sampling_rate=file.attrs["sampling_rate"],
+            sampling_rate=attrs["sampling_rate"],
             domain_start=float(domain.start[0]),
         )
         obj._domain = domain
@@ -931,9 +933,9 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == RegularTimeSeries.__name__, (
-            "object type mismatch"
-        )
+        attrs = file.attrs
+
+        assert attrs["object"] == RegularTimeSeries.__name__, "object type mismatch"
 
         obj = cls.__new__(cls)
 
@@ -954,7 +956,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             )
 
         obj._lazy_ops = {}
-        obj._sampling_rate = float(file.attrs["sampling_rate"])
+        obj._sampling_rate = float(attrs["sampling_rate"])
 
         if not obj._sampling_rate > 0:
             raise ValueError(
@@ -962,7 +964,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             )
 
         try:
-            obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+            obj._unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
         except KeyError:
             obj._unicode_keys = []  # for backwards compatibility
 

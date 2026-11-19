@@ -419,13 +419,15 @@ class IrregularTimeSeries(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = IrregularTimeSeries.from_hdf5(f)
         """
-        if file.attrs["object"] != cls.__name__:
+        attrs = file.attrs
+
+        if attrs["object"] != cls.__name__:
             raise ValueError(
-                f"File contains data for a {file.attrs['object']} object, expected "
+                f"File contains data for a {attrs['object']} object, expected "
                 f"{cls.__name__} object."
             )
 
-        _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+        _unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
 
         data = {}
         for key, value in file.items():
@@ -436,7 +438,7 @@ class IrregularTimeSeries(ArrayDict):
                 if key in _unicode_keys:
                     data[key] = data[key].astype("U")
 
-        timekeys = file.attrs["timekeys"].astype(str).tolist()
+        timekeys = attrs["timekeys"].astype(str).tolist()
         domain = Interval.from_hdf5(file["domain"])
 
         obj = cls(**data, timekeys=timekeys, domain=domain)
@@ -751,9 +753,9 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == IrregularTimeSeries.__name__, (
-            "object type mismatch"
-        )
+        attrs = file.attrs
+
+        assert attrs["object"] == IrregularTimeSeries.__name__, "object type mismatch"
 
         obj = cls.__new__(cls)
 
@@ -775,8 +777,8 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                 "be made with care to avoid breaking compatibility with torch_brain."
             )
 
-        obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
-        obj._timekeys = file.attrs["timekeys"].astype(str).tolist()
+        obj._unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
+        obj._timekeys = attrs["timekeys"].astype(str).tolist()
         obj._sorted = True
         obj._lazy_ops = {}
 
