@@ -156,7 +156,7 @@ called, unless there is consensus for elongation of discussion.
 
 **Technical Committee members** (last name order):
 
-- Alexandre Andre [aandre1 [at] seas [dot] upenn [dot] edu]
-- Vinam Arora (current moderator) [vinam [at] seas [dot] upenn [dot] edu]
+- Alexandre Andre (current moderator) [aandre1 [at] seas [dot] upenn [dot] edu]
+- Vinam Arora [vinam [at] seas [dot] upenn [dot] edu]
 - Milo Sobral [milo [dot] sobral [at] mila [dot] quebec]
 
