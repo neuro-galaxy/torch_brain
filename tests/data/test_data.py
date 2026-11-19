@@ -282,6 +282,7 @@ def test_negative_slice_data():
     assert len(data.trials) == 2
     assert np.allclose(data.trials.start, np.array([3.0, 11.0]))
 
+
 def test_timeless_data(test_filepath):
     # when defining a Data object that has no time-based attributes, we do not need to
     # specify a domain

@@ -92,15 +92,10 @@ class Interval(ArrayDict):
         timekeys=None,
         **kwargs: ArrayLike,
     ):
-        # we allow for scalar start and end, since it is common to have a single
-        # interval especially when defining a domain
-        if isinstance(start, (int, float)):
-            start = np.array([start], dtype=np.float64)
+        self.start = start
+        self.end = end
 
-        if isinstance(end, (int, float)):
-            end = np.array([end], dtype=np.float64)
-
-        super().__init__(start=start, end=end, **kwargs)
+        super().__init__(**kwargs)
 
         # time keys
         if timekeys is None:
@@ -136,29 +131,60 @@ class Interval(ArrayDict):
 
     def __setattr__(self, name, value):
         if name == "start" or name == "end":
-            value = np.asarray(value)
-            assert value.ndim == 1, f"{name} must be 1D."
-            assert ~np.isnan(value).any(), f"{name} cannot contain NaNs."
-            if value.dtype != np.float64:
-                logging.warning(
-                    f"Interval {name} is of type {value.dtype} not of type float64."
-                )
-            if name == "start" and "end" in self.__dict__ and (value > self.end).any():
-                raise ValueError(
-                    "start values cannot be greater than corresponding end values."
-                )
-            elif (
-                name == "end"
-                and "start" in self.__dict__
-                and (value < self.start).any()
-            ):
-                raise ValueError(
-                    "end values cannot be smaller than corresponding start values."
-                )
+            # we allow for scalar start and end, since it is common to have a single
+            # interval especially when defining a domain
+            if isinstance(value, (int, float)):
+                if not np.isfinite(value):
+                    raise ValueError(f"{name} must be finite.")
+                value = np.array([value], dtype=np.float64)
+            else:
+                value = np.asarray(value)
+                if value.dtype != np.float64:
+                    logging.warning(
+                        f"Interval {name} is of type {value.dtype} not of type float64."
+                    )
+                if not np.isfinite(value).all():
+                    raise ValueError(f"{name} must be finite.")
+                if value.ndim != 1:
+                    raise ValueError(f"{name} must be 1D.")
 
-            # start or end have been updated, we no longer know whether it is sorted
+            if name == "start" and "end" in self.__dict__:
+                other_value = self.end
+            elif name == "end" and "start" in self.__dict__:
+                other_value = self.start
+            else:
+                other_value = None
+
+            if other_value is not None:
+                if value.shape != other_value.shape:
+                    other_value_name = "end" if name == "start" else "start"
+                    raise ValueError(
+                        f"start and end must have the same shape, got {name} shape of "
+                        f"{value.shape}, but {other_value_name} shape is {other_value.shape}"
+                    )
+                if name == "start":
+                    start, end = value, other_value
+                else:
+                    start, end = other_value, value
+
+                if len(start) == 1:
+                    # fast path: avoid array comparison and .all() for a single interval
+                    valid = start[0] <= end[0]
+                else:
+                    valid = (start <= end).all()
+
+                if not valid:
+                    raise ValueError(
+                        f"start must be smaller than or equal to end, got start={start}, "
+                        f"end={end}."
+                    )
+
+            # start or end have been updated, we may no longer know whether it is sorted
             # or not
-            self._sorted = None
+            if len(value) == 1:
+                self._sorted = True
+            else:
+                self._sorted = None
 
         super().__setattr__(name, value)
 
@@ -692,7 +718,7 @@ class Interval(ArrayDict):
         """
         if not (start <= end):
             raise ValueError(
-                f"start must be less than end, got start={start}, end={end}"
+                f"start must be smaller than end, got start={start}, end={end}"
             )
 
         timestamps = np.linspace(start, end, steps + 1, dtype=np.float64)
@@ -718,7 +744,7 @@ class Interval(ArrayDict):
         """
         if not (start <= end):
             raise ValueError(
-                f"start must be less than end, got start={start}, end={end}"
+                f"start must be smaller than end, got start={start}, end={end}"
             )
 
         if step <= 0:
@@ -1168,8 +1194,6 @@ class LazyInterval(Interval):
                 )
 
             idx_l = idx_r = None
-            # out.__dict__["start"] = self.__dict__["start"]
-            # out.__dict__["end"] = self.__dict__["end"]
 
         else:
             # anything that starts before the end of the slicing window

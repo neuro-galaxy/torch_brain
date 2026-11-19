@@ -28,8 +28,8 @@ def test_filepath(request):
 
 def test_interval():
     data = Interval(
-        start=np.array([0.0, 1, 2]),
-        end=np.array([1, 2, 3]),
+        start=np.array([0.0, 1.0, 2.0]),
+        end=np.array([1.0, 2.0, 3.0]),
         go_cue_time=np.array([0.5, 1.5, 2.5]),
         drifting_gratings_dir=np.array([0, 45, 90]),
         timekeys=["start", "end", "go_cue_time"],
@@ -45,9 +45,15 @@ def test_interval():
     with pytest.raises(ValueError):
         data.wrong_len = np.array([0, 1, 2, 3])
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match="must be finite"):
         data = Interval(
             start=np.array([0.1, np.nan, 0.3, 0.4, 0.5, 0.6]),
+            end=np.array([1, 2, 3, 4, 5, 6]),
+        )
+
+    with pytest.raises(ValueError, match="must be finite"):
+        data = Interval(
+            start=np.array([0.1, 0.2, 0.3, 0.4, 0.5, np.inf]),
             end=np.array([1, 2, 3, 4, 5, 6]),
         )
 
@@ -155,6 +161,23 @@ def test_consecutive_slice_outside_previous_slice_with_reset_origin():
     np.testing.assert_allclose(data.end, [5.0, 10.3])
 
 
+def test_interval_start_end_different_length():
+    with pytest.raises(ValueError, match="start and end must have the same shape"):
+        Interval(
+            start=np.array([0.0, 1.0, 2.0]),
+            end=np.array([1.0, 2.0]),
+            timekeys=["start", "end"],
+        )  #  noqa: B018
+
+    data = Interval(
+        start=np.array([0.0, 1.0, 2.0]),
+        end=np.array([1.0, 2.0, 3.0]),
+        timekeys=["start", "end"],
+    )
+    with pytest.raises(ValueError, match="start and end must have the same shape"):
+        data.start = np.array([0.5, 1.5])
+
+
 def test_unsortable_interval():
     data = Interval(
         start=np.array([0.0, 1.0, 2.0, 3.0]),
@@ -186,10 +209,10 @@ def test_inverted_interval():
         end=np.array([1.0, 2.0, 3.0, 4.0]),
     )
 
-    with pytest.raises(ValueError, match="cannot be greater"):
+    with pytest.raises(ValueError, match="start must be smaller than"):
         interval.start = np.array([0.0, 2.5, 2.0, 3.0])
 
-    with pytest.raises(ValueError, match="cannot be smaller"):
+    with pytest.raises(ValueError, match="start must be smaller than"):
         interval.end = np.array([1.0, 0.5, 3.0, 4.0])
 
 
