@@ -77,8 +77,8 @@ def test_load_from_h5(test_filepath):
     with h5py.File(test_filepath, "r") as file:
         a = IrregularTimeSeries.from_hdf5(file)
 
-        assert np.all(a.timestamps[:] == np.array([0, 1, 2]))
-        assert np.all(a.x[:] == np.array([1, 2, 3]))
+        np.testing.assert_array_equal(a.timestamps[:], np.array([0, 1, 2]))
+        np.testing.assert_array_equal(a.x[:], np.array([1, 2, 3]))
 
     b = Interval(start=np.array([0, 1, 2]), end=np.array([1, 2, 3]))
 
@@ -90,8 +90,8 @@ def test_load_from_h5(test_filepath):
     with h5py.File(test_filepath, "r") as file:
         b = Interval.from_hdf5(file)
 
-        assert np.all(b.start[:] == np.array([0, 1, 2]))
-        assert np.all(b.end[:] == np.array([1, 2, 3]))
+        np.testing.assert_array_equal(b.start[:], np.array([0, 1, 2]))
+        np.testing.assert_array_equal(b.end[:], np.array([1, 2, 3]))
 
     a = IrregularTimeSeries(
         np.array([0.0, 1.0, 2.0]), x=np.array([1.0, 2.0, 3.0]), domain="auto"
@@ -116,13 +116,13 @@ def test_load_from_h5(test_filepath):
     with h5py.File(test_filepath, "r") as file:
         d = Data.from_hdf5(file)
 
-        assert np.all(d.a_timeseries.timestamps[:] == np.array([0, 1, 2]))
-        assert np.all(d.a_timeseries.x[:] == np.array([1, 2, 3]))
-        assert np.all(d.b_intervals.start[:] == np.array([0, 1, 2]))
-        assert np.all(d.b_intervals.end[:] == np.array([1, 2, 3]))
-        assert np.all(d.x[:] == np.array([0, 1, 2]))
-        assert np.all(d.y[:] == np.array([1, 2, 3]))
-        assert np.all(d.z[:] == np.array([2, 3, 4]))
+        np.testing.assert_array_equal(d.a_timeseries.timestamps[:], np.array([0, 1, 2]))
+        np.testing.assert_array_equal(d.a_timeseries.x[:], np.array([1, 2, 3]))
+        np.testing.assert_array_equal(d.b_intervals.start[:], np.array([0, 1, 2]))
+        np.testing.assert_array_equal(d.b_intervals.end[:], np.array([1, 2, 3]))
+        np.testing.assert_array_equal(d.x[:], np.array([0, 1, 2]))
+        np.testing.assert_array_equal(d.y[:], np.array([1, 2, 3]))
+        np.testing.assert_array_equal(d.z[:], np.array([2, 3, 4]))
 
 
 def test_load_classmethod(test_filepath):
@@ -148,13 +148,13 @@ def test_load_classmethod(test_filepath):
     del d
 
     d = Data.load(test_filepath)
-    assert np.all(d.a_timeseries.timestamps[:] == np.array([0, 1, 2]))
-    assert np.all(d.a_timeseries.x[:] == np.array([1, 2, 3]))
-    assert np.all(d.b_intervals.start[:] == np.array([0, 1, 2]))
-    assert np.all(d.b_intervals.end[:] == np.array([1, 2, 3]))
-    assert np.all(d.x[:] == np.array([0, 1, 2]))
-    assert np.all(d.y[:] == np.array([1, 2, 3]))
-    assert np.all(d.z[:] == np.array([2, 3, 4]))
+    np.testing.assert_array_equal(d.a_timeseries.timestamps[:], np.array([0, 1, 2]))
+    np.testing.assert_array_equal(d.a_timeseries.x[:], np.array([1, 2, 3]))
+    np.testing.assert_array_equal(d.b_intervals.start[:], np.array([0, 1, 2]))
+    np.testing.assert_array_equal(d.b_intervals.end[:], np.array([1, 2, 3]))
+    np.testing.assert_array_equal(d.x[:], np.array([0, 1, 2]))
+    np.testing.assert_array_equal(d.y[:], np.array([1, 2, 3]))
+    np.testing.assert_array_equal(d.z[:], np.array([2, 3, 4]))
 
 
 def test_lazy_load_h5_with_missing_keys(test_filepath):

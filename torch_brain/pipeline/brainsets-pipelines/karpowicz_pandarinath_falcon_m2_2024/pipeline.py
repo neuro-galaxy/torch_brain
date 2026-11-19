@@ -1,6 +1,6 @@
 # /// brainset-pipeline
 # python-version = "3.11"
-# dependencies = ["dandi==0.74.0"]
+# dependencies = ["dandi==0.82.0"]
 # ///
 """FALCON M2 (Karpowicz et al., NeurIPS 2024 Datasets & Benchmarks): a monkey performing
 a two-finger-group target task; 96-channel Utah array in motor cortex, finger position and
