@@ -284,8 +284,8 @@ class Interval(ArrayDict):
                 raise ValueError(
                     "Intervals cannot be sorted by both start and end times."
                 )
-            for key in self.keys():
-                self.__dict__[key] = self.__dict__[key][sorted_indices]
+            for key in self.keys():  # materialize and sort
+                self.__dict__[key] = self.__dict__[key][:][sorted_indices]
 
         return self
 
@@ -372,13 +372,14 @@ class Interval(ArrayDict):
         return out
 
     def dilate(self, size: float, max_len=None):
-        r"""Dilates the intervals by a given size. The dilation is performed in both
-        directions. This operation is designed to not create overlapping intervals,
-        meaning for a given interval and a given direction, dilation will stop if
-        another interval is too close. If distance between two intervals is less than
-        :obj:`size`, both of them will dilate until they meet halfway but will never
-        overlap. You can think of dilation as inflating ballons that will never merge,
-        and will stop each other from moving too far.
+        r"""Dilates the intervals by a given size.
+
+        The dilation is performed in both directions. This operation is designed to not
+        create overlapping intervals, meaning for a given interval and a given direction,
+        dilation will stop if another interval is too close. If distance between two
+        intervals is less than :obj:`size`, both of them will dilate until they meet
+        halfway but will never overlap. You can think of dilation as inflating ballons
+        that will never merge, and will stop each other from moving too far.
 
         Args:
             size: The size of the dilation.
@@ -422,9 +423,10 @@ class Interval(ArrayDict):
         return out
 
     def coalesce(self, eps: float = 1e-6):
-        r"""Coalesces the intervals that are closer than :obj:`eps`. This operation
-        returns a new :obj:`Interval` object, and does not resolve the existing
-        attributes. The coalesced intervals will be sorted.
+        r"""Coalesces the intervals that are closer than :obj:`eps`.
+
+        The coalesced intervals will be sorted. Only start/end times are used:
+        other attributes are dropped from the returned :obj:`Interval`.
 
         Args:
             eps: The distance threshold for coalescing the intervals. Defaults to 1e-6.
@@ -464,8 +466,11 @@ class Interval(ArrayDict):
         return out
 
     def difference(self, other):
-        r"""Returns the difference between two sets of intervals. The intervals are
-        redefined as to not intersect with any interval in :obj:`other`.
+        r"""Returns the difference between two sets of intervals.
+
+        The intervals are redefined so as to not intersect with any interval in
+        :obj:`other`. Only start/end times are used: other attributes are dropped from the
+        returned :obj:`Interval`.
         """
         if not self.is_disjoint():
             raise ValueError("left Interval object must be disjoint.")
@@ -532,10 +537,11 @@ class Interval(ArrayDict):
         shuffle=False,
         random_seed=None,
     ):
-        r"""Splits the set of intervals into multiple subsets. This will
-        return a number of new :obj:`Interval` objects equal to the number of elements
-        in `sizes`. If `shuffle` is set to :obj:`True`, the intervals will be shuffled
-        before splitting.
+        r"""Splits the set of intervals into multiple subsets.
+
+        This will return a number of new :obj:`Interval` objects equal to the number
+        of elements in `sizes`. If `shuffle` is set to :obj:`True`, the intervals
+        will be shuffled before splitting.
 
         Args:
             sizes: A list of integers or floats.
@@ -893,8 +899,9 @@ class Interval(ArrayDict):
 
     def __and__(self, other):
         """Intersection of two intervals.
-        Only start/end times are considered for the intersection,
-        and only start/end times are returned in the resulting Interval
+
+        Only start/end times are used: other attributes are dropped from the
+        returned :obj:`Interval`.
         """
         if not self.is_disjoint():
             raise ValueError("left Interval object must be disjoint.")
@@ -979,8 +986,9 @@ class Interval(ArrayDict):
 
     def __or__(self, other):
         """Union of two intervals.
-        Only start/end times are considered for the union,
-        and only start/end times are returned in the resulting Interval
+
+        Only start/end times are used: other attributes are dropped from the
+        returned :obj:`Interval`.
         """
         if not self.is_disjoint():
             raise ValueError("left Interval object must be disjoint.")

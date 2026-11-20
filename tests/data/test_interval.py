@@ -222,6 +222,7 @@ class TestUnsortedInterval:
         data = Interval(
             start=np.array([0.0, 2.0, 1.0, 3.0]),
             end=np.array([1.0, 3.0, 2.0, 4.0]),
+            drifting_gratings_dir=np.array([0, 45, 90, 135]),
         )
         return data
 
@@ -234,6 +235,9 @@ class TestUnsortedInterval:
         assert unsorted_interval.is_sortable() is True
         assert unsorted_interval.is_sorted() is True
         assert unsorted_interval.is_disjoint() is True
+        np.testing.assert_array_equal(
+            unsorted_interval.drifting_gratings_dir, np.array([0, 90, 45, 135])
+        )
 
     def test_unsorted_coalesce(self, unsorted_interval):
         out = unsorted_interval.coalesce()
@@ -243,20 +247,33 @@ class TestUnsortedInterval:
         assert out.is_sorted() is True
         np.testing.assert_array_equal(out.start, np.array([0.0]))
         np.testing.assert_array_equal(out.end, np.array([4.0]))
+        assert not hasattr(out, "drifting_gratings_dir")
 
     def test_unsorted_masked(self, unsorted_interval):
         mask = np.array([True, False, True, False])
         out = unsorted_interval.select_by_mask(mask)
         assert unsorted_interval.is_sorted() is False
+        np.testing.assert_array_equal(
+            unsorted_interval.drifting_gratings_dir, np.array([0, 45, 90, 135])
+        )
+
         assert out._sorted is None
         assert out.is_sorted() is True
+        np.testing.assert_array_equal(out.drifting_gratings_dir, np.array([0, 90]))
 
     def test_unsorted_split(self, unsorted_interval):
         out1, out2 = unsorted_interval.split([2, 2])
         assert unsorted_interval.is_sorted() is False
+        np.testing.assert_array_equal(
+            unsorted_interval.drifting_gratings_dir, np.array([0, 45, 90, 135])
+        )
+
         assert out1._sorted is None
+        np.testing.assert_array_equal(out1.drifting_gratings_dir, np.array([0, 45]))
         assert out1.is_sorted() is True
+
         assert out2._sorted is None
+        np.testing.assert_array_equal(out2.drifting_gratings_dir, np.array([90, 135]))
         assert out2.is_sorted() is True
 
     def test_unsorted_subdivide(self, unsorted_interval):
@@ -272,6 +289,9 @@ class TestUnsortedInterval:
         np.testing.assert_array_equal(
             out.end, np.array([0.5, 1.0, 2.5, 3.0, 1.5, 2.0, 3.5, 4.0])
         )
+        np.testing.assert_array_equal(
+            out.drifting_gratings_dir, np.array([0, 0, 45, 45, 90, 90, 135, 135])
+        )
 
     def test_unsorted_dilate(self, unsorted_interval):
         with pytest.raises(ValueError, match="must be sorted"):
@@ -285,6 +305,9 @@ class TestUnsortedInterval:
 
         np.testing.assert_array_equal(out.start, np.array([-0.5, 1.0, 2.0, 3.0]))
         np.testing.assert_array_equal(out.end, np.array([1.0, 2.0, 3.0, 4.5]))
+        np.testing.assert_array_equal(
+            out.drifting_gratings_dir, np.array([0, 90, 45, 135])
+        )
 
     def test_unsorted_select_by_interval(self, unsorted_interval):
         select_interval = Interval(start=1.0, end=3.0)
@@ -299,6 +322,7 @@ class TestUnsortedInterval:
 
         np.testing.assert_array_equal(out.start, np.array([1.0, 2.0]))
         np.testing.assert_array_equal(out.end, np.array([2.0, 3.0]))
+        np.testing.assert_array_equal(out.drifting_gratings_dir, np.array([90, 45]))
 
     def test_unsorted_difference(self, unsorted_interval):
         diff_interval = Interval(
@@ -316,6 +340,7 @@ class TestUnsortedInterval:
 
         np.testing.assert_array_equal(out.start, np.array([0.0, 3.5]))
         np.testing.assert_array_equal(out.end, np.array([1.0, 4.0]))
+        assert not hasattr(out, "drifting_gratings_dir")
 
     def test_unsorted_and(self, unsorted_interval):
         and_interval = Interval(
@@ -333,6 +358,7 @@ class TestUnsortedInterval:
 
         np.testing.assert_array_equal(out.start, np.array([3.0]))
         np.testing.assert_array_equal(out.end, np.array([4.0]))
+        assert not hasattr(out, "drifting_gratings_dir")
 
     def test_unsorted_or(self, unsorted_interval):
         or_interval = Interval(
@@ -350,6 +376,7 @@ class TestUnsortedInterval:
 
         np.testing.assert_array_equal(out.start, np.array([0.0, 6.0]))
         np.testing.assert_array_equal(out.end, np.array([4.0, 7.0]))
+        assert not hasattr(out, "drifting_gratings_dir")
 
     def test_unsorted_slice(self, unsorted_interval, caplog):
         with caplog.at_level(logging.WARNING):
@@ -364,6 +391,7 @@ class TestUnsortedInterval:
 
         np.testing.assert_array_equal(out.start, np.array([0.0, 1.0]))
         np.testing.assert_array_equal(out.end, np.array([1.0, 2.0]))
+        np.testing.assert_array_equal(out.drifting_gratings_dir, np.array([90, 45]))
 
     def test_lazy_unsorted_interval(self, unsorted_interval, test_filepath):
         with h5py.File(test_filepath, "w") as f:
@@ -384,6 +412,7 @@ class TestUnsortedInterval:
 
             np.testing.assert_array_equal(out.start, np.array([0.0, 1.0]))
             np.testing.assert_array_equal(out.end, np.array([1.0, 2.0]))
+            np.testing.assert_array_equal(out.drifting_gratings_dir, np.array([90, 45]))
 
 
 def test_lazy_interval(test_filepath):
