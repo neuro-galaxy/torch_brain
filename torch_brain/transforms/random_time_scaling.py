@@ -5,6 +5,22 @@ import torch
 from torch_brain.data import Data, Interval, IrregularTimeSeries, RegularTimeSeries
 
 
+def get_rescaled_interval_copy(interval: Interval, scale: float, offset: float):
+    r"""Returns a rescaled copy of an interval given a factor and offset.
+
+    Args:
+        interval: The interval to rescale.
+        scale: The scaling factor.
+        offset: The offset.
+    """
+    out = copy.copy(interval)
+    # Bypass __setattr__ when setting start to avoid comparing new interval start to
+    # the previous interval's end. Validation occurs when end is set.
+    out.__dict__["start"] = out.start * scale + offset
+    out.end = out.end * scale + offset
+    return out
+
+
 def rescale(data: Data, scale: float, offset: float):
     r"""Rescale the time axis of the data by a factor and offset.
 
@@ -20,29 +36,21 @@ def rescale(data: Data, scale: float, offset: float):
         if key != "_domain" and isinstance(value, IrregularTimeSeries):
             val = copy.copy(value)
             val.timestamps = val.timestamps * scale + offset
-            val._domain = copy.copy(value._domain)
-            val._domain.start = val._domain.start * scale + offset
-            val._domain.end = val._domain.end * scale + offset
+            val._domain = get_rescaled_interval_copy(value._domain, scale, offset)
             out.__dict__[key] = val
         elif key != "_domain" and isinstance(value, RegularTimeSeries):
             val = copy.copy(value)
             val._sampling_rate = val._sampling_rate / scale
-            val._domain = copy.copy(value._domain)
-            val._domain.start = val._domain.start * scale + offset
-            val._domain.end = val._domain.end * scale + offset
+            val._domain = get_rescaled_interval_copy(value._domain, scale, offset)
             out.__dict__[key] = val
         elif key != "_domain" and isinstance(value, Interval):
-            val = copy.copy(value)
-            val.start = val.start * scale + offset
-            val.end = val.end * scale + offset
+            val = get_rescaled_interval_copy(value, scale, offset)
             out.__dict__[key] = val
         else:
             out.__dict__[key] = copy.copy(value)
 
     # update domain
-    out._domain = copy.copy(data._domain)
-    out._domain.start = out._domain.start * scale + offset
-    out._domain.end = out._domain.end * scale + offset
+    out._domain = get_rescaled_interval_copy(data._domain, scale, offset)
 
     # update slice start time
     out._absolute_start = data._absolute_start
