@@ -245,15 +245,17 @@ def comparison_rows(results_a: list[dict], results_b: list[dict]) -> list[dict]:
     for label in labels:
         ra, rb = index_a.get(label), index_b.get(label)
         a, b = _stats_or_status(ra), _stats_or_status(rb)
-        speedup = p_value = None
+        speedup = p_value = prob_faster = None
         if isinstance(a, dict) and isinstance(b, dict) and b["median"] > 0:
             speedup = a["median"] / b["median"]
             if a["n"] > 1 and b["n"] > 1:
-                p_value = float(
-                    mannwhitneyu(
-                        ra["times_us"], rb["times_us"], alternative="two-sided"
-                    ).pvalue
+                test = mannwhitneyu(
+                    ra["times_us"], rb["times_us"], alternative="two-sided"
                 )
+                p_value = float(test.pvalue)
+                # U / (n_a * n_b): probability that a baseline batch is slower
+                # than a target batch (> 0.5 means the target tends to be faster)
+                prob_faster = float(test.statistic) / (a["n"] * b["n"])
         rows.append(
             {
                 "label": label,
@@ -262,6 +264,7 @@ def comparison_rows(results_a: list[dict], results_b: list[dict]) -> list[dict]:
                 "speedup": speedup,
                 "p": p_value,
                 "p_adj": None,
+                "prob_faster": prob_faster,
                 "target_error": b == "error",
             }
         )
@@ -292,7 +295,12 @@ def classify(row: dict, thresholds: Thresholds) -> str | None:
     if slower or faster:
         return "unconfirmed"
     if significant:
-        return "minor_slower" if row["speedup"] < 1.0 else "minor_faster"
+        if row["speedup"] != 1.0:
+            target_faster = row["speedup"] > 1.0
+        else:
+            # equal medians: take the direction the significance test detected
+            target_faster = row["prob_faster"] > 0.5
+        return "minor_faster" if target_faster else "minor_slower"
     return None
 
 
@@ -405,7 +413,9 @@ def _md_label(label: str) -> str:
     return "`" + label.replace("|", "\\|") + "`"
 
 
-def _md_flagged_table(rows: list[dict], kinds: list[str], label_a: str, label_b: str) -> str:
+def _md_flagged_table(
+    rows: list[dict], kinds: list[str], label_a: str, label_b: str
+) -> str:
     lines = [
         f"| | Benchmark | Baseline {label_a} median (µs) | Target {label_b} median (µs) | Speedup | p (Holm) |",
         "|---|---|--:|--:|--:|--:|",
@@ -419,8 +429,9 @@ def _md_flagged_table(rows: list[dict], kinds: list[str], label_a: str, label_b:
     return "\n".join(lines)
 
 
-
-def _md_full_table(rows: list[dict], kinds: list[str | None], label_a: str, label_b: str) -> str:
+def _md_full_table(
+    rows: list[dict], kinds: list[str | None], label_a: str, label_b: str
+) -> str:
     lines = [
         f"| | Benchmark | Baseline {label_a} median (µs) | Baseline mean ± std (µs) | Baseline min (µs) "
         f"| Target {label_b} median (µs) | Target mean ± std (µs) | Target min (µs) | Speedup | p (Holm) |",
@@ -477,7 +488,7 @@ def markdown_comparison(
     if n_regressed:
         summary = f"🔴 **{n_regressed} regressed**"
     else:
-        summary = "✅ **No regressions**"
+        summary = "✅ **No significant regressions**"
     if n_improved:
         summary += f" · 🟢 **{n_improved} improved**"
     if n_other:
@@ -503,7 +514,10 @@ def markdown_comparison(
             "### Flagged",
             "",
             _md_flagged_table(
-                [row for row, _ in flagged], [kind for _, kind in flagged], label_a, label_b
+                [row for row, _ in flagged],
+                [kind for _, kind in flagged],
+                label_a,
+                label_b,
             ),
             "",
             " \\\n".join(legend),  # hard line breaks
