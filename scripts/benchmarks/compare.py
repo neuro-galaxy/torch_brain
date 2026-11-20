@@ -432,9 +432,12 @@ def _md_flagged_table(
 def _md_full_table(
     rows: list[dict], kinds: list[str | None], label_a: str, label_b: str
 ) -> str:
+    """Labels and units are stated once above the table to keep headers short."""
     lines = [
-        f"| | Benchmark | Baseline {label_a} median (µs) | Baseline mean ± std (µs) | Baseline min (µs) "
-        f"| Target {label_b} median (µs) | Target mean ± std (µs) | Target min (µs) | Speedup | p (Holm) |",
+        f"**Baseline (B):** {label_a} · **Target (T):** {label_b} · Times in µs",
+        "",
+        "| | Benchmark | B median | B mean ± std | B min "
+        "| T median | T mean ± std | T min | Speedup | p (Holm) |",
         "|---|---|--:|--:|--:|--:|--:|--:|--:|--:|",
     ]
     for row, kind in zip(rows, kinds, strict=True):
@@ -508,7 +511,7 @@ def markdown_comparison(
             f"🟢 **improved:** signif. and above {hi:.2f}x",
             f"🔸 **slower:** signif., but above {lo:.2f}x",
             f"🔹 **faster:** signif., but below {hi:.2f}x",
-            f"⚠️ **noisy:** outside {lo:.2f}-{hi:.2f}x range, but not signif.",
+            f"⚠️ **unconfirmed:** outside {lo:.2f}-{hi:.2f}x range, but not signif.",
         ]
         flagged_table = [
             "### Flagged",
