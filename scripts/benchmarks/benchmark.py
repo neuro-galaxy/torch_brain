@@ -11,7 +11,7 @@ Usage:
     uv run python scripts/benchmarks/benchmark.py
     uv run python scripts/benchmarks/benchmark.py --json
     uv run python scripts/benchmarks/benchmark.py --save results.jsonl
-    uv run python scripts/benchmarks/benchmark.py --suite data
+    uv run python scripts/benchmarks/benchmark.py --suite data --num-batches 20
 
 Set TORCH_BRAIN_SOURCE to override where torch_brain is imported from (used by
 compare.py to benchmark code from arbitrary commits).
@@ -35,6 +35,8 @@ sys.path.insert(0, _source)
 # resolve to the code under test.
 import bench_data  # noqa: E402
 import bench_utils  # noqa: E402
+import harness  # noqa: E402
+import numpy as np  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Runner
@@ -59,11 +61,19 @@ def main():
         default="all",
         help="Which benchmark suite to run (default: all)",
     )
+    parser.add_argument(
+        "--num-batches",
+        type=int,
+        default=harness.DEFAULT_NUM_BATCHES,
+        help=f"Timed batches per benchmark (default: {harness.DEFAULT_NUM_BATCHES})",
+    )
     args = parser.parse_args()
+
+    harness.set_num_batches(args.num_batches)
 
     results = []
     if not args.json:
-        print(f"{'Benchmark':<42} {'Iters':>8} {'Time (µs)':>12}")
+        print(f"{'Benchmark':<42} {'Iters':>8} {'Median (µs)':>12}")
         print("-" * 65)
 
     for bench_fn in SUITES[args.suite]:
@@ -76,7 +86,8 @@ def main():
             if "error" in r:
                 print(f"{r['label']:<42} {'ERROR':>8} {'---':>12}")
             else:
-                print(f"{r['label']:<42} {r['number']:>8} {r['time_us']:>12.2e}")
+                median = np.median(r["times_us"])
+                print(f"{r['label']:<42} {r['number']:>8} {median:>12.2e}")
 
     if args.json:
         print(json.dumps({"results": results}))
