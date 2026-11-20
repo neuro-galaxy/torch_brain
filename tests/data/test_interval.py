@@ -241,6 +241,8 @@ class TestUnsortedInterval:
         assert out._sorted is True
         out._sorted = None
         assert out.is_sorted() is True
+        np.testing.assert_array_equal(out.start, np.array([0.0]))
+        np.testing.assert_array_equal(out.end, np.array([4.0]))
 
     def test_unsorted_masked(self, unsorted_interval):
         mask = np.array([True, False, True, False])
@@ -264,10 +266,10 @@ class TestUnsortedInterval:
         assert out._sorted is None
         assert out.is_sorted() is False
 
-        assert np.array_equal(
+        np.testing.assert_array_equal(
             out.start, np.array([0.0, 0.5, 2.0, 2.5, 1.0, 1.5, 3.0, 3.5])
         )
-        assert np.array_equal(
+        np.testing.assert_array_equal(
             out.end, np.array([0.5, 1.0, 2.5, 3.0, 1.5, 2.0, 3.5, 4.0])
         )
 
@@ -281,8 +283,8 @@ class TestUnsortedInterval:
         out._sorted = None
         assert out.is_sorted() is True
 
-        assert np.array_equal(out.start, np.array([-0.5, 1.0, 2.0, 3.0]))
-        assert np.array_equal(out.end, np.array([1.0, 2.0, 3.0, 4.5]))
+        np.testing.assert_array_equal(out.start, np.array([-0.5, 1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(out.end, np.array([1.0, 2.0, 3.0, 4.5]))
 
     def test_unsorted_select_by_interval(self, unsorted_interval):
         select_interval = Interval(start=1.0, end=3.0)
@@ -295,8 +297,8 @@ class TestUnsortedInterval:
         out._sorted = None
         assert out.is_sorted() is True
 
-        assert np.array_equal(out.start, np.array([1.0, 2.0]))
-        assert np.array_equal(out.end, np.array([2.0, 3.0]))
+        np.testing.assert_array_equal(out.start, np.array([1.0, 2.0]))
+        np.testing.assert_array_equal(out.end, np.array([2.0, 3.0]))
 
     def test_unsorted_difference(self, unsorted_interval):
         diff_interval = Interval(
@@ -312,8 +314,8 @@ class TestUnsortedInterval:
         out._sorted = None
         assert out.is_sorted() is True
 
-        assert np.array_equal(out.start, np.array([0.0, 3.5]))
-        assert np.array_equal(out.end, np.array([1.0, 4.0]))
+        np.testing.assert_array_equal(out.start, np.array([0.0, 3.5]))
+        np.testing.assert_array_equal(out.end, np.array([1.0, 4.0]))
 
     def test_unsorted_and(self, unsorted_interval):
         and_interval = Interval(
@@ -329,8 +331,8 @@ class TestUnsortedInterval:
         out._sorted = None
         assert out.is_sorted() is True
 
-        assert np.array_equal(out.start, np.array([3.0]))
-        assert np.array_equal(out.end, np.array([4.0]))
+        np.testing.assert_array_equal(out.start, np.array([3.0]))
+        np.testing.assert_array_equal(out.end, np.array([4.0]))
 
     def test_unsorted_or(self, unsorted_interval):
         or_interval = Interval(
@@ -346,8 +348,8 @@ class TestUnsortedInterval:
         out._sorted = None
         assert out.is_sorted() is True
 
-        assert np.array_equal(out.start, np.array([0.0, 6.0]))
-        assert np.array_equal(out.end, np.array([4.0, 7.0]))
+        np.testing.assert_array_equal(out.start, np.array([0.0, 6.0]))
+        np.testing.assert_array_equal(out.end, np.array([4.0, 7.0]))
 
     def test_unsorted_slice(self, unsorted_interval, caplog):
         with caplog.at_level(logging.WARNING):
@@ -360,8 +362,8 @@ class TestUnsortedInterval:
         out._sorted = None
         assert out.is_sorted() is True
 
-        assert np.array_equal(out.start, np.array([0.0, 1.0]))
-        assert np.array_equal(out.end, np.array([1.0, 2.0]))
+        np.testing.assert_array_equal(out.start, np.array([0.0, 1.0]))
+        np.testing.assert_array_equal(out.end, np.array([1.0, 2.0]))
 
     def test_lazy_unsorted_interval(self, unsorted_interval, test_filepath):
         with h5py.File(test_filepath, "w") as f:
@@ -380,8 +382,8 @@ class TestUnsortedInterval:
             out._sorted = None
             assert out.is_sorted() is True
 
-            assert np.array_equal(out.start, np.array([0.0, 1.0]))
-            assert np.array_equal(out.end, np.array([1.0, 2.0]))
+            np.testing.assert_array_equal(out.start, np.array([0.0, 1.0]))
+            np.testing.assert_array_equal(out.end, np.array([1.0, 2.0]))
 
 
 def test_lazy_interval(test_filepath):
