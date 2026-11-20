@@ -371,12 +371,11 @@ def print_comparison(
     colors = {"regression": "\033[31m", "improvement": "\033[32m"} if tty else {}
     reset = "\033[0m" if tty else ""
 
-    col_a = f"{label_a} median"
-    col_b = f"{label_b} median"
-    print("\n  Per-call times in µs; speedup = baseline median / target median")
+    col_a = f"{label_a} median (µs)"
+    col_b = f"{label_b} median (µs)"
     print(
         f"\n  {'Benchmark':<42} {col_a:>24} {col_b:>24} {'Speedup':>9} "
-        f"{'p (Holm)':>9}  Flag"
+        f"{'p (corrected)':>9}  Flag"
     )
     print(f"  {'-' * 124}")
 
@@ -394,9 +393,9 @@ def print_comparison(
 _MD_MARKERS = {
     "regression": "🔴",
     "improvement": "🟢",
-    "unconfirmed": "⚠️",
     "minor_slower": "🔸",
     "minor_faster": "🔹",
+    "unconfirmed": "⚠️",
 }
 
 
@@ -406,9 +405,9 @@ def _md_label(label: str) -> str:
     return "`" + label.replace("|", "\\|") + "`"
 
 
-def _md_flagged_table(rows: list[dict], kinds: list[str]) -> str:
+def _md_flagged_table(rows: list[dict], kinds: list[str], label_a: str, label_b: str) -> str:
     lines = [
-        "| | Benchmark | Baseline median | Target median | Speedup | p (Holm) |",
+        f"| | Benchmark | Baseline {label_a} median (µs) | Target {label_b} median (µs) | Speedup | p (Holm) |",
         "|---|---|--:|--:|--:|--:|",
     ]
     for row, kind in zip(rows, kinds, strict=True):
@@ -420,10 +419,11 @@ def _md_flagged_table(rows: list[dict], kinds: list[str]) -> str:
     return "\n".join(lines)
 
 
-def _md_full_table(rows: list[dict], kinds: list[str | None]) -> str:
+
+def _md_full_table(rows: list[dict], kinds: list[str | None], label_a: str, label_b: str) -> str:
     lines = [
-        "| | Benchmark | Baseline median | Baseline mean ± std | Baseline min "
-        "| Target median | Target mean ± std | Target min | Speedup | p (Holm) |",
+        f"| | Benchmark | Baseline {label_a} median (µs) | Baseline mean ± std (µs) | Baseline min (µs) "
+        f"| Target {label_b} median (µs) | Target mean ± std (µs) | Target min (µs) | Speedup | p (Holm) |",
         "|---|---|--:|--:|--:|--:|--:|--:|--:|--:|",
     ]
     for row, kind in zip(rows, kinds, strict=True):
@@ -493,16 +493,17 @@ def markdown_comparison(
     parts = [summary, ""]
     if flagged:
         legend = [
-            f"🔴 regressed / 🟢 improved: significant and past {lo:.2f}x / "
-            f"{hi:.2f}x (a target-side error also counts as a regression)",
-            f"⚠️ past {lo:.2f}x / {hi:.2f}x but not significant: likely noise",
-            f"🔸 slower / 🔹 faster: significant but within {lo:.2f}x - {hi:.2f}x",
+            f"🔴 **regressed:** signif. and below {lo:.2f}x (or target-side error)",
+            f"🟢 **improved:** signif. and above {hi:.2f}x",
+            f"🔸 **slower:** signif., but above {lo:.2f}x",
+            f"🔹 **faster:** signif., but below {hi:.2f}x",
+            f"⚠️ **noisy:** outside {lo:.2f}-{hi:.2f}x range, but not signif.",
         ]
         flagged_table = [
             "### Flagged",
             "",
             _md_flagged_table(
-                [row for row, _ in flagged], [kind for _, kind in flagged]
+                [row for row, _ in flagged], [kind for _, kind in flagged], label_a, label_b
             ),
             "",
             " \\\n".join(legend),  # hard line breaks
@@ -514,7 +515,7 @@ def markdown_comparison(
         "<details>",
         f"<summary>Full statistics ({len(rows)} benchmarks)</summary>",
         "",
-        _md_full_table(rows, kinds),
+        _md_full_table(rows, kinds, label_a, label_b),
         "",
         "</details>",
         "",
@@ -522,11 +523,8 @@ def markdown_comparison(
 
     batches = "/".join(str(n) for n in batch_counts)
     notes = [
-        f"Per-call times in µs (baseline `{label_a}`, target `{label_b}`). "
-        "Speedup = baseline median / target median (> 1 means the target is "
-        f"faster). p: two-sided Mann-Whitney U test on the {batches} timed "
-        f"batches per side, Holm-corrected across {n_tested} benchmarks; "
-        "significant if "
+        f"Two-sided Mann-Whitney U test on the {batches} timed batches per "
+        f"side (Holm-corrected across {n_tested} benchmarks). Significant if "
         f"p < {thresholds.alpha:g}.",
         "",
         f"Shared CI runners are noisy, so treat isolated changes close to "
