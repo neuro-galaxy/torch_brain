@@ -276,7 +276,6 @@ class Interval(ArrayDict):
         """
         if not self.is_sorted():
             sorted_indices = np.lexsort((self.end, self.start))
-            self._sorted = None
             tmp_interval = Interval(
                 start=self.start[sorted_indices], end=self.end[sorted_indices]
             )
@@ -285,7 +284,8 @@ class Interval(ArrayDict):
                     "Intervals cannot be sorted by both start and end times."
                 )
             for key in self.keys():  # materialize and sort
-                self.__dict__[key] = self.__dict__[key][:][sorted_indices]
+                self.__dict__[key] = getattr(self, key)[sorted_indices]
+            self._sorted = True
 
         return self
 

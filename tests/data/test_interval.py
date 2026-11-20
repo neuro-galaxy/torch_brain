@@ -414,6 +414,28 @@ class TestUnsortedInterval:
             np.testing.assert_array_equal(out.end, np.array([1.0, 2.0]))
             np.testing.assert_array_equal(out.drifting_gratings_dir, np.array([90, 45]))
 
+    def test_lazy_masked_unsorted_interval(self, unsorted_interval, test_filepath):
+        with h5py.File(test_filepath, "w") as f:
+            unsorted_interval.to_hdf5(f)
+
+        f = h5py.File(test_filepath, "r")
+        # with h5py.File(test_filepath, "r") as f:
+        unsorted_interval = LazyInterval.from_hdf5(f)
+        assert unsorted_interval._sorted is False
+
+        mask = np.array([False, True, True, True])
+        out = unsorted_interval.select_by_mask(mask)
+        assert not out.is_sorted()
+
+        out.sort()
+
+        assert out._sorted is True
+        np.testing.assert_array_equal(out.start, np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(out.end, np.array([2.0, 3.0, 4.0]))
+        np.testing.assert_array_equal(
+            out.drifting_gratings_dir, np.array([90, 45, 135])
+        )
+
 
 def test_lazy_interval(test_filepath):
     data = Interval(
