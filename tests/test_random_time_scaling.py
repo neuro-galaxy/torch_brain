@@ -67,3 +67,46 @@ def test_regular_scaling():
 
     assert data_prime.lfps.domain.start == 0
     assert data_prime.lfps.domain.end == 20.0
+
+
+def test_scaling_with_large_positive_offset():
+
+    timestamps = np.linspace(0, 10, 100)
+    unit_index = np.arange(100)
+    spikes = IrregularTimeSeries(
+        timestamps=timestamps,
+        unit_index=unit_index,
+        domain="auto",
+    )
+
+    lfps = RegularTimeSeries(
+        sampling_rate=10.0,
+        data=np.random.randn(100),
+    )
+
+    trials = Interval(
+        start=np.arange(10.0),
+        end=np.arange(10.0) + 1,
+    )
+
+    data = Data(
+        lfps=lfps,
+        spikes=spikes,
+        trials=trials,
+        domain=Interval(0.0, 10.0),
+    )
+
+    rts = RandomTimeScaling(min_scale=2.0, max_scale=2.0, min_offset=15, max_offset=15)
+    data_prime = rts(data)
+
+    assert data_prime.domain.start == 15.0  # larger than original end
+    assert data_prime.domain.end == 35.0
+
+    assert data_prime.spikes.domain.start == 15.0
+    assert data_prime.spikes.domain.end == 35.0
+
+    assert data_prime.lfps.domain.start == 15.0
+    assert data_prime.lfps.domain.end == 35.0
+
+    assert data_prime.trials.start.min() == 15.0
+    assert data_prime.trials.end.max() == 35.0
