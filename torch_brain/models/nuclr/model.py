@@ -6,9 +6,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from torch_brain.batching import chain
+from torch_brain.batching import chain, collate
 from torch_brain.data import Data
 from torch_brain.nn import RotaryTimeEmbedding
+from torch_brain.samplers import SequentialFixedWindowSampler
 
 from .attention import Attention
 
@@ -146,8 +147,9 @@ class NuCLR(nn.Module):
         r"""Returns the transform that converts a :class:`~torch_brain.data.Data`
         sample into NuCLR inputs.
 
-        The transform bins the spikes of a sample and sorts its units into spatial
-        attention groups. It is intended to be used as the last transform of a
+        The transform bins the spikes of a sample, drops units that do not spike in
+        it, and sorts the remaining units into spatial attention groups. It is
+        intended to be used as the last transform of a
         :class:`~torch_brain.datasets.Dataset`, with batches assembled by
         :func:`~torch_brain.batching.collate`.
 
@@ -174,6 +176,62 @@ class NuCLR(nn.Module):
                 Defaults to ``"probe_id"``.
         """
         return NuCLRInputFn(self.ctx_duration, self.bin_size, group_by)
+
+    @torch.no_grad()
+    def embed(
+        self,
+        data: Data,
+        *,
+        step: float | None = None,
+        batch_size: int = 32,
+        group_by: str | None = "probe_id",
+    ) -> Tensor:
+        r"""Embeds every unit of a recording.
+
+        The recording is split into ``ctx_duration``-long windows, and the embedding
+        of each unit is averaged over the windows in which it spikes. Call
+        :meth:`eval` first to disable dropout.
+
+        Args:
+            data: Recording with the attributes expected by :meth:`get_input_fn`.
+            step: Time between the starts of consecutive windows (in seconds).
+                Defaults to ``ctx_duration / 2``.
+            batch_size: Number of windows per forward pass. Defaults to ``32``.
+            group_by: See :meth:`get_input_fn`. Defaults to ``"probe_id"``.
+
+        Returns:
+            Unit embeddings of shape :math:`(U, D)`, in the order of ``data.units``.
+            Units that never spike are ``NaN``.
+        """
+        sampler = SequentialFixedWindowSampler(
+            sampling_intervals={"": data.domain},
+            window_length=self.ctx_duration,
+            step=step or self.ctx_duration / 2,
+            drop_short=True,
+        )
+        windows = list(sampler)
+        input_fn = self.get_input_fn(group_by)
+        device = self.read_in.weight.device
+        unit_index = {uid: i for i, uid in enumerate(data.units.id.astype(str))}
+
+        total = torch.zeros(
+            len(unit_index), self.dim, device=device, dtype=torch.float64
+        )
+        count = torch.zeros(len(unit_index), device=device, dtype=torch.float64)
+        for i in range(0, len(windows), batch_size):
+            samples = [
+                input_fn(data.slice(w.start, w.end))
+                for w in windows[i : i + batch_size]
+            ]
+            batch = collate(samples)
+            z = self(batch["bins"].to(device), batch["group_lengths"].to(device))
+            idx = torch.tensor(
+                [unit_index[uid] for uid in batch["unit_ids"]], device=device
+            )
+            total.index_add_(0, idx, z.double())
+            count.index_add_(0, idx, torch.ones_like(idx, dtype=torch.float64))
+
+        return (total / count[:, None]).to(self.read_in.weight.dtype)
 
 
 @dataclass
@@ -209,18 +267,19 @@ class NuCLRInputFn:
             minlength=num_units * num_bins,
         ).reshape(num_units, num_bins)
 
-        # Compute spatial attention groups:
+        # Compute spatial attention groups of units that spike in this window:
         if self.group_by is None:
             group_ids = np.zeros(num_units, dtype=np.int64)
         else:
             group_ids = np.asarray(getattr(data.units, self.group_by))
-        order = np.argsort(group_ids, kind="stable")
-        _, group_lengths = np.unique(group_ids, return_counts=True)
+        active = np.flatnonzero(bins.any(1))
+        order = active[np.argsort(group_ids[active], kind="stable")]
+        _, group_lengths = np.unique(group_ids[order], return_counts=True)
 
         return {
             "bins": chain(bins[order].astype(np.int16)),
             "group_lengths": chain(group_lengths),
-            "num_units": num_units,
+            "num_units": len(order),
             "unit_ids": chain(data.units.id.astype(str)[order]),
             "group_ids": chain(group_ids[order]),
         }
