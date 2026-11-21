@@ -52,3 +52,13 @@ def _validate_select_by_mask_input(mask, length):
         raise ValueError(
             f"mask length {len(mask)} does not match object length ({length})"
         )
+
+
+def _check_hdf5_object(attrs: Mapping, expected: str) -> None:
+    r"""Raises a :obj:`ValueError` if the HDF5 group's ``object`` attribute does not
+    match the expected class name."""
+    found = attrs.get("object")
+    if found != expected:
+        raise ValueError(
+            f"File contains data for a {found} object, expected {expected} object."
+        )

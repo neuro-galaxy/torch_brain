@@ -11,7 +11,7 @@ import pandas as pd
 from .arraydict import ArrayDict
 from .interval import Interval
 from .typing import ArrayLike
-from .utils import _validate_select_by_mask_input
+from .utils import _check_hdf5_object, _validate_select_by_mask_input
 
 
 class IrregularTimeSeries(ArrayDict):
@@ -401,7 +401,7 @@ class IrregularTimeSeries(ArrayDict):
         file.attrs["object"] = self.__class__.__name__
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _attrs: dict | None = None):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -419,13 +419,11 @@ class IrregularTimeSeries(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = IrregularTimeSeries.from_hdf5(f)
         """
-        if file.attrs["object"] != cls.__name__:
-            raise ValueError(
-                f"File contains data for a {file.attrs['object']} object, expected "
-                f"{cls.__name__} object."
-            )
+        # Data.from_hdf5 passes in the attrs it already read
+        attrs = dict(file.attrs) if _attrs is None else _attrs
+        _check_hdf5_object(attrs, cls.__name__)
 
-        _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+        _unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
 
         data = {}
         for key, value in file.items():
@@ -436,7 +434,7 @@ class IrregularTimeSeries(ArrayDict):
                 if key in _unicode_keys:
                     data[key] = data[key].astype("U")
 
-        timekeys = file.attrs["timekeys"].astype(str).tolist()
+        timekeys = attrs["timekeys"].astype(str).tolist()
         domain = Interval.from_hdf5(file["domain"])
 
         obj = cls(**data, timekeys=timekeys, domain=domain)
@@ -737,7 +735,7 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         raise NotImplementedError("Cannot save a lazy array dict to hdf5.")
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _attrs: dict | None = None):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -751,9 +749,9 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == IrregularTimeSeries.__name__, (
-            "object type mismatch"
-        )
+        # Data.from_hdf5 passes in the attrs it already read
+        attrs = dict(file.attrs) if _attrs is None else _attrs
+        _check_hdf5_object(attrs, IrregularTimeSeries.__name__)
 
         obj = cls.__new__(cls)
 
@@ -775,8 +773,8 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
                 "be made with care to avoid breaking compatibility with torch_brain."
             )
 
-        obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
-        obj._timekeys = file.attrs["timekeys"].astype(str).tolist()
+        obj._unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
+        obj._timekeys = attrs["timekeys"].astype(str).tolist()
         obj._sorted = True
         obj._lazy_ops = {}
 
