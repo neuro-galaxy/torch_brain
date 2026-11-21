@@ -186,11 +186,12 @@ class NuCLR(nn.Module):
         batch_size: int = 32,
         group_by: str | None = "probe_id",
     ) -> Tensor:
-        r"""Embeds every unit of a recording.
+        r"""Embeds all units from a session.
 
+        Performs NuCLR inference on a single session and embeds its units.
         The recording is split into ``ctx_duration``-long windows, and the embedding
-        of each unit is averaged over the windows in which it spikes. Call
-        :meth:`eval` first to disable dropout.
+        of each unit is averaged over the windows in which it spikes. The model is in
+        evaluation mode during the call, and no gradients are computed.
 
         Args:
             data: Recording with the attributes expected by :meth:`get_input_fn`.
@@ -218,18 +219,23 @@ class NuCLR(nn.Module):
             len(unit_index), self.dim, device=device, dtype=torch.float64
         )
         count = torch.zeros(len(unit_index), device=device, dtype=torch.float64)
-        for i in range(0, len(windows), batch_size):
-            samples = [
-                input_fn(data.slice(w.start, w.end))
-                for w in windows[i : i + batch_size]
-            ]
-            batch = collate(samples)
-            z = self(batch["bins"].to(device), batch["group_lengths"].to(device))
-            idx = torch.tensor(
-                [unit_index[uid] for uid in batch["unit_ids"]], device=device
-            )
-            total.index_add_(0, idx, z.double())
-            count.index_add_(0, idx, torch.ones_like(idx, dtype=torch.float64))
+        training = self.training
+        self.eval()
+        try:
+            for i in range(0, len(windows), batch_size):
+                samples = [
+                    input_fn(data.slice(w.start, w.end))
+                    for w in windows[i : i + batch_size]
+                ]
+                batch = collate(samples)
+                z = self(batch["bins"].to(device), batch["group_lengths"].to(device))
+                idx = torch.tensor(
+                    [unit_index[uid] for uid in batch["unit_ids"]], device=device
+                )
+                total.index_add_(0, idx, z.double())
+                count.index_add_(0, idx, torch.ones_like(idx, dtype=torch.float64))
+        finally:
+            self.train(training)
 
         return (total / count[:, None]).to(self.read_in.weight.dtype)
 
