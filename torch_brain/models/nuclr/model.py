@@ -35,7 +35,7 @@ class NuCLR(nn.Module):
         bin_size: Spike binning resolution (in seconds). Defaults to ``0.02``.
         dim: Hidden and embedding dimension. Defaults to ``256``.
         self_heads: Number of attention heads. Defaults to ``4``.
-        dim_head: Dimension of each attention head. Defaults to ``64``.
+        dim_head: Dimension of each attention head. Defaults to ``dim // self_heads``.
         lin_dropout: Dropout rate. Defaults to ``0.3``.
         t_layers: Number of temporal-only blocks. Defaults to ``2``.
         st_layers: Number of spatial + temporal blocks. Defaults to ``4``.
@@ -62,7 +62,7 @@ class NuCLR(nn.Module):
         bin_size: float = 0.02,
         dim: int = 256,
         self_heads: int = 4,
-        dim_head: int = 64,
+        dim_head: int | None = None,
         lin_dropout: float = 0.3,
         t_layers: int = 2,
         st_layers: int = 4,
@@ -77,6 +77,8 @@ class NuCLR(nn.Module):
         self.num_latents = _ratio(ctx_duration, latent_step)
         self.bins_per_latent = _ratio(latent_step, bin_size)
         self.dim = dim
+        if dim_head is None:
+            dim_head = dim // self_heads
 
         self.read_in = nn.Linear(self.bins_per_latent, dim)
         self.rotary_emb = RotaryTimeEmbedding(
