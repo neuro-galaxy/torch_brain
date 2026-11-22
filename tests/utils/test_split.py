@@ -5,6 +5,8 @@ from torch_brain.data import Data, Interval
 from torch_brain.utils.split import (
     generate_stratified_folds,
     generate_string_kfold_assignment,
+    generate_temporal_folds,
+    temporal_metadata,
 )
 
 
@@ -450,3 +452,141 @@ class TestGenerateStringKfoldAssignment:
             if non_test_total > 0:
                 actual_ratio = fold_counts[k]["valid"] / non_test_total
                 assert abs(actual_ratio - val_ratio) < 0.1
+
+
+@pytest.mark.parametrize("width", [1, 9, 15])
+def test_native_split_containment_and_balancing(width):
+    starts = np.arange(0.1, 99, 0.25)
+    labels = np.arange(len(starts)) % 2
+    folds = generate_temporal_folds(
+        starts,
+        starts + 1,
+        labels,
+        domain=[0, 100],
+        context_width_s=width,
+        gap_s=1,
+        balance=True,
+        rng=np.random.default_rng(42),
+    )
+    metadata = temporal_metadata([0, 100], context_width_s=width, gap_s=1)
+    for fold, splits in folds.items():
+        for split, rows in splits.items():
+            lo, hi = metadata["blocks"][str(fold)][split]
+            assert len(rows) > 0
+            assert np.all(rows.start - (width - 1) / 2 >= lo)
+            assert np.all(rows.end + (width - 1) / 2 <= hi)
+            assert np.sum(rows.label == 0) == np.sum(rows.label == 1)
+            assert np.all(np.diff(rows.start) >= 0)
+    # A different task's sparse candidates use exactly the same physical edges.
+    sparse = generate_temporal_folds(
+        starts[::7],
+        starts[::7] + 1,
+        labels[::7],
+        domain=[0, 100],
+        context_width_s=width,
+        gap_s=1,
+    )
+    for fold, splits in sparse.items():
+        for split, rows in splits.items():
+            lo, hi = metadata["blocks"][str(fold)][split]
+            assert np.all(rows.start - (width - 1) / 2 >= lo)
+            assert np.all(rows.end + (width - 1) / 2 <= hi)
+
+
+def test_missing_class_and_multiclass():
+    starts = np.arange(100, dtype=float)
+    labels = np.arange(100) % 3
+    labels[:25] = 0
+    result = generate_temporal_folds(
+        starts,
+        starts + 1,
+        labels,
+        domain=[0, 100],
+        balance=True,
+        rng=np.random.default_rng(2),
+    )
+    assert len(result[0]["val"]) == 0
+    counts = np.bincount(result[0]["train"].label)
+    assert len(counts) == 3 and np.all(counts == counts[0])
+
+
+@pytest.mark.parametrize("only_class", [0, 2])
+def test_single_class_recording_is_not_balanced(only_class):
+    starts = np.arange(100, dtype=float)
+    folds = generate_temporal_folds(
+        starts,
+        starts + 1,
+        np.full(100, only_class),
+        domain=[0, 100],
+        balance=True,
+        rng=np.random.default_rng(42),
+    )
+    assert all(
+        len(interval) == 0 for splits in folds.values() for interval in splits.values()
+    )
+
+
+@pytest.mark.parametrize("width", [0, -1, float("nan"), True])
+def test_invalid_context(width):
+    with pytest.raises(ValueError, match="context_width_s"):
+        temporal_metadata([0, 100], context_width_s=width)
+
+
+@pytest.mark.parametrize("gap", [-1, float("nan"), float("inf"), True])
+def test_invalid_temporal_gap(gap):
+    with pytest.raises(ValueError, match="gap_s"):
+        temporal_metadata([0, 100], gap_s=gap)
+
+
+@pytest.mark.parametrize("domain", [[0], [1, 1], [1, 0], [0, float("inf")]])
+def test_invalid_temporal_domain(domain):
+    with pytest.raises(ValueError, match="domain"):
+        temporal_metadata(domain)
+
+
+@pytest.mark.parametrize(
+    "dtype,invalid",
+    [(float, np.nan), (float, np.inf), (object, np.nan), (object, complex(np.inf, 1))],
+)
+def test_nonfinite_temporal_labels_fail_instead_of_emptying_folds(dtype, invalid):
+    starts = np.arange(0.1, 99, 0.25)
+    labels = (np.arange(len(starts)) % 2).astype(dtype)
+    labels[50] = invalid
+    with pytest.raises(ValueError, match="labels.*nonfinite"):
+        generate_temporal_folds(
+            starts,
+            starts + 1,
+            labels,
+            domain=[0, 100],
+            balance=True,
+            rng=np.random.default_rng(42),
+        )
+
+
+@pytest.mark.parametrize(
+    "classes",
+    [
+        np.array([0.0, 1.0]),
+        np.array(["speech", "silence"]),
+        np.array(["speech", "silence"], dtype=object),
+    ],
+    ids=["finite_float", "string", "object_string"],
+)
+def test_temporal_balancing_preserves_finite_and_categorical_labels(classes):
+    starts = np.arange(0.1, 99, 0.25)
+    labels = np.resize(classes, len(starts))
+    folds = generate_temporal_folds(
+        starts,
+        starts + 1,
+        labels,
+        domain=[0, 100],
+        balance=True,
+        rng=np.random.default_rng(42),
+    )
+    for fold in folds.values():
+        for interval in fold.values():
+            observed, counts = np.unique(interval.label, return_counts=True)
+            np.testing.assert_array_equal(observed, np.unique(classes))
+            assert counts[0] == counts[1] > 0
+            assert interval.label.dtype == classes.dtype
+            assert np.all(np.diff(interval.start) >= 0)
