@@ -203,8 +203,8 @@ class NuCLR(nn.Module):
             group_by: See :meth:`get_input_fn`. Defaults to ``"probe_id"``.
 
         Returns:
-            Unit embeddings of shape :math:`(U, D)`, in the order of ``data.units``.
-            Units that never spike are ``NaN``.
+            Unit embeddings of shape :math:`(U, D)` in ``float64``, in the order of
+            ``data.units``. Units that never spike are ``NaN``.
         """
         sampler = SequentialFixedWindowSampler(
             sampling_intervals={"": data.domain},
@@ -239,7 +239,7 @@ class NuCLR(nn.Module):
         finally:
             self.train(training)
 
-        return (total / count[:, None].double()).to(self.read_in.weight.dtype)
+        return total / count[:, None]
 
 
 @dataclass
