@@ -25,7 +25,9 @@ class DeferredH5Dataset:
     @property
     def dataset(self) -> h5py.Dataset:
         if self._dataset is None:
-            self._dataset = self._group[self._name]
+            # low-level open: ~2x faster than group[name]
+            dsid = h5py.h5d.open(self._group.id, self._name.encode("utf-8"))
+            self._dataset = h5py.Dataset(dsid)
         return self._dataset
 
     @property
