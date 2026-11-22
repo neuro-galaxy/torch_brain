@@ -288,6 +288,18 @@ def run_interleaved(
         while True:
             events = [w.next_event(index) for w in workers]
             if all(e is None or e["event"] == "end" for e in events):
+                # both workers exited without "end": the rest of the suite was
+                # skipped, so report it as an error rather than a complete run
+                # (if only one exited, its skipped benchmarks are errors already)
+                if all(e is None for e in events):
+                    for i in (0, 1):
+                        results[i].append(
+                            {
+                                "label": f"benchmarks #{index}+",
+                                "error": f"{workers[i].label}: benchmark process "
+                                f"exited before the end of the suite",
+                            }
+                        )
                 break
 
             running = [i for i in (0, 1) if events[i] and events[i]["event"] == "start"]
