@@ -38,7 +38,6 @@ def _write_mock_h5(
     fold: int = 0,
     splits: tuple[str, ...] = ("train", "val", "test"),
     include_channel_masks: bool = True,
-    legacy_split_schema: bool = False,
 ) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with h5py.File(path, "w") as h5:
@@ -47,11 +46,8 @@ def _write_mock_h5(
         seeg_data = h5.create_group("seeg_data")
         seeg_data.attrs["unit"] = "V"
         seeg_data.attrs["scale_to_uV"] = 1e6
-        channel_splits = None
-        splits_group = None
-        if not legacy_split_schema:
-            channel_splits = h5.create_group("channel_splits")
-            splits_group = h5.create_group("splits")
+        channel_splits = h5.create_group("channel_splits")
+        splits_group = h5.create_group("splits")
 
         if include_channel_masks:
             for split in splits:
@@ -63,16 +59,10 @@ def _write_mock_h5(
                     fold=fold,
                     split=split,
                 )
-                if legacy_split_schema:
-                    channels.create_dataset(
-                        f"included_{label_mode}_{task}_fold{fold}_{split}",
-                        data=np.array([True], dtype=bool),
-                    )
-                else:
-                    channel_splits.create_dataset(
-                        split_key,
-                        data=np.array([True], dtype=bool),
-                    )
+                channel_splits.create_dataset(
+                    split_key,
+                    data=np.array([True], dtype=bool),
+                )
 
         for split in splits:
             interval_key = _split_key(
@@ -83,11 +73,7 @@ def _write_mock_h5(
                 fold=fold,
                 split=split,
             )
-            interval_group = (
-                h5.create_group(f"{label_mode}_{task}_fold{fold}_{split}")
-                if legacy_split_schema
-                else splits_group.create_group(interval_key)
-            )
+            interval_group = splits_group.create_group(interval_key)
             interval_group.create_dataset("start", data=np.array([0.0], dtype=float))
             interval_group.create_dataset("end", data=np.array([1.0], dtype=float))
             interval_group.create_dataset("label", data=np.array([1], dtype=int))
@@ -100,17 +86,14 @@ def _write_mock_recordings(
     subset_tier: str,
     fold: int = 0,
     include_channel_masks: bool = True,
-    filename_suffix: str = "",
-    legacy_split_schema: bool = False,
 ) -> None:
     dataset_dir = _mock_dataset_dir(tmp_path)
     for recording_id in recording_ids:
         _write_mock_h5(
-            dataset_dir / f"{recording_id}{filename_suffix}.h5",
+            dataset_dir / f"{recording_id}.h5",
             subset_tier=subset_tier,
             fold=fold,
             include_channel_masks=include_channel_masks,
-            legacy_split_schema=legacy_split_schema,
         )
 
 
@@ -257,27 +240,18 @@ def test_within_session_always_uses_target_recording(tmp_path: Path, split: str)
     assert ds.recording_ids == ["sub-CS44_ses-P44CSR1"]
 
 
-def test_within_session_accepts_behavior_ecephys_suffix_files(tmp_path: Path):
-    _write_mock_recordings(
-        tmp_path,
-        (
-            "sub-CS44_ses-P44CSR1",
-            "sub-CS44_ses-P44CSR2",
-            "sub-CS62_ses-P62CSR2",
-        ),
-        subset_tier="full",
-        filename_suffix="_behavior+ecephys",
-    )
-    ds = _make_dataset(
-        tmp_path,
-        regime="within-session",
-        split="test",
-    )
-    assert ds.recording_ids == ["sub-CS44_ses-P44CSR1"]
-    assert (
-        ds._resolve_storage_recording_id("sub-CS44_ses-P44CSR1")
-        == "sub-CS44_ses-P44CSR1_behavior+ecephys"
-    )
+@pytest.mark.parametrize("explicit", [False, True])
+def test_suffix_only_file_does_not_replace_canonical_recording(tmp_path, explicit):
+    rid = "sub-CS44_ses-P44CSR1"
+    _write_mock_recordings(tmp_path, (rid,), subset_tier="full")
+    path = _mock_dataset_dir(tmp_path) / f"{rid}.h5"
+    path.rename(path.with_name(f"{rid}_behavior+ecephys.h5"))
+    if explicit:
+        with pytest.raises(FileNotFoundError, match=rid):
+            _make_dataset(tmp_path, recording_ids=[rid])
+    else:
+        with pytest.raises(ValueError, match="No eligible recording_ids"):
+            _make_dataset(tmp_path)
 
 
 def test_hold_in_session_train_uses_all_eligible_recordings(tmp_path: Path):
@@ -361,72 +335,6 @@ def test_explicit_recording_ids_reject_split_selection_args(tmp_path: Path):
         )
 
 
-def test_explicit_recording_ids_accept_behavior_ecephys_suffix_files(tmp_path: Path):
-    _write_mock_recordings(
-        tmp_path,
-        ("sub-CS44_ses-P44CSR1",),
-        subset_tier="full",
-        filename_suffix="_behavior+ecephys",
-    )
-    ds = _make_dataset(
-        tmp_path,
-        recording_ids=["sub-CS44_ses-P44CSR1"],
-    )
-    assert ds.recording_ids == ["sub-CS44_ses-P44CSR1"]
-    assert (
-        ds._resolve_storage_recording_id("sub-CS44_ses-P44CSR1")
-        == "sub-CS44_ses-P44CSR1_behavior+ecephys"
-    )
-
-
-def test_within_session_accepts_legacy_selector_schema(tmp_path: Path):
-    _write_mock_recordings(
-        tmp_path,
-        ("sub-CS44_ses-P44CSR1",),
-        subset_tier="full",
-        filename_suffix="_behavior+ecephys",
-        legacy_split_schema=True,
-    )
-    ds = _make_dataset(
-        tmp_path,
-        regime="within-session",
-        split="test",
-    )
-    legacy_split_key = ds._legacy_split_key()
-
-    class _FakeChannels:
-        id = np.array(["ch0"], dtype=str)
-        included = np.array([False], dtype=bool)
-
-    class _FakeRecording:
-        def __init__(self):
-            self.channels = _FakeChannels()
-            self.splits = object()
-            self.paths = []
-            self.subject = type("_Subject", (), {"id": "44"})()
-            self.session = type("_Session", (), {"id": "sub-CS44_ses-P44CSR1"})()
-
-        def get_nested_attribute(self, path: str):
-            self.paths.append(path)
-            if path == f"channels.included_{legacy_split_key}":
-                return np.array([True], dtype=bool)
-            if path == legacy_split_key:
-                return Interval(
-                    start=np.array([0.0]),
-                    end=np.array([1.0]),
-                    label=np.array([1]),
-                )
-            raise KeyError(path)
-
-    rec = _FakeRecording()
-    ds.get_recording_hook(rec)
-
-    assert rec.splits.start.tolist() == [0.0]
-    assert rec.splits.end.tolist() == [1.0]
-    assert rec.splits.label.tolist() == [1]
-    assert rec.channels.included.tolist() == [True]
-
-
 def test_describe_selection_reports_requested_split(tmp_path: Path):
     _write_mock_recordings(
         tmp_path, ("sub-CS44_ses-P44CSR1",), subset_tier="full", fold=1
@@ -489,7 +397,7 @@ def test_get_recording_hook_selects_split_and_prefixes_channel_ids(
         uniquify_channel_ids_with_subject=with_subject,
         uniquify_channel_ids_with_session=with_session,
     )
-    split_key = ds._split_key()
+    split_key = ds.get_split_key()
     interval = Interval(start=np.array([0.0]), end=np.array([1.0]), label=np.array([1]))
     recording = Data(
         domain=Interval(0.0, 1.0),
@@ -508,13 +416,12 @@ def test_get_recording_hook_selects_split_and_prefixes_channel_ids(
 
 
 @pytest.mark.parametrize("keep_files_open", [False, True])
-@pytest.mark.parametrize("filename_suffix", ["", "_behavior+ecephys"])
 def test_get_recording_loads_and_namespaces_without_mutating_cached_data(
-    tmp_path: Path, keep_files_open, filename_suffix
+    tmp_path: Path, keep_files_open
 ):
     recording_id = "sub-CS44_ses-P44CSR1"
     split_key = "full$binary$within_session$speech$fold0$train"
-    path = _mock_dataset_dir(tmp_path) / f"{recording_id}{filename_suffix}.h5"
+    path = _mock_dataset_dir(tmp_path) / f"{recording_id}.h5"
     path.parent.mkdir(parents=True)
     Data(
         domain=Interval(0.0, 1.0),
@@ -548,7 +455,7 @@ def test_get_recording_hook_requires_channel_mask_and_intervals(
 ):
     _write_mock_recordings(tmp_path, ("sub-CS44_ses-P44CSR1",), subset_tier="full")
     ds = _make_dataset(tmp_path)
-    split_key = ds._split_key()
+    split_key = ds.get_split_key()
     recording = Data(
         domain=Interval(0.0, 1.0),
         session=Data(id="sub-CS44_ses-P44CSR1"),

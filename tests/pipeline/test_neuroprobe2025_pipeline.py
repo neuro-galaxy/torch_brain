@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from _utils import add_pipelines_to_path
+from torch.utils.data import Subset
 
 from torch_brain.data import ArrayDict, Data, RegularTimeSeries
 
@@ -24,8 +25,10 @@ def test_interval_export_is_chronological_and_stable(monkeypatch, empty):
         SimpleNamespace(SAMPLING_RATE=2),
         raising=False,
     )
-    items = [] if empty else [((6, 8), 1), ((0, 2), 0), ((2, 4), 2), ((2, 4), 3)]
-    interval = neuroprobe_pipeline._intervals_from_dataset(items)
+    starts = np.array([] if empty else [6, 0, 2, 2], dtype=np.int64)
+    labels = np.array([] if empty else [1, 0, 2, 3], dtype=np.int64)
+    dataset = SimpleNamespace(get_window_bounds=lambda: (starts, starts + 2, labels))
+    interval = neuroprobe_pipeline._intervals_from_dataset(dataset)
     np.testing.assert_array_equal(interval.start, [] if empty else [0, 1, 1, 3])
     np.testing.assert_array_equal(interval.end, [] if empty else [1, 2, 2, 4])
     np.testing.assert_array_equal(interval.label, [] if empty else [0, 2, 3, 1])
@@ -104,12 +107,20 @@ def test_process_prepares_worker_runtime_even_when_processing_is_skipped(
     pipeline_instance.raw_dir = tmp_path / "raw"
     pipeline_instance.processed_dir = tmp_path / "processed"
     pipeline_instance.processed_dir.mkdir(parents=True, exist_ok=True)
-    pipeline_instance.args = SimpleNamespace(reprocess=False, no_splits=False)
+    pipeline_instance.args = SimpleNamespace(reprocess=False, no_splits=True)
     pipeline_instance.update_status = lambda _status: None
 
     input_file = tmp_path / "already_downloaded_asset.h5"
     input_file.touch()
-    (pipeline_instance.processed_dir / input_file.name).touch()
+    with h5py.File(pipeline_instance.processed_dir / input_file.name, "w") as handle:
+        handle.create_group("brainset").attrs["derived_version"] = "1.2.0"
+        for key in ("subject", "session", "domain", "channels", "seeg_data"):
+            handle.create_group(key)
+        handle["seeg_data/data"] = np.zeros((4, 2), dtype=np.float32)
+        handle["channels/id"] = np.array(["a", "b"], dtype="S1")
+        handle.attrs["preparation_settings_json"] = (
+            '{"splits_enabled":false,"pre_offset_s":0.0,"post_offset_s":1.0,"label_files":{}}'
+        )
 
     prepared_raw_dirs = []
     monkeypatch.setattr(
@@ -131,6 +142,7 @@ def test_process_prepares_worker_runtime_even_when_processing_is_skipped(
 
 @pytest.fixture
 def neuroprobe_preparation(tmp_path, monkeypatch):
+    monkeypatch.setattr(neuroprobe_pipeline, "version", lambda _: "0.2.0")
     input_file = tmp_path / "sub_1_trial001.h5"
     signal = np.array([1.0, 2.0, 3.0], dtype=np.float32)
     with h5py.File(input_file, "w") as handle:
@@ -218,11 +230,17 @@ def test_failed_publication_preserves_previous_output(
     assert not list(pipeline.processed_dir.glob("*.tmp"))
 
 
-def test_get_brainset_description_records_dataset_and_neuroprobe_versions():
+def test_get_brainset_description_records_dataset_and_neuroprobe_versions(monkeypatch):
+    monkeypatch.setattr(neuroprobe_pipeline, "version", lambda package: "0.2.0")
     description = neuroprobe_pipeline.get_brainset_description()
-
-    assert description.origin_version == "dataset=0.0.0; neuroprobe=0.1.7"
-    assert description.derived_version == "1.1.2"
+    assert (
+        description.origin_version
+        == "dataset=0.0.0; neuroprobe_distribution=0.2.0; temporal_split=shared-temporal-v1"
+    )
+    assert description.derived_version == "1.2.0"
+    assert neuroprobe_pipeline.get_brainset_description(
+        splits_enabled=False
+    ).origin_version.endswith("temporal_split=none")
 
 
 def test_extract_channel_data_adds_btb_lip_and_xyz_coordinate_fields(
@@ -276,6 +294,7 @@ def test_iterate_extract_splits_prepares_and_deduplicates_subject_initialization
         neuroprobe_pipeline.Pipeline
     )
     pipeline_instance.raw_dir = tmp_path / "raw"
+    pipeline_instance.args = SimpleNamespace(reprocess=False, no_splits=False)
     pipeline_instance.update_status = lambda _status: None
 
     prepared_raw_dirs = []
@@ -299,7 +318,7 @@ def test_iterate_extract_splits_prepares_and_deduplicates_subject_initialization
 
     def _fake_extract_and_structure_splits(**kwargs):
         seen_subject_keys.append(sorted(kwargs["all_subjects"].keys()))
-        return {"split_key": object()}, {"split_key": np.array([True], dtype=bool)}
+        return {"split_key": object()}, {"split_key": np.array([True], dtype=bool)}, {}
 
     monkeypatch.setattr(neuroprobe_pipeline, "_prepare_neuroprobe_lib", _fake_prepare)
     monkeypatch.setattr(
@@ -323,7 +342,7 @@ def test_iterate_extract_splits_prepares_and_deduplicates_subject_initialization
         _fake_extract_and_structure_splits,
     )
 
-    split_indices, split_channel_masks = (
+    split_indices, split_channel_masks, temporal = (
         neuroprobe_pipeline.Pipeline.iterate_extract_splits(
             pipeline_instance,
             subject_id=1,
@@ -357,6 +376,11 @@ def test_extract_and_structure_splits_returns_masks_without_mutating_channels(
     val_dataset = SimpleNamespace(electrode_labels=np.array(["B"], dtype=np.str_))
     test_dataset = SimpleNamespace(electrode_labels=np.array(["A", "B"], dtype=np.str_))
     fold = {
+        "temporal_split": {
+            "protocol": "shared-temporal-v1",
+            "sampling_rate": 2,
+            "blocks_samples": {"train": [100, 200], "val": [0, 50], "test": [50, 100]},
+        },
         "train_dataset": train_dataset,
         "val_dataset": val_dataset,
         "test_dataset": test_dataset,
@@ -376,7 +400,7 @@ def test_extract_and_structure_splits_returns_masks_without_mutating_channels(
         lambda dataset: f"interval-{dataset.electrode_labels[0]}",
     )
 
-    split_indices, split_channel_masks = (
+    split_indices, split_channel_masks, temporal = (
         neuroprobe_pipeline._extract_and_structure_splits(
             all_subjects={1: object()},
             all_channels={1: channels},
@@ -393,6 +417,40 @@ def test_extract_and_structure_splits_returns_masks_without_mutating_channels(
     assert selector_key in split_channel_masks
     assert split_channel_masks[selector_key].tolist() == [True, False]
     assert not hasattr(channels, selector_key)
+
+
+@pytest.mark.parametrize("indices", [[4, 1, 4], []])
+def test_native_interval_export_preserves_nested_subset_membership(
+    monkeypatch, indices
+):
+    starts = np.arange(6, dtype=np.int64) * 10
+    ends = starts + 4
+    labels = np.arange(6, dtype=np.int64) % 2
+
+    class NativeCandidates:
+        def get_window_bounds(self):
+            return starts, ends, labels
+
+        def __getitem__(self, index):
+            raise AssertionError(
+                "Native interval export must not read individual items"
+            )
+
+    monkeypatch.setattr(
+        neuroprobe_pipeline, "neuroprobe_config", SimpleNamespace(SAMPLING_RATE=2)
+    )
+    base = NativeCandidates()
+    nested = Subset(Subset(base, [5, 3, 0, 2, 4]), indices)
+    interval = neuroprobe_pipeline._intervals_from_dataset(nested)
+    selected = np.array([5, 3, 0, 2, 4], dtype=np.int64)[
+        np.asarray(indices, dtype=np.int64)
+    ]
+    selected = selected[np.argsort(starts[selected], kind="stable")]
+    np.testing.assert_array_equal(interval.start, starts[selected] / 2)
+    np.testing.assert_array_equal(interval.end, ends[selected] / 2)
+    np.testing.assert_array_equal(interval.label, labels[selected])
+    assert interval.start.dtype == interval.end.dtype == np.float64
+    assert interval.label.dtype == np.int64
 
 
 def test_xyz_coordinates_reflect_replaced_source(tmp_path):

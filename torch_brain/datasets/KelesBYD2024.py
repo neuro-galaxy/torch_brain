@@ -13,7 +13,7 @@ from torch_brain.data import Data, Interval
 
 from ._utils import get_processed_dir
 from .dataset import Dataset
-from .mixins import MultiChannelDatasetMixin
+from .mixins import MultiChannelDatasetMixin, TemporalBlockDatasetMixin
 
 SubsetTier = Literal["full"]
 LabelMode = Literal["binary", "multiclass"]
@@ -52,17 +52,11 @@ VALID_TASKS = (
 # Regimes change participating recordings, not the saved fold selector.
 H5_REGIME = "within_session"
 
-LEGACY_H5_TASK_BY_TASK: dict[str, str] = {
-    "onset": "sentence_onset",
-    "word_head_pos": "word_head",
-}
-
 # Split interval and channel-mask keys share one selector key:
 # <subset_tier>$<label_mode>$<eval_setting>$<task>$fold<k>$<split>
 
 # Strict parser for canonical recording ids like "sub-CS44_ses-P44CSR1".
 _RECORDING_ID_RE = re.compile(r"^sub-CS(\d+)_ses-P(\d+)CSR(\d+)$")
-_BYD_FILE_SUFFIX_RE = re.compile(r"_behavior\+ecephys$", flags=re.IGNORECASE)
 
 
 def _stack_coordinate_frame(
@@ -141,7 +135,7 @@ def _to_recording_id(subject: Integral, session: Integral) -> str:
 
 def _from_recording_id(recording_id: str) -> tuple[int, int]:
     # Parse canonical ids like "sub-CS44_ses-P44CSR1" back into integers.
-    match = _RECORDING_ID_RE.match(recording_id)
+    match = _RECORDING_ID_RE.fullmatch(recording_id)
     if match is None:
         raise ValueError(
             f"Invalid recording_id '{recording_id}'. Expected "
@@ -157,12 +151,7 @@ def _from_recording_id(recording_id: str) -> tuple[int, int]:
     return subject_from_cs, int(match.group(3))
 
 
-def _normalize_recording_stem(recording_stem: str) -> str:
-    """Normalize one on-disk H5 stem to the canonical BYD recording id."""
-    return _BYD_FILE_SUFFIX_RE.sub("", recording_stem)
-
-
-class KelesBYD2024(MultiChannelDatasetMixin, Dataset):
+class KelesBYD2024(TemporalBlockDatasetMixin, MultiChannelDatasetMixin, Dataset):
     """Keles BYD 2024 iEEG dataset.
 
     Each instance operates in exactly one of two mutually-exclusive modes:
@@ -246,7 +235,6 @@ class KelesBYD2024(MultiChannelDatasetMixin, Dataset):
             root = get_processed_dir()
         # Resolve and validate constructor inputs before touching dataset records.
         self._dataset_dir = Path(root) / dirname
-        self._disk_recording_stem_by_recording_id: dict[str, str] | None = None
 
         # XOR recording-source behavior:
         # - no recording_ids => use split-resolved benchmark recordings
@@ -305,24 +293,13 @@ class KelesBYD2024(MultiChannelDatasetMixin, Dataset):
                 "No active recording_ids resolved for KelesBYD2024 construction."
             )
 
-        storage_recording_ids = [
-            self._resolve_storage_recording_id(recording_id)
-            for recording_id in active_recording_ids
-        ]
-
         super().__init__(
             dataset_dir=self._dataset_dir,
-            recording_ids=storage_recording_ids,
+            recording_ids=active_recording_ids,
             transform=transform,
             namespace_attributes=["subject.id", "channels.id"],
             **kwargs,
         )
-        # Public dataset identity stays canonical even when disk files include
-        # BYD-specific suffixes like "_behavior+ecephys".
-        self._storage_recording_id_by_recording_id = dict(
-            zip(active_recording_ids, storage_recording_ids, strict=True)
-        )
-        self._recording_ids = sorted(active_recording_ids)
         self._sampling_rate_hz: float | None = None
 
         # Configure subject/session-based channel-id prefixing behavior.
@@ -438,18 +415,10 @@ class KelesBYD2024(MultiChannelDatasetMixin, Dataset):
         return arrays
 
     def get_neural_signal_metadata(self, recording_id: str) -> dict[str, str | float]:
-        storage_recording_id = self._storage_recording_id_by_recording_id.get(
-            recording_id, recording_id
-        )
         return _read_seeg_signal_metadata(
-            self._dataset_dir / f"{storage_recording_id}.h5",
+            self._dataset_dir / f"{recording_id}.h5",
             recording_id=recording_id,
         )
-
-    def get_recording(self, recording_id: str, _namespace: str = "") -> Data:
-        """Load one recording by canonical BYD recording id."""
-        storage_recording_id = self._storage_recording_id_by_recording_id[recording_id]
-        return super().get_recording(storage_recording_id, _namespace=_namespace)
 
     def get_recording_hook(self, data: Data):
         """Apply split-specific channel inclusion mask when available."""
@@ -459,23 +428,18 @@ class KelesBYD2024(MultiChannelDatasetMixin, Dataset):
             return
 
         recording_id = data.session.id
-        channel_split_paths = self._channel_split_attr_paths()
-        interval_paths = self._interval_attr_paths()
+        channel_split_path = self._channel_split_attr_path()
+        interval_path = self._interval_attr_path()
 
-        # Benchmark mode requires both the channel mask and intervals.
+        # The supported writers store the same canonical selector in both groups.
         try:
-            channel_mask, _ = self._resolve_first_nested_attribute(
-                data, channel_split_paths
-            )
-            split_interval, _ = self._resolve_first_nested_attribute(
-                data, interval_paths
-            )
+            channel_mask = data.get_nested_attribute(channel_split_path)
+            split_interval = data.get_nested_attribute(interval_path)
         except (AttributeError, KeyError) as exc:
             raise KeyError(
                 "Missing required benchmark selector attributes for KelesBYD2024 "
                 f"recording '{recording_id}'. Expected channel mask at "
-                f"{channel_split_paths}, "
-                f"and split intervals at {interval_paths}."
+                f"'{channel_split_path}', and split intervals at '{interval_path}'."
             ) from exc
         data.channels.included = channel_mask
         data.splits = split_interval
@@ -505,13 +469,14 @@ class KelesBYD2024(MultiChannelDatasetMixin, Dataset):
                 "test_recording_id": _to_recording_id(
                     self.test_subject, self.test_session
                 ),
-                "split_key": self._split_key(),
+                "split_key": self.get_split_key(),
             }
         )
+        summary.update(self.describe_temporal_selection())
         return summary
 
     # Path/key builders.
-    def _split_key(self) -> str:
+    def get_split_key(self) -> str:
         """Return the canonical key shared under `splits` and `channel_splits`."""
         return (
             f"{self.subset_tier}${self.label_mode}${self.h5_regime}${self.task}$"
@@ -520,34 +485,11 @@ class KelesBYD2024(MultiChannelDatasetMixin, Dataset):
 
     def _interval_attr_path(self) -> str:
         # Primary split interval path under data.splits.
-        return f"splits.{self._split_key()}"
+        return f"splits.{self.get_split_key()}"
 
     def _channel_split_attr_path(self) -> str:
         # Return the primary path for split-specific channel masks.
-        return f"channel_splits.{self._split_key()}"
-
-    def _legacy_split_key(self) -> str:
-        legacy_task = LEGACY_H5_TASK_BY_TASK.get(self.task, self.task)
-        return f"{self.label_mode}_{legacy_task}_fold{self.fold}_{self.split}"
-
-    def _interval_attr_paths(self) -> list[str]:
-        return [self._interval_attr_path(), self._legacy_split_key()]
-
-    def _channel_split_attr_paths(self) -> list[str]:
-        return [
-            self._channel_split_attr_path(),
-            f"channels.included_{self._legacy_split_key()}",
-        ]
-
-    def _resolve_first_nested_attribute(
-        self, data: Data, paths: list[str]
-    ) -> tuple[object, str]:
-        for path in paths:
-            try:
-                return data.get_nested_attribute(path), path
-            except (AttributeError, KeyError):
-                continue
-        raise KeyError(f"None of the candidate attribute paths exist: {paths}")
+        return f"channel_splits.{self.get_split_key()}"
 
     def _validate_split_args(self) -> None:
         # Keep constructor strict so invalid benchmark configs fail immediately.
@@ -621,41 +563,16 @@ class KelesBYD2024(MultiChannelDatasetMixin, Dataset):
         return ids
 
     def _full_subset_recording_ids_from_disk(self) -> list[str]:
-        # Full tier should use all available recording ids in dataset_dir.
-        return sorted(self._disk_stem_by_recording_id().keys())
-
-    def _disk_stem_by_recording_id(self) -> dict[str, str]:
-        # Build one canonical-id -> on-disk-stem map so split selection and file
-        # loading agree even when BYD files carry an extra suffix.
-        if self._disk_recording_stem_by_recording_id is not None:
-            return self._disk_recording_stem_by_recording_id
-
-        resolved: dict[str, str] = {}
-        for path in sorted(self._dataset_dir.glob("*.h5")):
-            recording_id = _normalize_recording_stem(path.stem)
+        # Supported preparation writes canonical IDs directly; other H5 artifacts
+        # do not participate in pooled regime discovery.
+        recording_ids = []
+        for path in self._dataset_dir.glob("*.h5"):
             try:
-                _from_recording_id(recording_id)
+                _from_recording_id(path.stem)
             except ValueError:
-                # Ignore non-recording H5 artifacts in the same directory.
                 continue
-            existing = resolved.get(recording_id)
-            if existing is not None and existing != path.stem:
-                raise ValueError(
-                    "Ambiguous BYD recording-id mapping: multiple H5 stems resolve to "
-                    f"canonical id '{recording_id}' under dataset_dir '{self._dataset_dir}'."
-                )
-            resolved[recording_id] = path.stem
-        self._disk_recording_stem_by_recording_id = resolved
-        return resolved
-
-    def _resolve_storage_recording_id(self, recording_id: str) -> str:
-        stem = self._disk_stem_by_recording_id().get(recording_id)
-        if stem is None:
-            raise FileNotFoundError(
-                f"Recording '{recording_id}' does not exist under dataset_dir "
-                f"'{self._dataset_dir}'."
-            )
-        return stem
+            recording_ids.append(path.stem)
+        return sorted(recording_ids)
 
     def _eligible_recording_ids_for_subset_tier(self) -> list[str]:
         if self.subset_tier == "full":
