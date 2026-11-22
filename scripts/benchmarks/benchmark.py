@@ -15,6 +15,10 @@ Usage:
 
 Set TORCH_BRAIN_SOURCE to override where torch_brain is imported from (used by
 compare.py to benchmark code from arbitrary commits).
+
+``--worker`` is internal to compare.py: the process sets up each benchmark and
+runs single timing batches on request, so compare.py can interleave the
+batches of two commits (see harness.py).
 """
 
 from __future__ import annotations
@@ -49,6 +53,32 @@ SUITES = {
 }
 
 
+def run_worker(suite: str) -> None:
+    """Serve compare.py: announce each benchmark, run batches on request."""
+    # keep the protocol on its own copy of stdout; anything the code under test
+    # prints (Python or C level) goes to stderr instead
+    replies = os.fdopen(os.dup(1), "w")
+    os.dup2(2, 1)
+    sys.stdout = sys.stderr
+    harness.start_worker(sys.stdin, replies)
+
+    benchmarks = SUITES[suite]
+    for index, bench_fn in enumerate(benchmarks):
+        harness.current_index = index
+        try:
+            bench_fn()
+        except Exception:
+            harness.send(
+                {
+                    "event": "error",
+                    "label": bench_fn.__name__,
+                    "error": traceback.format_exc(),
+                }
+            )
+    harness.current_index = len(benchmarks)
+    harness.send({"event": "end"})
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run torch_brain benchmarks.")
     parser.add_argument("--json", action="store_true", help="Output results as JSON")
@@ -67,7 +97,12 @@ def main():
         default=harness.DEFAULT_NUM_BATCHES,
         help=f"Timed batches per benchmark (default: {harness.DEFAULT_NUM_BATCHES})",
     )
+    parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
+
+    if args.worker:
+        run_worker(args.suite)
+        return
 
     harness.set_num_batches(args.num_batches)
 

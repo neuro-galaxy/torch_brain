@@ -23,6 +23,14 @@ Options:
                       (default: 1.05, i.e. more than 5% faster).
     --alpha X         Significance level for the Holm-corrected p-values
                       (default: 0.05).
+    --sequential      Run all of the baseline's batches, then all of the
+                      target's, instead of interleaving them.
+
+When two sources are compared, each runs in its own long-lived worker process
+and their batches are interleaved: round r runs one batch of each side, the
+baseline first on even rounds and the target first on odd rounds (ABBA...). Drift
+in machine speed during the run (common on shared CI runners) then affects both
+sides alike instead of showing up as a speedup or a regression.
 
 Speedup is baseline median / target median, so > 1 means the target is faster.
 Significance computed with a two-sided Mann-Whitney U test on the per-batch times,
@@ -192,6 +200,166 @@ def run_benchmark(
         return None
 
     return data["results"]
+
+
+class _Worker:
+    """One ``benchmark.py --worker`` process for one torch_brain source."""
+
+    def __init__(self, source_dir: str | None, label: str, suite: str):
+        env = os.environ.copy()
+        if source_dir is not None:
+            env["TORCH_BRAIN_SOURCE"] = source_dir
+        self.label = label
+        self.alive = True
+        self.proc = subprocess.Popen(
+            [sys.executable, BENCH_SCRIPT, "--worker", "--suite", suite],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            env=env,
+        )
+
+    def send(self, cmd: str) -> None:
+        if not self.alive:
+            return
+        try:
+            self.proc.stdin.write(cmd + "\n")
+            self.proc.stdin.flush()
+        except BrokenPipeError:
+            self.alive = False
+
+    def read(self) -> dict | None:
+        """Next protocol message, or None once the process has exited."""
+        line = self.proc.stdout.readline() if self.alive else ""
+        if not line:
+            self.alive = False
+            return None
+        return json.loads(line)
+
+    def next_event(self, index: int) -> dict | None:
+        """The message announcing benchmark ``index`` (start, error or end)."""
+        while True:
+            msg = self.read()
+            if msg is None or msg["index"] >= index:
+                return msg
+            # raised after the driver said "done" (e.g. during cleanup); the
+            # batch times already collected stand
+            print(
+                f"Note: {self.label}: late error in {msg.get('label')}:\n"
+                f"{msg.get('error', msg)}",
+                file=sys.stderr,
+            )
+
+    def close(self) -> None:
+        try:
+            self.proc.stdin.close()
+        except BrokenPipeError:
+            pass
+        self.proc.wait()
+
+
+def run_interleaved(
+    source_a: str | None,
+    source_b: str | None,
+    label_a: str,
+    label_b: str,
+    suite: str = "all",
+    num_batches: int = DEFAULT_NUM_BATCHES,
+) -> tuple[list[dict] | None, list[dict] | None]:
+    """Benchmark two sources with interleaved batches.
+
+    Both workers run the same benchmark list (the current scripts; only the
+    torch_brain source differs), so they are stepped benchmark by benchmark.
+    Each worker runs its own untimed warm-up batch during setup; then round r
+    runs one batch per side, A first on even rounds and B first on odd ones.
+
+    Returns one results list per side, in the same format as
+    ``run_benchmark``, or ``None`` for a side whose worker failed before
+    reaching any benchmark (e.g. an import error in an old commit).
+    """
+    print(f"Running interleaved benchmarks: {label_a} vs {label_b}...", file=sys.stderr)
+    workers = [_Worker(source_a, label_a, suite), _Worker(source_b, label_b, suite)]
+    results: list[list[dict]] = [[], []]
+    reached = [False, False]
+
+    try:
+        index = 0
+        while True:
+            events = [w.next_event(index) for w in workers]
+            if all(e is None or e["event"] == "end" for e in events):
+                break
+
+            running = [i for i in (0, 1) if events[i] and events[i]["event"] == "start"]
+            for i in (0, 1):
+                reached[i] |= events[i] is not None and events[i]["event"] != "end"
+            label = next(
+                (events[i]["label"] for i in running),
+                next((e["label"] for e in events if e and "label" in e), f"#{index}"),
+            )
+
+            errors: list[str | None] = [None, None]
+            for i in (0, 1):
+                if events[i] is None:
+                    errors[i] = f"{workers[i].label}: benchmark process exited"
+                elif events[i]["event"] == "error":
+                    errors[i] = events[i]["error"]
+
+            times: list[list[float]] = [[], []]
+            for rnd in range(num_batches):
+                for i in (0, 1) if rnd % 2 == 0 else (1, 0):
+                    if i not in running:
+                        continue
+                    workers[i].send("batch")
+                    reply = workers[i].read()
+                    if reply is not None and "time_us" in reply:
+                        times[i].append(reply["time_us"])
+                        continue
+                    running.remove(i)
+                    errors[i] = (
+                        reply["error"]
+                        if reply is not None
+                        else f"{workers[i].label}: benchmark process exited"
+                    )
+
+            for i in running:
+                workers[i].send("done")
+
+            for i in (0, 1):
+                if errors[i] is not None:
+                    results[i].append({"label": label, "error": errors[i]})
+                elif times[i]:
+                    results[i].append(
+                        {
+                            "label": label,
+                            "number": events[i]["number"],
+                            "times_us": times[i],
+                        }
+                    )
+            index += 1
+    finally:
+        for w in workers:
+            w.close()
+
+    return tuple(r if ok else None for r, ok in zip(results, reached, strict=True))
+
+
+def run_pair(
+    source_a: str | None,
+    source_b: str | None,
+    label_a: str,
+    label_b: str,
+    suite: str,
+    num_batches: int,
+    sequential: bool = False,
+) -> tuple[list[dict] | None, list[dict] | None]:
+    """Benchmark two sources, interleaved unless ``sequential``."""
+    if sequential:
+        return (
+            run_benchmark(source_a, label_a, suite, num_batches),
+            run_benchmark(source_b, label_b, suite, num_batches),
+        )
+    return run_interleaved(source_a, source_b, label_a, label_b, suite, num_batches)
 
 
 # ---------------------------------------------------------------------------
@@ -651,6 +819,12 @@ def main():
         help="Significance level for the Holm-corrected p-values "
         f"(default: {Thresholds.alpha})",
     )
+    parser.add_argument(
+        "--sequential",
+        action="store_true",
+        help="Run all baseline batches, then all target batches, instead of "
+        "interleaving them",
+    )
     args = parser.parse_args()
     if args.regression_threshold > args.improvement_threshold:
         parser.error("--regression-threshold must be <= --improvement-threshold")
@@ -688,9 +862,14 @@ def main():
             tmpdir = extract_source(commit)
             tmpdirs.append(tmpdir)
 
-            results_a = run_benchmark(tmpdir, label_a, args.suite, args.num_batches)
-            results_b = run_benchmark(
-                None, "working tree", args.suite, args.num_batches
+            results_a, results_b = run_pair(
+                tmpdir,
+                None,
+                label_a,
+                "working tree",
+                args.suite,
+                args.num_batches,
+                args.sequential,
             )
 
             if results_a is None or results_b is None:
@@ -717,8 +896,15 @@ def main():
             tmpdir_b = extract_source(commit_b)
             tmpdirs.append(tmpdir_b)
 
-            results_a = run_benchmark(tmpdir_a, label_a, args.suite, args.num_batches)
-            results_b = run_benchmark(tmpdir_b, label_b, args.suite, args.num_batches)
+            results_a, results_b = run_pair(
+                tmpdir_a,
+                tmpdir_b,
+                label_a,
+                label_b,
+                args.suite,
+                args.num_batches,
+                args.sequential,
+            )
 
             if results_a is None or results_b is None:
                 had_failures = True
