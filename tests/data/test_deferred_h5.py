@@ -51,6 +51,11 @@ def test_valid_and_repr_track_file_state(h5_path):
     f = h5py.File(h5_path, "r")
     d = DeferredH5Dataset(f, "x")
     assert d.valid
+    assert repr(d) == '<DeferredH5Dataset "x" (not opened)>'
+    # repr must not open the dataset
+    assert d._dataset is None
+
+    _ = d.shape  # opens the dataset
     assert repr(d).startswith("<DeferredH5Dataset of <HDF5 dataset")
 
     f.close()

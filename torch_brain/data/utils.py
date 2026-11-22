@@ -57,7 +57,10 @@ class DeferredH5Dataset:
     def __repr__(self) -> str:
         if not self.valid:
             return f'<DeferredH5Dataset "{self._name}" (file closed)>'
-        return f"<DeferredH5Dataset of {self.dataset!r}>"
+        if self._dataset is None:
+            # printing should not open the dataset
+            return f'<DeferredH5Dataset "{self._name}" (not opened)>'
+        return f"<DeferredH5Dataset of {self._dataset!r}>"
 
 
 def _size_repr(key: Any, value: Any, indent: int = 0, first_dim: int = None) -> str:
