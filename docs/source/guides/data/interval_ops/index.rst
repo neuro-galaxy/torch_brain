@@ -246,7 +246,7 @@ sorted. If they aren't, the operation raises a ``ValueError``:
     ValueError: left Interval object must be disjoint.
 
     >>> # Coalesce into a disjoint interval first, then the operation works
-    >>> fixed = overlapping | overlapping
+    >>> fixed = overlapping.coalesce(0)
     >>> result = fixed & some_interval
     >>> result.start, result.end
     (array([1.]), array([2.]))
