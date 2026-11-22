@@ -362,31 +362,60 @@ def test_chain():
     assert torch.allclose(batch[1], torch.tensor([[0, 1], [2, 3]]))
 
 
-def test_chain_str_and_object_arrays():
-    # string arrays of different widths are concatenated as numpy arrays
-    x = chain(np.array(["a", "b"]))
-    y = chain(np.array(["ccc"]))
+class TestChainArrayTypes:
+    def test_str_array(self):
+        x = chain(np.array(["a", "b"]))
+        y = chain(np.array(["ccc"]))
 
-    batch = collate([x, y])
-    assert isinstance(batch, np.ndarray)
-    np.testing.assert_array_equal(batch, np.array(["a", "b", "ccc"]))
+        batch = collate([x, y])
+        assert isinstance(batch, np.ndarray)
+        np.testing.assert_array_equal(batch, np.array(["a", "b", "ccc"]))
 
-    # object arrays are concatenated as numpy arrays
-    x = chain(np.array([{"k": 1}, None], dtype=object))
-    y = chain(np.array(["c"], dtype=object))
+    def test_object_array(self):
+        x = chain(np.array([{"k": 1}, None], dtype=object))
+        y = chain(np.array(["c"], dtype=object))
 
-    batch = collate([x, y])
-    assert isinstance(batch, np.ndarray)
-    assert batch.dtype == object
-    assert batch.tolist() == [{"k": 1}, None, "c"]
+        batch = collate([x, y])
+        assert isinstance(batch, np.ndarray)
+        assert batch.dtype == object
+        assert batch.tolist() == [{"k": 1}, None, "c"]
 
-    # mixed with numeric arrays inside a dict
-    x = chain({"ids": np.array(["u0", "u1"]), "spikes": np.array([1, 2])})
-    y = chain({"ids": np.array(["u2"]), "spikes": np.array([3])})
+    def test_numeric_array(self):
+        x = chain(np.array([1.0, 2.0], dtype=np.float32))
+        y = chain(np.array([3.0], dtype=np.float32))
 
-    batch = collate([x, y])
-    np.testing.assert_array_equal(batch["ids"], np.array(["u0", "u1", "u2"]))
-    assert torch.allclose(batch["spikes"], torch.tensor([1, 2, 3]))
+        batch = collate([x, y])
+        assert isinstance(batch, torch.Tensor)
+        torch.testing.assert_close(batch, torch.tensor([1.0, 2.0, 3.0]))
+
+    def test_tensor(self):
+        x = chain(torch.tensor([[1, 2], [3, 4]]))
+        y = chain(torch.tensor([[5, 6]]))
+
+        batch = collate([x, y])
+        assert isinstance(batch, torch.Tensor)
+        torch.testing.assert_close(batch, torch.tensor([[1, 2], [3, 4], [5, 6]]))
+
+    def test_mixed_dict(self):
+        x = chain(
+            {
+                "ids": np.array(["u0", "u1"]),
+                "spikes": np.array([1, 2]),
+                "times": torch.tensor([0.1, 0.2]),
+            }
+        )
+        y = chain(
+            {
+                "ids": np.array(["u2"]),
+                "spikes": np.array([3]),
+                "times": torch.tensor([0.3]),
+            }
+        )
+
+        batch = collate([x, y])
+        np.testing.assert_array_equal(batch["ids"], np.array(["u0", "u1", "u2"]))
+        torch.testing.assert_close(batch["spikes"], torch.tensor([1, 2, 3]))
+        torch.testing.assert_close(batch["times"], torch.tensor([0.1, 0.2, 0.3]))
 
 
 def test_track_batch():
