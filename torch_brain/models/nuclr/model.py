@@ -220,7 +220,7 @@ class NuCLR(nn.Module):
         total = torch.zeros(
             len(unit_index), self.dim, device=device, dtype=torch.float64
         )
-        count = torch.zeros(len(unit_index), device=device, dtype=torch.float64)
+        count = torch.zeros(len(unit_index), device=device, dtype=torch.long)
         training = self.training
         self.eval()
         try:
@@ -235,11 +235,11 @@ class NuCLR(nn.Module):
                     [unit_index[uid] for uid in batch["unit_ids"]], device=device
                 )
                 total.index_add_(0, idx, z.double())
-                count.index_add_(0, idx, torch.ones_like(idx, dtype=torch.float64))
+                count.index_add_(0, idx, torch.ones_like(idx))
         finally:
             self.train(training)
 
-        return (total / count[:, None]).to(self.read_in.weight.dtype)
+        return (total / count[:, None].double()).to(self.read_in.weight.dtype)
 
 
 @dataclass
