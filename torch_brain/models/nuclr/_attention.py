@@ -14,7 +14,7 @@ except ImportError:
     varlen_attn = None
 
 
-class Attention(nn.Module):
+class _Attention(nn.Module):
     r"""Pre-norm self-attention supporting fixed and variable-length sequences.
 
     Args:

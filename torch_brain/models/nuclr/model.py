@@ -11,7 +11,7 @@ from torch_brain.data import Data
 from torch_brain.nn import RotaryTimeEmbedding
 from torch_brain.samplers import SequentialFixedWindowSampler
 
-from .attention import Attention
+from ._attention import _Attention
 
 
 class NuCLR(nn.Module):
@@ -90,10 +90,10 @@ class NuCLR(nn.Module):
         self.dropout = nn.Dropout(lin_dropout)
 
         def temporal_attention():
-            return Attention(dim, self_heads, dim_head, attn_biases, rotate_value)
+            return _Attention(dim, self_heads, dim_head, attn_biases, rotate_value)
 
         def spatial_attention():
-            return Attention(dim, self_heads, dim_head, attn_biases)
+            return _Attention(dim, self_heads, dim_head, attn_biases)
 
         def ffn():
             return FeedForward(dim, dropout=lin_dropout)
