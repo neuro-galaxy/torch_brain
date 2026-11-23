@@ -294,6 +294,8 @@ class NuCLRInputFn:
 
 
 class FeedForward(nn.Module):
+    """GeGLU feed forward network."""
+
     def __init__(self, dim: int, mult: int = 4, dropout: float = 0.0):
         super().__init__()
         self.norm = nn.LayerNorm(dim)
