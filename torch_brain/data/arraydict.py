@@ -106,7 +106,7 @@ class ArrayDict:
             info = f"{info},"
         return f"{cls}(\n{info}\n)"
 
-    def get_shape(self, name):
+    def get_shape(self, name: str):
         r"""Returns the shape of the array attribute specified by :obj:`name`.
 
         Args:
