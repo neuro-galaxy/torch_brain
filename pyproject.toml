@@ -94,10 +94,10 @@ include = ["torch_brain/data", "tests/data"]
 # Change these to "error" over time
 invalid-argument-type = "error"
 missing-attribute = "error"
+invalid-explicit-return = "error"
+invalid-implicit-return = "error"
+invalid-generator-return-type = "error"
 unsupported-operator = "ignore"
-invalid-explicit-return = "ignore"
-invalid-implicit-return = "ignore"
-invalid-generator-return-type = "ignore"
 incompatible-method-override = "ignore"
 invalid-assignment = "ignore"
 not-iterable = "ignore"
