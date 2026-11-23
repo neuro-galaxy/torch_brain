@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from .typing import ArrayLike
-from .utils import _size_repr, _validate_select_by_mask_input
+from .utils import _size_repr, _validate_select_by_mask_input, _get_array_dtype
 
 
 class ArrayDict:
@@ -97,10 +97,18 @@ class ArrayDict:
     def __repr__(self) -> str:
         cls = self.__class__.__name__
         first_dim = self._maybe_first_dim()
-        info = [
-            _size_repr(k, self.__dict__[k], indent=2, first_dim=first_dim)
-            for k in self.keys()
-        ]
+        unicode_keys = getattr(self, "_unicode_keys", [])
+        info = []
+        for k in self.keys():
+            to_unicode = k in unicode_keys
+            key_info = _size_repr(
+                k,
+                self.__dict__[k],
+                indent=2,
+                first_dim=first_dim,
+                to_unicode=to_unicode,
+            )
+            info.append(key_info)
         info = ",\n".join(info)
         if len(info):
             info = f"{info},"
@@ -157,12 +165,14 @@ class ArrayDict:
             )
 
         value = self.__dict__[name]
-        if isinstance(value, (np.ndarray, h5py.Dataset)):
-            dtype = value.dtype
-        else:
+
+        if not isinstance(value, (np.ndarray, h5py.Dataset)):
             raise ValueError(
                 f"Can only get the dtype of array attributes. {name} is not an array."
             )
+
+        unicode_keys = getattr(self, "_unicode_keys", [])
+        dtype = _get_array_dtype(value, to_unicode=name in unicode_keys)
 
         return dtype
 

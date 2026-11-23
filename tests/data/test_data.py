@@ -166,13 +166,10 @@ def test_lazy_data_copy(test_filepath):
         drifting_gratings_imgs=np.zeros((8, 3, 32, 32)),
     )
 
-    with h5py.File(test_filepath, "w") as f:
-        data.to_hdf5(f)
-
+    data.save(test_filepath)
     del data
 
-    with h5py.File(test_filepath, "r") as f:
-        data = Data.from_hdf5(f, lazy=True)
+    with Data.load(test_filepath) as data:
         assert isinstance(data.spikes.__dict__["unit_index"], h5py.Dataset)
 
         # this will copy all references to any h5py datasets
@@ -845,50 +842,49 @@ def test_lazy_data_attribute_shapes_and_dtypes_retrieval(test_filepath):
 
     del data
 
-    data = Data.load(test_filepath, lazy=True)
+    with Data.load(test_filepath, lazy=True) as data:
+        # get nested shape and dtype without loading
+        assert data.spikes.get_shape("unit_index") == (6,)
+        assert data.spikes.get_dtype("unit_index") == np.dtype("int64")
+        assert isinstance(data.spikes.__dict__["unit_index"], h5py.Dataset)
 
-    # get nested shape and dtype without loading
-    assert data.spikes.get_shape("unit_index") == (6,)
-    assert data.spikes.get_dtype("unit_index") == np.dtype("int64")
-    assert isinstance(data.spikes.__dict__["unit_index"], h5py.Dataset)
+        assert data.spikes.get_shape("waveforms") == (6, 48)
+        assert data.spikes.get_dtype("waveforms") == np.dtype("float64")
+        assert isinstance(data.spikes.__dict__["waveforms"], h5py.Dataset)
 
-    assert data.spikes.get_shape("waveforms") == (6, 48)
-    assert data.spikes.get_dtype("waveforms") == np.dtype("float64")
-    assert isinstance(data.spikes.__dict__["waveforms"], h5py.Dataset)
+        assert data.lfp.get_shape("raw") == (1000, 3)
+        assert data.lfp.get_dtype("raw") == np.dtype("float64")
+        assert isinstance(data.lfp.__dict__["raw"], h5py.Dataset)
 
-    assert data.lfp.get_shape("raw") == (1000, 3)
-    assert data.lfp.get_dtype("raw") == np.dtype("float64")
-    assert isinstance(data.lfp.__dict__["raw"], h5py.Dataset)
+        assert data.units.get_shape("id") == (3,)
+        assert data.units.get_dtype("id") == "<U6"
+        assert isinstance(data.units.__dict__["id"], h5py.Dataset)
 
-    assert data.units.get_shape("id") == (3,)
-    assert data.units.get_dtype("id") == "|S6"
-    assert isinstance(data.units.__dict__["id"], h5py.Dataset)
+        assert data.trials.get_shape("go_cue_time") == (3,)
+        assert data.trials.get_dtype("go_cue_time") == np.dtype("float64")
+        assert isinstance(data.trials.__dict__["go_cue_time"], h5py.Dataset)
 
-    assert data.trials.get_shape("go_cue_time") == (3,)
-    assert data.trials.get_dtype("go_cue_time") == np.dtype("float64")
-    assert isinstance(data.trials.__dict__["go_cue_time"], h5py.Dataset)
+        # slice and check shape again
+        data = data.slice(1.0, 3.0)
+        assert data.spikes.get_shape("unit_index") == (3,)
+        assert data.spikes.get_shape("waveforms") == (3, 48)
+        assert data.lfp.get_shape("raw") == (500, 3)
+        assert data.units.get_shape("id") == (3,)
+        assert data.trials.get_shape("go_cue_time") == (2,)
 
-    # slice and check shape again
-    data = data.slice(1.0, 3.0)
-    assert data.spikes.get_shape("unit_index") == (3,)
-    assert data.spikes.get_shape("waveforms") == (3, 48)
-    assert data.lfp.get_shape("raw") == (500, 3)
-    assert data.units.get_shape("id") == (3,)
-    assert data.trials.get_shape("go_cue_time") == (2,)
+        # get shape and dtype of a non-existent or non-array attribute
+        with pytest.raises(AttributeError, match="has no attribute"):
+            data.spikes.get_shape("non_existent_attr")
+        with pytest.raises(AttributeError, match="has no attribute"):
+            data.spikes.get_dtype("non_existent_attr")
 
-    # get shape and dtype of a non-existent or non-array attribute
-    with pytest.raises(AttributeError, match="has no attribute"):
-        data.spikes.get_shape("non_existent_attr")
-    with pytest.raises(AttributeError, match="has no attribute"):
-        data.spikes.get_dtype("non_existent_attr")
+        with pytest.raises(ValueError, match="array attributes"):
+            data.spikes.get_shape("_lazy_ops")
+        with pytest.raises(ValueError, match="array attributes"):
+            data.spikes.get_dtype("_lazy_ops")
 
-    with pytest.raises(ValueError, match="array attributes"):
-        data.spikes.get_shape("_lazy_ops")
-    with pytest.raises(ValueError, match="array attributes"):
-        data.spikes.get_dtype("_lazy_ops")
-
-    # load and check shape and dtype again
-    data.materialize()
+        # load and check shape and dtype again
+        data.materialize()
 
     assert data.spikes.get_shape("unit_index") == data.spikes.unit_index.shape
     assert data.spikes.get_dtype("unit_index") == data.spikes.unit_index.dtype

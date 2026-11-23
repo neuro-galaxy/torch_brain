@@ -218,8 +218,8 @@ def test_lazy_array_dict_shape_and_dtype_retrieval(test_filepath):
         # check shape and dtype for the string arrays
         assert data.get_shape("unit_id") == (4,)
         assert data.get_shape("brain_region") == (4,)
-        assert data.get_dtype("unit_id") == "|S6"
-        assert data.get_dtype("brain_region") == "|S3"
+        assert data.get_dtype("unit_id") == "<U6"
+        assert data.get_dtype("brain_region") == "|S3" # byte str array
         assert isinstance(data.__dict__["unit_id"], h5py.Dataset)
         assert isinstance(data.__dict__["brain_region"], h5py.Dataset)
 
