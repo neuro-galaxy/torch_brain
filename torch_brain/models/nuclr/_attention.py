@@ -117,7 +117,7 @@ def _pad(x: Tensor, mask: Tensor) -> Tensor:
 @functools.cache
 def _warn_no_varlen_attn():
     warnings.warn(
-        "torch's varlen_attn is unavailable (requires torch>=2.9, CUDA, and fp16/bf16 "
+        "torch's varlen_attn is unavailable (requires torch>=2.10, CUDA, and fp16/bf16 "
         "inputs). Falling back to padded SDPA, which is slower.",
         stacklevel=2,
     )
