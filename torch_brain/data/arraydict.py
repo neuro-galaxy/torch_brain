@@ -141,7 +141,7 @@ class ArrayDict:
 
         return shape
 
-    def get_dtype(self, name):
+    def get_dtype(self, name: str):
         r"""Returns the dtype of the elements in an array attribute specified by :obj:`name`.
 
         Args:
