@@ -186,7 +186,7 @@ def bench_data_slice_lazy():
             def go():
                 lazy_data.slice(300.0, 301.0)
 
-            return bench("Data.slice() (lazy, realistic)", go, number=200)
+            return bench("Data.slice() (lazy, realistic)", go, number=100)
     finally:
         os.unlink(path)
 
@@ -206,7 +206,7 @@ def bench_data_from_hdf5_lazy():
             def go():
                 Data.from_hdf5(f, lazy=True)
 
-            return bench("Data.from_hdf5() (lazy, realistic)", go, number=50)
+            return bench("Data.from_hdf5() (lazy, realistic)", go, number=25)
     finally:
         os.unlink(path)
 
@@ -218,7 +218,7 @@ def bench_data_slice_inmemory():
     def go():
         data.slice(300.0, 301.0)
 
-    return bench("Data.slice() (in-memory)", go, number=500)
+    return bench("Data.slice() (in-memory)", go, number=250)
 
 
 def bench_its_slice():
@@ -236,7 +236,7 @@ def bench_its_slice():
     def go():
         its.slice(500.0, 501.0)
 
-    return bench("IrregularTimeSeries.slice()", go, number=1_000)
+    return bench("IrregularTimeSeries.slice()", go, number=500)
 
 
 def bench_rts_slice():
@@ -252,7 +252,7 @@ def bench_rts_slice():
     def go():
         rts.slice(500.0, 501.0)
 
-    return bench("RegularTimeSeries.slice()", go, number=1_000)
+    return bench("RegularTimeSeries.slice()", go, number=500)
 
 
 def bench_interval_slice():
@@ -264,7 +264,7 @@ def bench_interval_slice():
     def go():
         iv.slice(500.0, 501.0)
 
-    return bench("Interval.slice()", go, number=2_000)
+    return bench("Interval.slice()", go, number=1_000)
 
 
 def bench_interval_and_single():
@@ -275,7 +275,7 @@ def bench_interval_and_single():
     def go():
         d1 & single
 
-    return bench("Interval.__and__ (1k&single)", go, number=1_000)
+    return bench("Interval.__and__ (1k&single)", go, number=500)
 
 
 def bench_interval_and_multi():
@@ -286,7 +286,7 @@ def bench_interval_and_multi():
     def go():
         d1 & d2
 
-    return bench("Interval.__and__ (1k&100)", go, number=200)
+    return bench("Interval.__and__ (1k&100)", go, number=100)
 
 
 def bench_interval_or():
@@ -297,7 +297,7 @@ def bench_interval_or():
     def go():
         d1 | d2
 
-    return bench("Interval.__or__ (1k|100)", go, number=200)
+    return bench("Interval.__or__ (1k|100)", go, number=100)
 
 
 def bench_interval_difference():
@@ -308,7 +308,7 @@ def bench_interval_difference():
     def go():
         d1.difference(d2)
 
-    return bench("Interval.difference (1k-100)", go, number=200)
+    return bench("Interval.difference (1k-100)", go, number=100)
 
 
 def bench_arraydict_keys():
@@ -319,7 +319,7 @@ def bench_arraydict_keys():
     def go():
         ad.keys()
 
-    return bench("ArrayDict.keys() x100k", go, number=100_000)
+    return bench("ArrayDict.keys()", go, number=50_000)
 
 
 _LAZY_N_ROWS = 1_000
@@ -327,44 +327,45 @@ _LAZY_DURATION = 100.0
 _LAZY_KS = (10, 50, 100)
 
 
-def _extra_attrs(n_attrs, rng):
-    return {f"attr_{i}": rng.standard_normal(_LAZY_N_ROWS) for i in range(n_attrs)}
+def _extra_attrs(n_attrs, rng, n_rows=_LAZY_N_ROWS):
+    return {f"attr_{i}": rng.standard_normal(n_rows) for i in range(n_attrs)}
 
 
-def _make_arraydict(k, rng):
-    return ArrayDict(**_extra_attrs(k, rng))
+def _make_arraydict(k, rng, n_rows=_LAZY_N_ROWS):
+    return ArrayDict(**_extra_attrs(k, rng, n_rows))
 
 
-def _make_interval(k, rng):
+def _make_interval(k, rng, n_rows=_LAZY_N_ROWS):
     # start/end count toward k
-    starts = np.arange(_LAZY_N_ROWS) * (_LAZY_DURATION / _LAZY_N_ROWS)
-    return Interval(start=starts, end=starts + 0.05, **_extra_attrs(k - 2, rng))
+    starts = np.arange(n_rows) * (_LAZY_DURATION / n_rows)
+    return Interval(start=starts, end=starts + 0.05, **_extra_attrs(k - 2, rng, n_rows))
 
 
-def _make_irregular_ts(k, rng):
+def _make_irregular_ts(k, rng, n_rows=_LAZY_N_ROWS):
     # timestamps counts toward k
     return IrregularTimeSeries(
-        timestamps=np.sort(rng.uniform(0.0, _LAZY_DURATION, _LAZY_N_ROWS)),
+        timestamps=np.sort(rng.uniform(0.0, _LAZY_DURATION, n_rows)),
         domain=Interval(0.0, _LAZY_DURATION),
-        **_extra_attrs(k - 1, rng),
+        **_extra_attrs(k - 1, rng, n_rows),
     )
 
 
-def _make_regular_ts(k, rng):
+def _make_regular_ts(k, rng, n_rows=_LAZY_N_ROWS):
     return RegularTimeSeries(
-        sampling_rate=_LAZY_N_ROWS / _LAZY_DURATION,
+        sampling_rate=n_rows / _LAZY_DURATION,
         domain_start=0.0,
-        **_extra_attrs(k, rng),
+        **_extra_attrs(k, rng, n_rows),
     )
 
 
-def _run_lazy_access(label, obj, lazy_cls, mode, number):
+def _run_lazy_access(label, obj, lazy_cls, mode, number, n_read=None):
     """Shared driver: save obj to HDF5, then time one lazy-access pattern.
 
     mode:
       "read"    load lazily, read every attribute (object materializes)
       "sliced"  load lazily, slice a 1s window, read every attribute
       "read-1"  load lazily, read one attribute: the "load many, use few" pattern
+      "read-n"  load lazily, read the last ``n_read`` attributes (partial use)
     """
     tmpfile = tempfile.NamedTemporaryFile(suffix=".h5", delete=False)
     path = tmpfile.name
@@ -378,7 +379,9 @@ def _run_lazy_access(label, obj, lazy_cls, mode, number):
             obj.to_hdf5(f)
 
         with h5py.File(path, "r") as f:
-            to_read = keys[-1:] if mode == "read-1" else keys
+            if mode == "read-1":
+                n_read = 1
+            to_read = keys[-n_read:] if n_read else keys
 
             def go():
                 lazy = lazy_cls.from_hdf5(f)
@@ -390,7 +393,7 @@ def _run_lazy_access(label, obj, lazy_cls, mode, number):
 
             # sanity check: we must be timing the code path we think we are
             materialized = type(go()) is not lazy_cls
-            assert materialized == (mode != "read-1"), f"{label}: wrong path"
+            assert materialized == (len(to_read) == len(keys)), f"{label}: wrong path"
 
             return bench(label, go, number=number)
     finally:
@@ -402,7 +405,7 @@ def _lazy_access_bench(short_name, make, lazy_cls, k, mode="read"):
     suffix = "" if mode == "read" else f", {mode}"
     label = f"Lazy{short_name} access (k={k}{suffix})"
     # reading a single attribute is far cheaper per call
-    number = 2_000 // k * (20 if mode == "read-1" else 1)
+    number = 1_000 // k * (20 if mode == "read-1" else 1)
 
     def fn():
         obj = make(k, np.random.RandomState(42))
@@ -444,6 +447,63 @@ LAZY_ACCESS_BENCHMARKS = (
 )
 
 
+# (k attributes, n read, rows per attribute). Real code reads some, not one or
+# all, of an object's attributes; with large attributes the read itself dominates
+# and the saving from not opening unread datasets shrinks.
+_PARTIAL_READ_CASES = (
+    (20, 5, 1_000),
+    (20, 10, 1_000),
+    (100, 10, 1_000),
+    (100, 50, 1_000),
+    (20, 5, 20_000),
+    (20, 10, 20_000),
+)
+
+
+def _partial_read_bench(k, n_read, n_rows):
+    label = f"LazyIrregularTS access (k={k}, read-{n_read}, {n_rows // 1000}k rows)"
+    # keep each batch near the same wall time: big reads get fewer calls
+    number = 1_000 // n_read // (10 if n_rows > 10_000 else 1)
+
+    def fn():
+        obj = _make_irregular_ts(k, np.random.RandomState(42), n_rows)
+        return _run_lazy_access(
+            label, obj, LazyIrregularTimeSeries, "read-n", number, n_read=n_read
+        )
+
+    fn.__name__ = f"bench_lazy_irregularts_k{k}_read{n_read}_{n_rows // 1000}k"
+    fn.__doc__ = f"{label}: read {n_read} of {k} attributes."
+    return fn
+
+
+PARTIAL_READ_BENCHMARKS = [_partial_read_bench(*c) for c in _PARTIAL_READ_CASES]
+
+
+def bench_data_sample_lazy():
+    """A sampler step on the realistic recording: open lazily, slice a 1s window,
+    read only what a spike/behaviour model consumes (3 of the file's attributes)."""
+    tmpfile = tempfile.NamedTemporaryFile(suffix=".h5", delete=False)
+    path = tmpfile.name
+    tmpfile.close()
+
+    try:
+        _build_realistic_data().save(path)
+
+        with h5py.File(path, "r") as f:
+
+            def go():
+                sample = Data.from_hdf5(f, lazy=True).slice(300.0, 301.0)
+                return (
+                    sample.spikes.timestamps,
+                    sample.spikes.unit_index,
+                    sample.pose.r_wrist,
+                )
+
+            return bench("Data sample step (lazy, realistic, read-3)", go, number=25)
+    finally:
+        os.unlink(path)
+
+
 def _data_slice_many_ts_bench(n_ts):
     label = f"Data.slice() ({n_ts} time series)"
 
@@ -457,7 +517,7 @@ def _data_slice_many_ts_bench(n_ts):
         def go():
             data.slice(50.0, 51.0)
 
-        return bench(label, go, number=4_000 // n_ts)
+        return bench(label, go, number=2_000 // n_ts)
 
     fn.__name__ = f"bench_data_slice_{n_ts}_time_series"
     fn.__doc__ = f"{label}: Data.slice() cost grows with the number of time series."
@@ -481,4 +541,6 @@ BENCHMARKS = [
     bench_arraydict_keys,
     *DATA_SLICE_MANY_TS_BENCHMARKS,
     *LAZY_ACCESS_BENCHMARKS,
+    *PARTIAL_READ_BENCHMARKS,
+    bench_data_sample_lazy,
 ]
