@@ -96,7 +96,7 @@ class NuCLR(nn.Module):
             return _Attention(dim, self_heads, dim_head, attn_biases)
 
         def ffn():
-            return FeedForward(dim, dropout=lin_dropout)
+            return _FeedForward(dim, dropout=lin_dropout)
 
         self.t_blocks = nn.ModuleList(
             nn.ModuleList([temporal_attention(), ffn()]) for _ in range(t_layers)
@@ -293,7 +293,7 @@ class NuCLRInputFn:
         }
 
 
-class FeedForward(nn.Module):
+class _FeedForward(nn.Module):
     """GeGLU feed forward network."""
 
     def __init__(self, dim: int, mult: int = 4, dropout: float = 0.0):
