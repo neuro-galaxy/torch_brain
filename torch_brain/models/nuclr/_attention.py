@@ -11,6 +11,7 @@ from torch_brain.nn import RotaryTimeEmbedding
 try:
     from torch.nn.attention.varlen import varlen_attn
 except ImportError:
+    # varlen_attn was added in torch 2.10. Older versions fall back to padded SDPA.
     varlen_attn = None
 
 
