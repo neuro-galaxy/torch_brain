@@ -16,7 +16,7 @@ from .interval import Interval, LazyInterval  # noqa: F401
 from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries  # noqa: F401
 from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries  # noqa: F401
 from .serialization import _DEFAULT_SERIALIZE_FN_MAP
-from .utils import _size_repr
+from .utils import DeferredH5Dataset, _size_repr
 
 logger = logging.getLogger(__name__)
 
@@ -768,7 +768,7 @@ class Data:
         result = cls.__new__(cls)
         memo[id(self)] = result
         for k, v in self.__dict__.items():
-            if isinstance(v, (h5py.Dataset, h5py.File)):
+            if isinstance(v, (DeferredH5Dataset, h5py.Dataset, h5py.File)):
                 # open files cannot be deepcopied
                 setattr(result, k, v)
             else:

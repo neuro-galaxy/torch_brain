@@ -5,13 +5,13 @@ import math
 import warnings
 from typing import Any
 
-import h5py
 import numpy as np
 
 from .arraydict import ArrayDict
 from .interval import Interval
 from .irregular_ts import IrregularTimeSeries
 from .typing import ArrayLike
+from .utils import DeferredH5Dataset
 
 _NP_DTYPE_KINDS = {"b", "i", "u", "f", "c", "m", "M", "O", "S", "U", "V"}
 # ^ From https://numpy.org/doc/2.2/reference/generated/numpy.dtype.kind.html
@@ -783,8 +783,8 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         if not name.startswith("_") and name in self.__dict__:
             out = self.__dict__[name]
 
-            if isinstance(out, h5py.Dataset):
-                if not out.id.valid:
+            if isinstance(out, DeferredH5Dataset):
+                if not out.valid:
                     raise ValueError(f"Cannot load {name} as the dataset is closed.")
 
                 # convert into numpy array
@@ -864,7 +864,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             for key in self.keys():
                 out.__dict__[key] = self.__dict__[key][0:0]
                 if key in self._unicode_keys and isinstance(
-                    self.__dict__[key], h5py.Dataset
+                    self.__dict__[key], DeferredH5Dataset
                 ):
                     out.__dict__[key] = out.__dict__[key].astype("U")
             return out
@@ -890,7 +890,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         out._domain = new_domain
 
         for key in self.keys():
-            if isinstance(self.__dict__[key], h5py.Dataset):
+            if isinstance(self.__dict__[key], DeferredH5Dataset):
                 out.__dict__[key] = self.__dict__[key]
             else:
                 out.__dict__[key] = self.__dict__[key][start_id:end_id].copy()
@@ -938,11 +938,12 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         obj = cls.__new__(cls)
 
         missing_keys = ["domain"]
-        for key, value in file.items():
+        # file.keys() only lists names; datasets are opened on first read
+        for key in file.keys():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
             else:
-                obj.__dict__[key] = value
+                obj.__dict__[key] = DeferredH5Dataset(file, key)
             if key in missing_keys:
                 missing_keys.remove(key)
 
