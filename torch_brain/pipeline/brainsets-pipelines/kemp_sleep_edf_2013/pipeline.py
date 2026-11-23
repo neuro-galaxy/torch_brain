@@ -1,14 +1,4 @@
-# /// brainset-pipeline
-# python-version = "3.11"
-# dependencies = [
-#   "mne~=1.11.0",
-#   "boto3~=1.41.0",
-#   "scikit-learn==1.7.2",
-# ]
-# ///
-
 import logging
-from argparse import ArgumentParser
 from pathlib import Path
 
 import mne
@@ -47,23 +37,11 @@ CHANNEL_TYPE_REMAPPING = {
 
 IGNORE_CHANNELS = ["Event marker"]
 
-parser = ArgumentParser()
-parser.add_argument("--redownload", action="store_true")
-parser.add_argument("--reprocess", action="store_true")
-parser.add_argument(
-    "--study_type",
-    type=str,
-    choices=["sc", "st", "both"],
-    default="both",
-    help="Which study to download: 'sc' (Sleep Cassette), 'st' (Sleep Telemetry), or 'both'",
-)
-
 
 class Pipeline(BrainsetPipeline):
     brainset_id = "kemp_sleep_edf_2013"
     bucket = "physionet-open"
     prefix = "sleep-edfx/1.0.0"
-    parser = parser
 
     @classmethod
     def get_manifest(cls, raw_dir: Path, args) -> pd.DataFrame:

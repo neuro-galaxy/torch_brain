@@ -13,6 +13,7 @@ from ray.util.actor_pool import ActorPool
 from rich.console import Console
 from rich.live import Live
 
+from ._conf import load_conf
 from .pipeline import BrainsetPipeline
 
 
@@ -134,10 +135,15 @@ def run():
 
     pipeline_cls = import_pipeline_cls_from_file(args.pipeline_file)
 
-    # Parse pipeline specific arguments
+    # Parse pipeline specific arguments (conf.py's parser takes precedence)
+    conf = load_conf(args.pipeline_file.parent)
+    parser = pipeline_cls.parser
+    if conf is not None and conf.parser is not None:
+        parser = conf.parser
+
     pipeline_args = None
-    if pipeline_cls.parser is not None:
-        pipeline_args = pipeline_cls.parser.parse_args(remaining_args)
+    if parser is not None:
+        pipeline_args = parser.parse_args(remaining_args)
 
     raw_dir = args.raw_dir / pipeline_cls.brainset_id
     raw_dir.mkdir(parents=True, exist_ok=True)

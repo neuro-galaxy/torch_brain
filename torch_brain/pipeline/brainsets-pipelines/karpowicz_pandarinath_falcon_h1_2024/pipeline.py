@@ -1,16 +1,5 @@
-# /// brainset-pipeline
-# python-version = "3.11"
-# dependencies = ["dandi==0.82.0"]
-# ///
-"""FALCON H1 (Karpowicz et al., NeurIPS 2024 Datasets & Benchmarks): a human participant
-with tetraplegia (Pitt BCI) attempting 7-DoF reach and grasp in open loop; 176
-threshold-crossing channels from motor cortex, 7-D kinematic velocity as decoding target.
-Session dates in the files are shifted for de-identification and are kept as given.
-"""
-
 import datetime
 import re
-from argparse import ArgumentParser
 
 import numpy as np
 import pandas as pd
@@ -30,10 +19,6 @@ from torch_brain.data import (
 from torch_brain.pipeline import BrainsetPipeline
 from torch_brain.utils.dandi import download_file, get_nwb_asset_list
 
-parser = ArgumentParser()
-parser.add_argument("--redownload", action="store_true")
-parser.add_argument("--reprocess", action="store_true")
-
 FALCON_SPLITS = ("held_in_calib", "held_in_minival", "held_out_calib")
 KINEMATIC_DIMS = ("tx", "ty", "tz", "rx", "g1", "g2", "g3")
 
@@ -41,7 +26,6 @@ KINEMATIC_DIMS = ("tx", "ty", "tz", "rx", "g1", "g2", "g3")
 class Pipeline(BrainsetPipeline):
     brainset_id = "karpowicz_pandarinath_falcon_h1_2024"
     dandiset_id = "DANDI:000954/draft"
-    parser = parser
 
     @classmethod
     def get_manifest(cls, raw_dir, args) -> pd.DataFrame:
