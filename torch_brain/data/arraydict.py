@@ -135,12 +135,7 @@ class ArrayDict:
         elif isinstance(value, h5py.Dataset):
             original_shape = value.shape
             first_dim = self._maybe_first_dim()
-            assert first_dim is not None, (
-                "first_dim is None, but the class has h5py.Dataset attributes. This should not happen."
-            )
-            assert first_dim <= original_shape[0], (
-                f"first_dim ({first_dim}) is greater than the dataset's first dimension ({original_shape[0]})."
-            )
+            assert first_dim is not None  # name is a key, so first_dim must be defined
             shape = (first_dim, *original_shape[1:])
         else:
             raise ValueError(
