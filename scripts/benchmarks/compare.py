@@ -27,8 +27,10 @@ Options:
 Speedup is baseline median / target median, so > 1 means the target is faster.
 Significance computed with a two-sided Mann-Whitney U test on the per-batch times,
 Holm-corrected across all compared benchmarks. A benchmark is flagged if it is
-significant or past either threshold. The target only counts as a regression or an
-improvement if it is both. A target-side error always counts as a regression.
+past either threshold. The target only counts as a regression or an improvement if
+it is also significant. A target-side error always counts as a regression.
+Significant changes that do not exceed the thresholds are only included in the full
+statistics.
 """
 
 from __future__ import annotations
@@ -468,15 +470,14 @@ def markdown_comparison(
     label_b: str,
     thresholds: Thresholds = DEFAULT_THRESHOLDS,
 ) -> str:
-    """Flagged benchmarks (significant or past either threshold, or erroring)
-    are listed up front; full statistics for every benchmark are collapsed."""
+    """Flagged benchmarks (past either threshold, or erroring) are listed up
+    front; full statistics for every benchmark, including significant changes
+    that do not exceed the thresholds, are collapsed."""
     rows = comparison_rows(results_a, results_b)
     kinds = [classify(r, thresholds) for r in rows]
     n_regressed = kinds.count("regression")
     n_improved = kinds.count("improvement")
-    n_other = sum(
-        kinds.count(kind) for kind in ("unconfirmed", "minor_slower", "minor_faster")
-    )
+    n_other = kinds.count("unconfirmed")
     n_tested = sum(row["p_adj"] is not None for row in rows)
     batch_counts = sorted(
         {
@@ -499,20 +500,19 @@ def markdown_comparison(
         summary += f" · {n_other} other {noun} flagged"
     summary += f" · {len(rows)} benchmarks"
 
+    # significant changes within the thresholds only appear in the full statistics
+    flagged_kinds = ("regression", "improvement", "unconfirmed")
     flagged = sorted(
-        ((row, kind) for row, kind in zip(rows, kinds, strict=True) if kind),
+        (
+            (row, kind)
+            for row, kind in zip(rows, kinds, strict=True)
+            if kind in flagged_kinds
+        ),
         key=_md_sort_key,
     )
 
     parts = [summary, ""]
     if flagged:
-        legend = [
-            f"🔴 **regressed:** signif. and below {lo:.2f}x (or target-side error)",
-            f"🟢 **improved:** signif. and above {hi:.2f}x",
-            f"🔸 **slower:** signif., but above {lo:.2f}x",
-            f"🔹 **faster:** signif., but below {hi:.2f}x",
-            f"⚠️ **unconfirmed:** outside {lo:.2f}-{hi:.2f}x range, but not signif.",
-        ]
         flagged_table = [
             "### Flagged",
             "",
@@ -523,16 +523,23 @@ def markdown_comparison(
                 label_b,
             ),
             "",
-            " \\\n".join(legend),  # hard line breaks
-            "",
         ]
         parts += flagged_table
 
+    legend = [
+        f"🔴 **regressed:** signif. and below {lo:.2f}x (or target-side error)",
+        f"🟢 **improved:** signif. and above {hi:.2f}x",
+        f"🔸 **slower:** signif., but above {lo:.2f}x",
+        f"🔹 **faster:** signif., but below {hi:.2f}x",
+        f"⚠️ **unconfirmed:** outside {lo:.2f}-{hi:.2f}x range, but not signif.",
+    ]
     details = [
         "<details>",
         f"<summary>Full statistics ({len(rows)} benchmarks)</summary>",
         "",
         _md_full_table(rows, kinds, label_a, label_b),
+        "",
+        " \\\n".join(legend),  # hard line breaks
         "",
         "</details>",
         "",
