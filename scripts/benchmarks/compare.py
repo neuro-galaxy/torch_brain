@@ -419,14 +419,14 @@ def _md_flagged_table(
     rows: list[dict], kinds: list[str], label_a: str, label_b: str
 ) -> str:
     lines = [
-        f"| | Benchmark | Baseline {label_a} median (µs) | Target {label_b} median (µs) | Speedup | p (Holm) |",
-        "|---|---|--:|--:|--:|--:|",
+        f"| | Benchmark | Baseline {label_a} median (µs) | Target {label_b} median (µs) | Speedup |",
+        "|---|---|--:|--:|--:|",
     ]
     for row, kind in zip(rows, kinds, strict=True):
         lines.append(
             f"| {_MD_MARKERS[kind]} | {_md_label(row['label'])} "
             f"| {_fmt_stat(row['a'], 'median')} | {_fmt_stat(row['b'], 'median')} "
-            f"| {_fmt_speedup(row)} | {_fmt_p(row['p_adj'])} |"
+            f"| {_fmt_speedup(row)} |"
         )
     return "\n".join(lines)
 
