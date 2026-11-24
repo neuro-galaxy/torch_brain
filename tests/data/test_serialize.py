@@ -53,9 +53,7 @@ def test_serialize(test_filepath):
 
     del d
 
-    with h5py.File(test_filepath, "r") as file:
-        d = Data.from_hdf5(file)
-
+    with Data.load(test_filepath) as d:
         assert d.id == "test"
         assert d.special_item == "A"
         assert all(d.special_list == ["A", "B"])
@@ -76,14 +74,11 @@ def test_default_datetime_serialize(test_filepath):
         nested=Data(recording_date=timestamp),
     )
 
-    with h5py.File(test_filepath, "w") as file:
-        d.to_hdf5(file)
+    d.save(test_filepath)
 
     del d
 
-    with h5py.File(test_filepath, "r") as file:
-        d = Data.from_hdf5(file)
-
+    with Data.load(test_filepath) as d:
         assert d.recording_date == str(timestamp)
         assert d.nested.recording_date == str(timestamp)
 
