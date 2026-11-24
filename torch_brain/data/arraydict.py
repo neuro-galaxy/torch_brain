@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from .typing import ArrayLike
-from .utils import _size_repr, _validate_select_by_mask_input, _get_array_dtype
+from .utils import _get_array_dtype, _size_repr, _validate_select_by_mask_input
 
 
 class ArrayDict:

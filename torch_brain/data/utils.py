@@ -13,7 +13,7 @@ def _get_array_dtype(value: Any, to_unicode: bool = False) -> str:
         if to_unicode:
             dtype = np.dtype(f"U{dtype.itemsize}")
     else:
-        raise ValueError(f"Can only get the dtype of arrays.")
+        raise ValueError("Can only get the dtype of arrays.")
     return dtype
 
 
@@ -57,7 +57,9 @@ def _size_repr(
         unicode_keys = getattr(value, "_unicode_keys", [])
         lines = []
         for k, v in value.items():
-            key_lines = _size_repr(k, v, indent + 2, first_dim, to_unicode=k in unicode_keys)
+            key_lines = _size_repr(
+                k, v, indent + 2, first_dim, to_unicode=k in unicode_keys
+            )
             lines.append(key_lines)
 
         out = "={\n" + ",\n".join(lines) + "\n" + pad + "}"

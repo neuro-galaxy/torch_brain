@@ -900,3 +900,106 @@ def test_lazy_data_attribute_shapes_and_dtypes_retrieval(test_filepath):
 
     assert data.trials.get_shape("go_cue_time") == data.trials.go_cue_time.shape
     assert data.trials.get_dtype("go_cue_time") == data.trials.go_cue_time.dtype
+
+
+expected_data_repr = """Data(
+  session=Data(
+    subject=Data(
+      id='subject_0',
+      spikes=IrregularTimeSeries(
+        timestamps: array, shape=(3,), dtype=float64,
+        brain_region: array, shape=(3,), dtype=|S2,
+        unit_name: array, shape=(3,), dtype=<U6,
+      ),
+      trials=Interval(
+        start: array, shape=(3,), dtype=float64,
+        end: array, shape=(3,), dtype=float64,
+        go_cue_time: array, shape=(3,), dtype=float64,
+      ),
+    ),
+  ),
+)"""
+
+expected_lazy_data_repr = """Data(
+  session=Data(
+    subject=Data(
+      spikes=LazyIrregularTimeSeries(
+        brain_region: lazy array, shape=(3,), dtype=|S2,
+        timestamps: lazy array, shape=(3,), dtype=float64,
+        unit_name: lazy array, shape=(3,), dtype=<U6,
+      ),
+      trials=LazyInterval(
+        end: lazy array, shape=(3,), dtype=float64,
+        go_cue_time: lazy array, shape=(3,), dtype=float64,
+        start: lazy array, shape=(3,), dtype=float64,
+      ),
+      id='subject_0',
+      absolute_start=0.0,
+    ),
+    absolute_start=0.0,
+  ),
+  absolute_start=0.0,
+)"""
+
+expected_sliced_repr = """Data(
+  session=Data(
+    subject=Data(
+      spikes=LazyIrregularTimeSeries(
+        timestamps: array, shape=(1,), dtype=float64,
+        brain_region: lazy array, shape=(1,), dtype=|S2,
+        unit_name: lazy array, shape=(1,), dtype=<U6,
+      ),
+      trials=LazyInterval(
+        end: array, shape=(1,), dtype=float64,
+        go_cue_time: lazy array, shape=(1,), dtype=float64,
+        start: array, shape=(1,), dtype=float64,
+      ),
+      id='subject_0',
+      absolute_start=0.5,
+    ),
+    absolute_start=0.5,
+  ),
+  absolute_start=0.5,
+)"""
+
+
+def test_data_repr(test_filepath):
+    data = Data(
+        session=Data(
+            subject=Data(
+                id="subject_0",
+                spikes=IrregularTimeSeries(
+                    timestamps=np.array([0.1, 0.5, 0.9]),
+                    brain_region=np.array([b"M1", b"S1", b"M2"]),
+                    unit_name=np.array(["a", "unit01", "ab"]),
+                    domain="auto",
+                ),
+                trials=Interval(
+                    start=np.array([0.0, 1.0, 2.0]),
+                    end=np.array([1.0, 2.0, 3.0]),
+                    go_cue_time=np.array([0.5, 1.5, 2.5]),
+                    timekeys=["start", "end", "go_cue_time"],
+                ),
+                domain="auto",
+            ),
+            domain="auto",
+        ),
+        domain=Interval(0.0, 1.0),
+    )
+
+    assert repr(data) == expected_data_repr
+
+    data.save(test_filepath)
+    del data
+
+    with Data.load(test_filepath, lazy=True) as lazy_data:
+        assert repr(lazy_data) == expected_lazy_data_repr
+
+        sliced = lazy_data.slice(0.5, 0.9)
+        assert repr(sliced) == expected_sliced_repr
+
+        sliced.session.subject.spikes.brain_region  # noqa: B018
+        expected_materialized_repr = expected_sliced_repr.replace(
+            "brain_region: lazy array", "brain_region: array"
+        )
+        assert repr(sliced) == expected_materialized_repr
