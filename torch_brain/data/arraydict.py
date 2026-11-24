@@ -100,13 +100,13 @@ class ArrayDict:
         unicode_keys = getattr(self, "_unicode_keys", [])
         info = []
         for k in self.keys():
-            to_unicode = k in unicode_keys
+            h5_to_unicode = k in unicode_keys
             key_info = _size_repr(
                 k,
                 self.__dict__[k],
                 indent=2,
                 first_dim=first_dim,
-                to_unicode=to_unicode,
+                h5_to_unicode=h5_to_unicode,
             )
             info.append(key_info)
         info = ",\n".join(info)
@@ -167,7 +167,7 @@ class ArrayDict:
             )
 
         unicode_keys = getattr(self, "_unicode_keys", [])
-        dtype = _get_array_dtype(value, to_unicode=name in unicode_keys)
+        dtype = _get_array_dtype(value, h5_to_unicode=name in unicode_keys)
 
         return dtype
 
