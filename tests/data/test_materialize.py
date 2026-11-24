@@ -62,9 +62,7 @@ def test_materialize(test_filepath):
 
     del data
 
-    with h5py.File(test_filepath, "r") as f:
-        data = Data.from_hdf5(f, lazy=True)
-
+    with Data.load(test_filepath, lazy=True) as data:
         # check that the data is lazy loaded
         assert all(
             isinstance(data.spikes.__dict__[key], h5py.Dataset)

@@ -73,13 +73,13 @@ def test_data():
     assert ["session_id", "spikes", "lfp", "units", "trials", "drifting_gratings_imgs"]
 
     assert len(data.spikes) == 3
-    assert np.allclose(data.spikes.timestamps, np.array([1.1, 1.2, 1.3]))
-    assert np.allclose(data.spikes.unit_index, np.array([0, 1, 2]))
+    np.testing.assert_allclose(data.spikes.timestamps, np.array([1.1, 1.2, 1.3]))
+    np.testing.assert_allclose(data.spikes.unit_index, np.array([0, 1, 2]))
 
     assert len(data.lfp) == 500
 
     assert len(data.trials) == 2
-    assert np.allclose(data.trials.start, np.array([0, 1]))
+    np.testing.assert_allclose(data.trials.start, np.array([0, 1]))
 
     data = data.slice(0.4, 1.4)
     assert data.absolute_start == 1.4
@@ -169,7 +169,7 @@ def test_lazy_data_copy(test_filepath):
     data.save(test_filepath)
     del data
 
-    with Data.load(test_filepath) as data:
+    with Data.load(test_filepath, lazy=True) as data:
         assert isinstance(data.spikes.__dict__["unit_index"], h5py.Dataset)
 
         # this will copy all references to any h5py datasets
@@ -190,9 +190,9 @@ def test_lazy_data_copy(test_filepath):
         # the original object will not be modified
         assert data.spikes.unit_index[0] == 0
 
-    with h5py.File(test_filepath, "r") as f:
-        data = Data.from_hdf5(f, lazy=True)
+    del data
 
+    with Data.load(test_filepath, lazy=True) as data:
         data_deepcopy = copy.deepcopy(data)
         data_deepcopy.some_numpy_array[0] = 10
         # this is a deep copy, so the original object should not be modified
@@ -233,13 +233,10 @@ def test_data_absolute_start(test_filepath):
 
     data = data.slice(1.0, 3.0)
 
-    with h5py.File(test_filepath, "w") as f:
-        data.to_hdf5(f)
-
+    data.save(test_filepath)
     del data
 
-    with h5py.File(test_filepath, "r") as f:
-        data = Data.from_hdf5(f, lazy=True)
+    with Data.load(test_filepath) as data:
         assert data.absolute_start == 1.0
 
 
@@ -258,20 +255,19 @@ def test_timeless_data(test_filepath):
     with pytest.raises(ValueError):
         subject.slice(0.1, 0.2)
 
-    with h5py.File(test_filepath, "w") as f:
-        subject.to_hdf5(f)
+    subject.save(test_filepath)
 
-    with h5py.File(test_filepath, "r") as f:
-        data = Data.from_hdf5(f)
-
-        assert data.id == "jenkins"
-        assert data.age == 5.0
-        assert data.species == "HUMAN"
-        assert data.description == "À89!ÜÞ"
+    with Data.load(test_filepath) as subject_loaded:
+        assert subject_loaded.id == "jenkins"
+        assert subject_loaded.age == 5.0
+        assert subject_loaded.species == "HUMAN"
+        assert subject_loaded.description == "À89!ÜÞ"
 
         # TODO(mehdi) image is a numpy array so it should be lazy loaded
         # assert isinstance(data.__dict__["image"], h5py.Dataset)
-        assert np.allclose(data.image, np.ones((32, 32, 3)))
+        np.testing.assert_allclose(subject_loaded.image, np.ones((32, 32, 3)))
+
+    del subject_loaded
 
     data = Data(
         subject=subject,
@@ -284,22 +280,20 @@ def test_timeless_data(test_filepath):
         domain=Interval(0.0, 3.0),
     )
 
-    with h5py.File(test_filepath, "w") as f:
-        data.to_hdf5(f)
+    data.save(test_filepath)
+    del data
 
-    with h5py.File(test_filepath, "r") as f:
-        data = Data.from_hdf5(f)
-
+    with Data.load(test_filepath) as data:
         assert data.subject.id == "jenkins"
         assert data.subject.age == 5.0
         assert data.subject.species == "HUMAN"
-        assert np.allclose(data.subject.image, np.ones((32, 32, 3)))
+        np.testing.assert_allclose(data.subject.image, np.ones((32, 32, 3)))
 
         assert len(data.spikes) == 6
-        assert np.allclose(
+        np.testing.assert_allclose(
             data.spikes.timestamps, np.array([0.1, 0.2, 0.3, 2.1, 2.2, 2.3])
         )
-        assert np.allclose(data.spikes.unit_index, np.array([0, 0, 1, 0, 1, 2]))
+        np.testing.assert_allclose(data.spikes.unit_index, np.array([0, 0, 1, 0, 1, 2]))
 
 
 def test_precision(caplog):
@@ -354,7 +348,7 @@ def test_unicode_arrays(test_filepath):
         timestamps=np.array([0.0, 1.0, 2.0]), x=unicode_array, domain="auto"
     )
 
-    e = Data(
+    data = Data(
         a_arraydict=a,
         b_intervals=b,
         c_timeseries=c,
@@ -362,28 +356,22 @@ def test_unicode_arrays(test_filepath):
         domain=Interval(0.0, 3.0),
     )
 
-    with h5py.File(test_filepath, "w") as f:
-        e.to_hdf5(f)
+    data.save(test_filepath)
+    del data
 
-    del e
+    with Data.load(test_filepath, lazy=False) as data:
+        np.testing.assert_array_equal(data.a_arraydict.x[:], unicode_array)
+        np.testing.assert_array_equal(data.b_intervals.x[:], unicode_array)
+        np.testing.assert_array_equal(data.c_timeseries.x[:], unicode_array)
+        np.testing.assert_array_equal(data.d_timeseries.x[:], unicode_array)
 
-    with h5py.File(test_filepath, "r") as f:
-        e = Data.from_hdf5(f, lazy=False)
+    del data
 
-        assert np.all(e.a_arraydict.x[:] == unicode_array)
-        assert np.all(e.b_intervals.x[:] == unicode_array)
-        assert np.all(e.c_timeseries.x[:] == unicode_array)
-        assert np.all(e.d_timeseries.x[:] == unicode_array)
-
-    del e
-
-    with h5py.File(test_filepath, "r") as f:
-        e = Data.from_hdf5(f, lazy=True)
-
-        assert np.all(e.a_arraydict.x[:] == unicode_array)
-        assert np.all(e.b_intervals.x[:] == unicode_array)
-        assert np.all(e.c_timeseries.x[:] == unicode_array)
-        assert np.all(e.d_timeseries.x[:] == unicode_array)
+    with Data.load(test_filepath, lazy=True) as lazy_data:
+        np.testing.assert_array_equal(lazy_data.a_arraydict.x[:], unicode_array)
+        np.testing.assert_array_equal(lazy_data.b_intervals.x[:], unicode_array)
+        np.testing.assert_array_equal(lazy_data.c_timeseries.x[:], unicode_array)
+        np.testing.assert_array_equal(lazy_data.d_timeseries.x[:], unicode_array)
 
 
 def test_nested_attributes():
@@ -403,7 +391,7 @@ def test_nested_attributes():
 
     # test get_nested_attribute
     out = data.get_nested_attribute("spikes.timestamps")
-    assert np.allclose(out, data.spikes.timestamps)
+    np.testing.assert_allclose(out, data.spikes.timestamps)
 
     out = data.get_nested_attribute("units.id")
     for i, id in enumerate(out):
@@ -508,13 +496,10 @@ def test_data_has_nested_attribute_lazy(test_filepath):
         domain=Interval(0.0, 3.0),
     )
 
-    with h5py.File(test_filepath, "w") as f:
-        data_to_save.to_hdf5(f)
+    data_to_save.save(test_filepath)
     del data_to_save
 
-    with h5py.File(test_filepath, "r") as f:
-        lazy_data = Data.from_hdf5(f, lazy=True)
-
+    with Data.load(test_filepath, lazy=True) as lazy_data:
         # Pre-checks for laziness: ensure some attributes are indeed h5py.Dataset
         assert isinstance(lazy_data.spikes.__dict__["unit_index"], h5py.Dataset)
         assert isinstance(lazy_data.units.__dict__["id"], h5py.Dataset)
@@ -730,8 +715,8 @@ def test_data_auto_domain():
         domain="auto",
     )
 
-    assert np.allclose(data.domain.start, np.array([0, 5]))
-    assert np.allclose(data.domain.end, np.array([4, 6]))
+    np.testing.assert_allclose(data.domain.start, np.array([0, 5]))
+    np.testing.assert_allclose(data.domain.end, np.array([4, 6]))
 
 
 def test_data_save(tmp_path):
@@ -752,20 +737,31 @@ def test_data_save(tmp_path):
 
     data_to_save.save(tmp_path / "data.h5")
 
-    saved_data = Data.load(tmp_path / "data.h5")
-    assert saved_data.session_id == data_to_save.session_id
-    assert np.all(saved_data.some_numpy_array == data_to_save.some_numpy_array)
-    assert np.all(saved_data.spikes.timestamps == data_to_save.spikes.timestamps)
-    assert np.all(saved_data.spikes.unit_index == data_to_save.spikes.unit_index)
-    assert np.all(saved_data.spikes.domain.start == data_to_save.spikes.domain.start)
-    assert np.all(saved_data.spikes.domain.end == data_to_save.spikes.domain.end)
+    with Data.load(tmp_path / "data.h5") as saved_data:
+        assert saved_data.session_id == data_to_save.session_id
+        np.testing.assert_array_equal(
+            saved_data.some_numpy_array, data_to_save.some_numpy_array
+        )
+        np.testing.assert_array_equal(
+            saved_data.spikes.timestamps, data_to_save.spikes.timestamps
+        )
+        np.testing.assert_array_equal(
+            saved_data.spikes.unit_index, data_to_save.spikes.unit_index
+        )
+        np.testing.assert_array_equal(
+            saved_data.spikes.domain.start, data_to_save.spikes.domain.start
+        )
+        np.testing.assert_array_equal(
+            saved_data.spikes.domain.end, data_to_save.spikes.domain.end
+        )
 
-    assert np.all(saved_data.units.id == data_to_save.units.id)
-    assert np.all(saved_data.units.type == data_to_save.units.type)
+        np.testing.assert_array_equal(saved_data.units.id, data_to_save.units.id)
+        np.testing.assert_array_equal(saved_data.units.type, data_to_save.units.type)
 
-    assert np.all(saved_data.domain.start == data_to_save.domain.start)
-    assert np.all(saved_data.domain.end == data_to_save.domain.end)
-    saved_data.close()
+        np.testing.assert_array_equal(
+            saved_data.domain.start, data_to_save.domain.start
+        )
+        np.testing.assert_array_equal(saved_data.domain.end, data_to_save.domain.end)
 
 
 def test_data_save_load_no_extension(tmp_path):

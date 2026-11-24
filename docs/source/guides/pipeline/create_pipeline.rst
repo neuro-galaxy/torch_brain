@@ -65,8 +65,8 @@ Pipelines can also expose custom CLI arguments by attaching an
     # /// brainset-pipeline
     # python-version = "3.11"
     # dependencies = [
-    #     "dandi==0.61.2",
-    #     "scikit-learn==1.5.1",
+    #     "dandi==0.82.0",
+    #     "scikit-learn==1.7.2",
     # ]
     # ///
 
@@ -277,8 +277,8 @@ isolated environment before running your pipeline.
     # /// brainset-pipeline
     # python-version = "3.11"
     # dependencies = [
-    #     "dandi==0.61.2",
-    #     "scikit-learn==1.5.1",
+    #     "dandi==0.82.0",
+    #     "scikit-learn==1.7.2",
     # ]
     # ///
 

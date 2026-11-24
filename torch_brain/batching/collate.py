@@ -5,7 +5,10 @@ from collections.abc import Callable
 import numpy as np
 import torch
 from torch.utils.data._utils.collate import collate as _collate
-from torch.utils.data._utils.collate import default_collate_fn_map
+from torch.utils.data._utils.collate import (
+    default_collate_fn_map,
+    np_str_obj_array_pattern,
+)
 
 # pad
 PaddedObject = namedtuple("PaddedObject", ["obj"])
@@ -291,8 +294,24 @@ def chain_batch_tracker_collate_tensor_fn(
     )
 
 
+def chain_collate_numpy_array_fn(
+    batch,
+    *,
+    collate_fn_map: dict[type | tuple[type, ...], Callable] | None = None,
+):
+    """Chain numpy arrays.
+
+    String and object arrays are concatenated as numpy arrays as they cannot be
+    converted to Tensors. Everything else uses the default numpy collate.
+    """
+    if np_str_obj_array_pattern.search(batch[0].dtype.str) is not None:
+        return np.concatenate(batch)
+    return default_collate_fn_map[np.ndarray](batch, collate_fn_map=collate_fn_map)
+
+
 chain_collate_fn_map = copy.deepcopy(default_collate_fn_map)
 chain_collate_fn_map[str] = chain_collate_str_fn
+chain_collate_fn_map[np.ndarray] = chain_collate_numpy_array_fn
 chain_collate_fn_map[torch.Tensor] = chain_collate_tensor_fn
 chain_collate_fn_map[ChainBatchTrackerObject] = chain_batch_tracker_collate_tensor_fn
 
