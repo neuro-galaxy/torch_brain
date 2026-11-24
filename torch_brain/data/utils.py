@@ -5,7 +5,7 @@ import h5py
 import numpy as np
 
 
-def _get_array_dtype(value: Any, to_unicode: bool = False) -> str:
+def _get_array_dtype(value: Any, to_unicode: bool = False) -> np.dtype:
     if isinstance(value, np.ndarray):
         dtype = value.dtype
     elif isinstance(value, h5py.Dataset):
