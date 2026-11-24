@@ -192,7 +192,8 @@ class NuCLR(nn.Module):
 
         Performs NuCLR inference on a single session and embeds its units.
         The recording is split into ``ctx_duration``-long windows, and the embedding
-        of each unit is averaged over the windows in which it spikes. The model is in
+        of each unit is averaged over the windows in which it spikes. Intervals of
+        ``data.domain`` shorter than ``ctx_duration`` are skipped. The model is in
         evaluation mode during the call, and no gradients are computed.
 
         Args:
@@ -230,6 +231,8 @@ class NuCLR(nn.Module):
                     for w in windows[i : i + batch_size]
                 ]
                 batch = collate(samples)
+                if len(batch["unit_ids"]) == 0:
+                    continue
                 z = self(batch["bins"].to(device), batch["group_lengths"].to(device))
                 idx = torch.tensor(
                     [unit_index[uid] for uid in batch["unit_ids"]], device=device
