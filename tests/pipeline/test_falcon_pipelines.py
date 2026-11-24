@@ -192,7 +192,7 @@ def _run_pipeline(module, nwb_path, processed_dir, reprocess=False):
 
 
 def _load(h5_path):
-    return Data.from_hdf5(h5py.File(h5_path, "r"))
+    return Data.load(h5_path)
 
 
 # ---------------------------------------------------------------------------
