@@ -533,6 +533,14 @@ def markdown_comparison(
         f"🔹 **faster:** signif., but below {hi:.2f}x",
         f"⚠️ **unconfirmed:** outside {lo:.2f}-{hi:.2f}x range, but not signif.",
     ]
+    batches = "/".join(str(n) for n in batch_counts)
+    pval_note = (
+        f"Two-sided Mann-Whitney U test on the {batches} timed batches per "
+        f"side (Holm-corrected across {n_tested} benchmarks). Significant if "
+        f"p < {thresholds.alpha:g}."
+    )
+
+    # blank lines around each block so GitHub renders Markdown inside <details>
     details = [
         "<details>",
         f"<summary>Full statistics ({len(rows)} benchmarks)</summary>",
@@ -541,21 +549,18 @@ def markdown_comparison(
         "",
         " \\\n".join(legend),  # hard line breaks
         "",
+        pval_note,
+        "",
         "</details>",
         "",
     ]
 
-    batches = "/".join(str(n) for n in batch_counts)
-    notes = [
-        f"Two-sided Mann-Whitney U test on the {batches} timed batches per "
-        f"side (Holm-corrected across {n_tested} benchmarks). Significant if "
-        f"p < {thresholds.alpha:g}.",
-        "",
+    ci_noise_note = (
         f"Shared CI runners are noisy, so treat isolated changes close to "
-        f"{lo:.2f}x or {hi:.2f}x with caution.",
-    ]
+        f"{lo:.2f}x or {hi:.2f}x with caution."
+    )
 
-    parts += details + notes
+    parts += details + [ci_noise_note]
 
     return "\n".join(parts) + "\n"
 
