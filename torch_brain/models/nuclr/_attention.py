@@ -96,6 +96,8 @@ def _varlen_attention(q: Tensor, k: Tensor, v: Tensor, seqlen: Tensor) -> Tensor
         and q.is_cuda
         and q.dtype in (torch.float16, torch.bfloat16)
         and torch.cuda.get_device_capability(q.device) >= (8, 0)
+        and q.shape[-1] % 8 == 0
+        and q.shape[-1] <= 256
     )
     if can_use_varlen_attn:
         cu_seqlen = F.pad(seqlen.cumsum(0, dtype=torch.int32), (1, 0))
@@ -119,6 +121,7 @@ def _pad(x: Tensor, mask: Tensor) -> Tensor:
 def _warn_no_varlen_attn():
     warnings.warn(
         "torch's varlen_attn is unavailable (requires torch>=2.10, an Ampere or newer "
-        "GPU, and fp16/bf16 inputs). Falling back to padded SDPA, which is slower.",
+        "GPU, fp16/bf16 inputs, and dim_head a multiple of 8 up to 256). Falling back "
+        "to padded SDPA, which is slower.",
         stacklevel=2,
     )
