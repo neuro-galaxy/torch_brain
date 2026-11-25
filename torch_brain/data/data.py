@@ -256,8 +256,7 @@ class Data:
         # update domain
         out._domain = copy.copy(self._domain) & Interval(start, end)
         if reset_origin:
-            out._domain.start -= start
-            out._domain.end -= start
+            out._domain._shift(start)
 
             # update slice start time
             out._absolute_start = self._absolute_start + start

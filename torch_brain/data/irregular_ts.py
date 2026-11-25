@@ -206,7 +206,9 @@ class IrregularTimeSeries(ArrayDict):
             sorted_indices = np.argsort(self.timestamps)
             for key in self.keys():
                 self.__dict__[key] = self.__dict__[key][sorted_indices]
-        self._sorted = True
+            self._sorted = True
+
+        return self
 
     def slice(self, start: float, end: float, reset_origin: bool = True):
         r"""Returns a new :obj:`IrregularTimeSeries` object that contains the data

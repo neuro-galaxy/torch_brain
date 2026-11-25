@@ -240,6 +240,43 @@ def test_data_absolute_start(test_filepath):
         assert data.absolute_start == 1.0
 
 
+def test_negative_slice_data():
+    data = Data(
+        session_id="session_0",
+        domain=Interval.from_list([(-20, 21)]),
+        spikes=IrregularTimeSeries(
+            timestamps=[-19.0, -16.5, -3.6, 2.4, 6.7, 16.0],
+            unit_index=[0, 0, 1, 0, 1, 2],
+            waveforms=np.zeros((6, 48)),
+            domain="auto",
+        ),
+        lfp=RegularTimeSeries(
+            raw=np.zeros((1000, 3)),
+            domain_start=-15.0,
+            sampling_rate=25.0,
+        ),
+        trials=Interval(
+            start=[-20.0, -12.0, -4.0, 4.0, 12.0, 20.0],
+            end=[-19.0, -11.0, -3.0, 5.0, 13.0, 21.0],
+        ),
+    )
+
+    data = data.slice(-15.0, -2.0)
+    assert data.absolute_start == -15.0
+
+    assert np.allclose(data.domain.start, np.array([0.0]))
+    assert np.allclose(data.domain.end, np.array([13.0]))
+
+    assert len(data.spikes) == 1
+    assert np.allclose(data.spikes.timestamps, np.array([11.4]))
+    assert np.allclose(data.spikes.unit_index, np.array([1]))
+
+    assert len(data.lfp) == 325
+
+    assert len(data.trials) == 2
+    assert np.allclose(data.trials.start, np.array([3.0, 11.0]))
+
+
 def test_timeless_data(test_filepath):
     # when defining a Data object that has no time-based attributes, we do not need to
     # specify a domain
