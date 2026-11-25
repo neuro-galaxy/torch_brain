@@ -6,16 +6,14 @@ import numpy as np
 
 
 class DeferredH5Dataset:
-    r"""Reference to an HDF5 dataset that is only opened when first needed.
+    r"""A reference to a dataset in an HDF5 group. The dataset is only opened when
+    it is first accessed, which avoids opening every dataset when lazy loading an
+    object from an HDF5 file. Supports indexing, ``shape``, ``dtype`` and ``len()``.
 
-    Lazy objects store one of these for every attribute that has not been loaded
-    yet. Opening an :obj:`h5py.Dataset` costs ~20 µs, so opening all of them in
-    ``from_hdf5`` dominated loading objects with many attributes, even when only
-    a few were ever read. Supports the subset of the :obj:`h5py.Dataset` API the
-    lazy classes use: indexing, ``shape``, ``dtype`` and ``len()``.
+    Args:
+        group: The HDF5 group containing the dataset.
+        name: The name of the dataset in the group.
     """
-
-    # no __slots__: Data.has_nested_attribute walks __dict__, as on h5py.Dataset
 
     def __init__(self, group: h5py.Group, name: str):
         self._group = group
@@ -24,15 +22,16 @@ class DeferredH5Dataset:
 
     @property
     def dataset(self) -> h5py.Dataset:
+        r"""Returns the :obj:`h5py.Dataset`, opening it if needed."""
         if self._dataset is None:
-            # low-level open: ~2x faster than group[name]
+            # the low-level API is faster than group[name]
             dsid = h5py.h5d.open(self._group.id, self._name.encode("utf-8"))
             self._dataset = h5py.Dataset(dsid)
         return self._dataset
 
     @property
     def valid(self) -> bool:
-        """Whether the file holding this dataset is still open."""
+        r"""Returns ``True`` if the HDF5 file is still open."""
         return bool(self._group.id.valid)
 
     def __getitem__(self, idx):
@@ -53,14 +52,13 @@ class DeferredH5Dataset:
         return self
 
     def __deepcopy__(self, memo):
-        # read-only reference into an open file: share it, like h5py.Dataset
+        # h5py objects cannot be deepcopied
         return self
 
     def __repr__(self) -> str:
         if not self.valid:
             return f'<DeferredH5Dataset "{self._name}" (file closed)>'
         if self._dataset is None:
-            # printing should not open the dataset
             return f'<DeferredH5Dataset "{self._name}" (not opened)>'
         return f"<DeferredH5Dataset of {self._dataset!r}>"
 

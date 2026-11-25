@@ -474,7 +474,6 @@ class LazyArrayDict(ArrayDict):
         )
 
         obj = cls.__new__(cls)
-        # file.keys() only lists names; datasets are opened on first read
         for key in file.keys():
             obj.__dict__[key] = DeferredH5Dataset(file, key)
 

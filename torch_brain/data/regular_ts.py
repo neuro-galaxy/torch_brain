@@ -938,7 +938,6 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         obj = cls.__new__(cls)
 
         missing_keys = ["domain"]
-        # file.keys() only lists names; datasets are opened on first read
         for key in file.keys():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])

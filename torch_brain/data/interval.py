@@ -1129,7 +1129,6 @@ class LazyInterval(Interval):
         obj = cls.__new__(cls)
 
         missing_keys = ["start", "end"]
-        # file.keys() only lists names; datasets are opened on first read
         for key in file.keys():
             obj.__dict__[key] = DeferredH5Dataset(file, key)
             if key in missing_keys:

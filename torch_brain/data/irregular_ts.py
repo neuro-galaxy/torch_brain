@@ -757,7 +757,6 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         obj = cls.__new__(cls)
 
         missing_keys = ["timestamps", "domain", "timestamp_indices_1s"]
-        # file.keys() only lists names; datasets are opened on first read
         for key in file.keys():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
