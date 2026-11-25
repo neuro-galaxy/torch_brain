@@ -16,7 +16,7 @@ from .interval import Interval, LazyInterval  # noqa: F401
 from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries  # noqa: F401
 from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries  # noqa: F401
 from .serialization import _DEFAULT_SERIALIZE_FN_MAP
-from .utils import _size_repr
+from .utils import _check_hdf5_object, _size_repr
 
 logger = logging.getLogger(__name__)
 
@@ -403,6 +403,9 @@ class Data:
         if isinstance(file, h5py.File):
             assert file.mode == "r", "File must be opened in read-only mode."
 
+        attrs = dict(file.attrs) if _attrs is None else _attrs
+        _check_hdf5_object(attrs, "Data")
+
         data = {}
         for key, value in file.items():
             if isinstance(value, h5py.Group):
@@ -423,7 +426,6 @@ class Data:
                 # if array, it will be loaded no matter what, always prefer ArrayDict
                 data[key] = value[:]
 
-        attrs = dict(file.attrs) if _attrs is None else _attrs
         for key, value in attrs.items():
             if key == "object" or key == "absolute_start":
                 continue

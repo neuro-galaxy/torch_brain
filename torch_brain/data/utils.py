@@ -58,7 +58,11 @@ def _check_hdf5_object(attrs: Mapping, expected: str) -> None:
     r"""Raises a :obj:`ValueError` if the HDF5 group's ``object`` attribute does not
     match the expected class name."""
     found = attrs.get("object")
+    if found is None:
+        raise ValueError(
+            f"HDF5 group has no 'object' attribute, expected a {expected} object."
+        )
     if found != expected:
         raise ValueError(
-            f"File contains data for a {found} object, expected {expected} object."
+            f"HDF5 group contains data for a {found} object, expected {expected}."
         )

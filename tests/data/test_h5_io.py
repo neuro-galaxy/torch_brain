@@ -344,6 +344,7 @@ class TestNestedDataLazyPropagation:
         LazyIrregularTimeSeries,
         RegularTimeSeries,
         LazyRegularTimeSeries,
+        Data,
     ],
 )
 def test_from_hdf5_wrong_object_type(test_filepath, loader):
@@ -357,7 +358,15 @@ def test_from_hdf5_wrong_object_type(test_filepath, loader):
         other.to_hdf5(file.create_group("group"))
 
     with h5py.File(test_filepath, "r") as file:
-        with pytest.raises(ValueError, match="expected"):
+        with pytest.raises(ValueError, match="HDF5 group contains data for a"):
+            loader.from_hdf5(file["group"])
+
+    # a group with no "object" attribute at all
+    with h5py.File(test_filepath, "w") as file:
+        file.create_group("group")
+
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(ValueError, match="no 'object' attribute"):
             loader.from_hdf5(file["group"])
 
 
