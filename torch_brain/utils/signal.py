@@ -151,7 +151,7 @@ def cube_to_long(
         ts_ = np.concatenate(ts_)
         channels_ = np.concatenate(channels_)
 
-        tidx = np.argsort(ts_)
+        tidx = np.argsort(ts_, kind="stable")
         ts_ = ts_[tidx]
         channels_ = channels_[tidx]
 

@@ -203,7 +203,7 @@ class IrregularTimeSeries(ArrayDict):
         r"""Sorts the timestamps, and reorders the other attributes accordingly.
         This method is applied in place."""
         if not self.is_sorted():
-            sorted_indices = np.argsort(self.timestamps)
+            sorted_indices = np.argsort(self.timestamps, kind="stable")
             for key in self.keys():
                 self.__dict__[key] = self.__dict__[key][sorted_indices]
         self._sorted = True
@@ -281,7 +281,7 @@ class IrregularTimeSeries(ArrayDict):
 
         sorted_indices = None
         if not self.is_sorted():
-            sorted_indices = np.argsort(timestamps)
+            sorted_indices = np.argsort(timestamps, kind="stable")
             timestamps = timestamps[sorted_indices]
 
         idx_l = np.searchsorted(timestamps, interval.start)
@@ -292,7 +292,7 @@ class IrregularTimeSeries(ArrayDict):
             mask[idx_l[i] : idx_r[i]] = True
 
         if sorted_indices is not None:
-            inverse_sorted_indices = np.argsort(sorted_indices)
+            inverse_sorted_indices = np.argsort(sorted_indices, kind="stable")
             mask = mask[inverse_sorted_indices]
 
         out = self.select_by_mask(mask)

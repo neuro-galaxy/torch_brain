@@ -220,7 +220,7 @@ class Interval(ArrayDict):
             method will raise an error.
         """
         if not self.is_sorted():
-            sorted_indices = np.argsort(self.start)
+            sorted_indices = np.argsort(self.start, kind="stable")
             for key in self.keys():
                 self.__dict__[key] = self.__dict__[key][sorted_indices]
         self._sorted = True
@@ -871,7 +871,7 @@ class Interval(ArrayDict):
 
         all_starts = np.concatenate([self.start, other.start])
         all_ends = np.concatenate([self.end, other.end])
-        order = np.argsort(all_starts, kind="mergesort")
+        order = np.argsort(all_starts, kind="stable")
         all_starts = all_starts[order]
         all_ends = all_ends[order]
 

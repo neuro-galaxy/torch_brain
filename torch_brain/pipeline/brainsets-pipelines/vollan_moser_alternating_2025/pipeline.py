@@ -645,7 +645,7 @@ def build_sleep_domain(ds):
     ends = np.concatenate(all_ends).astype(np.float64)
 
     # Sort by start time
-    sort_idx = np.argsort(starts)
+    sort_idx = np.argsort(starts, kind="stable")
     starts = starts[sort_idx]
     ends = ends[sort_idx]
 
