@@ -10,6 +10,7 @@ import pandas as pd
 from .typing import ArrayLike
 from .utils import (
     DeferredH5Dataset,
+    _is_readonly,
     _size_repr,
     _validate_select_by_mask_input,
 )
@@ -474,8 +475,9 @@ class LazyArrayDict(ArrayDict):
         )
 
         obj = cls.__new__(cls)
+        readonly = _is_readonly(file)
         for key in file.keys():
-            obj.__dict__[key] = DeferredH5Dataset(file, key)
+            obj.__dict__[key] = DeferredH5Dataset(file, key, readonly)
 
         obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
         obj._lazy_ops = {}

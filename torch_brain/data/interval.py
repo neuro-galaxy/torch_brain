@@ -8,7 +8,7 @@ import pandas as pd
 
 from .arraydict import ArrayDict
 from .typing import ArrayLike
-from .utils import DeferredH5Dataset, _validate_select_by_mask_input
+from .utils import DeferredH5Dataset, _is_readonly, _validate_select_by_mask_input
 
 
 class Interval(ArrayDict):
@@ -1129,8 +1129,9 @@ class LazyInterval(Interval):
         obj = cls.__new__(cls)
 
         missing_keys = ["start", "end"]
+        readonly = _is_readonly(file)
         for key in file.keys():
-            obj.__dict__[key] = DeferredH5Dataset(file, key)
+            obj.__dict__[key] = DeferredH5Dataset(file, key, readonly)
             if key in missing_keys:
                 missing_keys.remove(key)
 

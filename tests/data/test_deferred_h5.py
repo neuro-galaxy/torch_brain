@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 import pytest
 
-from torch_brain.data.utils import DeferredH5Dataset, _size_repr
+from torch_brain.data.utils import DeferredH5Dataset, _is_readonly, _size_repr
 
 
 @pytest.fixture
@@ -68,3 +68,13 @@ def test_size_repr_shows_lazy_array(h5_path):
         d = DeferredH5Dataset(f, "x")
         assert "lazy array, shape=(4, 3), dtype=float32" in _size_repr("x", d)
         assert "shape=(2, 3)" in _size_repr("x", d, first_dim=2)
+
+
+@pytest.mark.parametrize("mode", ["r", "r+"])
+def test_readonly_matches_h5py(h5_path, mode):
+    # h5py only caches shape and read helpers on datasets opened read-only
+    with h5py.File(h5_path, mode) as f:
+        expected = f["x"]._readonly
+        assert expected == (mode == "r")
+        assert DeferredH5Dataset(f, "x").dataset._readonly == expected
+        assert _is_readonly(f) == expected

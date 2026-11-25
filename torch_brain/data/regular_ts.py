@@ -11,7 +11,7 @@ from .arraydict import ArrayDict
 from .interval import Interval
 from .irregular_ts import IrregularTimeSeries
 from .typing import ArrayLike
-from .utils import DeferredH5Dataset
+from .utils import DeferredH5Dataset, _is_readonly
 
 _NP_DTYPE_KINDS = {"b", "i", "u", "f", "c", "m", "M", "O", "S", "U", "V"}
 # ^ From https://numpy.org/doc/2.2/reference/generated/numpy.dtype.kind.html
@@ -938,11 +938,12 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         obj = cls.__new__(cls)
 
         missing_keys = ["domain"]
+        readonly = _is_readonly(file)
         for key in file.keys():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
             else:
-                obj.__dict__[key] = DeferredH5Dataset(file, key)
+                obj.__dict__[key] = DeferredH5Dataset(file, key, readonly)
             if key in missing_keys:
                 missing_keys.remove(key)
 

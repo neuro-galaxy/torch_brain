@@ -10,7 +10,7 @@ import pandas as pd
 from .arraydict import ArrayDict
 from .interval import Interval
 from .typing import ArrayLike
-from .utils import DeferredH5Dataset, _validate_select_by_mask_input
+from .utils import DeferredH5Dataset, _is_readonly, _validate_select_by_mask_input
 
 
 class IrregularTimeSeries(ArrayDict):
@@ -757,13 +757,14 @@ class LazyIrregularTimeSeries(IrregularTimeSeries):
         obj = cls.__new__(cls)
 
         missing_keys = ["timestamps", "domain", "timestamp_indices_1s"]
+        readonly = _is_readonly(file)
         for key in file.keys():
             if key == "domain":
                 obj.__dict__["_domain"] = Interval.from_hdf5(file[key])
             elif key == "timestamp_indices_1s":
                 obj.__dict__["_timestamp_indices_1s"] = file[key][:]
             else:
-                obj.__dict__[key] = DeferredH5Dataset(file, key)
+                obj.__dict__[key] = DeferredH5Dataset(file, key, readonly)
             if key in missing_keys:
                 missing_keys.remove(key)
 

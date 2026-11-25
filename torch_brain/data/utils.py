@@ -5,6 +5,11 @@ import h5py
 import numpy as np
 
 
+def _is_readonly(group: h5py.Group) -> bool:
+    r"""Returns ``True`` if the HDF5 file containing ``group`` is opened read-only."""
+    return h5py.h5i.get_file_id(group.id).get_intent() == h5py.h5f.ACC_RDONLY
+
+
 class DeferredH5Dataset:
     r"""A reference to a dataset in an HDF5 group. The dataset is only opened when
     it is first accessed, which avoids opening every dataset when lazy loading an
@@ -13,11 +18,15 @@ class DeferredH5Dataset:
     Args:
         group: The HDF5 group containing the dataset.
         name: The name of the dataset in the group.
+        readonly: Whether the file is opened read-only, in which case h5py caches
+            the dataset's shape and read helpers. If ``None``, it is looked up when
+            the dataset is opened.
     """
 
-    def __init__(self, group: h5py.Group, name: str):
+    def __init__(self, group: h5py.Group, name: str, readonly: bool | None = None):
         self._group = group
         self._name = name
+        self._readonly = readonly
         self._dataset = None
 
     @property
@@ -26,7 +35,9 @@ class DeferredH5Dataset:
         if self._dataset is None:
             # the low-level API is faster than group[name]
             dsid = h5py.h5d.open(self._group.id, self._name.encode("utf-8"))
-            self._dataset = h5py.Dataset(dsid)
+            if self._readonly is None:
+                self._readonly = _is_readonly(self._group)
+            self._dataset = h5py.Dataset(dsid, readonly=self._readonly)
         return self._dataset
 
     @property
