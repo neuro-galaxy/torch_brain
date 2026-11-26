@@ -12,6 +12,7 @@ from .arraydict import ArrayDict
 from .interval import Interval
 from .irregular_ts import IrregularTimeSeries
 from .typing import ArrayLike
+from .utils import _check_hdf5_object
 
 _NP_DTYPE_KINDS = {"b", "i", "u", "f", "c", "m", "M", "O", "S", "U", "V"}
 # ^ From https://numpy.org/doc/2.2/reference/generated/numpy.dtype.kind.html
@@ -495,7 +496,7 @@ class RegularTimeSeries(ArrayDict):
         file.attrs["sampling_rate"] = self.sampling_rate
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _attrs: dict | None = None):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -513,10 +514,12 @@ class RegularTimeSeries(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = RegularTimeSeries.from_hdf5(f)
         """
-        assert file.attrs["object"] == cls.__name__, "object type mismatch"
+        # Data.from_hdf5 passes in the attrs it already read
+        attrs = dict(file.attrs) if _attrs is None else _attrs
+        _check_hdf5_object(attrs, cls.__name__)
 
         try:
-            _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+            _unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
         except KeyError:
             _unicode_keys = []  # for backwards compatibility
 
@@ -531,7 +534,7 @@ class RegularTimeSeries(ArrayDict):
         domain = Interval.from_hdf5(file["domain"])
         obj = cls(
             **data,
-            sampling_rate=file.attrs["sampling_rate"],
+            sampling_rate=attrs["sampling_rate"],
             domain_start=float(domain.start[0]),
         )
         obj._domain = domain
@@ -917,7 +920,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
         )
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _attrs: dict | None = None):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -931,9 +934,9 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == RegularTimeSeries.__name__, (
-            "object type mismatch"
-        )
+        # Data.from_hdf5 passes in the attrs it already read
+        attrs = dict(file.attrs) if _attrs is None else _attrs
+        _check_hdf5_object(attrs, RegularTimeSeries.__name__)
 
         obj = cls.__new__(cls)
 
@@ -954,7 +957,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             )
 
         obj._lazy_ops = {}
-        obj._sampling_rate = float(file.attrs["sampling_rate"])
+        obj._sampling_rate = float(attrs["sampling_rate"])
 
         if not obj._sampling_rate > 0:
             raise ValueError(
@@ -962,7 +965,7 @@ class LazyRegularTimeSeries(RegularTimeSeries):
             )
 
         try:
-            obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+            obj._unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
         except KeyError:
             obj._unicode_keys = []  # for backwards compatibility
 

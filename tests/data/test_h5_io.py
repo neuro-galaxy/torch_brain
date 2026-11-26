@@ -6,9 +6,11 @@ import numpy as np
 import pytest
 
 from torch_brain.data import (
+    ArrayDict,
     Data,
     Interval,
     IrregularTimeSeries,
+    LazyArrayDict,
     LazyInterval,
     LazyIrregularTimeSeries,
     LazyRegularTimeSeries,
@@ -329,3 +331,78 @@ class TestNestedDataLazyPropagation:
             assert not isinstance(loaded.nested.domain, LazyInterval), (
                 "Level 1: domain should NOT be LazyInterval after materialize()"
             )
+
+
+@pytest.mark.parametrize(
+    "loader",
+    [
+        ArrayDict,
+        LazyArrayDict,
+        Interval,
+        LazyInterval,
+        IrregularTimeSeries,
+        LazyIrregularTimeSeries,
+        RegularTimeSeries,
+        LazyRegularTimeSeries,
+        Data,
+    ],
+)
+def test_from_hdf5_wrong_object_type(test_filepath, loader):
+    # a group saved as one class cannot be loaded as another
+    other = (
+        Interval(start=np.array([0.0]), end=np.array([1.0]))
+        if not issubclass(loader, Interval)
+        else ArrayDict(x=np.array([1, 2, 3]))
+    )
+    with h5py.File(test_filepath, "w") as file:
+        other.to_hdf5(file.create_group("group"))
+
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(ValueError, match="HDF5 group contains data for a"):
+            loader.from_hdf5(file["group"])
+
+    # a group with no "object" attribute at all
+    with h5py.File(test_filepath, "w") as file:
+        file.create_group("group")
+
+    with h5py.File(test_filepath, "r") as file:
+        with pytest.raises(ValueError, match="no 'object' attribute"):
+            loader.from_hdf5(file["group"])
+
+
+@pytest.mark.parametrize("lazy", [True, False])
+def test_data_from_hdf5_reads_group_attrs_once(test_filepath, lazy, monkeypatch):
+    data = Data(
+        spikes=IrregularTimeSeries(
+            timestamps=np.array([0.0, 1.0, 2.0]),
+            unit_index=np.array([0, 1, 0]),
+            domain="auto",
+        ),
+        lfp=RegularTimeSeries(
+            raw=np.zeros((10, 2)), sampling_rate=10.0, domain_start=0.0
+        ),
+        trials=Interval(start=np.array([0.0]), end=np.array([1.0])),
+        units=ArrayDict(id=np.array(["a", "b"])),
+        session=Data(label=np.array([1, 2]), domain="auto"),
+        domain=Interval(start=np.array([0.0]), end=np.array([2.0])),
+    )
+    with h5py.File(test_filepath, "w") as file:
+        data.to_hdf5(file)
+
+    # count attribute reads per object (group or file)
+    reads = {}
+    original_getitem = h5py.AttributeManager.__getitem__
+
+    def counting_getitem(self, name):
+        key = (self._id.id, name)
+        reads[key] = reads.get(key, 0) + 1
+        return original_getitem(self, name)
+
+    monkeypatch.setattr(h5py.AttributeManager, "__getitem__", counting_getitem)
+
+    with h5py.File(test_filepath, "r") as file:
+        loaded = Data.from_hdf5(file, lazy=lazy)
+        assert set(loaded.keys()) >= {"spikes", "lfp", "trials", "units", "session"}
+
+    duplicates = {key: n for key, n in reads.items() if n > 1}
+    assert not duplicates, f"attributes read more than once: {duplicates}"

@@ -16,7 +16,7 @@ from .interval import Interval, LazyInterval  # noqa: F401
 from .irregular_ts import IrregularTimeSeries, LazyIrregularTimeSeries  # noqa: F401
 from .regular_ts import LazyRegularTimeSeries, RegularTimeSeries  # noqa: F401
 from .serialization import _DEFAULT_SERIALIZE_FN_MAP
-from .utils import _size_repr
+from .utils import _check_hdf5_object, _size_repr
 
 logger = logging.getLogger(__name__)
 
@@ -375,7 +375,13 @@ class Data:
         file.attrs["absolute_start"] = self._absolute_start
 
     @classmethod
-    def from_hdf5(cls, file: h5py.File | h5py.Group, lazy: bool = True):
+    def from_hdf5(
+        cls,
+        file: h5py.File | h5py.Group,
+        lazy: bool = True,
+        *,
+        _attrs: dict | None = None,
+    ):
         r"""Loads the data object from an HDF5 file. This method will also call the
         `from_hdf5` method of all contained data objects, so that the entire data object
         is loaded from the HDF5 file, i.e. no need to call `from_hdf5` for each contained
@@ -397,23 +403,30 @@ class Data:
         if isinstance(file, h5py.File):
             assert file.mode == "r", "File must be opened in read-only mode."
 
+        attrs = dict(file.attrs) if _attrs is None else _attrs
+        _check_hdf5_object(attrs, "Data")
+
         data = {}
         for key, value in file.items():
             if isinstance(value, h5py.Group):
-                class_name = value.attrs["object"]
+                # read the group's attrs once and hand them to its from_hdf5
+                group_attrs = dict(value.attrs)
+                class_name = group_attrs["object"]
                 if lazy and class_name != "Data":
                     group_cls = globals()[f"Lazy{class_name}"]
                 else:
                     group_cls = globals()[class_name]
                 if class_name == "Data":
-                    data[key] = group_cls.from_hdf5(value, lazy=lazy)
+                    data[key] = group_cls.from_hdf5(
+                        value, lazy=lazy, _attrs=group_attrs
+                    )
                 else:
-                    data[key] = group_cls.from_hdf5(value)
+                    data[key] = group_cls.from_hdf5(value, _attrs=group_attrs)
             else:
                 # if array, it will be loaded no matter what, always prefer ArrayDict
                 data[key] = value[:]
 
-        for key, value in file.attrs.items():
+        for key, value in attrs.items():
             if key == "object" or key == "absolute_start":
                 continue
             data[key] = value
@@ -421,7 +434,7 @@ class Data:
         obj = cls(**data)
 
         # restore the absolute start time
-        obj._absolute_start = file.attrs["absolute_start"]
+        obj._absolute_start = attrs["absolute_start"]
 
         if lazy and isinstance(file, h5py.File):
             obj._file = file

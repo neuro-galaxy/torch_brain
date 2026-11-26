@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from .typing import ArrayLike
-from .utils import _size_repr, _validate_select_by_mask_input
+from .utils import _check_hdf5_object, _size_repr, _validate_select_by_mask_input
 
 
 class ArrayDict:
@@ -266,7 +266,7 @@ class ArrayDict:
         file.attrs["_unicode_keys"] = np.array(_unicode_keys, dtype="S")
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _attrs: dict | None = None):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -284,13 +284,11 @@ class ArrayDict:
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        if file.attrs["object"] != cls.__name__:
-            raise ValueError(
-                f"File contains data for a {file.attrs['object']} object, expected "
-                f"{cls.__name__} object."
-            )
+        # Data.from_hdf5 passes in the attrs it already read
+        attrs = dict(file.attrs) if _attrs is None else _attrs
+        _check_hdf5_object(attrs, cls.__name__)
 
-        _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+        _unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
 
         data = {}
         for key, value in file.items():
@@ -451,7 +449,7 @@ class LazyArrayDict(ArrayDict):
         raise NotImplementedError("Cannot save a lazy array dict to hdf5.")
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _attrs: dict | None = None):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -465,16 +463,15 @@ class LazyArrayDict(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 data = ArrayDict.from_hdf5(f)
         """
-        assert file.attrs["object"] == ArrayDict.__name__, (
-            f"File contains data for a {file.attrs['object']} object, expected "
-            f"{ArrayDict.__name__} object."
-        )
+        # Data.from_hdf5 passes in the attrs it already read
+        attrs = dict(file.attrs) if _attrs is None else _attrs
+        _check_hdf5_object(attrs, ArrayDict.__name__)
 
         obj = cls.__new__(cls)
         for key, value in file.items():
             obj.__dict__[key] = value
 
-        obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+        obj._unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
         obj._lazy_ops = {}
 
         return obj

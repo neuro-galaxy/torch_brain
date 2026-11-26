@@ -9,7 +9,7 @@ import pandas as pd
 
 from .arraydict import ArrayDict
 from .typing import ArrayLike
-from .utils import _validate_select_by_mask_input
+from .utils import _check_hdf5_object, _validate_select_by_mask_input
 
 
 class Interval(ArrayDict):
@@ -751,7 +751,7 @@ class Interval(ArrayDict):
         file.attrs["object"] = self.__class__.__name__
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _attrs: dict | None = None):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -769,15 +769,17 @@ class Interval(ArrayDict):
             with h5py.File("data.h5", "r") as f:
                 interval = Interval.from_hdf5(f)
         """
-        assert file.attrs["object"] == cls.__name__, "object type mismatch"
+        # Data.from_hdf5 passes in the attrs it already read
+        attrs = dict(file.attrs) if _attrs is None else _attrs
+        _check_hdf5_object(attrs, cls.__name__)
         data = {}
-        _unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
+        _unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
         for key, value in file.items():
             data[key] = value[:]
             # if the values were originally unicode but stored as fixed length ASCII bytes
             if key in _unicode_keys:
                 data[key] = data[key].astype("U")
-        timekeys = file.attrs["timekeys"].astype(str).tolist()
+        timekeys = attrs["timekeys"].astype(str).tolist()
         obj = cls(**data, timekeys=timekeys)
 
         return obj
@@ -1111,7 +1113,7 @@ class LazyInterval(Interval):
         raise NotImplementedError("Cannot save a lazy interval object to hdf5.")
 
     @classmethod
-    def from_hdf5(cls, file):
+    def from_hdf5(cls, file, *, _attrs: dict | None = None):
         r"""Loads the data object from an HDF5 file.
 
         Args:
@@ -1124,8 +1126,9 @@ class LazyInterval(Interval):
 
             with h5py
         """
-        # todo improve error message
-        assert file.attrs["object"] == Interval.__name__, "object type mismatch"
+        # Data.from_hdf5 passes in the attrs it already read
+        attrs = dict(file.attrs) if _attrs is None else _attrs
+        _check_hdf5_object(attrs, Interval.__name__)
 
         obj = cls.__new__(cls)
 
@@ -1142,8 +1145,8 @@ class LazyInterval(Interval):
                 "be made with care to avoid breaking compatibility with torch_brain."
             )
 
-        obj._unicode_keys = file.attrs["_unicode_keys"].astype(str).tolist()
-        obj._timekeys = file.attrs["timekeys"].astype(str).tolist()
+        obj._unicode_keys = attrs["_unicode_keys"].astype(str).tolist()
+        obj._timekeys = attrs["timekeys"].astype(str).tolist()
         obj._sorted = True
         obj._lazy_ops = {}
 
