@@ -196,6 +196,81 @@ def test_lazy_array_dict_select_by_mask_preserves_unicode_keys(test_filepath):
         np.testing.assert_array_equal(result.unit_id, np.array(["unit01", "unit03"]))
 
 
+def test_lazy_array_dict_shape_and_dtype_retrieval(test_filepath):
+    data = ArrayDict(
+        unit_id=np.array(["unit01", "unit02", "unit03", "unit04"]),
+        brain_region=np.array([b"PMd", b"M1", b"PMd", b"M1"]),
+        waveform_mean=np.tile(np.arange(4)[:, np.newaxis], (1, 48)),
+    )
+
+    with h5py.File(test_filepath, "w") as f:
+        data.to_hdf5(f)
+
+    del data
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyArrayDict.from_hdf5(f)
+
+        assert data.get_shape("waveform_mean") == (4, 48)
+        assert data.get_dtype("waveform_mean") == np.dtype("int64")
+        assert isinstance(data.__dict__["waveform_mean"], h5py.Dataset)
+
+        # check shape and dtype for the string arrays
+        assert data.get_shape("unit_id") == (4,)
+        assert data.get_shape("brain_region") == (4,)
+        assert data.get_dtype("unit_id") == "<U6"
+        assert data.get_dtype("brain_region") == "|S3"  # byte str array
+        assert isinstance(data.__dict__["unit_id"], h5py.Dataset)
+        assert isinstance(data.__dict__["brain_region"], h5py.Dataset)
+
+        # get shape and dtype of a non-existent or non-array attribute
+        with pytest.raises(AttributeError, match="has no attribute"):
+            data.get_shape("non_existent_attr")
+        with pytest.raises(AttributeError, match="has no attribute"):
+            data.get_dtype("non_existent_attr")
+
+        with pytest.raises(ValueError, match="array attributes"):
+            data.get_shape("_lazy_ops")
+        with pytest.raises(ValueError, match="array attributes"):
+            data.get_dtype("_lazy_ops")
+
+        mask = data.brain_region == b"PMd"
+        data = data.select_by_mask(mask)
+        assert data.get_shape("waveform_mean") == (2, 48)
+        assert data.get_dtype("waveform_mean") == np.dtype("int64")
+
+        # check dtype for brain_region after loading
+        assert data.get_dtype("brain_region") == data.brain_region.dtype
+
+        # mask again
+        mask = data.unit_id == "unit01"
+        data = data.select_by_mask(mask)
+
+        # check shape and dtype for unit_id after loading and masking
+        assert data.get_dtype("unit_id") == data.unit_id.dtype
+        assert data.get_shape("unit_id") == data.unit_id.shape
+
+        # check shape for waveform_mean after masking, but without loading
+        assert data.get_shape("waveform_mean") == (1, 48)
+        assert isinstance(data.__dict__["waveform_mean"], h5py.Dataset)
+
+        data.materialize()
+
+        # check shape and dtype after materialization
+        assert data.get_shape("waveform_mean") == data.waveform_mean.shape
+        assert data.get_dtype("waveform_mean") == data.waveform_mean.dtype
+        assert data.get_shape("unit_id") == data.unit_id.shape
+        assert data.get_dtype("unit_id") == data.unit_id.dtype
+        assert data.get_shape("brain_region") == data.brain_region.shape
+        assert data.get_dtype("brain_region") == data.brain_region.dtype
+
+        # get shape and dtype of a non-existent or non-array attribute
+        with pytest.raises(AttributeError, match="has no attribute"):
+            data.get_shape("non_existent_attr")
+        with pytest.raises(AttributeError, match="has no attribute"):
+            data.get_dtype("non_existent_attr")
+
+
 def test_array_dict_from_dataframe():
     # Create a sample DataFrame
     df = pd.DataFrame(
@@ -312,3 +387,92 @@ def test_attribute_error_in_getattribute_reports_inner_name():
         data.x  # noqa: B018
     # the error should point at the inner missing attribute, not `x`
     assert exc_info.value.name == "_missing"
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        np.array([1, 2, 3], dtype=np.int8),
+        np.array([1, 2, 3], dtype=np.uint16),
+        np.array([1, 2, 3], dtype=np.int64),
+        np.array([1.0, 2.0, 3.0], dtype=np.float16),
+        np.array([1.0, 2.0, 3.0], dtype=np.float32),
+        np.array([1.0, 2.0, 3.0], dtype=np.float64),
+        np.array([1 + 1j, 2 + 2j, 3 + 3j], dtype=np.complex64),
+        np.array([True, False, True], dtype=bool),
+        np.array([1.0, 2.0, 3.0], dtype=">f8"),
+        np.array([1.0, 2.0, 3.0], dtype=np.longdouble),
+        np.array(["a", "unit01", "ab"]),
+        np.array([b"a", b"unit01", b"ab"]),
+    ],
+    ids=[
+        "int8",
+        "uint16",
+        "int64",
+        "float16",
+        "float32",
+        "float64",
+        "complex64",
+        "bool",
+        "big_endian_float64",
+        "longdouble",
+        "unicode",
+        "bytes",
+    ],
+)
+def test_lazy_get_dtype_matches_loaded_dtype(test_filepath, values):
+    with h5py.File(test_filepath, "w") as f:
+        ArrayDict(x=values).to_hdf5(f)
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyArrayDict.from_hdf5(f)
+
+        # predicted dtype, before loading
+        assert data.get_dtype("x") == values.dtype
+        assert f"dtype={values.dtype}," in repr(data)
+
+        # predicted dtype after masking (shortest str kept)
+        data = data.select_by_mask(np.array([True, False, False]))
+        predicted_dtype = data.get_dtype("x")
+        assert isinstance(data.__dict__["x"], h5py.Dataset)
+        assert predicted_dtype == values.dtype
+
+        # loaded dtype
+        assert data.x.dtype == predicted_dtype
+        np.testing.assert_array_equal(data.x, values[:1])
+
+
+@pytest.mark.parametrize(
+    "values, expected_error",
+    [
+        (np.array([0, 1, 2], dtype="datetime64[ns]"), TypeError),
+        (np.array([0, 1, 2], dtype="timedelta64[s]"), TypeError),
+        (np.array([{}, [], None], dtype=object), TypeError),
+        (np.array(["é", "a", "b"]), NotImplementedError),
+    ],
+    ids=["datetime64", "timedelta64", "object", "non_ascii_unicode"],
+)
+def test_to_hdf5_unsupported_dtypes_raise(test_filepath, values, expected_error):
+    with h5py.File(test_filepath, "w") as f:
+        with pytest.raises(expected_error):
+            ArrayDict(x=values).to_hdf5(f)
+
+
+def test_lazy_non_ascii_bytes_in_unicode_key_raise_on_load(test_filepath):
+    # For string arrays, datatype is inferred under the assumption that to_hdf5()
+    # only accepts ASCII strings. If that changes (e.g., if UTF-8 characters are
+    # accepted and loadable), the current prediction will become incorrect.
+
+    encoded_utf8_array = np.array(["é".encode()])  # encoded in S2 dtype
+    with h5py.File(test_filepath, "w") as f:
+        ArrayDict(x=np.array(["ab"])).to_hdf5(f)
+        del f["x"]
+        f.create_dataset("x", data=encoded_utf8_array)
+
+    with h5py.File(test_filepath, "r") as f:
+        data = LazyArrayDict.from_hdf5(f)
+        assert data._unicode_keys == ["x"]
+        assert data.get_dtype("x") == np.dtype("U2")  # decoded dtype would be <U1
+
+        with pytest.raises(UnicodeDecodeError):
+            data.x  # noqa: B018

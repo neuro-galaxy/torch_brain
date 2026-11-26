@@ -265,7 +265,7 @@ channel inclusion masks:
     for recording_id, interval in intervals.items():
         rec = train_ds.get_recording(recording_id)
         print(recording_id)
-        print(rec.seeg_data.data.shape)
+        print(rec.seeg_data.get_shape("data")) # avoids loading data
         print(interval.start[:5], interval.end[:5])
         print(interval.label[:5])
 
