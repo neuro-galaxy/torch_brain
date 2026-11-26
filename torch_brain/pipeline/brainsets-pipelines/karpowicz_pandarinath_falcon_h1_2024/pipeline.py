@@ -40,6 +40,7 @@ KINEMATIC_DIMS = ("tx", "ty", "tz", "rx", "g1", "g2", "g3")
 
 class Pipeline(BrainsetPipeline):
     brainset_id = "karpowicz_pandarinath_falcon_h1_2024"
+    # TODO Pin to a published version when available
     dandiset_id = "DANDI:000954/draft"
     parser = parser
 
@@ -78,7 +79,7 @@ class Pipeline(BrainsetPipeline):
             id=self.brainset_id,
             origin_version="dandi/000954/draft",
             derived_version="1.0.0",
-            source="https://dandiarchive.org/dandiset/000954",
+            source="https://dandiarchive.org/dandiset/000954/draft",
             description="FALCON H1: threshold crossings from 176 motor-cortex channels "
             "of a human participant with tetraplegia attempting 7-DoF reach and grasp in "
             "open loop, with 7-D kinematic velocity as the decoding target. Held-in "

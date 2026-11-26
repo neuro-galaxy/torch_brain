@@ -42,7 +42,10 @@ class KarpowiczPandarinathFalcon2024(SpikingDatasetMixin, Dataset):
     Karpowicz, B. M., Ye, J., Fan, C., Tostado-Marcos, P., Rizzoglio, F., Washington, C.,
     et al. *Few-shot Algorithms for Consistent Neural Decoding (FALCON) Benchmark.*
     NeurIPS 2024 Datasets and Benchmarks Track.
-    Dataset: `Dandisets 000954, 000941, 000953 <https://dandiarchive.org/dandiset/000954>`_.
+    Dataset: Dandisets
+    `000954 <https://dandiarchive.org/dandiset/000954/draft>`__,
+    `000941 <https://dandiarchive.org/dandiset/000941/0.241029.1405>`__,
+    `000953 <https://dandiarchive.org/dandiset/000953/draft>`__.
 
     Args:
         task: Which FALCON dataset to load: ``"h1"``, ``"m1"`` or ``"m2"``.

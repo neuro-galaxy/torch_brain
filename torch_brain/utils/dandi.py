@@ -183,7 +183,7 @@ def get_nwb_asset_list(dandiset_id: str) -> list:
     r"""Get a list of all remote NWB assets in the given dandiset
 
     Args:
-        dandiset_id: The dandiset ID (e.g. 'DANDI:000688/draft')
+        dandiset_id: The dandiset ID (e.g. 'DANDI:000688/0.250122.1735')
 
     Returns:
         A list of all remote NWB assets (``dandi.dandiapi.RemoteBlobAsset``) within this dandiset

@@ -113,6 +113,7 @@ __api_ref__ = {
                 "OdohertySabesNonhuman2017",
                 "VollanMoserAlternating2025",
                 "ShiraziHBNR1DS005505",
+                "KarpowiczPandarinathFalcon2024",
             ],
         },
         {

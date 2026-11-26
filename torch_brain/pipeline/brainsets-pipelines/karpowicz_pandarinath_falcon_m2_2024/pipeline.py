@@ -46,6 +46,7 @@ FALCON_SPLITS = ("held_in_calib", "held_in_minival", "held_out_calib")
 
 class Pipeline(BrainsetPipeline):
     brainset_id = "karpowicz_pandarinath_falcon_m2_2024"
+    # TODO Pin to a published version when available
     dandiset_id = "DANDI:000953/draft"
     parser = parser
 
@@ -84,7 +85,7 @@ class Pipeline(BrainsetPipeline):
             id=self.brainset_id,
             origin_version="dandi/000953/draft",
             derived_version="1.0.0",
-            source="https://dandiarchive.org/dandiset/000953",
+            source="https://dandiarchive.org/dandiset/000953/draft",
             description="FALCON M2: threshold crossings from a 96-channel Utah array in "
             "motor cortex of a monkey moving two finger groups to targets, with finger "
             "position and velocity as the decoding target. Held-in sessions are for "
