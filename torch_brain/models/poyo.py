@@ -157,6 +157,7 @@ class POYO(nn.Module):
         self.readout = nn.Linear(dim, dim_out)
 
         self.dim = dim
+        self._tokenize_fn: POYOInputFn | None = None
 
     def forward(
         self,
@@ -300,14 +301,29 @@ class POYO(nn.Module):
         )
 
     def tokenize(self, data: Data) -> dict:
-        r"""Deprecated. Use :meth:`get_input_fn` instead."""
-        warnings.warn(
-            "`POYO.tokenize()` is deprecated and will be removed in a future version. "
-            "Please use `POYO.get_input_fn()` instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self.get_input_fn()(data)
+        r"""Converts a :class:`~torch_brain.data.Data` sample into POYO inputs.
+
+        Prefer :meth:`get_input_fn`, which does not drag the model into
+        ``DataLoader`` workers.
+        """
+        fn = self._tokenize_fn
+        if fn is None:
+            warnings.warn(
+                "Consider switching from `model.tokenize` to `model.get_input_fn()`, "
+                "which does not drag the model into DataLoader workers.",
+                stacklevel=2,
+            )
+        if (
+            fn is None
+            or fn.unit_vocab is not self.unit_emb.vocab
+            or fn.session_vocab is not self.session_emb.vocab
+        ):
+            fn = self.get_input_fn()
+            # Track the live vocabs, so that in-place vocab edits are reflected
+            fn.unit_vocab = self.unit_emb.vocab
+            fn.session_vocab = self.session_emb.vocab
+            self._tokenize_fn = fn
+        return fn(data)
 
     def _validate_params(self, sequence_length, latent_step):
         r"""Ensure: sequence_length, and latent_step are floating point numbers greater
