@@ -3,14 +3,18 @@ import os
 from pathlib import Path
 
 import boto3
+import numpy as np
 import pytest
 import torch
 from botocore import UNSIGNED
 from botocore.config import Config
 from botocore.exceptions import BotoCoreError, ClientError
+from torch.testing import assert_close
 from tqdm import tqdm
 
-from torch_brain.models.poyo import POYO
+from torch_brain.batching import collate
+from torch_brain.data import ArrayDict, Data, Interval, IrregularTimeSeries
+from torch_brain.models.poyo import POYO, POYOInputFn
 
 # The checkpoints all have the same readout dimension
 # (since they were trained for hand-velocity decoding)
@@ -139,3 +143,140 @@ def test_load_pretrained_forward_pass(pretrained_checkpoint):
 
     # Verify output shape
     assert outputs.shape == (batch_size, n_out, READOUT_DIM)
+
+
+UNIT_IDS = ["a/u0", "a/u1", "a/u2", "b/u0"]
+SESSION_IDS = ["a", "b"]
+
+
+def make_data(timestamps, unit_index, unit_ids, session_id="a", duration=1.0):
+    domain = Interval(0.0, duration)
+    return Data(
+        spikes=IrregularTimeSeries(
+            timestamps=np.asarray(timestamps, dtype=np.float64),
+            unit_index=np.asarray(unit_index, dtype=np.int64),
+            domain=domain,
+        ),
+        units=ArrayDict(id=np.array(unit_ids)),
+        session=Data(id=session_id),
+        domain=domain,
+    )
+
+
+def random_data(num_spikes, seed=0):
+    rng = np.random.default_rng(seed)
+    return make_data(
+        np.sort(rng.uniform(0, 1.0, num_spikes)),
+        rng.integers(0, 3, num_spikes),
+        UNIT_IDS[:3],
+    )
+
+
+def unpad(batch, key, i=0):
+    """Valid (unpadded) input tokens of the ``i``-th sample of a collated batch."""
+    return batch[key][i][batch["input_mask"][i]]
+
+
+@pytest.fixture
+def model():
+    torch.manual_seed(0)
+    model = POYO(
+        sequence_length=1.0,
+        latent_step=0.25,
+        num_latents_per_step=3,
+        dim_out=2,
+        dim=32,
+        depth=1,
+        dim_head=16,
+        self_heads=2,
+    ).eval()
+    model.unit_emb.initialize_vocab(UNIT_IDS)
+    model.session_emb.initialize_vocab(SESSION_IDS)
+    return model
+
+
+class TestPOYOInputFn:
+    @staticmethod
+    def make_input_fn():
+        return POYOInputFn(
+            sequence_length=1.0,
+            latent_step=0.25,
+            num_latents_per_step=3,
+            unit_vocab={"NA": 0} | {uid: i + 1 for i, uid in enumerate(UNIT_IDS)},
+            session_vocab={"NA": 0, "a": 1, "b": 2},
+        )
+
+    def test_start_end_tokens(self):
+        """Each unit gets a start and an end token, followed by one token per spike."""
+        data = make_data([0.2, 0.5, 0.7], [1, 0, 1], ["a/u0", "a/u1"])
+        batch = collate([self.make_input_fn()(data)])
+
+        assert unpad(batch, "input_token_type").tolist() == [1, 2, 1, 2, 0, 0, 0]
+        assert_close(
+            unpad(batch, "input_timestamps"),
+            torch.tensor([0.0, 1.0, 0.0, 1.0, 0.2, 0.5, 0.7], dtype=torch.float64),
+        )
+
+    def test_unit_index_maps_to_vocab(self):
+        """Local unit indices of a sample are mapped to the global vocab indices."""
+        # Units of the sample are a shuffled subset of the vocab
+        data = make_data([0.2, 0.5, 0.7], [0, 1, 0], ["a/u2", "a/u0"])
+        batch = collate([self.make_input_fn()(data)])
+
+        assert unpad(batch, "input_unit_index").tolist() == [3, 3, 1, 1, 3, 1, 3]
+
+    def test_latent_tokens(self):
+        """``num_latents_per_step`` latents are placed at the center of every step."""
+        batch = collate([self.make_input_fn()(random_data(10))])
+
+        assert batch["latent_index"][0].tolist() == [0, 1, 2] * 4
+        assert_close(
+            batch["latent_timestamps"][0],
+            torch.tensor(
+                [0.125, 0.375, 0.625, 0.875], dtype=torch.float64
+            ).repeat_interleave(3),
+        )
+
+
+class TestGetInputFn:
+    def test_uninitialized_vocab_raises(self):
+        model = POYO(sequence_length=1.0, latent_step=0.25, dim_out=2, dim=32)
+        with pytest.raises(ValueError, match="must be initialized"):
+            model.get_input_fn()
+
+    @torch.no_grad()
+    def test_batch_independent(self, model):
+        """A sample's outputs don't depend on the other samples in its batch."""
+        input_fn = model.get_input_fn()
+        a = input_fn(random_data(20, seed=0))
+        b = input_fn(random_data(45, seed=1))
+        output_timestamps = torch.rand(2, 5)
+
+        batch_a, batch_ab = collate([a]), collate([a, b])
+        out_a = model(**batch_a, output_timestamps=output_timestamps[:1])
+        out_ab = model(**batch_ab, output_timestamps=output_timestamps)
+        assert_close(out_ab[:1], out_a)
+
+
+# TODO: remove when fully deprecating `tokenize` method
+class TestTokenize:
+    def test_tracks_vocab_changes(self, model):
+        """``tokenize`` uses the model's current vocabs, both when they are extended
+        in place and when they are replaced."""
+
+        def assert_matches_input_fn(data):
+            out = collate([model.tokenize(data)])
+            expected = collate([model.get_input_fn()(data)])
+            for key in expected:
+                assert_close(out[key], expected[key])
+
+        with pytest.warns(UserWarning, match="soft deprecated"):
+            assert_matches_input_fn(random_data(10))
+
+        model.unit_emb.extend_vocab(["c/u0"])
+        model.session_emb.extend_vocab(["c"])
+        data = make_data([0.2, 0.5], [0, 1], ["c/u0", "a/u1"], session_id="c")
+        assert_matches_input_fn(data)
+
+        model.unit_emb.subset_vocab(["a/u1", "c/u0"])
+        assert_matches_input_fn(data)

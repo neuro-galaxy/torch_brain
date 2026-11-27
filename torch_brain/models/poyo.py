@@ -1,5 +1,7 @@
 import inspect
 import logging
+import warnings
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
@@ -42,6 +44,10 @@ class POYO(nn.Module):
 
     6. Finally, a task-specific linear layer maps the outputs from the model dimension
        to the appropriate output dimension.
+
+    Use the transform returned by :meth:`get_input_fn` to convert
+    :class:`~torch_brain.data.Data` samples into the inputs of :meth:`forward`.
+    See its documentation for expected attributes.
 
     Args:
         sequence_length: Maximum duration of the input spike sequence (in seconds)
@@ -151,6 +157,8 @@ class POYO(nn.Module):
         self.readout = nn.Linear(dim, dim_out)
 
         self.dim = dim
+        # TODO: remove when fully deprecating `tokenize` method
+        self._tokenize_fn: POYOInputFn | None = None
 
     def forward(
         self,
@@ -255,67 +263,69 @@ class POYO(nn.Module):
 
         return output
 
-    def tokenize(self, data: Data) -> dict:
-        r"""Tokenizer used to tokenize Data for the POYO model.
+    def get_input_fn(self) -> "POYOInputFn":
+        r"""Returns the transform that converts a :class:`~torch_brain.data.Data`
+        sample into POYO inputs.
 
-        This tokenizer can be called as a transform. If you are applying multiple
-        transforms, make sure to apply this one last.
+        The transform builds the input spike tokens (with a start and end token for
+        every unit), the latent tokens, and the session index. It is intended to be
+        used as the last transform of a :class:`~torch_brain.datasets.Dataset`, with
+        batches assembled by :func:`~torch_brain.batching.collate`.
 
-        This code runs on CPU. Do not access GPU tensors inside this function.
+        The returned transform holds a copy of the unit and session vocabularies, so
+        it must be created after they are initialized (e.g. with :meth:`init_vocabs`
+        or :meth:`load_pretrained`).
+
+        Expected attributes of ``data``:
+
+        - ``spikes.timestamps``: Spike times in seconds, relative to the start of the
+          window (as produced by :meth:`Data.slice <torch_brain.data.Data.slice>`).
+        - ``spikes.unit_index``: Index of each spike's unit in ``units``.
+        - ``units.id``: Unit identifiers, all present in the unit vocabulary.
+        - ``session.id``: Session identifier, present in the session vocabulary.
+
+        Returns:
+            A transform that returns a dict with all inputs to :meth:`forward`,
+            except ``output_timestamps`` and ``output_mask``.
         """
-
-        # context window
-        start, end = 0, self.sequence_length
-
-        ### prepare input
-        unit_ids = data.units.id
-        spike_unit_index = data.spikes.unit_index
-        spike_timestamps = data.spikes.timestamps
-
-        # create start and end tokens for each unit
-        (
-            se_token_type_index,
-            se_unit_index,
-            se_timestamps,
-        ) = create_start_end_unit_tokens(unit_ids, start, end)
-
-        # append start and end tokens to the spike sequence
-        spike_token_type_index = np.concatenate(
-            [se_token_type_index, np.zeros_like(spike_unit_index)]
-        )
-        spike_unit_index = np.concatenate([se_unit_index, spike_unit_index])
-        spike_timestamps = np.concatenate([se_timestamps, spike_timestamps])
-
-        # unit_index is relative to the recording, so we want it to map it to
-        # the global unit index
-        local_to_global_map = np.array(self.unit_emb.tokenizer(unit_ids))
-        spike_unit_index = local_to_global_map[spike_unit_index]
-
-        ### prepare latents
-        latent_index, latent_timestamps = create_linspace_latent_tokens(
-            start,
-            end,
-            step=self.latent_step,
+        if self.unit_emb.is_lazy() or self.session_emb.is_lazy():
+            raise ValueError(
+                "Unit and session vocabularies must be initialized before calling "
+                "`get_input_fn()`. Use `model.init_vocabs(dataset)`."
+            )
+        return POYOInputFn(
+            sequence_length=self.sequence_length,
+            latent_step=self.latent_step,
             num_latents_per_step=self.num_latents_per_step,
+            unit_vocab=dict(self.unit_emb.vocab),
+            session_vocab=dict(self.session_emb.vocab),
         )
 
-        # create session index for output
-        session_index = self.session_emb.tokenizer(data.session.id)
+    # TODO: remove when fully deprecating `tokenize` method
+    def tokenize(self, data: Data) -> dict:
+        r"""Converts a :class:`~torch_brain.data.Data` sample into POYO inputs.
 
-        data_dict = dict(
-            # input sequence (keys/values for the encoder)
-            input_unit_index=pad8(spike_unit_index),
-            input_timestamps=pad8(spike_timestamps),
-            input_token_type=pad8(spike_token_type_index),
-            input_mask=track_mask8(spike_unit_index),
-            # latent sequence
-            latent_index=latent_index,
-            latent_timestamps=latent_timestamps,
-            # metadata needed for decoder queries
-            session_index=session_index,
-        )
-
-        return data_dict
+        Prefer :meth:`get_input_fn`, which does not drag the model into
+        ``DataLoader`` workers.
+        """
+        fn = self._tokenize_fn
+        if fn is None:
+            warnings.warn(
+                "`POYO.tokenize` is soft deprecated and will be removed in a future "
+                "version of torch_brain. Please switch to `POYO.get_input_fn()`.",
+                stacklevel=2,
+            )
+        if (
+            fn is None
+            or fn.unit_vocab is not self.unit_emb.vocab
+            or fn.session_vocab is not self.session_emb.vocab
+        ):
+            fn = self.get_input_fn()
+            # Track the live vocabs, so that in-place vocab edits are reflected
+            fn.unit_vocab = self.unit_emb.vocab
+            fn.session_vocab = self.session_emb.vocab
+            self._tokenize_fn = fn
+        return fn(data)
 
     def _validate_params(self, sequence_length, latent_step):
         r"""Ensure: sequence_length, and latent_step are floating point numbers greater
@@ -382,6 +392,69 @@ class POYO(nn.Module):
         model = cls(**hparams, dim_out=dim_out)
         model.load_state_dict(state_dict)
         return model
+
+
+@dataclass
+class POYOInputFn:
+    r"""Transform returned by :meth:`POYO.get_input_fn`."""
+
+    sequence_length: float
+    latent_step: float
+    num_latents_per_step: int
+    unit_vocab: dict[str, int]
+    session_vocab: dict[str, int]
+
+    def __call__(self, data: Data) -> dict:
+        # context window
+        start, end = 0, self.sequence_length
+
+        ### prepare input
+        unit_ids = data.units.id
+        spike_unit_index = data.spikes.unit_index
+        spike_timestamps = data.spikes.timestamps
+
+        # create start and end tokens for each unit
+        (
+            se_token_type_index,
+            se_unit_index,
+            se_timestamps,
+        ) = create_start_end_unit_tokens(unit_ids, start, end)
+
+        # append start and end tokens to the spike sequence
+        spike_token_type_index = np.concatenate(
+            [se_token_type_index, np.zeros_like(spike_unit_index)]
+        )
+        spike_unit_index = np.concatenate([se_unit_index, spike_unit_index])
+        spike_timestamps = np.concatenate([se_timestamps, spike_timestamps])
+
+        # unit_index is relative to the recording, so we want it to map it to
+        # the global unit index
+        local_to_global_map = np.array([self.unit_vocab[uid] for uid in unit_ids])
+        spike_unit_index = local_to_global_map[spike_unit_index]
+
+        ### prepare latents
+        latent_index, latent_timestamps = create_linspace_latent_tokens(
+            start,
+            end,
+            step=self.latent_step,
+            num_latents_per_step=self.num_latents_per_step,
+        )
+
+        # create session index for output
+        session_index = self.session_vocab[data.session.id]
+
+        return dict(
+            # input sequence (keys/values for the encoder)
+            input_unit_index=pad8(spike_unit_index),
+            input_timestamps=pad8(spike_timestamps),
+            input_token_type=pad8(spike_token_type_index),
+            input_mask=track_mask8(spike_unit_index),
+            # latent sequence
+            latent_index=latent_index,
+            latent_timestamps=latent_timestamps,
+            # metadata needed for decoder queries
+            session_index=session_index,
+        )
 
 
 class _GEGLU(nn.Module):

@@ -49,8 +49,9 @@ def main(cfg: DictConfig):
     model: POYO = instantiate(cfg.model, dim_out=train_ds.dim_target)
     model.init_vocabs(train_ds)
     model = model.to(device)
-    train_ds = PoyoDatasetWrapper(train_ds, model.tokenize)
-    val_ds = PoyoDatasetWrapper(val_ds, model.tokenize)
+    input_fn = model.get_input_fn()
+    train_ds = PoyoDatasetWrapper(train_ds, input_fn)
+    val_ds = PoyoDatasetWrapper(val_ds, input_fn)
 
     # Samplers
     train_sampler = RandomFixedWindowSampler(

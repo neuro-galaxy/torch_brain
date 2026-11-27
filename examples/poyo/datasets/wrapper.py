@@ -27,17 +27,17 @@ class PoyoDatasetWrapper(torch.utils.data.Dataset):
     ``readout_config`` attribute of type :class:`PoyoReadoutConfig`
     (typically attached in ``get_recording_hook``).
 
-    For each sample, ``X`` is built by running ``tokenizer`` on the raw
-    :obj:`Data` window (typically ``model.tokenize``), and ``Y`` specifies
+    For each sample, ``X`` is built by running ``input_fn`` on the raw
+    :obj:`Data` window (typically ``model.get_input_fn()``), and ``Y`` specifies
     the (normalized) regression target.
 
     The wrapper forwards attribute access to the underlying dataset, so it
     behaves like a :class:`Dataset` to samplers and the rest of the pipeline.
     """
 
-    def __init__(self, dataset: Dataset, tokenizer: Callable):
+    def __init__(self, dataset: Dataset, input_fn: Callable):
         self.dataset = dataset
-        self.tokenizer = tokenizer
+        self.input_fn = input_fn
 
     def __getattr__(self, key):
         return self.dataset.__getattribute__(key)
@@ -46,7 +46,7 @@ class PoyoDatasetWrapper(torch.utils.data.Dataset):
         data = self.dataset[index]
 
         # Prepare encoder input
-        X = self.tokenizer(data)
+        X = self.input_fn(data)
 
         # Prepare target (also part of decoder query)
         cfg = data.readout_config
