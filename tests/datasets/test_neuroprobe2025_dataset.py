@@ -4,7 +4,7 @@ import h5py
 import numpy as np
 import pytest
 
-from torch_brain.data import Interval
+from torch_brain.data import ArrayDict, Data, Interval, RegularTimeSeries
 from torch_brain.datasets.Neuroprobe2025 import (
     Neuroprobe2025,
     _from_recording_id,
@@ -588,33 +588,102 @@ def test_domain_intervals_use_active_recording_ids_and_sampling_requires_split_m
     assert list(domain_intervals.keys()) == ["sub_1_trial001", "sub_2_trial004"]
 
 
+@pytest.fixture
+def channel_metadata_recording(tmp_path):
+    channels = ArrayDict(
+        id=np.array(["c0", "c1"]),
+        name=np.array(["A", "B"]),
+        included=np.array([True, False]),
+        # Distinct legacy values pin the preference for the new coordinate fields.
+        localization_L=np.array([-1.0, -2.0]),
+        localization_I=np.array([-3.0, -4.0]),
+        localization_P=np.array([-5.0, -6.0]),
+        coord_btb_lip_l=np.array([1.0, 2.0]),
+        coord_btb_lip_i=np.array([3.0, 4.0]),
+        coord_btb_lip_p=np.array([5.0, 6.0]),
+        coord_btb_x=np.array([7.0, 8.0]),
+        coord_btb_y=np.array([9.0, 10.0]),
+        coord_btb_z=np.array([11.0, 12.0]),
+    )
+    path = _mock_dataset_dir(tmp_path) / "sub_1_trial001.h5"
+    path.parent.mkdir()
+    Data(
+        domain=Interval(0.0, 1.0),
+        subject=Data(id="1"),
+        session=Data(id="sub_1_trial001"),
+        channels=channels,
+        seeg_data=RegularTimeSeries(data=np.zeros((2, 2)), sampling_rate=2.0),
+    ).save(path)
+    ds = _make_dataset(
+        tmp_path,
+        recording_ids=["sub_1_trial001"],
+        uniquify_channel_ids_with_subject=False,
+    )
+    return ds, path
+
+
+@pytest.mark.parametrize("legacy", [False, True])
 def test_get_channel_metadata_returns_full_arrays_with_included_mask(
-    tmp_path, monkeypatch
+    channel_metadata_recording, legacy
 ):
-    _write_default_recordings(tmp_path)
+    ds, path = channel_metadata_recording
+    if legacy:
+        with h5py.File(path, "a") as handle:
+            for field in list(handle["channels"]):
+                if field.startswith("coord_btb_"):
+                    del handle["channels"][field]
+    with pytest.warns(DeprecationWarning, match="coordinate_frames"):
+        channel_metadata = ds.get_channel_metadata("sub_1_trial001")
 
-    ds = _make_dataset(tmp_path)
-
-    class _FakeChannels:
-        id = np.array(["c0", "c1"])
-        name = np.array(["A", "B"])
-        included = np.array([True, False])
-        localization_L = np.array([1.0, 2.0], dtype=float)
-        localization_I = np.array([3.0, 4.0], dtype=float)
-        localization_P = np.array([5.0, 6.0], dtype=float)
-
-    class _FakeRecording:
-        channels = _FakeChannels()
-
-    monkeypatch.setattr(ds, "get_recording", lambda _rid: _FakeRecording())
-    channel_metadata = ds.get_channel_metadata("sub_1_trial001")
     assert channel_metadata["ids"].tolist() == ["c0", "c1"]
     assert channel_metadata["names"].tolist() == ["A", "B"]
     assert channel_metadata["included_mask"].tolist() == [True, False]
-    assert channel_metadata["coords_type"] == "lip"
     assert channel_metadata["indices"].tolist() == [0, 1]
-    assert channel_metadata["coords"] is not None
-    assert channel_metadata["coords"].shape == (2, 3)
+    assert channel_metadata["coords_type"] == "lip"
+    frames = channel_metadata["coordinate_frames"]
+    assert channel_metadata["coords"] is frames["btb_lip"]
+    assert set(frames) == ({"btb_lip"} if legacy else {"btb_lip", "btb_xyz"})
+    lip = np.array([[1.0, 3.0, 5.0], [2.0, 4.0, 6.0]])
+    np.testing.assert_allclose(frames["btb_lip"], -lip if legacy else lip)
+    if not legacy:
+        np.testing.assert_allclose(
+            frames["btb_xyz"], [[7.0, 9.0, 11.0], [8.0, 10.0, 12.0]]
+        )
+
+
+@pytest.mark.parametrize("missing", ["coord_btb_lip_i", "coord_btb_y"])
+def test_get_channel_metadata_rejects_partial_new_frames(
+    channel_metadata_recording, missing
+):
+    ds, path = channel_metadata_recording
+    with h5py.File(path, "a") as handle:
+        del handle["channels"][missing]
+    with pytest.raises(AttributeError, match=missing):
+        ds.get_channel_metadata("sub_1_trial001")
+
+
+def test_get_channel_metadata_rejects_mismatched_xyz_length(channel_metadata_recording):
+    ds, path = channel_metadata_recording
+    with h5py.File(path, "a") as handle:
+        del handle["channels/coord_btb_x"]
+        handle["channels/coord_btb_x"] = np.array([7.0])
+    with pytest.raises(ValueError, match="length mismatch"):
+        ds.get_channel_metadata("sub_1_trial001")
+
+
+def test_get_neural_signal_metadata_reads_saved_seeg_attrs(tmp_path):
+    _write_default_recordings(tmp_path, ("sub_1_trial001",))
+    path = _mock_dataset_dir(tmp_path) / "sub_1_trial001.h5"
+    with h5py.File(path, "a") as h5:
+        seeg_data = h5.create_group("seeg_data")
+        seeg_data.attrs["unit"] = "uV"
+        seeg_data.attrs["scale_to_uV"] = 1.0
+    ds = _make_dataset(tmp_path)
+
+    assert ds.get_neural_signal_metadata("sub_1_trial001") == {
+        "unit": "uV",
+        "scale_to_uV": 1.0,
+    }
 
 
 def test_get_channel_ids_use_recording_view_ids_without_suffix(tmp_path, monkeypatch):

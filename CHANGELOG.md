@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Removed `utils.get_sinusoidal_encoding` (legacy) ([#200](https://github.com/neuro-galaxy/torch_brain/pull/200))
 
 ### Changed
+- `Neuroprobe2025.get_channel_metadata` adds `coordinate_frames` while retaining `coords` and `coords_type` as deprecated LIP aliases. Older recordings remain readable through their existing LIP fields; reprocess them to add `btb_xyz` and the physical-unit attributes used by `get_neural_signal_metadata`. The updated derived dataset version is `1.1.2`. Preparation writes selected annotations in chronological order.
 - `delattr` on `Data`, `ArrayDict`, `IrregularTimeSeries`, and `Interval` now raises `AttributeError` for `IrregularTimeSeries.timestamps` and `Interval.start`/`end`; deleting other registered timekeys auto-deregisters them
 - Moved collate utilities from `torch_brain.data.collate` to `torch_brain.batching`; the old module now raises a descriptive `ImportError` directing users to the new location ([#232](https://github.com/neuro-galaxy/torch_brain/pull/232))
 - Changed minimum `temporaldata` version to `v0.1.4` ([#209](https://github.com/neuro-galaxy/torch_brain/pull/209))
