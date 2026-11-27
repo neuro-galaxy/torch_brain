@@ -273,8 +273,7 @@ class POYO(nn.Module):
 
         The returned transform holds a copy of the unit and session vocabularies, so
         it must be created after they are initialized (e.g. with :meth:`init_vocabs`
-        or :meth:`load_pretrained`). It does not hold a reference to the model, so it
-        is cheap to pickle into ``DataLoader`` workers.
+        or :meth:`load_pretrained`).
 
         Expected attributes of ``data``:
 
@@ -310,8 +309,7 @@ class POYO(nn.Module):
         if fn is None:
             warnings.warn(
                 "`POYO.tokenize` is soft deprecated and will be removed in a future "
-                "version of torch_brain. Please switch to `POYO.get_input_fn()`, "
-                "which does not drag the model into DataLoader workers.",
+                "version of torch_brain. Please switch to `POYO.get_input_fn()`.",
                 stacklevel=2,
             )
         if (
