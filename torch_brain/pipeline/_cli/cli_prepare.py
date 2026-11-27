@@ -15,6 +15,7 @@ except ModuleNotFoundError:  # Python <3.11
 
 from click.shell_completion import CompletionItem
 
+from torch_brain.pipeline._conf import CONF_FILENAME, PipelineConf, load_conf
 from torch_brain.pipeline.config import CONFIG_FILE, load_config
 
 from .utils import (
@@ -56,6 +57,15 @@ def complete_brainset(ctx, param, incomplete):
     is_flag=True,
     default=False,
     help="Print the manifest for the brainset and exit.",
+)
+@click.option(
+    "--info",
+    is_flag=True,
+    default=False,
+    help=(
+        "Print the pipeline's description, environment and "
+        "pipeline-specific arguments, and exit."
+    ),
 )
 @click.option(
     "--single",
@@ -103,6 +113,7 @@ def prepare(
     verbose: bool,
     download_only: bool,
     list_flag_: bool,
+    info: bool,
     single: str,
     use_active_env: bool,
     raw_dir: str | None,
@@ -116,12 +127,42 @@ def prepare(
     \b
     Examples:
     $ brainsets prepare pei_pandarinath_nlb_2021
+    $ brainsets prepare pei_pandarinath_nlb_2021 --info
     $ brainsets prepare pei_pandarinath_nlb_2021 --download-only
     $ brainsets prepare pei_pandarinath_nlb_2021 --cores 8 --raw-dir ~/data/raw --processed-dir ~/data/processed
     $ brainsets prepare pei_pandarinath_nlb_2021 --list
     $ brainsets prepare pei_pandarinath_nlb_2021 --single jenkins_maze_train
     $ brainsets prepare ./my_local_brainsets_pipeline --local
     """
+
+    if not local:
+        # Preparing using an OG pipeline
+        available_brainsets = get_available_brainsets()
+        if brainset not in available_brainsets:
+            raise click.ClickException(
+                f"Brainset '{brainset}' not found. "
+                f"Run 'brainsets list' to get the available list of brainsets."
+            )
+        pipeline_dir = PIPELINES_PATH / brainset
+    else:
+        # Preparing using a local pipeline
+        pipeline_dir = expand_path(brainset)
+
+    pipeline_filepath = pipeline_dir / "pipeline.py"
+
+    conf = _load_pipeline_conf(pipeline_dir, pipeline_filepath)
+    if conf is not None and conf.parser is not None:
+        conf.parser.prog = f"brainsets prepare {brainset}" + (
+            " --local" if local else ""
+        )
+
+    if info:
+        _print_info(brainset, pipeline_dir, conf)
+        return
+
+    # Fail fast on bad pipeline-specific args, before building the environment
+    if conf is not None and conf.parser is not None:
+        conf.parser.parse_args(ctx.args)
 
     # Get raw and processed dirs
     if raw_dir is None or processed_dir is None:
@@ -138,28 +179,15 @@ def prepare(
         processed_dir = expand_path(processed_dir)
 
     if not local:
-        # Preparing using an OG pipeline
-        available_brainsets = get_available_brainsets()
-        if brainset not in available_brainsets:
-            raise click.ClickException(
-                f"Brainset '{brainset}' not found. "
-                f"Run 'brainsets list' to get the available list of brainsets."
-            )
-        pipeline_dir = PIPELINES_PATH / brainset
         click.echo(f"Preparing {brainset}...")
     else:
-        # Preparing using a local pipeline
-        pipeline_dir = expand_path(brainset)
         click.echo(f"Preparing local pipeline: {pipeline_dir}")
-
-    pipeline_filepath = pipeline_dir / "pipeline.py"
 
     click.echo(f"Raw data directory: {raw_dir}")
     click.echo(f"Processed data directory: {processed_dir}")
 
-    inline_md = _read_inline_metadata(pipeline_filepath)
     if verbose:
-        click.echo(f"Inline metadata: {inline_md}")
+        click.echo(f"Pipeline conf: {conf}")
 
     # Construct command to run pipeline through runner
     command = [
@@ -181,10 +209,10 @@ def prepare(
             "WARNING: Working in active environment due to --use-active-env.\n"
             "         This mode is only intended for brainset development purposes."
         )
-    elif inline_md is not None:
-        # Additional dependencies / Python version specified in inline metadata
-        # We need to create an isolated environment for the pipeline to ensure
-        # that the pipeline runs with the correct dependencies and Python version.
+    elif conf is not None:
+        # Additional dependencies / Python version specified in conf.py or inline
+        # metadata. We need to create an isolated environment for the pipeline to
+        # ensure that the pipeline runs with the correct dependencies and Python version.
 
         uv_prefix_command = [
             "uv",
@@ -195,8 +223,8 @@ def prepare(
             "--no-project",
         ]
 
-        if "python-version" in inline_md:
-            python_version = inline_md["python-version"]
+        if conf.python_version is not None:
+            python_version = conf.python_version
             # Check that python_version is a string representing a single version
             # number (e.g., "3.10"), not a version range or other format
             # Reason: uv run sometimes fails (stalls) when version range is given
@@ -205,12 +233,12 @@ def prepare(
                 or not python_version.strip().replace(".", "", 1).isdigit()
             ):
                 raise click.ClickException(
-                    f"Invalid python version in inline metadata: '{python_version}'. "
+                    f"Invalid python version: '{python_version}'. "
                     "Only a single version (e.g., '3.10') is allowed, not a range."
                 )
             uv_prefix_command.extend(["--python", python_version])
 
-        deps = inline_md.get("dependencies", [])
+        deps = list(conf.dependencies)
 
         # Ensure a reasonable brainsets install spec is added to the dependencies.
         # If not already present in the inline dependencies list, make a best guess
@@ -256,6 +284,49 @@ def prepare(
     except Exception as e:
         click.echo(f"Error: {str(e)}")
         sys.exit(1)
+
+
+def _load_pipeline_conf(
+    pipeline_dir: Path, pipeline_filepath: Path
+) -> PipelineConf | None:
+    """Read the pipeline's conf.py, falling back to the legacy inline metadata."""
+    conf = load_conf(pipeline_dir)
+    inline_md = _read_inline_metadata(pipeline_filepath)
+    if conf is not None and inline_md is not None:
+        raise click.ClickException(
+            f"{pipeline_dir} has both a {CONF_FILENAME} and an inline metadata block "
+            f"in pipeline.py. Please only use {CONF_FILENAME}."
+        )
+    if inline_md is not None:
+        conf = PipelineConf(
+            python_version=inline_md.get("python-version"),
+            dependencies=inline_md.get("dependencies", []),
+        )
+    return conf
+
+
+def _print_info(brainset: str, pipeline_dir: Path, conf: PipelineConf | None):
+    click.secho(brainset, bold=True)
+    if conf is not None and conf.description:
+        click.echo(f"\n{conf.description}")
+
+    click.echo()
+    if conf is None:
+        click.echo("Environment: runs in the active environment")
+    else:
+        click.echo(f"Python: {conf.python_version or 'not pinned'}")
+        click.echo("Dependencies:" if conf.dependencies else "Dependencies: none")
+        for dep in conf.dependencies:
+            click.echo(f"  - {dep}")
+
+    click.echo()
+    if conf is not None and conf.parser is not None:
+        click.secho("Pipeline arguments:", bold=True)
+        click.echo(conf.parser.format_help().rstrip())
+    elif not (pipeline_dir / CONF_FILENAME).is_file():
+        click.echo(f"Pipeline arguments: unknown (pipeline has no {CONF_FILENAME})")
+    else:
+        click.echo("Pipeline arguments: none")
 
 
 def _torch_brain_in_dependencies(dependencies: list[str]) -> bool:

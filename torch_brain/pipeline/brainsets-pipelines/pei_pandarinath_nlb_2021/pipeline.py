@@ -1,10 +1,4 @@
-# /// brainset-pipeline
-# python-version = "3.11"
-# dependencies = ["dandi==0.82.0"]
-# ///
-
 import datetime
-from argparse import ArgumentParser
 
 import numpy as np
 import pandas as pd
@@ -26,15 +20,10 @@ from torch_brain.utils.dandi import (
     get_nwb_asset_list,
 )
 
-parser = ArgumentParser()
-parser.add_argument("--redownload", action="store_true")
-parser.add_argument("--reprocess", action="store_true")
-
 
 class Pipeline(BrainsetPipeline):
     brainset_id = "pei_pandarinath_nlb_2021"
     dandiset_id = "DANDI:000140/0.220113.0408"
-    parser = parser
 
     @classmethod
     def get_manifest(cls, raw_dir, args) -> pd.DataFrame:

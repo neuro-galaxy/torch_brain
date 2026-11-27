@@ -571,7 +571,8 @@ class TestPrepareCommand:
         ):
             mock_subprocess.return_value = MagicMock(returncode=0)
             result = runner.invoke(
-                cli, ["prepare", "pei_pandarinath_nlb_2021", "--unknown", "option"]
+                cli,
+                ["prepare", "pei_pandarinath_nlb_2021", "--redownload", "--reprocess"],
             )
             assert result.exit_code == 0, f"CLI failed with: {result.output}"
             assert "Preparing pei_pandarinath_nlb_2021" in result.output
@@ -581,5 +582,4 @@ class TestPrepareCommand:
             call_args = mock_subprocess.call_args
             command = call_args[1].get("command") or call_args[0][0]
 
-            assert "--unknown" in command[-2]
-            assert "option" in command[-1]
+            assert command[-2:] == ["--redownload", "--reprocess"]
