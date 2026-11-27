@@ -227,6 +227,16 @@ def test_trials_from_numbers():
     assert trials.is_disjoint()
 
 
+def test_trials_from_numbers_abut_without_float_overlap():
+    # 400 samples at 0.02 s: several boundaries overlap by ~1e-14 if each side is
+    # computed separately (issue #446)
+    t = np.arange(400) * 0.02
+    trials = trials_from_numbers(np.arange(400) // 3, t)
+    assert (trials.start[1:] == trials.end[:-1]).all()
+    assert trials.is_disjoint()
+    assert (_inside(trials, t)).all()
+
+
 def test_parse_filenames():
     assert parse_h1(
         "sub-HumanPitt/sub-HumanPitt-held-in-calib_ses-19250108T110520.nwb"
