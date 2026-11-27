@@ -284,8 +284,9 @@ class POYO(nn.Module):
         - ``units.id``: Unit identifiers, all present in the unit vocabulary.
         - ``session.id``: Session identifier, present in the session vocabulary.
 
-        The transform returns a dict with all inputs to :meth:`forward`, except
-        ``output_timestamps`` and ``output_mask``.
+        Returns:
+            A transform that returns a dict with all inputs to :meth:`forward`,
+            except ``output_timestamps`` and ``output_mask``.
         """
         if self.unit_emb.is_lazy() or self.session_emb.is_lazy():
             raise ValueError(
