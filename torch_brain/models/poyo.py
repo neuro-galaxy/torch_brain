@@ -45,7 +45,7 @@ class POYO(nn.Module):
     6. Finally, a task-specific linear layer maps the outputs from the model dimension
        to the appropriate output dimension.
 
-    The transform returned by :meth:`get_input_fn` converts
+    Use the transform returned by :meth:`get_input_fn` to convert
     :class:`~torch_brain.data.Data` samples into the inputs of :meth:`forward`.
     See its documentation for expected attributes.
 
