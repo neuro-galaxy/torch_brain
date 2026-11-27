@@ -1,6 +1,7 @@
+from .nuclr import NuCLR
 from .poyo import POYO
 
-__all__ = ["POYO"]
+__all__ = ["NuCLR", "POYO"]
 
 # see docs/source/api_reference.py
 __api_ref__ = {
