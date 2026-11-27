@@ -53,6 +53,15 @@ def model():
     ).eval()
 
 
+class TestNuCLRInit:
+    @pytest.mark.parametrize("latent_step, bin_size", [(0.3, 0.02), (0.2, 0.03)])
+    def test_non_multiple_durations_raise(self, latent_step, bin_size):
+        """``ctx_duration`` must be a multiple of ``latent_step``, which must be a
+        multiple of ``bin_size``."""
+        with pytest.raises(ValueError, match="is not a multiple of"):
+            NuCLR(ctx_duration=1.0, latent_step=latent_step, bin_size=bin_size)
+
+
 class TestNuCLRInputFn:
     def test_binning(self):
         data = make_data([0.05, 0.07, 0.45, 0.95], [0, 0, 2, 0])
