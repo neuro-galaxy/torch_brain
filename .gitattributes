@@ -3,3 +3,5 @@ CHANGELOG.md merge=union
 # Collapse exported annotation tables in GitHub diffs; source and provenance stay visible.
 torch_brain/pipeline/brainsets-pipelines/keles_byd_2024/labels/*.csv linguist-generated=true
 torch_brain/pipeline/brainsets-pipelines/keles_byd_2024/brain_areas/brain_area_labels.csv linguist-generated=true
+torch_brain/pipeline/brainsets-pipelines/berezutskaya_pippi_2022/labels/*.csv linguist-generated=true
+torch_brain/pipeline/brainsets-pipelines/berezutskaya_pippi_2022/brain_areas/brain_area_labels.csv linguist-generated=true

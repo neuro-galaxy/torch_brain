@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 - Added `NeuroprobeV2`, a benchmark view over prepared Neuroprobe recordings with session and subject holdout selection.
 - Added `KelesBYD2024` and its preparation pipeline with packaged movie labels and channel metadata.
+- Added `BerezutskayaPippi2022` and its preparation pipeline with packaged movie labels and channel metadata.
 - Added `Data.delete_nested_attribute` to delete a nested attribute by dot-separated path ([#299](https://github.com/neuro-galaxy/torch_brain/pull/299))
 - Added `MultiChannelDatasetMixin` to provide `get_channel_ids` and prefixing interface for EEG-like datasets ([#173](https://github.com/neuro-galaxy/torch_brain/pull/173))
 - Added `BinSpikes` transform ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
@@ -33,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Changed
 - `Neuroprobe2025.get_channel_metadata` adds `coordinate_frames` while retaining `coords` and `coords_type` as deprecated LIP aliases. Older recordings remain readable through their existing LIP fields; reprocess them to add `btb_xyz` and the physical-unit attributes used by `get_neural_signal_metadata`. The updated derived dataset version is `1.1.2`. Preparation writes selected annotations in chronological order.
 - BYD preparation defaults to packaged label CSVs while retaining `--labels-dir` overrides. Preparation writes selected annotations in chronological order. Prepared outputs use derived version `1.1.2`.
+- PIPPI preparation defaults to packaged label CSVs while retaining `--labels-dir` overrides. Preparation writes selected annotations in chronological order. Prepared outputs use derived version `1.1.2`.
 - `delattr` on `Data`, `ArrayDict`, `IrregularTimeSeries`, and `Interval` now raises `AttributeError` for `IrregularTimeSeries.timestamps` and `Interval.start`/`end`; deleting other registered timekeys auto-deregisters them
 - Moved collate utilities from `torch_brain.data.collate` to `torch_brain.batching`; the old module now raises a descriptive `ImportError` directing users to the new location ([#232](https://github.com/neuro-galaxy/torch_brain/pull/232))
 - Changed minimum `temporaldata` version to `v0.1.4` ([#209](https://github.com/neuro-galaxy/torch_brain/pull/209))
@@ -50,6 +52,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Fixed
 - BYD subject/session selectors consistently accept integral NumPy values without changing stored data.
 - BYD preparation writes processed HDF5 files atomically and retries incomplete existing outputs.
+- PIPPI preparation resumes incomplete multipart downloads instead of treating a header as a complete recording.
+- Fixed the isolated PIPPI Brainsets pipeline importing the Torch-dependent dataset package while resolving its lightweight subset-tier contract.
 - Fixed `MultiTaskDecodingStitchEvaluator` caching predictions under the wrong sequence index when batch samples have non-overlapping readout types. ([#175](https://github.com/neuro-galaxy/torch_brain/pull/175))
 - Fixed `DistributedEvaluationSamplerWrapper.rank_len()` returning the wrong count when the total number of samples is not evenly divisible by the number of replicas. The condition `(total % num_replicas) < rank` was inverted; it is now correctly `rank < (total % num_replicas)`, matching the strided interleaving used in `__iter__`. ([#217](https://github.com/neuro-galaxy/torch_brain/pull/217))
 

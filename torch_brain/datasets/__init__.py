@@ -10,6 +10,7 @@ __all__ = [
     "NestedSpikingDataset",
     "SpikingDatasetMixin",
     "CalciumImagingDatasetMixin",
+    "BerezutskayaPippi2022",
     "MultiChannelDatasetMixin",
     "PerichMillerPopulation2018",
     "PeiPandarinathNLB2021",
@@ -29,6 +30,7 @@ __all__ = [
 ]
 
 from .AllenVisualCodingOphys2016 import AllenVisualCodingOphys2016
+from .BerezutskayaPippi2022 import BerezutskayaPippi2022
 from .ChurchlandShenoyNeural2012 import ChurchlandShenoyNeural2012
 from .dataset import Dataset, DatasetIndex
 from .KarpowiczPandarinathFalcon2024 import KarpowiczPandarinathFalcon2024
@@ -146,6 +148,11 @@ __api_ref__ = {
             "autosummary": [
                 "KlinzingSleepDS005555",
             ],
+        },
+        {
+            "title": "Berezutskaya PIPPI Dataset",
+            "template": "dataset.rst",
+            "autosummary": ["BerezutskayaPippi2022"],
         },
         {
             "title": "PSG Datasets",
