@@ -309,7 +309,8 @@ class POYO(nn.Module):
         fn = self._tokenize_fn
         if fn is None:
             warnings.warn(
-                "Consider switching from `model.tokenize` to `model.get_input_fn()`, "
+                "`POYO.tokenize` is soft deprecated and will be removed in a future "
+                "version of torch_brain. Please switch to `POYO.get_input_fn()`, "
                 "which does not drag the model into DataLoader workers.",
                 stacklevel=2,
             )
