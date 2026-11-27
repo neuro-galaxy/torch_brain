@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## [Unreleased]
 ### Added
+- Added `NeuroprobeV2`, a benchmark view over prepared Neuroprobe recordings with session and subject holdout selection.
 - Added `Data.delete_nested_attribute` to delete a nested attribute by dot-separated path ([#299](https://github.com/neuro-galaxy/torch_brain/pull/299))
 - Added `MultiChannelDatasetMixin` to provide `get_channel_ids` and prefixing interface for EEG-like datasets ([#173](https://github.com/neuro-galaxy/torch_brain/pull/173))
 - Added `BinSpikes` transform ([#170](https://github.com/neuro-galaxy/torch_brain/pull/170))
