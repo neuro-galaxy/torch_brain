@@ -157,6 +157,7 @@ class POYO(nn.Module):
         self.readout = nn.Linear(dim, dim_out)
 
         self.dim = dim
+        # TODO: remove when fully deprecating `tokenize` method
         self._tokenize_fn: POYOInputFn | None = None
 
     def forward(
@@ -299,6 +300,7 @@ class POYO(nn.Module):
             session_vocab=dict(self.session_emb.vocab),
         )
 
+    # TODO: remove when fully deprecating `tokenize` method
     def tokenize(self, data: Data) -> dict:
         r"""Converts a :class:`~torch_brain.data.Data` sample into POYO inputs.
 
