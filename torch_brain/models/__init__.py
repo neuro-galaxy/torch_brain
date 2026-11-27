@@ -1,6 +1,6 @@
-from .poyo import POYO, POYOInputFn
+from .poyo import POYO
 
-__all__ = ["POYO", "POYOInputFn"]
+__all__ = ["POYO"]
 
 # see docs/source/api_reference.py
 __api_ref__ = {
