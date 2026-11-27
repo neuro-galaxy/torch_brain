@@ -197,15 +197,23 @@ def mask_to_interval(mask: np.ndarray, timestamps: np.ndarray) -> Interval:
 
 
 def trials_from_numbers(trial_num: np.ndarray, timestamps: np.ndarray) -> Interval:
-    r"""H1 has no trials table; trial boundaries come from the per-sample trial number."""
+    r"""H1 has no trials table; trial boundaries come from the per-sample trial number.
+    Consecutive trials share one boundary value, so they abut exactly and the result is
+    disjoint (computing ``timestamps[c - 1] + dt/2`` and ``timestamps[c] - dt/2``
+    separately can make them overlap by floating-point error)."""
     dt = np.median(np.diff(timestamps))
     change = np.flatnonzero(np.diff(trial_num) != 0) + 1
-    first = np.concatenate([[0], change])
-    last = np.concatenate([change - 1, [len(trial_num) - 1]])
+    bounds = np.concatenate(
+        [
+            [timestamps[0] - dt / 2],
+            timestamps[change] - dt / 2,
+            [timestamps[-1] + dt / 2],
+        ]
+    )
     return Interval(
-        start=timestamps[first] - dt / 2,
-        end=timestamps[last] + dt / 2,
-        number=trial_num[first].astype(np.int64),
+        start=bounds[:-1],
+        end=bounds[1:],
+        number=trial_num[np.concatenate([[0], change])].astype(np.int64),
     )
 
 
