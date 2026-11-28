@@ -46,6 +46,7 @@ FALCON_SPLITS = ("held_in_calib", "held_in_minival", "held_out_calib")
 
 class Pipeline(BrainsetPipeline):
     brainset_id = "karpowicz_pandarinath_falcon_m2_2024"
+    # TODO Pin to a published version when available
     dandiset_id = "DANDI:000953/draft"
     parser = parser
 

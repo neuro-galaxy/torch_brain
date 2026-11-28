@@ -38,6 +38,7 @@ parser.add_argument("--reprocess", action="store_true")
 
 class Pipeline(BrainsetPipeline):
     brainset_id = "perich_miller_population_2018"
+    # TODO Pin when the current draft gets published
     dandiset_id = "DANDI:000688/draft"
     parser = parser
 

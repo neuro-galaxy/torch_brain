@@ -38,7 +38,7 @@ parser.add_argument("--reprocess", action="store_true")
 
 class Pipeline(BrainsetPipeline):
     brainset_id = "churchland_shenoy_neural_2012"
-    dandiset_id = "DANDI:000070/draft"
+    dandiset_id = "DANDI:000070/0.251218.1714"
     parser = parser
 
     @classmethod
@@ -78,7 +78,7 @@ class Pipeline(BrainsetPipeline):
 
         brainset_description = BrainsetDescription(
             id="churchland_shenoy_neural_2012",
-            origin_version="dandi/000070/draft",
+            origin_version="dandi/000070/0.251218.1714",
             derived_version="2.0.0",
             source="https://dandiarchive.org/dandiset/000070",
             description="Monkeys recordings of Motor Cortex (M1) and dorsal Premotor Cortex"

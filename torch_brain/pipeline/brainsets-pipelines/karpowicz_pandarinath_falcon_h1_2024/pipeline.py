@@ -40,6 +40,7 @@ KINEMATIC_DIMS = ("tx", "ty", "tz", "rx", "g1", "g2", "g3")
 
 class Pipeline(BrainsetPipeline):
     brainset_id = "karpowicz_pandarinath_falcon_h1_2024"
+    # TODO Pin to a published version when available
     dandiset_id = "DANDI:000954/draft"
     parser = parser
 
