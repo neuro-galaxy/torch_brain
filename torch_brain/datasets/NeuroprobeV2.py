@@ -13,7 +13,7 @@ from torch_brain.data import Data, Interval
 
 from ._utils import get_processed_dir
 from .dataset import Dataset
-from .mixins import MultiChannelDatasetMixin
+from .mixins import MultiChannelDatasetMixin, TemporalBlockDatasetMixin
 
 SubsetTier = Literal["full", "lite", "nano"]
 LabelMode = Literal["binary", "multiclass"]
@@ -177,7 +177,7 @@ def _from_recording_id(recording_id: str) -> tuple[int, int]:
     return int(match.group(1)), int(match.group(2))
 
 
-class NeuroprobeV2(MultiChannelDatasetMixin, Dataset):
+class NeuroprobeV2(TemporalBlockDatasetMixin, MultiChannelDatasetMixin, Dataset):
     """Neuroprobe V2 iEEG benchmark dataset.
 
     Each instance operates in exactly one of two mutually-exclusive modes:
@@ -442,13 +442,14 @@ class NeuroprobeV2(MultiChannelDatasetMixin, Dataset):
                 "test_recording_id": _to_recording_id(
                     self.test_subject, self.test_session
                 ),
-                "split_key": self._split_key(),
+                "split_key": self.get_split_key(),
             }
         )
+        summary.update(self.describe_temporal_selection())
         return summary
 
     # Path/key builders.
-    def _split_key(self) -> str:
+    def get_split_key(self) -> str:
         """Return the canonical key shared under `splits` and `channel_splits`."""
         return (
             f"{self.subset_tier}${self.label_mode}${self.h5_regime}${self.task}$"
@@ -457,11 +458,11 @@ class NeuroprobeV2(MultiChannelDatasetMixin, Dataset):
 
     def _interval_attr_path(self) -> str:
         # Primary split interval path under data.splits.
-        return f"splits.{self._split_key()}"
+        return f"splits.{self.get_split_key()}"
 
     def _channel_split_attr_path(self) -> str:
         # Return the primary path for split-specific channel masks.
-        return f"channel_splits.{self._split_key()}"
+        return f"channel_splits.{self.get_split_key()}"
 
     def _validate_split_args(self) -> None:
         # Keep constructor strict so invalid benchmark configs fail immediately.

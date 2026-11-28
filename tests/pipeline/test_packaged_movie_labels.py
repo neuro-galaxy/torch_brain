@@ -68,6 +68,7 @@ def test_byd_process_passes_packaged_default_to_processor(tmp_path, monkeypatch)
 
 
 def test_byd_processor_resolves_packaged_default(tmp_path, monkeypatch):
+    (tmp_path / "speech_binary_labels.csv").write_text("start_time_s,label\n0,1\n")
     captured = {}
 
     def resolve_labels_dir(value):

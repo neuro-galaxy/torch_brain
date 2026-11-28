@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 from _utils import add_pipelines_to_path
 
-from torch_brain.data import Data, Interval, LazyInterval, RegularTimeSeries
+from torch_brain.data import Data, LazyInterval, RegularTimeSeries
 from torch_brain.datasets import BerezutskayaPippi2022
 
 add_pipelines_to_path()
@@ -377,8 +377,9 @@ def test_process_file_writes_expected_h5(pippi_preparation, task_start):
 
     assert output_path.exists()
     with h5py.File(output_path, "r") as handle:
-        assert handle["brainset"].attrs["derived_version"] == "1.1.2"
+        assert handle["brainset"].attrs["derived_version"] == "1.2.0"
         assert "seeg_data" in handle
+        assert "signal_identity" not in handle.attrs
         assert "splits" in handle
         assert "channel_splits" in handle
         assert handle["seeg_data"].attrs["unit"] == "V"
@@ -513,7 +514,7 @@ def test_failed_serialization_preserves_previous_output(
 
     monkeypatch.setattr(Data, "to_hdf5", interrupted_serialize)
     with pytest.raises(RuntimeError, match="interrupted serialization"):
-        pippi_pipeline.process_file(**pippi_preparation, no_splits=True)
+        pippi_pipeline.process_file(**pippi_preparation, no_splits=True, reprocess=True)
 
     assert output.exists() is existing
     if existing:
@@ -755,17 +756,17 @@ def test_manifest_recovers_recording_with_missing_companion(tmp_path, monkeypatc
     assert list(manifest.index) == [remote_rows[0]["recording_id"]]
 
 
-def test_pipeline_process_uses_downloaded_asset_recording_id_for_skip(
+def test_pipeline_process_delegates_downloaded_asset_recording_id_for_resume(
     tmp_path, monkeypatch
 ):
     pipeline_instance = pippi_pipeline.Pipeline.__new__(pippi_pipeline.Pipeline)
     pipeline_instance.processed_dir = tmp_path / "processed"
     pipeline_instance.processed_dir.mkdir(parents=True, exist_ok=True)
-    pipeline_instance.args = SimpleNamespace(reprocess=False)
+    pipeline_instance.args = pippi_pipeline.parser.parse_args([])
     pipeline_instance.update_status = lambda _status: None
 
     recording_id = "sub-01_ses-iemu_task-film_acq-clinical_run-1"
-    # If process() uses vhdr_path filename instead of recording_id, it will not skip.
+    # The direct entrypoint validates the canonical recording before it can skip.
     (pipeline_instance.processed_dir / f"{recording_id}.h5").write_text(
         "existing", encoding="utf-8"
     )
@@ -787,7 +788,9 @@ def test_pipeline_process_uses_downloaded_asset_recording_id_for_skip(
         ),
     )
 
-    assert called == []
+    assert len(called) == 1
+    assert called[0]["recording_id"] == recording_id
+    assert called[0]["reprocess"] is False
 
 
 def test_pipeline_process_passes_downloaded_asset_metadata_to_process_file(
@@ -895,22 +898,24 @@ def test_pipeline_download_skips_optional_participants_relpath(tmp_path, monkeyp
 )
 def test_balanced_annotations_are_written_in_time_order(labels, tmp_path):
     labels = np.asarray(labels, dtype=np.int64)
-    starts = np.array([3, 0, 1, 1, 2, 0.5, 4, 2.5], dtype=float)[: len(labels)]
-    source = Interval(start=starts, end=starts + 1, label=labels)
-    expected_rng, actual_rng = np.random.default_rng(42), np.random.default_rng(42)
-    sampler = (
-        pippi_pipeline._balanced_binary_indices
-        if np.all(np.isin(np.unique(labels), [0, 1]))
-        else pippi_pipeline._balanced_multiclass_indices
+    starts = np.arange(0, 20, 0.25) if len(labels) else np.array([])
+    labels = np.resize(labels, len(starts))
+    folds = pippi_pipeline.generate_temporal_folds(
+        starts,
+        starts + 1,
+        labels,
+        domain=[0, 20],
+        balance=True,
+        rng=np.random.default_rng(42),
     )
-    selected = sampler(labels, expected_rng)
-    result = pippi_pipeline._balance_interval(source, actual_rng)
-    assert actual_rng.bit_generator.state == expected_rng.bit_generator.state
-    assert np.all(np.diff(result.start) >= 0)
-    expected = sorted(zip(starts[selected], labels[selected], strict=True))
-    assert sorted(zip(result.start, result.label, strict=True)) == expected
-    np.testing.assert_array_equal(result.end, result.start + 1)
-    np.testing.assert_array_equal(source.start, starts)
+    for fold in folds.values():
+        for interval in fold.values():
+            assert np.all(np.diff(interval.start) >= 0)
+            np.testing.assert_array_equal(interval.end, interval.start + 1)
+            np.testing.assert_array_equal(
+                interval.label, labels[(interval.start * 4).astype(int)]
+            )
+    result = folds[0]["train"]
 
     # Exercise the serialized annotations through the real lazy slicing path.
     path = tmp_path / "annotations.h5"

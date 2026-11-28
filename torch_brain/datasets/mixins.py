@@ -1,8 +1,31 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from copy import deepcopy
+from pathlib import Path
+
+import h5py
 import numpy as np
 import pandas as pd
 
 from torch_brain.data import Data
 from torch_brain.utils import np_string_prefix
+from torch_brain.utils.split import PROTOCOL_VERSION
+
+
+def _identity_digest(value: dict) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            value, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode()
+    ).hexdigest()
+
+
+def recording_fingerprint(path: Path) -> dict:
+    """Capture the file revision used by immutable recording metadata snapshots."""
+    stat = path.stat()
+    return {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns}
 
 
 class SpikingDatasetMixin:
@@ -141,3 +164,155 @@ class MultiChannelDatasetMixin:
         """
         ans = [self.get_recording(rid).channels.id for rid in self.recording_ids]
         return np.sort(np.concatenate(ans)).tolist()
+
+
+class TemporalBlockDatasetMixin:
+    """Read saved temporal blocks and selection identity without loading waveforms.
+
+    Hosts provide ``_dataset_dir``, ``_use_split_selection``, ``recording_ids``,
+    and ``get_split_key()``. Place this mixin before the Dataset base.
+    Metadata is cached per instance and recordings must remain immutable.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self._temporal_selection_cache: dict = {}
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def read_temporal_selection(
+        path: Path, split_key: str, *, cache: dict | None = None
+    ) -> dict | None:
+        """Read block bounds and selection identity without loading waveforms.
+
+        Historical files return None. Cached entries reject changed file revisions;
+        signal values and legacy signal hashes do not enter the selection digest.
+        """
+        key = (path, split_key)
+        if cache is not None and key in cache:
+            captured, info = cache[key]
+            try:
+                current = recording_fingerprint(path)
+            except FileNotFoundError as exc:
+                raise RuntimeError(
+                    f"Recording changed after capturing temporal metadata: {path}"
+                ) from exc
+            if current != captured:
+                raise RuntimeError(
+                    f"Recording changed after capturing temporal metadata: {path}"
+                )
+            return deepcopy(info)
+
+        before = recording_fingerprint(path)
+        info = None
+        with h5py.File(path, "r") as handle:
+            if "temporal_splits_json" in handle.attrs:
+                metadata = json.loads(handle.attrs["temporal_splits_json"])
+                if metadata["protocol"] != PROTOCOL_VERSION:
+                    raise ValueError(f"Unsupported temporal protocol in {path}")
+                _, _, regime, _, fold, split = split_key.split("$")
+                if regime == "within_session":
+                    bounds = metadata["blocks"][fold.removeprefix("fold")][split]
+                    if (
+                        len(bounds) != 2
+                        or not np.isfinite(bounds).all()
+                        or bounds[0] >= bounds[1]
+                    ):
+                        raise ValueError(f"Invalid temporal block in {path}: {bounds}")
+                    group = handle["splits"][split_key]
+                    starts, ends, labels = (
+                        group[field][:] for field in ("start", "end", "label")
+                    )
+                    if (
+                        starts.ndim != 1
+                        or ends.shape != starts.shape
+                        or labels.shape != starts.shape
+                        or not np.isfinite(starts).all()
+                        or not np.isfinite(ends).all()
+                        or np.any(ends <= starts)
+                    ):
+                        raise ValueError(
+                            f"Saved start/end/label arrays must match finite positive-duration windows: {path}, {split_key}"
+                        )
+                    extra = np.maximum(
+                        0, (metadata["context_width_s"] - (ends - starts)) / 2
+                    )
+                    if np.any(starts - extra < bounds[0] - 1e-9) or np.any(
+                        ends + extra > bounds[1] + 1e-9
+                    ):
+                        raise ValueError(
+                            f"Saved windows cross temporal support boundaries: {path}, {split_key}"
+                        )
+                    selection = {
+                        "metadata": metadata,
+                        "split_key": split_key,
+                        "start": starts.tolist(),
+                        "end": ends.tolist(),
+                        "label": labels.tolist(),
+                        "channels": handle["channel_splits"][split_key][:].tolist(),
+                    }
+                    info = {
+                        "protocol": metadata["protocol"],
+                        "bounds": bounds,
+                        "selection_digest": _identity_digest(selection),
+                        "recording_path": str(path),
+                        "recording_fingerprint": before,
+                        "context_width_s": metadata["context_width_s"],
+                        "gap_s": metadata["gap_s"],
+                    }
+        if recording_fingerprint(path) != before:
+            raise RuntimeError(
+                f"Recording changed while reading temporal metadata: {path}"
+            )
+        if cache is not None:
+            # Readers return fresh mappings so caller mutations cannot alter the snapshot.
+            cache[key] = (before.copy(), deepcopy(info))
+        return info
+
+    def get_temporal_block(self, recording_id: str) -> dict:
+        """Return the prepared split's block for downstream split-local filtering."""
+        if not self._use_split_selection or recording_id not in self.recording_ids:
+            raise ValueError(
+                "Temporal blocks require an active split-selected recording"
+            )
+        info = self.read_temporal_selection(
+            self._dataset_dir / f"{recording_id}.h5",
+            self.get_split_key(),
+            cache=self._temporal_selection_cache,
+        )
+        if info is None:
+            raise ValueError(
+                "Native temporal splits are missing; reprepare this recording"
+            )
+        return info
+
+    def describe_temporal_selection(self) -> dict:
+        """Describe active native selections without loading waveform arrays.
+
+        Explicit-recording and historical-only selections have no temporal
+        summary. Mixing historical and native selected recordings is rejected.
+        """
+        if not self._use_split_selection:
+            return {}
+        split_key = self.get_split_key()
+        selections = {
+            rid: self.read_temporal_selection(
+                self._dataset_dir / f"{rid}.h5",
+                split_key,
+                cache=self._temporal_selection_cache,
+            )
+            for rid in self.recording_ids
+        }
+        native = {rid: info for rid, info in selections.items() if info is not None}
+        if not native:
+            return {}
+        if len(native) != len(selections):
+            raise ValueError("Cannot mix historical and native temporal recordings")
+        return {
+            "temporal_protocol": PROTOCOL_VERSION,
+            "temporal_selection_digests": {
+                rid: info["selection_digest"] for rid, info in native.items()
+            },
+            "temporal_recording_fingerprints": {
+                rid: info["recording_fingerprint"] for rid, info in native.items()
+            },
+        }

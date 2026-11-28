@@ -17,7 +17,7 @@ from torch_brain.pipeline.pippi_subset_tiers import (
 
 from ._utils import get_processed_dir
 from .dataset import Dataset
-from .mixins import MultiChannelDatasetMixin
+from .mixins import MultiChannelDatasetMixin, TemporalBlockDatasetMixin
 
 SubsetTier = Literal["full", "high-cov", "low-cov"]
 LabelMode = Literal["binary", "multiclass"]
@@ -142,7 +142,9 @@ def _from_recording_id(recording_id: str) -> tuple[int, str, int]:
     return int(match.group("subject")), match.group("acq"), int(match.group("run"))
 
 
-class BerezutskayaPippi2022(MultiChannelDatasetMixin, Dataset):
+class BerezutskayaPippi2022(
+    TemporalBlockDatasetMixin, MultiChannelDatasetMixin, Dataset
+):
     """Pippi movie SEEG dataset prepared from OpenNeuro ds003688.
 
     Each instance operates in exactly one of two mutually-exclusive modes:
@@ -394,22 +396,24 @@ class BerezutskayaPippi2022(MultiChannelDatasetMixin, Dataset):
                 "split": self.split,
                 "test_subject": self.test_subject,
                 "test_session": self.test_session,
-                "split_key": self._split_key(),
+                "split_key": self.get_split_key(),
             }
         )
+        summary.update(self.describe_temporal_selection())
         return summary
 
-    def _split_key(self) -> str:
+    def get_split_key(self) -> str:
+        """Return the canonical key shared under `splits` and `channel_splits`."""
         return (
             f"{self.subset_tier}${self.label_mode}${self.h5_regime}${self.task}$"
             f"fold{self.fold}${self.split}"
         )
 
     def _interval_attr_path(self) -> str:
-        return f"splits.{self._split_key()}"
+        return f"splits.{self.get_split_key()}"
 
     def _channel_split_attr_path(self) -> str:
-        return f"channel_splits.{self._split_key()}"
+        return f"channel_splits.{self.get_split_key()}"
 
     def _validate_split_args(self) -> None:
         if self.subset_tier not in VALID_SUBSET_TIERS:

@@ -386,7 +386,7 @@ def test_get_recording_hook_selects_split_and_prefixes_channel_ids(
         uniquify_channel_ids_with_subject=with_subject,
         uniquify_channel_ids_with_session=with_session,
     )
-    split_key = ds._split_key()
+    split_key = ds.get_split_key()
     interval = Interval(start=np.array([0.0]), end=np.array([1.0]), label=np.array([1]))
     recording = Data(
         domain=Interval(0.0, 1.0),
@@ -410,7 +410,7 @@ def test_get_recording_hook_requires_channel_mask_and_intervals(
 ):
     _write_mock_recordings(tmp_path, ("sub_1_trial001",), subset_tier="full")
     ds = _make_dataset(tmp_path)
-    split_key = ds._split_key()
+    split_key = ds.get_split_key()
     recording = Data(
         domain=Interval(0.0, 1.0),
         session=Data(id="sub_1_trial001"),
@@ -622,12 +622,30 @@ def test_prepared_sample_indices_match_loader_waveforms(tmp_path, monkeypatch):
     class Candidates(list):
         electrode_labels = np.array(["B"])
 
+        def get_window_bounds(self):
+            windows = np.array([item["data"] for item in self], dtype=np.int64)
+            labels = np.array([item["label"] for item in self], dtype=np.int64)
+            return windows[:, 0], windows[:, 1], labels
+
     fold = {
         f"{split}_dataset": Candidates(
-            [{"data": bounds, "label": label} for bounds, label in items]
+            [{"data": bounds, "label": label} for bounds, label in reversed(items)]
         )
         for split, items in expected.items()
     }
+    fold["temporal_split"] = {
+        "protocol": "shared-temporal-v1",
+        "sampling_rate": 8,
+        "blocks_samples": {"val": [0, 32], "test": [32, 64], "train": [64, 128]},
+    }
+    annotations = tmp_path / "speech.csv"
+    annotations.write_text("start_time_s,label\n0,0\n1,1\n")
+    # This fixture controls the upstream API output; capability rejection has separate coverage.
+    monkeypatch.setattr(pipeline, "version", lambda _: "0.2.0")
+    monkeypatch.setattr(pipeline, "_validate_native_neuroprobe_api", lambda: None)
+    monkeypatch.setattr(
+        pipeline, "_neuroprobe_label_paths", lambda *_: {"speech": annotations}
+    )
     monkeypatch.setattr(pipeline, "_prepare_neuroprobe_lib", lambda _: None)
     monkeypatch.setattr(
         pipeline,

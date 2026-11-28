@@ -11,12 +11,11 @@
 # ///
 
 import datetime
-import hashlib
 import json
 import logging
 import re
 from argparse import ArgumentParser, Namespace
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from pathlib import Path
 from uuid import uuid4
 
@@ -30,16 +29,26 @@ from torch_brain.data import (
     BrainsetDescription,
     Data,
     DeviceDescription,
-    Interval,
     RegularTimeSeries,
     SessionDescription,
     SubjectDescription,
 )
 from torch_brain.pipeline import BrainsetPipeline
+from torch_brain.pipeline.temporal_preparation import (
+    MOVIE_DERIVED_VERSION,
+    preparation_settings,
+    validate_prepared_temporal_settings,
+    validate_temporal_preparation_config,
+)
 from torch_brain.utils.dandi import (
     download_file,
     extract_subject_from_nwb,
     get_nwb_asset_list,
+)
+from torch_brain.utils.split import (
+    generate_temporal_folds,
+    temporal_balance_rng,
+    temporal_metadata,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -180,6 +189,10 @@ def _read_hrefs(hrefs_path: Path) -> set[str]:
     return hrefs
 
 
+parser.add_argument("--temporal-context-width-s", type=float, default=1.0)
+parser.add_argument("--temporal-gap-s", type=float, default=0.0)
+
+
 class Pipeline(BrainsetPipeline):
     """Brainsets pipeline for the Keles BYD 2024 NWB dataset."""
 
@@ -242,17 +255,6 @@ class Pipeline(BrainsetPipeline):
     def process(self, fpath):
         """Process a single NWB file into a standardized brainsets HDF5 output."""
         self.processed_dir.mkdir(exist_ok=True, parents=True)
-        recording_id, _, _ = _parse_recording_id_from_input_file(str(fpath))
-        output_path = self.processed_dir / f"{recording_id}.h5"
-        if output_path.exists() and not (self.args and self.args.reprocess):
-            if _is_valid_processed_file(output_path):
-                logging.info(f"Skipping processing for valid output {output_path}")
-                self.update_status("Skipped Processing")
-                return
-            logging.warning(
-                "Incomplete or unreadable output %s; reprocessing", output_path
-            )
-
         logging.info(f"Processing {fpath} to {self.processed_dir}")
 
         label_files = None
@@ -270,6 +272,11 @@ class Pipeline(BrainsetPipeline):
             no_splits=bool(self.args and self.args.no_splits),
             balance_splits=self.args.balance_splits if self.args else True,
             balance_seed=self.args.balance_seed if self.args else 0,
+            temporal_context_width_s=getattr(
+                self.args, "temporal_context_width_s", 1.0
+            ),
+            temporal_gap_s=getattr(self.args, "temporal_gap_s", 0.0),
+            reprocess=bool(self.args and self.args.reprocess),
         )
 
 
@@ -770,7 +777,7 @@ def get_brainset_description() -> BrainsetDescription:
     return BrainsetDescription(
         id="keles_byd_2024",
         origin_version="DANDI:000623",
-        derived_version="1.1.2",
+        derived_version=MOVIE_DERIVED_VERSION,
         source="https://dandiarchive.org/dandiset/000623",
         description=(
             "Multimodal intracranial recordings during movie watching in human patients. "
@@ -916,149 +923,6 @@ def _build_windows(
     return start.astype(np.float64), end.astype(np.float64), labels
 
 
-def _balanced_binary_indices(
-    labels: np.ndarray, rng: np.random.Generator
-) -> np.ndarray:
-    """Return balanced indices for binary labels, preserving old BYD balancing behavior."""
-    labels = np.asarray(labels)
-    pos_idx = np.where(labels == 1)[0]
-    neg_idx = np.where(labels == 0)[0]
-    if len(pos_idx) == 0 or len(neg_idx) == 0:
-        return np.arange(len(labels))
-
-    n_keep = min(len(pos_idx), len(neg_idx))
-    pos_keep = rng.choice(pos_idx, size=n_keep, replace=False)
-    neg_keep = rng.choice(neg_idx, size=n_keep, replace=False)
-    keep = np.concatenate([pos_keep, neg_keep])
-    rng.shuffle(keep)
-    return keep
-
-
-def _balanced_multiclass_indices(
-    labels: np.ndarray, rng: np.random.Generator
-) -> np.ndarray:
-    """Return balanced indices for multiclass labels by downsampling to the smallest class."""
-    labels = np.asarray(labels)
-    classes = np.unique(labels)
-    if len(classes) <= 1:
-        return np.arange(len(labels))
-
-    class_indices = [np.where(labels == class_id)[0] for class_id in classes]
-    n_keep = min(len(indices) for indices in class_indices)
-    keep = np.concatenate(
-        [rng.choice(indices, size=n_keep, replace=False) for indices in class_indices]
-    )
-    rng.shuffle(keep)
-    return keep
-
-
-def _balance_interval(interval: Interval, rng: np.random.Generator) -> Interval:
-    """Subsample an Interval to balanced classes for binary or multiclass labels."""
-    labels = np.asarray(interval.label)
-    # Keep 0/1 balancing behavior unchanged for binary labels.
-    if np.all(np.isin(np.unique(labels), [0, 1])):
-        keep = _balanced_binary_indices(labels, rng)
-    else:
-        keep = _balanced_multiclass_indices(labels, rng)
-    # Keep the sampled membership and RNG draws, but write chronological rows.
-    keep = keep[np.argsort(interval.start[keep], kind="stable")]
-    return Interval(
-        start=interval.start[keep],
-        end=interval.end[keep],
-        label=labels[keep],
-    )
-
-
-def _stable_balance_rng(
-    *,
-    balance_seed: int,
-    recording_id: str,
-    task_name: str,
-    label_mode: str,
-    fold_idx: int,
-    split_name: str,
-) -> np.random.Generator:
-    key = "|".join(
-        [
-            "keles_byd_2024",
-            str(int(balance_seed)),
-            recording_id,
-            task_name,
-            label_mode,
-            str(int(fold_idx)),
-            split_name,
-        ]
-    )
-    digest = hashlib.blake2b(key.encode("utf-8"), digest_size=8).digest()
-    seed = int.from_bytes(digest, byteorder="little", signed=False)
-    return np.random.default_rng(seed)
-
-
-def _split_twofold(
-    start: np.ndarray,
-    end: np.ndarray,
-    labels: np.ndarray,
-    *,
-    balance: bool = False,
-    rng: np.random.Generator | None = None,
-    rng_factory: Callable[[int, str], np.random.Generator] | None = None,
-) -> dict[int, dict[str, Interval]]:
-    """Create two within-session folds with val as first half of test."""
-    order = np.argsort(start)
-    start = start[order]
-    end = end[order]
-    labels = labels[order]
-
-    n = len(start)
-    mid = n // 2
-    folds = {}
-
-    for fold_idx, (t0, t1) in enumerate(((0, mid), (mid, n))):
-        test_indices = np.arange(t0, t1)
-        train_indices = np.setdiff1d(np.arange(n), test_indices)
-
-        # Validation = first half of the test set, per Neuroprobe convention.
-        test_len = len(test_indices)
-        val_split = t0 + (test_len // 2)
-        val_indices = np.arange(t0, val_split)
-        final_test_indices = np.arange(val_split, t1)
-
-        fold = {
-            "train": Interval(
-                start=start[train_indices],
-                end=end[train_indices],
-                label=labels[train_indices],
-            ),
-            "val": Interval(
-                start=start[val_indices],
-                end=end[val_indices],
-                label=labels[val_indices],
-            ),
-            "test": Interval(
-                start=start[final_test_indices],
-                end=end[final_test_indices],
-                label=labels[final_test_indices],
-            ),
-        }
-
-        if balance:
-            balanced_fold = {}
-            for split_name, split_interval in fold.items():
-                split_rng = (
-                    rng_factory(fold_idx, split_name)
-                    if rng_factory is not None
-                    else rng
-                )
-                if split_rng is None:
-                    raise ValueError("balance=True requires an RNG or rng_factory")
-                balanced_fold[split_name] = _balance_interval(split_interval, split_rng)
-            fold = balanced_fold
-
-        folds[fold_idx] = fold
-
-    return folds
-
-
 def _build_label_maps(
     label_tasks: dict[str, np.ndarray],
 ) -> dict[str, dict[str, dict[str, str]]]:
@@ -1087,15 +951,61 @@ def process_file(
     no_splits: bool = False,
     balance_splits: bool = False,
     balance_seed: int = 0,
+    temporal_context_width_s: float = 1.0,
+    temporal_gap_s: float = 0.0,
+    reprocess: bool = False,
 ) -> str:
     """Process a single NWB file into a brainsets HDF5 output."""
+    if type(reprocess) is not bool:
+        raise TypeError("reprocess must be a bool")
+    validate_temporal_preparation_config(
+        context_width_s=temporal_context_width_s,
+        gap_s=temporal_gap_s,
+        balance_seed=balance_seed,
+        balanced=balance_splits,
+        no_splits=no_splits,
+        pre_offset_s=pre_offset_s,
+        post_offset_s=post_offset_s,
+    )
     labels_dir = _resolve_labels_dir(None) if labels_dir is None else Path(labels_dir)
+    label_files = (
+        []
+        if no_splits
+        else list(label_files or sorted(p.name for p in labels_dir.glob("*.csv")))
+    )
+    if not no_splits and not label_files:
+        raise ValueError(f"No label CSVs found in labels-dir '{labels_dir}'")
+    mode_tasks = [_parse_task_and_label_mode(name) for name in label_files]
+    if len(set(mode_tasks)) != len(mode_tasks):
+        raise ValueError(
+            "Duplicate task/mode label files would overwrite split attributes"
+        )
+    settings = preparation_settings(
+        splits_enabled=not no_splits,
+        pre_offset_s=pre_offset_s,
+        post_offset_s=post_offset_s,
+        label_paths={Path(name).name: labels_dir / name for name in label_files},
+    )
     recording_id, subject_number, session_number = _parse_recording_id_from_input_file(
         input_file
     )
     subject_id = f"sub-CS{subject_number}"
     session_id = str(session_number)
     output_path = Path(output_dir) / f"{recording_id}.h5"
+    if output_path.exists() and not reprocess:
+        if _is_valid_processed_file(output_path):
+            validate_prepared_temporal_settings(
+                output_path,
+                context_width_s=temporal_context_width_s,
+                gap_s=temporal_gap_s,
+                balance_seed=balance_seed,
+                balanced=balance_splits,
+                splits_enabled=not no_splits,
+                preparation_settings=settings,
+            )
+            logging.info("Skipping matching prepared output %s", output_path)
+            return str(output_path)
+        logging.warning("Incomplete or unreadable output %s; reprocessing", output_path)
     enc_start = None
     enc_stop = None
     aligned_domain_start = None
@@ -1184,27 +1094,21 @@ def process_file(
 
         label_tasks_for_maps: dict[str, np.ndarray] = {}
 
+        metadata = temporal_metadata(
+            [float(seeg_data.domain.start[0]), float(seeg_data.domain.end[0])],
+            context_width_s=temporal_context_width_s,
+            gap_s=temporal_gap_s,
+        )
+        metadata.update(balance_seed=int(balance_seed), balanced=balance_splits)
+        data.temporal_splits_json = json.dumps(metadata, sort_keys=True)
+        data.preparation_settings_json = json.dumps(settings, sort_keys=True)
         if not no_splits:
             data.splits = Data(domain=seeg_data.domain)
             data.channel_splits = Data()
-            if not label_files:
-                label_files = sorted(p.name for p in Path(labels_dir).glob("*.csv"))
-            else:
-                label_files = list(label_files)
-            if len(label_files) == 0:
-                raise ValueError("No label files found in labels-dir.")
-            seen_mode_task_pairs: set[tuple[str, str]] = set()
-
-            for label_file in label_files:
-                csv_path = Path(labels_dir) / label_file
-                task_name, label_mode = _parse_task_and_label_mode(label_file)
-                mode_task = (label_mode, task_name)
-                if mode_task in seen_mode_task_pairs:
-                    raise ValueError(
-                        "Duplicate task/mode label files would overwrite split attributes: "
-                        f"mode={label_mode}, task={task_name}"
-                    )
-                seen_mode_task_pairs.add(mode_task)
+            for label_file, (task_name, label_mode) in zip(
+                label_files, mode_tasks, strict=True
+            ):
+                csv_path = labels_dir / label_file
                 times, labels = _load_label_csv(csv_path)
                 raw_count = int(len(times))
 
@@ -1239,7 +1143,8 @@ def process_file(
                         task_name: str = task_name,
                         label_mode: str = label_mode,
                     ) -> np.random.Generator:
-                        return _stable_balance_rng(
+                        return temporal_balance_rng(
+                            dataset_id="keles_byd_2024",
                             balance_seed=balance_seed,
                             recording_id=recording_id,
                             task_name=task_name,
@@ -1248,10 +1153,16 @@ def process_file(
                             split_name=split_name,
                         )
 
-                folds = _split_twofold(
+                folds = generate_temporal_folds(
                     start,
                     end,
                     labels_for_mode,
+                    domain=[
+                        float(seeg_data.domain.start[0]),
+                        float(seeg_data.domain.end[0]),
+                    ],
+                    context_width_s=temporal_context_width_s,
+                    gap_s=temporal_gap_s,
                     balance=balance_splits,
                     rng_factory=rng_factory,
                 )

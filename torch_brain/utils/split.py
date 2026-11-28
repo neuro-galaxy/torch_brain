@@ -1,6 +1,9 @@
 __all__ = [
     "generate_stratified_folds",
     "generate_string_kfold_assignment",
+    "generate_temporal_folds",
+    "temporal_metadata",
+    "temporal_balance_rng",
 ]
 
 # Drives the generated API reference; see docs/source/api_reference.py.
@@ -10,10 +13,14 @@ __api_ref__ = {
 }
 
 import hashlib
+from collections.abc import Callable
+from numbers import Real
 
 import numpy as np
 
 from torch_brain.data import Data, Interval
+
+PROTOCOL_VERSION = "shared-temporal-v1"
 
 
 def _create_interval_split(intervals: Interval, indices: np.ndarray) -> Interval:
@@ -208,3 +215,192 @@ def _get_integer_hash_from_string(string: str) -> int:
     hash_obj = hashlib.md5(base_bytes)
     hash_int = int(hash_obj.hexdigest(), 16)
     return hash_int
+
+
+def _temporal_blocks(
+    bounds: np.ndarray, fold: int, *, gap_s: float
+) -> dict[str, tuple[float, float]]:
+    """Partition validated recording bounds for one of the two protocol folds."""
+    fractions = [0, 0.25, 0.5, 1] if fold == 0 else [0, 0.5, 0.75, 1]
+    order = ("val", "test", "train") if fold == 0 else ("train", "val", "test")
+    edges = bounds[0] + np.asarray(fractions) * (bounds[1] - bounds[0])
+    blocks = {}
+    for i, split in enumerate(order):
+        lo = float(edges[i] + (gap_s / 2 if i else 0))
+        hi = float(edges[i + 1] - (gap_s / 2 if i < 2 else 0))
+        if hi <= lo:
+            raise ValueError("gap_s removes an entire temporal block")
+        blocks[split] = (lo, hi)
+    return blocks
+
+
+def temporal_metadata(domain, *, context_width_s=1.0, gap_s=0.0):
+    """Describe the shared twofold blocks and support settings for saved selections.
+
+    Args:
+        domain: Two finite increasing recording boundaries in seconds.
+        context_width_s: Total centered support width, at least one second.
+        gap_s: Additional nonnegative blank interval between neighboring blocks.
+
+    Returns:
+        Protocol identifier, support width, gap, and a ``blocks`` mapping keyed
+        by string fold IDs (``"0"``, ``"1"``), then train/val/test. Block bounds
+        are half-open pairs in seconds, ready for H5 JSON metadata serialization.
+    """
+    if (
+        isinstance(context_width_s, bool)
+        or not isinstance(context_width_s, Real)
+        or not np.isfinite(context_width_s)
+        or context_width_s < 1
+    ):
+        raise ValueError("context_width_s must be finite and at least 1 second")
+    bounds = np.asarray(domain, dtype=float)
+    if bounds.shape != (2,) or not np.isfinite(bounds).all() or bounds[1] <= bounds[0]:
+        raise ValueError("domain must contain two finite increasing boundaries")
+    if (
+        isinstance(gap_s, bool)
+        or not isinstance(gap_s, Real)
+        or not np.isfinite(gap_s)
+        or gap_s < 0
+    ):
+        raise ValueError("gap_s must be a finite nonnegative number")
+    return {
+        "protocol": PROTOCOL_VERSION,
+        "context_width_s": float(context_width_s),
+        "gap_s": float(gap_s),
+        "blocks": {
+            str(fold): _temporal_blocks(bounds, fold, gap_s=gap_s) for fold in (0, 1)
+        },
+    }
+
+
+def temporal_balance_rng(
+    *,
+    dataset_id: str,
+    balance_seed: int,
+    recording_id: str,
+    task_name: str,
+    label_mode: str,
+    fold_idx: int,
+    split_name: str,
+) -> np.random.Generator:
+    """Create a task/split-local RNG without depending on preparation iteration order.
+
+    Dataset and recording identities namespace the seed. Keep these identities
+    and ``balance_seed`` fixed when varying model training seeds.
+    """
+    key = "|".join(
+        [
+            dataset_id,
+            str(int(balance_seed)),
+            recording_id,
+            task_name,
+            label_mode,
+            str(int(fold_idx)),
+            split_name,
+        ]
+    )
+    digest = hashlib.blake2b(key.encode("utf-8"), digest_size=8).digest()
+    seed = int.from_bytes(digest, byteorder="little", signed=False)
+    return np.random.default_rng(seed)
+
+
+def _balanced_temporal_indices(labels, rng):
+    classes = np.unique(labels)
+    if len(classes) < 2:
+        return np.array([], dtype=int)
+    # Preserve the historical positive-first binary RNG draws and output order.
+    if np.all(np.isin(classes, [0, 1])):
+        classes = (1, 0)
+    by_class = [np.flatnonzero(labels == label) for label in classes]
+    n = min(map(len, by_class))
+    selected = np.concatenate(
+        [rng.choice(indices, size=n, replace=False) for indices in by_class]
+    )
+    rng.shuffle(selected)
+    return selected
+
+
+def generate_temporal_folds(
+    start: np.ndarray,
+    end: np.ndarray,
+    labels: np.ndarray,
+    *,
+    domain,
+    context_width_s: float = 1.0,
+    gap_s: float = 0.0,
+    balance: bool = False,
+    rng: np.random.Generator | None = None,
+    rng_factory: Callable[[int, str], np.random.Generator] | None = None,
+) -> dict[int, dict[str, Interval]]:
+    """Generate two recording-time folds with support exclusion before balancing.
+
+    Fold 0 uses the first quarter for validation, second quarter for test, and
+    last half for training. Fold 1 uses the first half for training, third
+    quarter for validation, and last quarter for test. All bounds are half-open.
+
+    ``context_width_s`` reserves centered preprocessing support around each
+    target; it does not expand returned windows. ``gap_s`` is an additional
+    blank interval between neighboring blocks. Boundaries depend only on the
+    recording domain, so different tasks share the same partition.
+
+    If ``balance`` is true, downsample each split to its smallest class. A
+    missing recording-level class produces an empty split; folds remain present.
+    Supply ``rng`` or ``rng_factory(fold_idx, split_name)`` for balancing. The
+    factory takes precedence and allows task/split-local deterministic seeds.
+    No sampling caps or dataset-specific label transforms are applied here.
+    """
+    metadata = temporal_metadata(domain, context_width_s=context_width_s, gap_s=gap_s)
+    start, end, labels = np.asarray(start), np.asarray(end), np.asarray(labels)
+    # Validate once before assigning candidates to any temporal block.
+    if (
+        start.ndim != 1
+        or start.shape != end.shape
+        or start.shape != labels.shape
+        or not np.isfinite(start).all()
+        or not np.isfinite(end).all()
+        or np.any(end <= start)
+    ):
+        raise ValueError("start/end/labels must match finite positive-duration windows")
+    # NaN would enter the class universe but match no candidates during balancing.
+    if (np.issubdtype(labels.dtype, np.inexact) and not np.isfinite(labels).all()) or (
+        labels.dtype == object
+        and any(
+            isinstance(label, (float, complex, np.inexact)) and not np.isfinite(label)
+            for label in labels
+        )
+    ):
+        raise ValueError("labels must not contain nonfinite numeric values")
+    if np.any(end - start > context_width_s + 1e-9):
+        raise ValueError("context_width_s cannot be shorter than target windows")
+    if balance and rng is None and rng_factory is None:
+        raise ValueError("balance=True requires an RNG or rng_factory")
+    extra = np.maximum(0, (context_width_s - (end - start)) / 2)
+    n_classes = len(np.unique(labels))
+    folds = {}
+    for fold_idx in (0, 1):
+        fold = {}
+        for split in ("train", "val", "test"):
+            lo, hi = metadata["blocks"][str(fold_idx)][split]
+            keep = (start - extra >= lo) & (end + extra <= hi)
+            selected = np.flatnonzero(keep)
+            selected = selected[np.argsort(start[selected], kind="stable")]
+            if balance:
+                split_rng = (
+                    rng_factory(fold_idx, split) if rng_factory is not None else rng
+                )
+                if split_rng is None:
+                    raise ValueError("balance=True requires an RNG or rng_factory")
+                # Never move events across time boundaries to restore a class.
+                if len(np.unique(labels[selected])) < n_classes:
+                    selected = selected[:0]
+                selected = selected[
+                    _balanced_temporal_indices(labels[selected], split_rng)
+                ]
+                # Sorting after all RNG draws preserves the balanced selection.
+                selected = selected[np.argsort(start[selected], kind="stable")]
+            fold[split] = Interval(
+                start=start[selected], end=end[selected], label=labels[selected]
+            )
+        folds[fold_idx] = fold
+    return folds

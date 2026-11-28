@@ -12,6 +12,7 @@ __all__ = [
     "CalciumImagingDatasetMixin",
     "BerezutskayaPippi2022",
     "MultiChannelDatasetMixin",
+    "TemporalBlockDatasetMixin",
     "PerichMillerPopulation2018",
     "PeiPandarinathNLB2021",
     "ChurchlandShenoyNeural2012",
@@ -42,6 +43,7 @@ from .mixins import (
     CalciumImagingDatasetMixin,
     MultiChannelDatasetMixin,
     SpikingDatasetMixin,
+    TemporalBlockDatasetMixin,
 )
 from .nested import NestedDataset, NestedSpikingDataset
 from .Neuroprobe2025 import Neuroprobe2025
@@ -107,6 +109,7 @@ __api_ref__ = {
                 "SpikingDatasetMixin",
                 "CalciumImagingDatasetMixin",
                 "MultiChannelDatasetMixin",
+                "TemporalBlockDatasetMixin",
             ],
         },
         {

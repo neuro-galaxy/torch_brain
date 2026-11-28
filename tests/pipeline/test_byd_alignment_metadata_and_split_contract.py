@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 from _utils import add_pipelines_to_path
 
-from torch_brain.data import Interval, LazyInterval
+from torch_brain.data import LazyInterval
 
 add_pipelines_to_path()
 from keles_byd_2024 import pipeline as m  # noqa: E402
@@ -38,7 +38,10 @@ class _FakeRegularTimeSeries:
         self.timestamps = (
             self.domain_start + np.arange(self.data.shape[0]) / self.sampling_rate
         )
-        self.domain = domain
+        self.domain = SimpleNamespace(
+            start=np.array([domain_start]),
+            end=np.array([domain_start + len(data) / sampling_rate]),
+        )
 
 
 class _FakeData:
@@ -55,11 +58,17 @@ class _FakeData:
         file["seeg_data"] = SimpleNamespace(attrs={})
 
 
+class _FakeStore(dict):
+    def __init__(self):
+        super().__init__()
+        self.attrs = {}
+
+
 class _FakeH5File:
     last_store = None
 
     def __init__(self, *args, **kwargs):
-        self._store = {}
+        self._store = _FakeStore()
         Path(args[0]).touch()
 
     def __enter__(self):
@@ -77,7 +86,12 @@ class _FakeInterval:
         self.label = np.ones(n, dtype=np.int64)
 
 
-def _install_process_patches(monkeypatch):
+def _install_process_patches(monkeypatch, tmp_path):
+    for name in ("speech", "global_flow", "word_gap"):
+        (tmp_path / f"{name}_binary_labels.csv").write_text(
+            "start_time_s,label\n0.5,0\n1.5,1\n"
+        )
+
     def build_channels(electrode_df, *, subject_number):
         assert subject_number == 41
         return SimpleNamespace(included=np.array([True, True]))
@@ -145,7 +159,7 @@ def _install_split_patches(monkeypatch):
     )
     monkeypatch.setattr(
         m,
-        "_split_twofold",
+        "generate_temporal_folds",
         lambda start, end, labels, **kwargs: {
             0: {
                 "train": _FakeInterval(2),
@@ -157,7 +171,7 @@ def _install_split_patches(monkeypatch):
 
 
 def test_process_file_persists_alignment_metadata_contract(monkeypatch, tmp_path):
-    _install_process_patches(monkeypatch)
+    _install_process_patches(monkeypatch, tmp_path)
 
     out = m.process_file(
         input_file=str(tmp_path / "sub-CS41_ses-P41CSR1_behavior+ecephys.nwb"),
@@ -175,7 +189,7 @@ def test_process_file_persists_alignment_metadata_contract(monkeypatch, tmp_path
     data = _FakeData.last_instance
     assert data is not None
 
-    assert data.brainset.derived_version == "1.1.2"
+    assert data.brainset.derived_version == "1.2.0"
     assert data.session.id == "sub-CS41_ses-P41CSR1"
     assert data.alignment_version == "2.0.0"
     assert data.alignment_reference == m.ALIGNMENT_REFERENCE
@@ -219,7 +233,7 @@ def test_build_channels_copies_byd_coordinate_fields():
 def test_process_file_writes_neuroprobe_style_split_and_channel_keys(
     monkeypatch, tmp_path
 ):
-    _install_process_patches(monkeypatch)
+    _install_process_patches(monkeypatch, tmp_path)
     _install_split_patches(monkeypatch)
 
     m.process_file(
@@ -242,12 +256,12 @@ def test_process_file_writes_neuroprobe_style_split_and_channel_keys(
 
 
 def test_split_twofold_partition_invariants():
-    n = 10
+    n = 12
     start = np.arange(n, dtype=np.float64)
     end = start + 1.0
-    labels = np.array([0, 1] * 5, dtype=np.int64)
+    labels = np.array([0, 1] * 6, dtype=np.int64)
 
-    folds = m._split_twofold(start, end, labels, balance=False)
+    folds = m.generate_temporal_folds(start, end, labels, domain=[0, 12], balance=False)
     assert set(folds.keys()) == {0, 1}
 
     for fold_idx, split in folds.items():
@@ -265,12 +279,12 @@ def test_split_twofold_partition_invariants():
         assert len(train_set | val_set | test_set) == n
 
         if fold_idx == 0:
-            assert len(train.start) == 5
-            assert len(val.start) == 2
+            assert len(train.start) == 6
+            assert len(val.start) == 3
             assert len(test.start) == 3
         else:
-            assert len(train.start) == 5
-            assert len(val.start) == 2
+            assert len(train.start) == 6
+            assert len(val.start) == 3
             assert len(test.start) == 3
 
 
@@ -302,7 +316,7 @@ def _word_gap_split_signatures(data):
 
 
 def _process_byd_with_other_labels(monkeypatch, tmp_path, other_labels):
-    _install_process_patches(monkeypatch)
+    _install_process_patches(monkeypatch, tmp_path)
 
     times = np.arange(24, dtype=np.float64) + 0.5
     target_labels = np.array([0, 0, 0, 1] * 6, dtype=np.int64)
@@ -372,7 +386,7 @@ def _extract_audit_events(caplog):
 
 
 def test_process_file_emits_success_audit_log(monkeypatch, caplog, tmp_path):
-    _install_process_patches(monkeypatch)
+    _install_process_patches(monkeypatch, tmp_path)
     _install_split_patches(monkeypatch)
 
     caplog.set_level("INFO")
@@ -408,7 +422,7 @@ def test_process_file_emits_success_audit_log(monkeypatch, caplog, tmp_path):
 
 
 def test_process_file_emits_failure_audit_log(monkeypatch, caplog, tmp_path):
-    _install_process_patches(monkeypatch)
+    _install_process_patches(monkeypatch, tmp_path)
     monkeypatch.setattr(
         m,
         "_extract_encoding_interval",
@@ -449,7 +463,7 @@ def test_interrupted_hdf5_write_preserves_previous_output(
         with real_h5_file(output, "w") as handle:
             handle["previous"] = np.arange(5, dtype=np.int16)
         previous_bytes = output.read_bytes()
-    _install_process_patches(monkeypatch)
+    _install_process_patches(monkeypatch, tmp_path)
     monkeypatch.setattr(m.h5py, "File", real_h5_file)
 
     def interrupted_save(self, handle):
@@ -487,19 +501,24 @@ def test_pipeline_reprocesses_malformed_hdf5(tmp_path, monkeypatch, corruption):
     else:
         output.write_bytes(b"" if corruption == "empty" else b"partial")
     calls = []
+    real_h5_file = h5py.File
+    _install_process_patches(monkeypatch, tmp_path)
+    monkeypatch.setattr(m.h5py, "File", real_h5_file)
 
-    def process_file(*args, **kwargs):
-        calls.append(args)
-        with h5py.File(output, "w") as handle:
-            signal = handle.create_group("seeg_data")
-            signal["data"] = np.zeros((10, 2), dtype=np.float32)
-            signal.attrs["unit"] = "V"
-            signal.attrs["scale_to_uV"] = 1e6
-            for key in ("channels", "subject", "session", "domain"):
-                handle.create_group(key)
+    def serialize_fixture(self, handle):
+        calls.append(True)
+        signal = handle.create_group("seeg_data")
+        signal["data"] = self.seeg_data.data
+        handle.create_group("brainset").attrs["derived_version"] = (
+            self.brainset.derived_version
+        )
+        handle.attrs["preparation_settings_json"] = self.preparation_settings_json
+        for key in ("channels", "subject", "session", "domain"):
+            handle.create_group(key)
+        handle["channels/id"] = np.array(["a", "b"], dtype="S1")
 
-    monkeypatch.setattr(m, "process_file", process_file)
-    pipeline = m.Pipeline(tmp_path, tmp_path, args=None)
+    monkeypatch.setattr(_FakeData, "to_hdf5", serialize_fixture)
+    pipeline = m.Pipeline(tmp_path, tmp_path, args=m.parser.parse_args(["--no-splits"]))
     raw = tmp_path / "sub-CS41_ses-P41CSR1_behavior+ecephys.nwb"
     pipeline.process(raw)
     assert len(calls) == 1
@@ -515,22 +534,24 @@ def test_pipeline_reprocesses_malformed_hdf5(tmp_path, monkeypatch, corruption):
 )
 def test_balanced_annotations_are_written_in_time_order(labels, tmp_path):
     labels = np.asarray(labels, dtype=np.int64)
-    starts = np.array([3, 0, 1, 1, 2, 0.5, 4, 2.5], dtype=float)[: len(labels)]
-    source = Interval(start=starts, end=starts + 1, label=labels)
-    expected_rng, actual_rng = np.random.default_rng(42), np.random.default_rng(42)
-    sampler = (
-        m._balanced_binary_indices
-        if np.all(np.isin(np.unique(labels), [0, 1]))
-        else m._balanced_multiclass_indices
+    starts = np.arange(0, 20, 0.25) if len(labels) else np.array([])
+    labels = np.resize(labels, len(starts))
+    folds = m.generate_temporal_folds(
+        starts,
+        starts + 1,
+        labels,
+        domain=[0, 20],
+        balance=True,
+        rng=np.random.default_rng(42),
     )
-    selected = sampler(labels, expected_rng)
-    result = m._balance_interval(source, actual_rng)
-    assert actual_rng.bit_generator.state == expected_rng.bit_generator.state
-    assert np.all(np.diff(result.start) >= 0)
-    expected = sorted(zip(starts[selected], labels[selected], strict=True))
-    assert sorted(zip(result.start, result.label, strict=True)) == expected
-    np.testing.assert_array_equal(result.end, result.start + 1)
-    np.testing.assert_array_equal(source.start, starts)
+    for fold in folds.values():
+        for interval in fold.values():
+            assert np.all(np.diff(interval.start) >= 0)
+            np.testing.assert_array_equal(interval.end, interval.start + 1)
+            np.testing.assert_array_equal(
+                interval.label, labels[(interval.start * 4).astype(int)]
+            )
+    result = folds[0]["train"]
 
     # Exercise the serialized annotations through the real lazy slicing path.
     path = tmp_path / "annotations.h5"

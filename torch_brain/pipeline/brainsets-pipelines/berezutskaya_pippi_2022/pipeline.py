@@ -7,7 +7,6 @@
 # ///
 
 import datetime
-import hashlib
 import io
 import json
 import logging
@@ -15,7 +14,7 @@ import os
 import re
 import unicodedata
 from argparse import ArgumentParser, Namespace
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from pathlib import Path
 from typing import NamedTuple
 
@@ -28,7 +27,6 @@ from torch_brain.data import (
     BrainsetDescription,
     Data,
     DeviceDescription,
-    Interval,
     RegularTimeSeries,
     SessionDescription,
     SubjectDescription,
@@ -37,6 +35,17 @@ from torch_brain.pipeline import BrainsetPipeline
 from torch_brain.pipeline.pippi_subset_tiers import (
     PIPPI_SUBSET_TIERS,
     pippi_subset_tiers_for_subject,
+)
+from torch_brain.pipeline.temporal_preparation import (
+    MOVIE_DERIVED_VERSION,
+    preparation_settings,
+    validate_prepared_temporal_settings,
+    validate_temporal_preparation_config,
+)
+from torch_brain.utils.split import (
+    generate_temporal_folds,
+    temporal_balance_rng,
+    temporal_metadata,
 )
 
 # MNE tries to create ~/.mne config state on import. In this sandbox that home
@@ -56,7 +65,7 @@ logging.basicConfig(level=logging.INFO)
 
 PIPELINE_DIR = Path(__file__).resolve().parent
 BRAINSET_ID = "berezutskaya_pippi_2022"
-DERIVED_VERSION = "1.1.2"
+DERIVED_VERSION = MOVIE_DERIVED_VERSION
 OPENNEURO_DATASET_ID = "ds003688"
 OPENNEURO_VERSION = "1.0.7"
 OPENNEURO_BUCKET = "openneuro.org"
@@ -166,6 +175,9 @@ parser.add_argument(
     default=0,
     help="Random seed used when split balancing is enabled.",
 )
+
+parser.add_argument("--temporal-context-width-s", type=float, default=1.0)
+parser.add_argument("--temporal-gap-s", type=float, default=0.0)
 
 
 def _parse_recording_id(recording_id: str) -> tuple[str, int, int]:
@@ -282,135 +294,6 @@ def _build_windows(
         end[valid].astype(np.float64),
         labels[valid],
     )
-
-
-def _balanced_binary_indices(
-    labels: np.ndarray, rng: np.random.Generator
-) -> np.ndarray:
-    labels = np.asarray(labels)
-    pos_idx = np.where(labels == 1)[0]
-    neg_idx = np.where(labels == 0)[0]
-    if len(pos_idx) == 0 or len(neg_idx) == 0:
-        return np.arange(len(labels))
-    n_keep = min(len(pos_idx), len(neg_idx))
-    pos_keep = rng.choice(pos_idx, size=n_keep, replace=False)
-    neg_keep = rng.choice(neg_idx, size=n_keep, replace=False)
-    keep = np.concatenate([pos_keep, neg_keep])
-    rng.shuffle(keep)
-    return keep
-
-
-def _balanced_multiclass_indices(
-    labels: np.ndarray, rng: np.random.Generator
-) -> np.ndarray:
-    labels = np.asarray(labels)
-    classes = np.unique(labels)
-    if len(classes) <= 1:
-        return np.arange(len(labels))
-    class_indices = [np.where(labels == class_id)[0] for class_id in classes]
-    n_keep = min(len(indices) for indices in class_indices)
-    keep = np.concatenate(
-        [rng.choice(indices, size=n_keep, replace=False) for indices in class_indices]
-    )
-    rng.shuffle(keep)
-    return keep
-
-
-def _balance_interval(interval: Interval, rng: np.random.Generator) -> Interval:
-    labels = np.asarray(interval.label)
-    if np.all(np.isin(np.unique(labels), [0, 1])):
-        keep = _balanced_binary_indices(labels, rng)
-    else:
-        keep = _balanced_multiclass_indices(labels, rng)
-    # Keep the sampled membership and RNG draws, but write chronological rows.
-    keep = keep[np.argsort(interval.start[keep], kind="stable")]
-    return Interval(
-        start=interval.start[keep],
-        end=interval.end[keep],
-        label=labels[keep],
-    )
-
-
-def _stable_balance_rng(
-    *,
-    balance_seed: int,
-    recording_id: str,
-    task_name: str,
-    label_mode: str,
-    fold_idx: int,
-    split_name: str,
-) -> np.random.Generator:
-    key = "|".join(
-        [
-            "berezutskaya_pippi_2022",
-            str(int(balance_seed)),
-            recording_id,
-            task_name,
-            label_mode,
-            str(int(fold_idx)),
-            split_name,
-        ]
-    )
-    digest = hashlib.blake2b(key.encode("utf-8"), digest_size=8).digest()
-    seed = int.from_bytes(digest, byteorder="little", signed=False)
-    return np.random.default_rng(seed)
-
-
-def _split_twofold(
-    start: np.ndarray,
-    end: np.ndarray,
-    labels: np.ndarray,
-    *,
-    balance: bool = False,
-    rng: np.random.Generator | None = None,
-    rng_factory: Callable[[int, str], np.random.Generator] | None = None,
-) -> dict[int, dict[str, Interval]]:
-    order = np.argsort(start)
-    start = start[order]
-    end = end[order]
-    labels = labels[order]
-
-    n = len(start)
-    mid = n // 2
-    folds: dict[int, dict[str, Interval]] = {}
-    for fold_idx, (t0, t1) in enumerate(((0, mid), (mid, n))):
-        test_indices = np.arange(t0, t1)
-        train_indices = np.setdiff1d(np.arange(n), test_indices)
-        val_split = t0 + (len(test_indices) // 2)
-        val_indices = np.arange(t0, val_split)
-        final_test_indices = np.arange(val_split, t1)
-
-        fold = {
-            "train": Interval(
-                start=start[train_indices],
-                end=end[train_indices],
-                label=labels[train_indices],
-            ),
-            "val": Interval(
-                start=start[val_indices],
-                end=end[val_indices],
-                label=labels[val_indices],
-            ),
-            "test": Interval(
-                start=start[final_test_indices],
-                end=end[final_test_indices],
-                label=labels[final_test_indices],
-            ),
-        }
-        if balance:
-            balanced_fold = {}
-            for split_name, split_interval in fold.items():
-                split_rng = (
-                    rng_factory(fold_idx, split_name)
-                    if rng_factory is not None
-                    else rng
-                )
-                if split_rng is None:
-                    raise ValueError("balance=True requires an RNG or rng_factory")
-                balanced_fold[split_name] = _balance_interval(split_interval, split_rng)
-            fold = balanced_fold
-        folds[fold_idx] = fold
-    return folds
 
 
 def _build_label_maps(
@@ -864,11 +747,43 @@ def process_file(
     no_splits: bool = False,
     balance_splits: bool = False,
     balance_seed: int = 0,
+    temporal_context_width_s: float = 1.0,
+    temporal_gap_s: float = 0.0,
     recording_id: str | None = None,
     acquisition: str | None = None,
     subject_number: int | None = None,
     run: int | None = None,
+    reprocess: bool = False,
 ) -> Path:
+    if type(reprocess) is not bool:
+        raise TypeError("reprocess must be a bool")
+    validate_temporal_preparation_config(
+        context_width_s=temporal_context_width_s,
+        gap_s=temporal_gap_s,
+        balance_seed=balance_seed,
+        balanced=balance_splits,
+        no_splits=no_splits,
+        pre_offset_s=pre_offset_s,
+        post_offset_s=post_offset_s,
+    )
+    label_files = (
+        []
+        if no_splits
+        else list(label_files or sorted(p.name for p in labels_dir.glob("*.csv")))
+    )
+    if not no_splits and not label_files:
+        raise ValueError(f"No label CSVs found in labels-dir '{labels_dir}'")
+    mode_tasks = [_parse_task_and_label_mode(name) for name in label_files]
+    if len(set(mode_tasks)) != len(mode_tasks):
+        raise ValueError(
+            "Duplicate task/mode label files would overwrite split attributes"
+        )
+    settings = preparation_settings(
+        splits_enabled=not no_splits,
+        pre_offset_s=pre_offset_s,
+        post_offset_s=post_offset_s,
+        label_paths={Path(name).name: labels_dir / name for name in label_files},
+    )
     if recording_id is None:
         recording_id = vhdr_path.name.removesuffix("_ieeg.vhdr")
     if acquisition is None or subject_number is None or run is None:
@@ -881,6 +796,19 @@ def process_file(
             subject_number = parsed_subject_number
         if run is None:
             run = parsed_run
+    output_path = output_dir / f"{recording_id}.h5"
+    if output_path.exists() and not reprocess:
+        validate_prepared_temporal_settings(
+            output_path,
+            context_width_s=temporal_context_width_s,
+            gap_s=temporal_gap_s,
+            balance_seed=balance_seed,
+            balanced=balance_splits,
+            splits_enabled=not no_splits,
+            preparation_settings=settings,
+        )
+        logging.info("Skipping matching prepared output %s", output_path)
+        return output_path
     raw_root = vhdr_path.parents[3]
     relpaths = _recording_relative_paths(
         recording_id,
@@ -934,32 +862,23 @@ def process_file(
         sort_keys=True,
     )
 
+    metadata = temporal_metadata(
+        [float(seeg_data.domain.start[0]), float(seeg_data.domain.end[0])],
+        context_width_s=temporal_context_width_s,
+        gap_s=temporal_gap_s,
+    )
+    metadata.update(balance_seed=int(balance_seed), balanced=balance_splits)
+    data.temporal_splits_json = json.dumps(metadata, sort_keys=True)
+    data.preparation_settings_json = json.dumps(settings, sort_keys=True)
     if not no_splits:
-        label_names = (
-            list(label_files)
-            if label_files
-            else sorted(p.name for p in labels_dir.glob("*.csv"))
-        )
-        if not label_names:
-            raise ValueError(f"No label CSVs found in labels-dir '{labels_dir}'.")
-
         domain_start = float(seeg_data.domain.start[0])
         domain_end = float(seeg_data.domain.end[0])
         data.splits = Data(domain=seeg_data.domain)
         data.channel_splits = Data()
         label_tasks_for_maps: dict[str, np.ndarray] = {}
-        seen_mode_task_pairs: set[tuple[str, str]] = set()
-
-        for label_name in label_names:
-            task_name, label_mode = _parse_task_and_label_mode(label_name)
-            mode_task = (label_mode, task_name)
-            if mode_task in seen_mode_task_pairs:
-                raise ValueError(
-                    "Duplicate task/mode label files would overwrite split attributes: "
-                    f"mode={label_mode}, task={task_name}"
-                )
-            seen_mode_task_pairs.add(mode_task)
-
+        for label_name, (task_name, label_mode) in zip(
+            label_files, mode_tasks, strict=True
+        ):
             label_times, labels = _load_label_csv(labels_dir / label_name)
             start, end, labels = _build_windows(
                 label_times,
@@ -984,7 +903,8 @@ def process_file(
                     task_name: str = task_name,
                     label_mode: str = label_mode,
                 ) -> np.random.Generator:
-                    return _stable_balance_rng(
+                    return temporal_balance_rng(
+                        dataset_id="berezutskaya_pippi_2022",
                         balance_seed=balance_seed,
                         recording_id=recording_id,
                         task_name=task_name,
@@ -993,10 +913,13 @@ def process_file(
                         split_name=split_name,
                     )
 
-            folds = _split_twofold(
+            folds = generate_temporal_folds(
                 start,
                 end,
                 labels_for_mode,
+                domain=[domain_start, domain_end],
+                context_width_s=temporal_context_width_s,
+                gap_s=temporal_gap_s,
                 balance=balance_splits,
                 rng_factory=rng_factory,
             )
@@ -1145,12 +1068,6 @@ class Pipeline(BrainsetPipeline):
             subject_number = download_output.subject_number
             run = download_output.run
 
-        output_path = self.processed_dir / f"{recording_id}.h5"
-        if output_path.exists() and not (self.args and self.args.reprocess):
-            logging.info(f"Skipping processing for {output_path} because it exists")
-            self.update_status("Skipped Processing")
-            return
-
         label_files = None
         if self.args and self.args.labels:
             label_files = [x.strip() for x in self.args.labels.split(",") if x.strip()]
@@ -1166,8 +1083,13 @@ class Pipeline(BrainsetPipeline):
             no_splits=bool(self.args and self.args.no_splits),
             balance_splits=self.args.balance_splits if self.args else True,
             balance_seed=self.args.balance_seed if self.args else 0,
+            temporal_context_width_s=getattr(
+                self.args, "temporal_context_width_s", 1.0
+            ),
+            temporal_gap_s=getattr(self.args, "temporal_gap_s", 0.0),
             recording_id=recording_id,
             acquisition=acquisition,
             subject_number=subject_number,
             run=run,
+            reprocess=bool(self.args and self.args.reprocess),
         )

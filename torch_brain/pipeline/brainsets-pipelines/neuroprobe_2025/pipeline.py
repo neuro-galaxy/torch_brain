@@ -1,11 +1,13 @@
 # /// brainset-pipeline
 # python-version = "3.11"
 # dependencies = [
-#   "neuroprobe==0.1.7",
+#   "neuroprobe==0.2.0",
 #   "numpy==2.2.6",
 # ]
 # ///
 
+import inspect
+import json
 import logging
 import os
 import shutil
@@ -13,6 +15,7 @@ import time
 import urllib.request
 import zipfile
 from argparse import ArgumentParser, Namespace
+from importlib.metadata import version
 from itertools import product
 from pathlib import Path
 from typing import Literal, NamedTuple, get_args
@@ -34,6 +37,13 @@ from torch_brain.data import (
     SubjectDescription,
 )
 from torch_brain.pipeline import BrainsetPipeline
+from torch_brain.pipeline.temporal_preparation import (
+    MOVIE_DERIVED_VERSION,
+    preparation_settings,
+    validate_prepared_temporal_settings,
+    validate_temporal_preparation_config,
+)
+from torch_brain.utils.split import PROTOCOL_VERSION
 
 logging.basicConfig(level=logging.INFO)
 
@@ -113,6 +123,10 @@ parser.add_argument(
     help="Skip split extraction; write only processed data.",
 )
 
+parser.add_argument("--temporal-context-width-s", type=float, default=1.0)
+parser.add_argument("--temporal-gap-s", type=float, default=0.0)
+parser.add_argument("--balance-seed", type=int, default=42)
+
 
 class Pipeline(BrainsetPipeline):
     brainset_id = "neuroprobe_2025"
@@ -125,6 +139,8 @@ class Pipeline(BrainsetPipeline):
         args: Namespace | None,
     ) -> pd.DataFrame:
         _prepare_neuroprobe_lib(raw_dir)
+        if not (args and args.no_splits):
+            _validate_native_neuroprobe_api()
 
         # Ensure shared metadata/assets are present once before parallel workers run.
         logging.info(
@@ -163,15 +179,47 @@ class Pipeline(BrainsetPipeline):
         )
 
     def process(self, download_output):
+        context_width_s = getattr(self.args, "temporal_context_width_s", 1.0)
+        gap_s = getattr(self.args, "temporal_gap_s", 0.0)
+        balance_seed = getattr(self.args, "balance_seed", 42)
+        no_splits = bool(self.args and self.args.no_splits)
+        validate_temporal_preparation_config(
+            context_width_s=context_width_s,
+            gap_s=gap_s,
+            balance_seed=balance_seed,
+            balanced=True,
+            no_splits=no_splits,
+        )
         _prepare_neuroprobe_lib(self.raw_dir)
+        if not no_splits:
+            _validate_native_neuroprobe_api()
+        settings = preparation_settings(
+            splits_enabled=not no_splits,
+            pre_offset_s=0.0,
+            post_offset_s=1.0,
+            label_paths={}
+            if no_splits
+            else _neuroprobe_label_paths(
+                download_output.subject_id, download_output.trial_id
+            ),
+        )
         self.update_status("Processing")
         output_path = self.processed_dir / download_output.path.name
         if output_path.exists() and not (self.args and self.args.reprocess):
-            logging.info(f"Skipping processing for {output_path} because it exists")
+            validate_prepared_temporal_settings(
+                output_path,
+                context_width_s=context_width_s,
+                gap_s=gap_s,
+                balance_seed=balance_seed,
+                balanced=True,
+                splits_enabled=not no_splits,
+                preparation_settings=settings,
+            )
+            logging.info("Skipping matching prepared output %s", output_path)
             self.update_status("Skipped Processing")
             return
 
-        brainset_description = get_brainset_description()
+        brainset_description = get_brainset_description(splits_enabled=not no_splits)
         subject_id = download_output.subject_id
         trial_id = download_output.trial_id
 
@@ -201,7 +249,7 @@ class Pipeline(BrainsetPipeline):
             split_channel_masks = {}
             logging.info("Skipping split extraction (--no_splits)")
         else:
-            split_indices, split_channel_masks = self.iterate_extract_splits(
+            split_indices, split_channel_masks, temporal = self.iterate_extract_splits(
                 subject_id, trial_id
             )
             channels = self.all_channels[subject_id]
@@ -228,6 +276,8 @@ class Pipeline(BrainsetPipeline):
             domain=seeg_data.domain,
         )
 
+        data.preparation_settings_json = json.dumps(settings, sort_keys=True)
+
         # Register all split intervals under data.splits using shared selector keys.
         if not self.args.no_splits:
             splits = Data(domain=seeg_data.domain)
@@ -240,6 +290,7 @@ class Pipeline(BrainsetPipeline):
             for split_key, split_mask in split_channel_masks.items():
                 setattr(channel_splits, split_key, split_mask)
             data.channel_splits = channel_splits
+            data.temporal_splits_json = json.dumps(temporal, sort_keys=True)
 
         # save data to disk
         self.update_status("Storing")
@@ -257,7 +308,7 @@ class Pipeline(BrainsetPipeline):
 
     def iterate_extract_splits(
         self, subject_id: int, trial_id: int
-    ) -> tuple[dict[str, Interval], dict[str, np.ndarray]]:
+    ) -> tuple[dict[str, Interval], dict[str, np.ndarray], dict]:
         _prepare_neuroprobe_lib(self.raw_dir)
         if not hasattr(self, "all_subjects"):
             # load all subjects and channels once
@@ -283,6 +334,7 @@ class Pipeline(BrainsetPipeline):
         all_combinations = product(*ALL_EVAL_SETTINGS.values())
         split_indices: dict[str, Interval] = {}
         split_channel_masks: dict[str, np.ndarray] = {}
+        temporal = {}
         for setting_combination in all_combinations:
             lite, nano, binary_tasks, eval_setting = setting_combination
             if lite and nano:  # lite and nano cannot be True at the same time
@@ -307,29 +359,43 @@ class Pipeline(BrainsetPipeline):
             self.update_status(
                 f"Extracting splits (lite={lite}, nano={nano}, binary_tasks={binary_tasks}, eval_setting={eval_setting})"
             )
-            _split_indices, _split_channel_masks = _extract_and_structure_splits(
-                all_subjects=self.all_subjects,
-                all_channels=self.all_channels,
-                subject_id=subject_id,
-                trial_id=trial_id,
-                lite=lite,
-                nano=nano,
-                binary_tasks=binary_tasks,
-                eval_setting=eval_setting,
+            _split_indices, _split_channel_masks, metadata = (
+                _extract_and_structure_splits(
+                    all_subjects=self.all_subjects,
+                    all_channels=self.all_channels,
+                    subject_id=subject_id,
+                    trial_id=trial_id,
+                    lite=lite,
+                    nano=nano,
+                    binary_tasks=binary_tasks,
+                    eval_setting=eval_setting,
+                    context_width_s=getattr(self.args, "temporal_context_width_s", 1.0),
+                    gap_s=getattr(self.args, "temporal_gap_s", 0.0),
+                    random_seed=getattr(self.args, "balance_seed", 42),
+                )
             )
+            if metadata:
+                if temporal and temporal != metadata:
+                    raise ValueError(
+                        "Native temporal boundaries differ across tasks/tiers"
+                    )
+                temporal = metadata
             for key, value in _split_indices.items():
                 split_indices[key] = value
             for key, value in _split_channel_masks.items():
                 split_channel_masks[key] = value
 
-        return split_indices, split_channel_masks
+        return split_indices, split_channel_masks, temporal
 
 
-def get_brainset_description() -> BrainsetDescription:
+def get_brainset_description(*, splits_enabled: bool = True) -> BrainsetDescription:
     return BrainsetDescription(
         id="neuroprobe_2025",
-        origin_version="dataset=0.0.0; neuroprobe=0.1.7",
-        derived_version="1.1.2",
+        origin_version=(
+            f"dataset=0.0.0; neuroprobe_distribution={version('neuroprobe')}; "
+            f"temporal_split={PROTOCOL_VERSION if splits_enabled else 'none'}"
+        ),
+        derived_version=MOVIE_DERIVED_VERSION,
         source="https://neuroprobe.dev/",
         description="High-resolution neural datasets enable foundation models for the next generation of "
         "brain-computer interfaces and neurological treatments. The community requires rigorous benchmarks "
@@ -370,6 +436,51 @@ def _prepare_neuroprobe_lib(raw_dir: Path) -> None:
     import neuroprobe
     import neuroprobe.config as neuroprobe_config
     import neuroprobe.train_test_splits as neuroprobe_train_test_splits
+
+
+def _validate_native_neuroprobe_api() -> None:
+    """Released package versions alone do not establish native temporal capability."""
+    protocol = getattr(
+        getattr(neuroprobe, "temporal_splits", None), "TEMPORAL_SPLIT_PROTOCOL", None
+    )
+    splitter = getattr(
+        neuroprobe_train_test_splits, "generate_splits_within_session", None
+    )
+    parameters = inspect.signature(splitter).parameters if callable(splitter) else {}
+    if (
+        protocol != PROTOCOL_VERSION
+        or not {"context_width_s", "gap_s", "random_seed"}.issubset(parameters)
+        or not hasattr(
+            getattr(neuroprobe, "BrainTreebankSubjectTrialBenchmarkDataset", None),
+            "get_window_bounds",
+        )
+    ):
+        raise ValueError(
+            "Installed Neuroprobe lacks the required temporal split API. "
+            "Install the version declared by this pipeline, or use its source "
+            "checkout with brainsets prepare --use-active-env."
+        )
+
+
+def _neuroprobe_label_paths(subject_id: int, trial_id: int) -> dict[str, Path]:
+    movie = neuroprobe_config.BRAINTREEBANK_SUBJECT_TRIAL_MOVIE_NAME_MAPPING[
+        f"btbank{subject_id}_{trial_id}"
+    ]
+    aligned = Path(neuroprobe_config.SAVE_SUBJECT_TRIAL_DF_DIR)
+    return {
+        f"subject{subject_id}_trial{trial_id}_words_df.csv": aligned
+        / f"subject{subject_id}_trial{trial_id}_words_df.csv",
+        f"subject{subject_id}_trial{trial_id}_nonverbal_df.csv": aligned
+        / f"subject{subject_id}_trial{trial_id}_nonverbal_df.csv",
+        f"transcripts/{movie}/features.csv": Path(neuroprobe_config.ROOT_DIR)
+        / "transcripts"
+        / movie
+        / "features.csv",
+        f"{movie}_pitch_volume_features.json": Path(
+            neuroprobe_config.PITCH_VOLUME_FEATURES_DIR
+        )
+        / f"{movie}_pitch_volume_features.json",
+    }
 
 
 def _load_btb_xyz_coordinates(raw_root: str) -> pd.DataFrame:
@@ -446,9 +557,13 @@ def _extract_and_structure_splits(
     nano: bool,
     binary_tasks: bool,
     eval_setting: EvalSettingOption,
-) -> tuple[dict[str, Interval], dict[str, np.ndarray]]:
+    context_width_s: float = 1.0,
+    gap_s: float = 0.0,
+    random_seed: int = 42,
+) -> tuple[dict[str, Interval], dict[str, np.ndarray], dict]:
     split_indices: dict[str, Interval] = {}
     split_channel_masks: dict[str, np.ndarray] = {}
+    temporal = {}
 
     assert len(neuroprobe_config.NEUROPROBE_TASKS_MAPPING) > 0, (
         "No tasks to extract splits for"
@@ -464,12 +579,41 @@ def _extract_and_structure_splits(
             binary_tasks=binary_tasks,
             eval_name=eval_name,
             eval_setting=eval_setting,
+            context_width_s=context_width_s,
+            gap_s=gap_s,
+            random_seed=random_seed,
         )
 
         # load channels for each fold
         assert len(folds) > 0, "No folds to extract splits for"
         channels = all_channels[subject_id]
         for fold_idx, fold in enumerate(folds):
+            if eval_setting == "within_session":
+                # Require the native Neuroprobe API; never label historical KFold
+                # intervals as safe for split-local block filtering.
+                native = fold.get("temporal_split")
+                if native is None or native["protocol"] != PROTOCOL_VERSION:
+                    raise ValueError(
+                        f"Neuroprobe did not return {PROTOCOL_VERSION} split metadata"
+                    )
+                blocks = {
+                    split: [float(x) / native["sampling_rate"] for x in bounds]
+                    for split, bounds in native["blocks_samples"].items()
+                }
+                if not temporal:
+                    temporal = dict(
+                        protocol=PROTOCOL_VERSION,
+                        context_width_s=context_width_s,
+                        gap_s=gap_s,
+                        balance_seed=random_seed,
+                        balanced=True,
+                        blocks={},
+                    )
+                key = str(fold_idx)
+                if key in temporal["blocks"] and temporal["blocks"][key] != blocks:
+                    raise ValueError("Native temporal boundaries differ across tasks")
+                temporal["blocks"][key] = blocks
+
             for split_type, dataset_key in (
                 ("train", "train_dataset"),
                 ("val", "val_dataset"),
@@ -492,7 +636,7 @@ def _extract_and_structure_splits(
                 # Store split interval indices using the same selector key semantics.
                 split_indices[selector_key] = _intervals_from_dataset(fold[dataset_key])
 
-    return split_indices, split_channel_masks
+    return split_indices, split_channel_masks, temporal
 
 
 def _extract_splits(
@@ -504,6 +648,9 @@ def _extract_splits(
     binary_tasks: bool,
     eval_name: str,
     eval_setting: EvalSettingOption,
+    context_width_s: float = 1.0,
+    gap_s: float = 0.0,
+    random_seed: int = 42,
 ):
     dtype = torch.float32
     max_samples = None
@@ -524,6 +671,9 @@ def _extract_splits(
             start_neural_data_before_word_onset=start_neural_data_before_word_onset,
             end_neural_data_after_word_onset=end_neural_data_after_word_onset,
             max_samples=max_samples,
+            context_width_s=context_width_s,
+            gap_s=gap_s,
+            random_seed=random_seed,
         )
         return folds
     elif eval_setting == "cross_x":
@@ -600,25 +750,23 @@ def _extract_local_role_splits(
 
 
 def _intervals_from_dataset(dataset) -> Interval:
-    items = [_unpack_dataset_item(item) for item in dataset]
-    if len(items) == 0:
-        return Interval(
-            start=np.array([], dtype=np.float64),
-            end=np.array([], dtype=np.float64),
-            label=np.array([], dtype=np.int64),
-        )
-
-    windows, labels = zip(*items, strict=True)
-    window_array = np.array(windows)
-    label_array = np.array(labels)
-    # Dataset iteration can interleave labels; sort all annotation fields together.
-    order = np.argsort(window_array[:, 0], kind="stable")
-    window_array, label_array = window_array[order], label_array[order]
-
+    source = dataset
+    selected = None
+    while isinstance(source, Subset):
+        indices = np.asarray(source.indices, dtype=np.int64)
+        selected = indices if selected is None else indices[selected]
+        source = source.dataset
+    # The required Neuroprobe API exposes raw bounds without reading items.
+    start, end, labels = source.get_window_bounds()
+    if selected is not None:
+        start, end, labels = start[selected], end[selected], labels[selected]
+    # Preserve Subset membership, including repeats, but write chronological rows.
+    order = np.argsort(start, kind="stable")
+    start, end, labels = start[order], end[order], labels[order]
     return Interval(
-        start=window_array[:, 0].astype(np.float64) / neuroprobe_config.SAMPLING_RATE,
-        end=window_array[:, 1].astype(np.float64) / neuroprobe_config.SAMPLING_RATE,
-        label=label_array,
+        start=start.astype(np.float64) / neuroprobe_config.SAMPLING_RATE,
+        end=end.astype(np.float64) / neuroprobe_config.SAMPLING_RATE,
+        label=labels if len(labels) else np.array([], dtype=np.int64),
     )
 
 
@@ -708,9 +856,3 @@ def _get_electrode_labels(dataset) -> np.ndarray:
     raise AttributeError(
         f"{type(dataset).__name__} has no electrode_labels and no nested dataset"
     )
-
-
-def _unpack_dataset_item(item) -> tuple[np.ndarray, np.ndarray]:
-    if isinstance(item, dict):
-        return item["data"], item["label"]
-    return item[0], item[1]
