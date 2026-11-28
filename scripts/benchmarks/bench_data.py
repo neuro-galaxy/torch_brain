@@ -186,7 +186,7 @@ def bench_data_slice_lazy():
             def go():
                 lazy_data.slice(300.0, 301.0)
 
-            return bench("Data.slice() (lazy, realistic)", go, number=200)
+            return bench("Data.slice() (lazy, realistic)", go, number=100)
     finally:
         os.unlink(path)
 
@@ -206,7 +206,7 @@ def bench_data_from_hdf5_lazy():
             def go():
                 Data.from_hdf5(f, lazy=True)
 
-            return bench("Data.from_hdf5() (lazy, realistic)", go, number=50)
+            return bench("Data.from_hdf5() (lazy, realistic)", go, number=25)
     finally:
         os.unlink(path)
 
@@ -218,7 +218,7 @@ def bench_data_slice_inmemory():
     def go():
         data.slice(300.0, 301.0)
 
-    return bench("Data.slice() (in-memory)", go, number=500)
+    return bench("Data.slice() (in-memory)", go, number=250)
 
 
 def bench_its_slice():
@@ -236,7 +236,7 @@ def bench_its_slice():
     def go():
         its.slice(500.0, 501.0)
 
-    return bench("IrregularTimeSeries.slice()", go, number=1_000)
+    return bench("IrregularTimeSeries.slice()", go, number=500)
 
 
 def bench_rts_slice():
@@ -252,7 +252,7 @@ def bench_rts_slice():
     def go():
         rts.slice(500.0, 501.0)
 
-    return bench("RegularTimeSeries.slice()", go, number=1_000)
+    return bench("RegularTimeSeries.slice()", go, number=500)
 
 
 def bench_interval_slice():
@@ -264,7 +264,7 @@ def bench_interval_slice():
     def go():
         iv.slice(500.0, 501.0)
 
-    return bench("Interval.slice()", go, number=2_000)
+    return bench("Interval.slice()", go, number=1_000)
 
 
 def bench_interval_and_single():
@@ -275,7 +275,7 @@ def bench_interval_and_single():
     def go():
         d1 & single
 
-    return bench("Interval.__and__ (1k&single)", go, number=1_000)
+    return bench("Interval.__and__ (1k&single)", go, number=500)
 
 
 def bench_interval_and_multi():
@@ -286,7 +286,7 @@ def bench_interval_and_multi():
     def go():
         d1 & d2
 
-    return bench("Interval.__and__ (1k&100)", go, number=200)
+    return bench("Interval.__and__ (1k&100)", go, number=100)
 
 
 def bench_interval_or():
@@ -297,7 +297,7 @@ def bench_interval_or():
     def go():
         d1 | d2
 
-    return bench("Interval.__or__ (1k|100)", go, number=200)
+    return bench("Interval.__or__ (1k|100)", go, number=100)
 
 
 def bench_interval_difference():
@@ -308,7 +308,7 @@ def bench_interval_difference():
     def go():
         d1.difference(d2)
 
-    return bench("Interval.difference (1k-100)", go, number=200)
+    return bench("Interval.difference (1k-100)", go, number=100)
 
 
 def bench_arraydict_keys():
@@ -319,7 +319,7 @@ def bench_arraydict_keys():
     def go():
         ad.keys()
 
-    return bench("ArrayDict.keys() x100k", go, number=100_000)
+    return bench("ArrayDict.keys()", go, number=50_000)
 
 
 _LAZY_N_ROWS = 1_000
@@ -402,7 +402,7 @@ def _lazy_access_bench(short_name, make, lazy_cls, k, mode="read"):
     suffix = "" if mode == "read" else f", {mode}"
     label = f"Lazy{short_name} access (k={k}{suffix})"
     # reading a single attribute is far cheaper per call
-    number = 2_000 // k * (20 if mode == "read-1" else 1)
+    number = 1_000 // k * (20 if mode == "read-1" else 1)
 
     def fn():
         obj = make(k, np.random.RandomState(42))
@@ -457,7 +457,7 @@ def _data_slice_many_ts_bench(n_ts):
         def go():
             data.slice(50.0, 51.0)
 
-        return bench(label, go, number=4_000 // n_ts)
+        return bench(label, go, number=2_000 // n_ts)
 
     fn.__name__ = f"bench_data_slice_{n_ts}_time_series"
     fn.__doc__ = f"{label}: Data.slice() cost grows with the number of time series."
