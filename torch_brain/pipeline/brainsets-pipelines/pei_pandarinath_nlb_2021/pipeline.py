@@ -66,7 +66,7 @@ class Pipeline(BrainsetPipeline):
             id=self.brainset_id,
             origin_version="dandi/000140/0.220113.0408",
             derived_version="2.0.0",
-            source="https://dandiarchive.org/dandiset/000140/0.220113.0408",
+            source="https://dandiarchive.org/dandiset/000140",
             description="This dataset contains sorted unit spiking times and behavioral"
             " data from a macaque performing a delayed reaching task. The experimental task"
             " was a center-out reaching task with obstructing barriers forming a maze,"

@@ -77,7 +77,7 @@ class Pipeline(BrainsetPipeline):
             id=self.brainset_id,
             origin_version="dandi/000941/0.241029.1405",
             derived_version="1.0.0",
-            source="https://dandiarchive.org/dandiset/000941/0.241029.1405",
+            source="https://dandiarchive.org/dandiset/000941",
             description="FALCON M1: threshold crossings from a 64-channel Utah array in "
             "motor cortex of a monkey performing reach-to-grasp, with 16 EMG channels as "
             "the decoding target. Held-in sessions are for training; held-out sessions are "

@@ -80,7 +80,7 @@ class Pipeline(BrainsetPipeline):
             id="churchland_shenoy_neural_2012",
             origin_version="dandi/000070/0.251218.1714",
             derived_version="2.0.0",
-            source="https://dandiarchive.org/dandiset/000070/0.251218.1714",
+            source="https://dandiarchive.org/dandiset/000070",
             description="Monkeys recordings of Motor Cortex (M1) and dorsal Premotor Cortex"
             " (PMd) using two 96 channel high density Utah Arrays (Blackrock Microsystems) "
             "while performing reaching tasks with right hand.",

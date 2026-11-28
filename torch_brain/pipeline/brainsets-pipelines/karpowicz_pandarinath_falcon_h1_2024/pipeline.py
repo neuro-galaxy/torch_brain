@@ -79,7 +79,7 @@ class Pipeline(BrainsetPipeline):
             id=self.brainset_id,
             origin_version="dandi/000954/draft",
             derived_version="1.0.0",
-            source="https://dandiarchive.org/dandiset/000954/draft",
+            source="https://dandiarchive.org/dandiset/000954",
             description="FALCON H1: threshold crossings from 176 motor-cortex channels "
             "of a human participant with tetraplegia attempting 7-DoF reach and grasp in "
             "open loop, with 7-D kinematic velocity as the decoding target. Held-in "
