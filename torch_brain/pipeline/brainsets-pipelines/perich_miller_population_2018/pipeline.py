@@ -38,7 +38,8 @@ parser.add_argument("--reprocess", action="store_true")
 
 class Pipeline(BrainsetPipeline):
     brainset_id = "perich_miller_population_2018"
-    dandiset_id = "DANDI:000688/0.250122.1735"
+    # TODO Pin when the current draft gets published
+    dandiset_id = "DANDI:000688/draft"
     parser = parser
 
     @classmethod
@@ -85,9 +86,9 @@ class Pipeline(BrainsetPipeline):
 
         brainset_description = BrainsetDescription(
             id="perich_miller_population_2018",
-            origin_version="dandi/000688/0.250122.1735",
+            origin_version="dandi/000688/draft",
             derived_version="1.0.0",
-            source="https://dandiarchive.org/dandiset/000688/0.250122.1735",
+            source="https://dandiarchive.org/dandiset/000688",
             description="This dataset contains electrophysiology and behavioral data from "
             "three macaques performing either a center-out task or a continuous random "
             "target acquisition task. Neural activity was recorded from "

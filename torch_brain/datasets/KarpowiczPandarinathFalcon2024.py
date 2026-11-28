@@ -44,7 +44,7 @@ class KarpowiczPandarinathFalcon2024(SpikingDatasetMixin, Dataset):
     NeurIPS 2024 Datasets and Benchmarks Track.
     Dataset: Dandisets
     `000954 <https://dandiarchive.org/dandiset/000954/draft>`__,
-    `000941 <https://dandiarchive.org/dandiset/000941/0.241029.1405>`__,
+    `000941 <https://doi.org/10.48324/dandi.000941/0.241029.1405>`__,
     `000953 <https://dandiarchive.org/dandiset/000953/draft>`__.
 
     Args:
