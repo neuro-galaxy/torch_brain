@@ -279,8 +279,17 @@ via :meth:`~torch_brain.datasets.Neuroprobe2025.get_channel_metadata`:
 
     meta = train_ds.get_channel_metadata(recording_id)
     print(meta["names"])
-    print(meta["coords"])           # LIP coordinates
+    print(meta["coordinate_frames"]["btb_lip"])  # LIP coordinates
     print(meta["included_mask"])    # benchmark electrode subset
+
+The ``coords`` and ``coords_type`` keys remain available as deprecated LIP
+aliases during migration. ``get_channel_metadata()`` emits a
+``DeprecationWarning`` about these aliases; the method itself remains supported.
+Older processed recordings still provide ``btb_lip`` from their existing
+localization fields. Reprocess them with the updated pipeline to add
+``btb_xyz`` and the physical-unit attributes used by
+``get_neural_signal_metadata()``. These additional fields were introduced in
+derived dataset version ``1.1.2``.
 
 
 Loading raw recordings

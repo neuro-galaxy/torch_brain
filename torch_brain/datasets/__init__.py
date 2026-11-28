@@ -5,10 +5,12 @@ as well as a library of pre-written Dataset classes for a number of brainsets.
 __all__ = [
     "Dataset",
     "DatasetIndex",
+    "KelesBYD2024",
     "NestedDataset",
     "NestedSpikingDataset",
     "SpikingDatasetMixin",
     "CalciumImagingDatasetMixin",
+    "BerezutskayaPippi2022",
     "MultiChannelDatasetMixin",
     "PerichMillerPopulation2018",
     "PeiPandarinathNLB2021",
@@ -19,6 +21,7 @@ __all__ = [
     "KlinzingSleepDS005555",
     "AllenVisualCodingOphys2016",
     "Neuroprobe2025",
+    "NeuroprobeV2",
     "KochiVisualNamingDS006914",
     "KempSleepEDF2013",
     "KarpowiczPandarinathFalcon2024",
@@ -27,9 +30,11 @@ __all__ = [
 ]
 
 from .AllenVisualCodingOphys2016 import AllenVisualCodingOphys2016
+from .BerezutskayaPippi2022 import BerezutskayaPippi2022
 from .ChurchlandShenoyNeural2012 import ChurchlandShenoyNeural2012
 from .dataset import Dataset, DatasetIndex
 from .KarpowiczPandarinathFalcon2024 import KarpowiczPandarinathFalcon2024
+from .KelesBYD2024 import KelesBYD2024
 from .KempSleepEDF2013 import KempSleepEDF2013
 from .KlinzingSleepDS005555 import KlinzingSleepDS005555
 from .KochiVisualNamingDS006914 import KochiVisualNamingDS006914
@@ -40,6 +45,7 @@ from .mixins import (
 )
 from .nested import NestedDataset, NestedSpikingDataset
 from .Neuroprobe2025 import Neuroprobe2025
+from .NeuroprobeV2 import NeuroprobeV2
 from .OdohertySabesNonhuman2017 import OdohertySabesNonhuman2017
 from .OpenNeuroDataset import OpenNeuroDataset, OpenNeuroSplitType
 from .PeiPandarinathNLB2021 import PeiPandarinathNLB2021
@@ -116,6 +122,11 @@ __api_ref__ = {
             ],
         },
         {
+            "title": "Keles BYD Dataset",
+            "template": "dataset.rst",
+            "autosummary": ["KelesBYD2024"],
+        },
+        {
             "title": "Calcium Imaging Datasets",
             "template": "dataset.rst",
             "autosummary": [
@@ -127,6 +138,7 @@ __api_ref__ = {
             "template": "dataset.rst",
             "autosummary": [
                 "Neuroprobe2025",
+                "NeuroprobeV2",
                 "KochiVisualNamingDS006914",
             ],
         },
@@ -136,6 +148,11 @@ __api_ref__ = {
             "autosummary": [
                 "KlinzingSleepDS005555",
             ],
+        },
+        {
+            "title": "Berezutskaya PIPPI Dataset",
+            "template": "dataset.rst",
+            "autosummary": ["BerezutskayaPippi2022"],
         },
         {
             "title": "PSG Datasets",

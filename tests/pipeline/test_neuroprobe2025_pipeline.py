@@ -4,14 +4,31 @@ from types import SimpleNamespace
 
 import h5py
 import numpy as np
+import pandas as pd
+import pytest
 from _utils import add_pipelines_to_path
 
-from torch_brain.data import RegularTimeSeries
+from torch_brain.data import ArrayDict, Data, RegularTimeSeries
 
 add_pipelines_to_path()
 from neuroprobe_2025 import (  # noqa: E402  # ty:ignore[unresolved-import]
     pipeline as neuroprobe_pipeline,
 )
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_interval_export_is_chronological_and_stable(monkeypatch, empty):
+    monkeypatch.setattr(
+        neuroprobe_pipeline,
+        "neuroprobe_config",
+        SimpleNamespace(SAMPLING_RATE=2),
+        raising=False,
+    )
+    items = [] if empty else [((6, 8), 1), ((0, 2), 0), ((2, 4), 2), ((2, 4), 3)]
+    interval = neuroprobe_pipeline._intervals_from_dataset(items)
+    np.testing.assert_array_equal(interval.start, [] if empty else [0, 1, 1, 3])
+    np.testing.assert_array_equal(interval.end, [] if empty else [1, 2, 2, 4])
+    np.testing.assert_array_equal(interval.label, [] if empty else [0, 2, 3, 1])
 
 
 def test_extract_neural_data_uses_sample_index_timestamps(tmp_path):
@@ -112,10 +129,144 @@ def test_process_prepares_worker_runtime_even_when_processing_is_skipped(
     assert prepared_raw_dirs == [pipeline_instance.raw_dir]
 
 
+@pytest.fixture
+def neuroprobe_preparation(tmp_path, monkeypatch):
+    input_file = tmp_path / "sub_1_trial001.h5"
+    signal = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+    with h5py.File(input_file, "w") as handle:
+        handle.create_dataset("data/electrode_1", data=signal)
+
+    pipeline = neuroprobe_pipeline.Pipeline.__new__(neuroprobe_pipeline.Pipeline)
+    pipeline.raw_dir = tmp_path
+    pipeline.processed_dir = tmp_path / "processed"
+    pipeline.processed_dir.mkdir()
+    pipeline.args = SimpleNamespace(reprocess=False, no_splits=True)
+    pipeline.update_status = lambda _status: None
+    monkeypatch.setattr(neuroprobe_pipeline, "_prepare_neuroprobe_lib", lambda _: None)
+    monkeypatch.setattr(
+        neuroprobe_pipeline,
+        "neuroprobe",
+        SimpleNamespace(BrainTreebankSubject=lambda **_: object()),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        neuroprobe_pipeline,
+        "neuroprobe_config",
+        SimpleNamespace(SAMPLING_RATE=2.0),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        neuroprobe_pipeline,
+        "_extract_channel_data",
+        lambda _: ArrayDict(h5_label=np.array(["electrode_1"])),
+    )
+
+    return pipeline, neuroprobe_pipeline.DownloadedAsset(input_file, 1, 1), signal
+
+
+def test_process_preserves_signal_and_units_when_saving(neuroprobe_preparation):
+    pipeline, asset, signal = neuroprobe_preparation
+    pipeline.process(asset)
+
+    output_file = pipeline.processed_dir / asset.path.name
+    with Data.load(output_file) as data:
+        assert data.session.id == "sub_1_trial001"
+        np.testing.assert_array_equal(data.seeg_data.data, signal[:, None])
+        np.testing.assert_array_equal(data.seeg_data.timestamps, [0.0, 0.5, 1.0])
+    with h5py.File(output_file, "r") as handle:
+        assert handle["seeg_data"].attrs["unit"] == "uV"
+        assert handle["seeg_data"].attrs["scale_to_uV"] == 1.0
+
+
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize("failure_stage", ["save", "attributes"])
+def test_failed_publication_preserves_previous_output(
+    neuroprobe_preparation, monkeypatch, existing, failure_stage
+):
+    pipeline, asset, _ = neuroprobe_preparation
+    pipeline.args.reprocess = True
+    output = pipeline.processed_dir / asset.path.name
+    if existing:
+        with h5py.File(output, "w") as handle:
+            handle["previous"] = np.arange(5, dtype=np.int16)
+        previous_bytes = output.read_bytes()
+
+    if failure_stage == "save":
+        save = Data.save
+
+        def interrupted_save(self, path):
+            save(self, path)
+            raise RuntimeError("interrupted publication")
+
+        monkeypatch.setattr(Data, "save", interrupted_save)
+    else:
+        open_file = h5py.File
+
+        def interrupted_attributes(path, mode="r", *args, **kwargs):
+            if mode == "a":
+                raise RuntimeError("interrupted publication")
+            return open_file(path, mode, *args, **kwargs)
+
+        monkeypatch.setattr(h5py, "File", interrupted_attributes)
+
+    with pytest.raises(RuntimeError, match="interrupted publication"):
+        pipeline.process(asset)
+
+    assert output.exists() is existing
+    if existing:
+        assert output.read_bytes() == previous_bytes
+    assert not list(pipeline.processed_dir.glob("*.tmp"))
+
+
 def test_get_brainset_description_records_dataset_and_neuroprobe_versions():
     description = neuroprobe_pipeline.get_brainset_description()
 
     assert description.origin_version == "dataset=0.0.0; neuroprobe=0.1.7"
+    assert description.derived_version == "1.1.2"
+
+
+def test_extract_channel_data_adds_btb_lip_and_xyz_coordinate_fields(
+    tmp_path, monkeypatch
+):
+    localization_dir = tmp_path / "localization"
+    localization_dir.mkdir(parents=True)
+    pd.DataFrame(
+        [
+            {
+                "Subject": "sub_1",
+                "Electrode": "A*",
+                "X": 11.0,
+                "Y": 22.0,
+                "Z": 33.0,
+            }
+        ]
+    ).to_csv(localization_dir / "elec_coords_full.csv", index=False)
+
+    class _FakeSubject:
+        subject_id = 1
+        h5_neural_data_keys = {"A": "electrode_1", "B": "electrode_2"}
+        localization_data = pd.DataFrame(
+            {
+                "Electrode": ["A", "B"],
+                "L": [1.0, 2.0],
+                "I": [3.0, 4.0],
+                "P": [5.0, 6.0],
+            }
+        )
+        electrode_labels = ["A", "B"]
+
+    monkeypatch.setenv("ROOT_DIR_BRAINTREEBANK", str(tmp_path))
+
+    channels = neuroprobe_pipeline._extract_channel_data(_FakeSubject())
+
+    assert channels.type.tolist() == [31, 31]
+    np.testing.assert_allclose(channels.coord_btb_lip_l, [1.0, 2.0])
+    np.testing.assert_allclose(channels.coord_btb_lip_i, [3.0, 4.0])
+    np.testing.assert_allclose(channels.coord_btb_lip_p, [5.0, 6.0])
+    np.testing.assert_allclose(channels.coord_btb_x[:1], [11.0])
+    np.testing.assert_allclose(channels.coord_btb_y[:1], [22.0])
+    np.testing.assert_allclose(channels.coord_btb_z[:1], [33.0])
+    assert np.isnan(channels.coord_btb_x[1])
 
 
 def test_iterate_extract_splits_prepares_and_deduplicates_subject_initialization(
@@ -242,3 +393,19 @@ def test_extract_and_structure_splits_returns_masks_without_mutating_channels(
     assert selector_key in split_channel_masks
     assert split_channel_masks[selector_key].tolist() == [True, False]
     assert not hasattr(channels, selector_key)
+
+
+def test_xyz_coordinates_reflect_replaced_source(tmp_path):
+    localization = tmp_path / "localization"
+    localization.mkdir()
+    path = localization / "elec_coords_full.csv"
+    coordinates = pd.DataFrame(
+        {"Subject": ["sub_1"], "Electrode": ["A*"], "X": [1.0], "Y": [2.0], "Z": [3.0]}
+    )
+    coordinates.to_csv(path, index=False)
+    first = neuroprobe_pipeline._load_btb_xyz_coordinates(str(tmp_path))
+    coordinates["X"] = 9.0
+    coordinates.to_csv(path, index=False)
+    second = neuroprobe_pipeline._load_btb_xyz_coordinates(str(tmp_path))
+    assert first.loc[("sub_1", "A"), "X"] == 1.0
+    assert second.loc[("sub_1", "A"), "X"] == 9.0
